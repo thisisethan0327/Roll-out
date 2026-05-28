@@ -1,8 +1,7 @@
 import './globals.css';
 import type { Metadata } from 'next';
 import { JetBrains_Mono, Inter, Noto_Sans_JP } from 'next/font/google';
-import { SiteHeader } from '@/components/SiteHeader';
-import { SiteFooter } from '@/components/SiteFooter';
+import { MarketingChrome } from '@/components/MarketingChrome';
 
 const jetbrains = JetBrains_Mono({
     subsets: ['latin'],
@@ -51,9 +50,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             className={`${jetbrains.variable} ${inter.variable} ${notoJp.variable}`}
         >
             <body>
-                <SiteHeader />
-                <main>{children}</main>
-                <SiteFooter />
+                <MarketingChrome>{children}</MarketingChrome>
             </body>
         </html>
     );
