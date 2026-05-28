@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { getSupabaseBrowser } from '@/lib/supabase/browser';
+import { getSupabaseBrowser, isSupabaseConfigured } from '@/lib/supabase/browser';
 
 type Phase = 'email' | 'otp';
 
@@ -13,22 +13,40 @@ export function LoginForm() {
     const [busy, setBusy] = useState(false);
     const [err, setErr] = useState<string | null>(null);
 
+    // If the deploy is missing NEXT_PUBLIC_* vars, render a clear deploy-config
+    // error instead of the form. Otherwise the user gets a stuck spinner.
+    if (!isSupabaseConfigured()) {
+        return (
+            <div className="admin-login-error" style={{ whiteSpace: 'pre-wrap' }}>
+                Deploy config missing. Set
+                {'\n  '}NEXT_PUBLIC_SUPABASE_URL
+                {'\n  '}NEXT_PUBLIC_SUPABASE_ANON_KEY
+                {'\n'}as BUILD-TIME variables in Coolify, then redeploy.
+            </div>
+        );
+    }
+
     const sendCode = async (e: React.FormEvent) => {
         e.preventDefault();
         setErr(null);
         if (!email.trim()) return;
         setBusy(true);
-        const supabase = getSupabaseBrowser();
-        const { error } = await supabase.auth.signInWithOtp({
-            email: email.trim().toLowerCase(),
-            options: { shouldCreateUser: false },
-        });
-        setBusy(false);
-        if (error) {
-            setErr(error.message);
-            return;
+        try {
+            const supabase = getSupabaseBrowser();
+            const { error } = await supabase.auth.signInWithOtp({
+                email: email.trim().toLowerCase(),
+                options: { shouldCreateUser: false },
+            });
+            if (error) {
+                setErr(error.message);
+                return;
+            }
+            setPhase('otp');
+        } catch (ex: any) {
+            setErr(ex?.message ?? 'Unexpected error sending code.');
+        } finally {
+            setBusy(false);
         }
-        setPhase('otp');
     };
 
     const verify = async (e: React.FormEvent) => {
@@ -36,20 +54,25 @@ export function LoginForm() {
         setErr(null);
         if (otp.trim().length !== 6) return;
         setBusy(true);
-        const supabase = getSupabaseBrowser();
-        const { error } = await supabase.auth.verifyOtp({
-            email: email.trim().toLowerCase(),
-            token: otp.trim(),
-            type: 'email',
-        });
-        setBusy(false);
-        if (error) {
-            setErr(error.message);
-            return;
+        try {
+            const supabase = getSupabaseBrowser();
+            const { error } = await supabase.auth.verifyOtp({
+                email: email.trim().toLowerCase(),
+                token: otp.trim(),
+                type: 'email',
+            });
+            if (error) {
+                setErr(error.message);
+                return;
+            }
+            // Server-side guard on /admin/overview will reject non-admin users.
+            router.push('/admin/overview');
+            router.refresh();
+        } catch (ex: any) {
+            setErr(ex?.message ?? 'Unexpected error verifying code.');
+        } finally {
+            setBusy(false);
         }
-        // Server-side guard on /admin/overview will reject non-admin users.
-        router.push('/admin/overview');
-        router.refresh();
     };
 
     if (phase === 'email') {
