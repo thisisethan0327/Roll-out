@@ -33,9 +33,20 @@ export function LoginForm() {
         setBusy(true);
         try {
             const supabase = getSupabaseBrowser();
+            // emailRedirectTo doubles as the tenant discriminator for the
+            // send-auth-email Auth Hook (rollout.club triggers Rollout
+            // branding; without it, the hook falls back to site_url which is
+            // app.emwraps.net → EMWRAPS branding). Falls back to the page's
+            // own origin during local dev (localhost:3001 is on the
+            // allowlist).
+            const origin =
+                typeof window !== 'undefined' ? window.location.origin : 'https://rollout.club';
             const { error } = await supabase.auth.signInWithOtp({
                 email: email.trim().toLowerCase(),
-                options: { shouldCreateUser: false },
+                options: {
+                    shouldCreateUser: false,
+                    emailRedirectTo: `${origin}/admin/login`,
+                },
             });
             if (error) {
                 setErr(error.message);
