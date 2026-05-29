@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { requireShopMemberBySlug } from '@/lib/auth-guard';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { AppointmentActions } from './AppointmentActions';
+import { RealtimeRefresh } from './RealtimeRefresh';
 
 export const metadata = { title: 'Inbox' };
 
@@ -127,6 +128,7 @@ export default async function ShopInboxPage({
 
     return (
         <>
+            <RealtimeRefresh shopId={shop.shopId} />
             <div className="admin-page-head">
                 <div>
                     <div className="admin-page-title">INBOX</div>
