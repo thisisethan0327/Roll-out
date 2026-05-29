@@ -23,6 +23,7 @@ const RANK: Record<string, number> = {
 const NAV: SidebarItem[] = [
     { href: 'overview',  label: 'OVERVIEW',  section: 'TODAY',    minRole: 'installer' },
     { href: 'inbox',     label: 'INBOX',     section: 'TODAY',    minRole: 'installer' },
+    { href: 'messages',  label: 'MESSAGES',  section: 'TODAY',    minRole: 'installer' },
     { href: 'calendar',  label: 'CALENDAR',  section: 'TODAY',    minRole: 'installer' },
     { href: 'tickets',   label: 'TICKETS',   section: 'TODAY',    minRole: 'installer' },
     { href: 'customers', label: 'CUSTOMERS', section: 'CUSTOMERS', minRole: 'installer' },

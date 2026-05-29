@@ -1,39 +1,33 @@
 import { requireShopMemberBySlug } from '@/lib/auth-guard';
-import { getSupabasePublicAdmin } from '@/lib/supabase/admin';
+import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { ServiceRow, type ServiceRowData } from './ServiceRow';
+import { AddServiceForm } from './AddServiceForm';
 
 export const metadata = { title: 'Services' };
 
-// EMWRAPS is the bootstrap tenant — its catalog lives in public.service_items
-// (single-tenant, predates the rollout schema). All other shops get an empty
-// state until the multi-tenant rollout.shop_services table ships.
-const EMWRAPS_SHOP_ID = 1;
+const OWNER_ROLES = new Set(['owner', 'admin']);
 
-type ServiceItem = {
-    id: string;
-    category: string | null;
-    subcategory: string | null;
-    name: string | null;
-    description: string | null;
-    base_price: number | null;
-    active: boolean | null;
-    sort_order: number | null;
-};
+type ServiceRecord = ServiceRowData;
 
-async function loadEmwrapsCatalog(): Promise<ServiceItem[]> {
-    const pub = getSupabasePublicAdmin();
-    const { data } = await pub
-        .from('service_items')
-        .select('id, category, subcategory, name, description, base_price, active, sort_order')
+async function loadServices(shopId: number, q?: string): Promise<ServiceRecord[]> {
+    const admin = getSupabaseAdmin();
+    let query = admin
+        .from('shop_services')
+        .select(
+            'id, shop_id, category, subcategory, name, description, base_price, duration_hours, notes, sort_order, active',
+        )
+        .eq('shop_id', shopId)
         .order('category', { ascending: true })
         .order('sort_order', { ascending: true })
         .order('name', { ascending: true });
-    return (data ?? []) as ServiceItem[];
-}
 
-function truncate(s: string | null | undefined, n: number): string {
-    if (!s) return '—';
-    if (s.length <= n) return s;
-    return s.slice(0, n - 1).trimEnd() + '…';
+    if (q) {
+        const safe = q.replace(/[%_]/g, ' ');
+        query = query.or(`name.ilike.%${safe}%,description.ilike.%${safe}%`);
+    }
+
+    const { data } = await query;
+    return ((data as any[]) ?? []) as ServiceRecord[];
 }
 
 function formatPrice(p: number | null | undefined): string {
@@ -45,59 +39,39 @@ function formatPrice(p: number | null | undefined): string {
 
 export default async function ShopServicesPage({
     params,
+    searchParams,
 }: {
     params: Promise<{ slug: string }>;
+    searchParams: Promise<{ q?: string }>;
 }) {
     const { slug } = await params;
-    const { shop } = await requireShopMemberBySlug(slug);
+    const { shop, role } = await requireShopMemberBySlug(slug);
+    const { q } = await searchParams;
 
-    if (shop.shopId !== EMWRAPS_SHOP_ID) {
-        return (
-            <>
-                <div className="admin-page-head">
-                    <div>
-                        <div className="admin-page-title">SERVICES</div>
-                        <div className="admin-page-sub">
-                            {shop.name.toUpperCase()} · CATALOG
-                        </div>
-                    </div>
-                </div>
-                <div className="admin-empty">
-                    <div style={{ fontSize: 13, color: 'var(--text-2)', marginBottom: 10 }}>
-                        MULTI-TENANT SERVICE CATALOG COMING SOON
-                    </div>
-                    <div
-                        style={{
-                            fontFamily: 'var(--font-body)',
-                            fontSize: 12,
-                            lineHeight: 1.6,
-                            color: 'var(--text-3)',
-                        }}
-                    >
-                        For now, services are managed in your shop&apos;s notes. The per-shop
-                        editable catalog (with pricing tiers, options, and add-ons) is on the
-                        roadmap and ships alongside the public booking form upgrades.
-                    </div>
-                </div>
-            </>
-        );
-    }
+    const items = await loadServices(shop.shopId, q);
 
-    const items = await loadEmwrapsCatalog();
     const totalServices = items.length;
     const activeCount = items.filter((i) => i.active).length;
     const categories = Array.from(
         new Set(items.map((i) => i.category).filter((c): c is string => !!c)),
-    ).sort((a, b) => a.localeCompare(b));
+    );
+    const pricedItems = items.filter(
+        (i) => i.base_price != null && !Number.isNaN(Number(i.base_price)),
+    );
+    const avgPrice = pricedItems.length
+        ? pricedItems.reduce((sum, i) => sum + Number(i.base_price), 0) / pricedItems.length
+        : null;
 
-    // Group by category for rendering
-    const grouped: Record<string, ServiceItem[]> = {};
+    // Group by category
+    const grouped: Record<string, ServiceRecord[]> = {};
     for (const it of items) {
         const key = it.category ?? 'UNCATEGORIZED';
         if (!grouped[key]) grouped[key] = [];
         grouped[key].push(it);
     }
     const groupKeys = Object.keys(grouped).sort((a, b) => a.localeCompare(b));
+
+    const canDelete = OWNER_ROLES.has(role);
 
     return (
         <>
@@ -108,23 +82,7 @@ export default async function ShopServicesPage({
                         {shop.name.toUpperCase()} · CATALOG
                     </div>
                 </div>
-            </div>
-
-            <div
-                style={{
-                    marginBottom: 16,
-                    padding: 12,
-                    border: '1px solid var(--gold)',
-                    background: 'var(--gold-glow)',
-                    fontFamily: 'var(--font-display)',
-                    fontSize: 11,
-                    letterSpacing: 'var(--track-wide)',
-                    color: 'var(--text-2)',
-                }}
-            >
-                <strong style={{ color: 'var(--gold)' }}>READ-ONLY FOR V1</strong> — editing the
-                catalog per-shop ships in a future update. For now, changes happen in the legacy
-                tickets app.
+                <AddServiceForm shopId={shop.shopId} />
             </div>
 
             <div className="admin-stat-grid">
@@ -133,17 +91,45 @@ export default async function ShopServicesPage({
                     <div className="admin-stat-num">{totalServices}</div>
                 </div>
                 <div className="admin-stat">
+                    <div className="admin-stat-lbl">ACTIVE</div>
+                    <div className="admin-stat-num gold">{activeCount}</div>
+                </div>
+                <div className="admin-stat">
                     <div className="admin-stat-lbl">CATEGORIES</div>
                     <div className="admin-stat-num">{categories.length}</div>
                 </div>
                 <div className="admin-stat">
-                    <div className="admin-stat-lbl">ACTIVE</div>
-                    <div className="admin-stat-num gold">{activeCount}</div>
+                    <div className="admin-stat-lbl">AVG PRICE</div>
+                    <div className="admin-stat-num">{formatPrice(avgPrice)}</div>
                 </div>
             </div>
 
+            <form
+                className="admin-search"
+                action={`/shop/${slug}/services`}
+                style={{ marginTop: 12 }}
+            >
+                <input
+                    name="q"
+                    defaultValue={q ?? ''}
+                    className="admin-search-input"
+                    placeholder="SEARCH NAME OR DESCRIPTION"
+                />
+                <button type="submit" className="admin-action-btn">
+                    SEARCH ›
+                </button>
+            </form>
+
             {groupKeys.length === 0 ? (
-                <div className="admin-empty">NO SERVICES FOUND IN CATALOG.</div>
+                <div className="admin-empty">
+                    {q ? (
+                        <>NO MATCHES FOR &ldquo;{q}&rdquo;.</>
+                    ) : (
+                        <>
+                            NO SERVICES YET — ADD YOUR FIRST.
+                        </>
+                    )}
+                </div>
             ) : (
                 groupKeys.map((cat) => (
                     <div key={cat} style={{ marginTop: 20 }}>
@@ -156,7 +142,8 @@ export default async function ShopServicesPage({
                                     {cat.toUpperCase()}
                                 </div>
                                 <div className="admin-page-sub">
-                                    {grouped[cat].length} ITEM{grouped[cat].length === 1 ? '' : 'S'}
+                                    {grouped[cat].length} ITEM
+                                    {grouped[cat].length === 1 ? '' : 'S'}
                                 </div>
                             </div>
                         </div>
@@ -167,30 +154,18 @@ export default async function ShopServicesPage({
                                         <th>NAME</th>
                                         <th>DESCRIPTION</th>
                                         <th>PRICE</th>
-                                        <th style={{ textAlign: 'right' }}>ACTIVE</th>
+                                        <th>DURATION</th>
+                                        <th>STATUS</th>
+                                        <th style={{ textAlign: 'right' }}>ACTIONS</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {grouped[cat].map((it) => (
-                                        <tr key={it.id}>
-                                            <td>
-                                                {it.name ?? '—'}
-                                                {it.subcategory ? (
-                                                    <div className="admin-handle">
-                                                        {it.subcategory}
-                                                    </div>
-                                                ) : null}
-                                            </td>
-                                            <td>{truncate(it.description, 80)}</td>
-                                            <td>{formatPrice(it.base_price)}</td>
-                                            <td style={{ textAlign: 'right' }}>
-                                                {it.active ? (
-                                                    <span className="admin-pill neon">ACTIVE</span>
-                                                ) : (
-                                                    <span className="admin-pill warn">OFF</span>
-                                                )}
-                                            </td>
-                                        </tr>
+                                        <ServiceRow
+                                            key={it.id}
+                                            service={it}
+                                            canDelete={canDelete}
+                                        />
                                     ))}
                                 </tbody>
                             </table>

@@ -4,6 +4,8 @@ import {
     acceptAppointment,
     declineAppointment,
     convertAppointmentToTicket,
+    acceptReschedule,
+    declineReschedule,
 } from './actions';
 
 export function AppointmentActions({
@@ -61,6 +63,27 @@ export function AppointmentActions({
                     onClick={() => run(() => convertAppointmentToTicket(appointmentId, shopId))}
                 >
                     CONVERT TO TICKET ›
+                </button>
+            </div>
+        );
+    }
+
+    if (status === 'reschedule_requested') {
+        return (
+            <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                <button
+                    className="admin-action-btn"
+                    disabled={pending}
+                    onClick={() => run(() => acceptReschedule(appointmentId, shopId))}
+                >
+                    ACCEPT NEW TIME
+                </button>
+                <button
+                    className="admin-action-btn danger"
+                    disabled={pending}
+                    onClick={() => run(() => declineReschedule(appointmentId, shopId))}
+                >
+                    DECLINE NEW TIME
                 </button>
             </div>
         );

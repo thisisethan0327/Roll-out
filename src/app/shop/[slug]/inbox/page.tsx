@@ -1,3 +1,4 @@
+import React from 'react';
 import Link from 'next/link';
 import { requireShopMemberBySlug } from '@/lib/auth-guard';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
@@ -15,12 +16,22 @@ const SERVICE_LABEL: Record<string, string> = {
     OTHER: 'Other',
 };
 
-const STATUS_TABS = ['ALL', 'PENDING', 'ACCEPTED', 'DECLINED', 'CANCELLED', 'CONVERTED'] as const;
+const STATUS_TABS = [
+    'ALL',
+    'PENDING',
+    'ACCEPTED',
+    'RESCHEDULE_REQUESTED',
+    'DECLINED',
+    'CANCELLED',
+    'CONVERTED',
+] as const;
 type StatusTab = (typeof STATUS_TABS)[number];
 
 function pillClass(status: string): string {
     switch (status) {
         case 'pending':
+            return 'admin-pill gold';
+        case 'reschedule_requested':
             return 'admin-pill gold';
         case 'accepted':
             return 'admin-pill neon';
@@ -65,7 +76,7 @@ async function loadInbox(shopId: number, status: StatusTab, query?: string) {
     let q = admin
         .from('appointment_requests')
         .select(
-            `id, shop_id, service_type, preferred_at, notes, status, created_at, accepted_at, declined_at, cancelled_at, requester_profile_id,
+            `id, shop_id, service_type, preferred_at, previous_preferred_at, notes, status, created_at, accepted_at, declined_at, cancelled_at, requester_profile_id,
               requester:profiles!appointment_requests_requester_profile_id_fkey(handle, display_name),
               vehicle:vehicles(year, make, model)`,
         )
@@ -207,47 +218,60 @@ export default async function ShopInboxPage({
                                 </td>
                             </tr>
                         ) : (
-                            data.rows.map((a: any) => (
-                                <tr key={a.id}>
-                                    <td>
-                                        {new Date(a.created_at).toISOString().slice(0, 16).replace('T', ' ')}
-                                    </td>
-                                    <td>
-                                        <Link
-                                            href={`/shop/${slug}/customers/${a.requester_profile_id}`}
-                                            className="text-link"
-                                        >
-                                            @{a.requester?.handle ?? '?'}
-                                        </Link>
-                                        <div className="admin-handle">{a.requester?.display_name}</div>
-                                    </td>
-                                    <td>
-                                        <span className="admin-pill">
-                                            {SERVICE_LABEL[a.service_type] ?? a.service_type}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        {a.vehicle
-                                            ? `${a.vehicle.year ?? ''} ${a.vehicle.make ?? ''} ${a.vehicle.model ?? ''}`.trim() || '—'
-                                            : '—'}
-                                    </td>
-                                    <td>
-                                        {a.preferred_at
-                                            ? new Date(a.preferred_at).toISOString().slice(0, 16).replace('T', ' ')
-                                            : '—'}
-                                    </td>
-                                    <td>
-                                        <span className={pillClass(a.status)}>{a.status.toUpperCase()}</span>
-                                    </td>
-                                    <td style={{ textAlign: 'right' }}>
-                                        <AppointmentActions
-                                            appointmentId={a.id}
-                                            shopId={shop.shopId}
-                                            status={a.status}
-                                        />
-                                    </td>
-                                </tr>
-                            ))
+                            data.rows.map((a: any) => {
+                                const fmt = (iso: string | null) =>
+                                    iso ? new Date(iso).toISOString().slice(0, 16).replace('T', ' ') : '—';
+                                return (
+                                    <React.Fragment key={a.id}>
+                                        <tr>
+                                            <td>{fmt(a.created_at)}</td>
+                                            <td>
+                                                <Link
+                                                    href={`/shop/${slug}/customers/${a.requester_profile_id}`}
+                                                    className="text-link"
+                                                >
+                                                    @{a.requester?.handle ?? '?'}
+                                                </Link>
+                                                <div className="admin-handle">
+                                                    {a.requester?.display_name}
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <span className="admin-pill">
+                                                    {SERVICE_LABEL[a.service_type] ?? a.service_type}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                {a.vehicle
+                                                    ? `${a.vehicle.year ?? ''} ${a.vehicle.make ?? ''} ${a.vehicle.model ?? ''}`.trim() || '—'
+                                                    : '—'}
+                                            </td>
+                                            <td>{fmt(a.preferred_at)}</td>
+                                            <td>
+                                                <span className={pillClass(a.status)}>
+                                                    {a.status.toUpperCase()}
+                                                </span>
+                                            </td>
+                                            <td style={{ textAlign: 'right' }}>
+                                                <AppointmentActions
+                                                    appointmentId={a.id}
+                                                    shopId={shop.shopId}
+                                                    status={a.status}
+                                                />
+                                            </td>
+                                        </tr>
+                                        {a.status === 'reschedule_requested' && (
+                                            <tr className="admin-subrow">
+                                                <td colSpan={7}>
+                                                    <div className="admin-handle" style={{ paddingLeft: 8 }}>
+                                                        RESCHEDULE: {fmt(a.previous_preferred_at)} → {fmt(a.preferred_at)}
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </React.Fragment>
+                                );
+                            })
                         )}
                     </tbody>
                 </table>

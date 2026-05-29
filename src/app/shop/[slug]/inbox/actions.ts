@@ -269,6 +269,130 @@ export async function declineAppointment(
     if (slug) bustPaths(slug);
 }
 
+/**
+ * Manager+ accepts a customer-requested time change. The row already has the
+ * new preferred_at — we just flip the status back to 'accepted' and clear the
+ * previous_preferred_at stash. Then fire-and-forget a customer email so they
+ * know it's confirmed.
+ */
+export async function acceptReschedule(appointmentId: string, shopId: number) {
+    await requireManager(shopId);
+    const admin = getSupabaseAdmin();
+    const { error } = await admin
+        .from('appointment_requests')
+        .update({
+            status: 'accepted',
+            accepted_at: new Date().toISOString(),
+            previous_preferred_at: null,
+        })
+        .eq('id', appointmentId)
+        .eq('shop_id', shopId);
+    if (error) throw new Error(error.message);
+
+    notifyCustomerReschedule(appointmentId, shopId, 'accepted').catch((e) =>
+        console.warn('[inbox] notify customer reschedule accept failed:', e),
+    );
+
+    const slug = await fetchSlug(shopId);
+    if (slug) bustPaths(slug);
+}
+
+/**
+ * Manager+ declines a customer-requested time change. Rolls preferred_at back
+ * to the stashed previous_preferred_at and flips status back to 'accepted'.
+ */
+export async function declineReschedule(appointmentId: string, shopId: number) {
+    await requireManager(shopId);
+    const admin = getSupabaseAdmin();
+
+    // Fetch the prior time so we can restore it.
+    const { data: appt, error: fetchErr } = await admin
+        .from('appointment_requests')
+        .select('id, previous_preferred_at, preferred_at, status')
+        .eq('id', appointmentId)
+        .eq('shop_id', shopId)
+        .single();
+    if (fetchErr || !appt) {
+        throw new Error(fetchErr?.message ?? 'appointment not found');
+    }
+    const prior = (appt as any).previous_preferred_at as string | null;
+    const requested = (appt as any).preferred_at as string | null;
+
+    const { error } = await admin
+        .from('appointment_requests')
+        .update({
+            status: 'accepted',
+            preferred_at: prior,
+            previous_preferred_at: null,
+        })
+        .eq('id', appointmentId)
+        .eq('shop_id', shopId);
+    if (error) throw new Error(error.message);
+
+    notifyCustomerReschedule(appointmentId, shopId, 'declined', {
+        requested,
+        restored: prior,
+    }).catch((e) => console.warn('[inbox] notify customer reschedule decline failed:', e));
+
+    const slug = await fetchSlug(shopId);
+    if (slug) bustPaths(slug);
+}
+
+/**
+ * Fire-and-forget customer email after a reschedule decision. Uses the generic
+ * shop_message template so we don't have to land a new template for v1.
+ * Mirrors the mobile-side pattern in src/data/appointments.ts.
+ */
+async function notifyCustomerReschedule(
+    appointmentId: string,
+    shopId: number,
+    outcome: 'accepted' | 'declined',
+    times?: { requested: string | null; restored: string | null },
+): Promise<void> {
+    const admin = getSupabaseAdmin();
+    const { data: appt } = await admin
+        .from('appointment_requests')
+        .select(
+            'shop_id, service_type, preferred_at, requester_profile_id, requester:profiles!appointment_requests_requester_profile_id_fkey(display_name)',
+        )
+        .eq('id', appointmentId)
+        .maybeSingle();
+    if (!appt) return;
+
+    const a = appt as any;
+    const customerName = a.requester?.display_name ?? 'there';
+    const service = SERVICE_LABEL[a.service_type] ?? a.service_type ?? 'Service';
+
+    const subject =
+        outcome === 'accepted'
+            ? `Your new time is confirmed`
+            : `Sticking with your original time`;
+    const title =
+        outcome === 'accepted'
+            ? 'New time confirmed.'
+            : 'Reschedule declined.';
+    const message =
+        outcome === 'accepted'
+            ? `your ${service} appointment is now set for ${a.preferred_at ?? 'the requested time'}.`
+            : `the shop couldn't move your ${service} appointment to ${times?.requested ?? 'the requested time'}. The original time (${times?.restored ?? 'the previous time'}) still stands.`;
+
+    await admin.functions.invoke('send-shop-notification', {
+        body: {
+            shop_id: shopId,
+            template: 'shop_message',
+            to_profile_id: a.requester_profile_id,
+            linked_appointment_id: appointmentId,
+            subject_override: subject,
+            vars: {
+                subject,
+                customer_name: customerName,
+                title,
+                message,
+            },
+        },
+    });
+}
+
 export async function convertAppointmentToTicket(appointmentId: string, shopId: number) {
     await requireManager(shopId);
     const admin = getSupabaseAdmin();
