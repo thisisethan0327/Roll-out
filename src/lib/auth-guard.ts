@@ -123,3 +123,41 @@ export async function listMyShops(profileId: string): Promise<
         role: r.role,
     }));
 }
+
+/**
+ * Resolve a shop slug → id (via the admin client, bypassing RLS) so the layout
+ * can call `requireShopMember(id, …)`. Returns null when the slug doesn't
+ * exist. Used by every `/shop/[slug]/*` route's layout.
+ */
+export async function resolveShopSlug(slug: string): Promise<
+    { shopId: number; slug: string; name: string } | null
+> {
+    if (!slug) return null;
+    const admin = getSupabaseAdmin();
+    const { data } = await admin
+        .from('shops')
+        .select('id, slug, name')
+        .eq('slug', slug)
+        .maybeSingle();
+    if (!data) return null;
+    return {
+        shopId: (data as any).id,
+        slug: (data as any).slug,
+        name: (data as any).name,
+    };
+}
+
+/**
+ * Per-slug shop member guard. Wraps `requireShopMember(id, …)` with the slug
+ * lookup so route handlers don't have to fan out two queries themselves.
+ */
+export async function requireShopMemberBySlug(slug: string): Promise<{
+    profile: GuardedProfile;
+    role: string;
+    shop: { shopId: number; slug: string; name: string };
+}> {
+    const shop = await resolveShopSlug(slug);
+    if (!shop) redirect('/shop/picker?error=shop_not_found');
+    const { profile, role } = await requireShopMember(shop.shopId);
+    return { profile, role, shop };
+}
