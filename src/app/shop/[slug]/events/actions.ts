@@ -99,6 +99,7 @@ export async function createEvent(shopId: number, formData: FormData) {
     if (!allowedTypes.has(type)) throw new Error('Invalid event type.');
     if (title.length < 4) throw new Error('Title must be at least 4 characters.');
     if (description.length > 400) throw new Error('Description must be 400 chars or fewer.');
+    if (location_name.length < 2) throw new Error('Location name is required.');
     if (!start_at_raw) throw new Error('Start time is required.');
     if (!allowedVis.has(visibility)) throw new Error('Invalid visibility.');
 
@@ -118,7 +119,7 @@ export async function createEvent(shopId: number, formData: FormData) {
             type,
             title,
             description: description || null,
-            location_name: location_name || null,
+            location_name,
             location_detail: location_detail || null,
             lat,
             lng,
@@ -136,7 +137,7 @@ export async function createEvent(shopId: number, formData: FormData) {
     const newId = (data as any).id as string;
     const slug = await fetchSlug(shopId);
     if (slug) bustPaths(slug, newId);
-    redirect(`/shop/${slug}/events/${newId}`);
+    redirect(`/shop/${slug}/events/${newId}?just_created=1`);
 }
 
 export async function updateEvent(
@@ -161,6 +162,7 @@ export async function updateEvent(
 
     if (title.length < 4) throw new Error('Title must be at least 4 characters.');
     if (description.length > 400) throw new Error('Description must be 400 chars or fewer.');
+    if (location_name.length < 2) throw new Error('Location name is required.');
     if (!start_at_raw) throw new Error('Start time is required.');
     if (!allowedVis.has(visibility)) throw new Error('Invalid visibility.');
 
@@ -173,7 +175,7 @@ export async function updateEvent(
         .update({
             title,
             description: description || null,
-            location_name: location_name || null,
+            location_name,
             location_detail: location_detail || null,
             lat,
             lng,

@@ -100,11 +100,13 @@ export default async function NewEventPage({
                 />
 
                 <SectionHeading>LOCATION</SectionHeading>
-                <label className="admin-form-label">LOCATION NAME</label>
+                <label className="admin-form-label">LOCATION NAME *</label>
                 <input
                     name="location_name"
                     className="admin-form-input"
                     placeholder="EMWRAPS Shop"
+                    required
+                    minLength={2}
                 />
 
                 <label className="admin-form-label">LOCATION DETAIL (OPTIONAL)</label>

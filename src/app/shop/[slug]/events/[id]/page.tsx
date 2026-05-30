@@ -60,18 +60,38 @@ async function loadRsvps(eventId: string) {
 
 export default async function EventDetailPage({
     params,
+    searchParams,
 }: {
     params: Promise<{ slug: string; id: string }>;
+    searchParams: Promise<{ just_created?: string }>;
 }) {
     const { slug, id } = await params;
+    const { just_created } = await searchParams;
     const { shop, role } = await requireShopMemberBySlug(slug);
 
     const event = await loadEvent(id, shop.shopId);
     if (!event) notFound();
     const rsvps = await loadRsvps(id);
+    const justCreated = just_created === '1';
 
     return (
         <>
+            {justCreated ? (
+                <div
+                    style={{
+                        margin: '0 0 12px 0',
+                        padding: '12px 16px',
+                        background: 'var(--gold-dim)',
+                        border: '1px solid var(--gold)',
+                        color: 'var(--gold)',
+                        fontFamily: 'var(--font-display)',
+                        fontSize: 12,
+                        letterSpacing: 'var(--track-wider)',
+                    }}
+                >
+                    ✓ EVENT CREATED · LIVE ON /MEETS AND /U/{slug.toUpperCase()}
+                </div>
+            ) : null}
             <div className="admin-page-head">
                 <div>
                     <div className="admin-page-title">{event.title}</div>
