@@ -60,6 +60,23 @@ type Vehicle = {
     garage_number: number | null;
 };
 
+type ReviewCard = {
+    id: string;
+    rating: number;
+    body: string | null;
+    verified_purchase: boolean | null;
+    owner_reply: string | null;
+    owner_reply_at: string | null;
+    created_at: string | null;
+    reviewer_name: string | null;
+    reviewer_is_verified: boolean | null;
+};
+
+type ReviewStats = {
+    rating_count: number | null;
+    rating_avg: number | null;
+};
+
 // ── Helpers ────────────────────────────────────────────────────────────────
 function stripAt(h: string): string {
     return h.startsWith('@') ? h.slice(1) : h;
@@ -76,6 +93,21 @@ function initials(name: string | null | undefined, handle: string): string {
     if (parts.length === 0) return '·';
     if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
     return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
+function stars(rating: number): string {
+    const r = Math.max(0, Math.min(5, Math.round(rating)));
+    return '★'.repeat(r) + '☆'.repeat(5 - r);
+}
+
+function reviewAge(iso: string | null | undefined): string {
+    if (!iso) return '';
+    const d = Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000);
+    if (d < 1) return 'TODAY';
+    if (d === 1) return 'YESTERDAY';
+    if (d < 7) return `${d}D AGO`;
+    if (d < 30) return `${Math.floor(d / 7)}W AGO`;
+    return `${Math.floor(d / 30)}MO AGO`;
 }
 
 function formatEventDate(iso: string | null | undefined): string {
@@ -109,7 +141,7 @@ async function loadHandle(rawHandle: string) {
     const p = profile as Profile;
     const nowIso = new Date().toISOString();
 
-    const [shopRes, cardRes, postsRes, eventsRes, eventsCountRes, vehiclesRes] = await Promise.all([
+    const [shopRes, cardRes, postsRes, eventsRes, eventsCountRes, vehiclesRes, reviewsRes, statsRes] = await Promise.all([
         p.shop_id
             ? supabase
                   .from('shops')
@@ -148,6 +180,21 @@ async function loadHandle(rawHandle: string) {
                   .order('garage_number', { ascending: true })
                   .limit(6)
             : Promise.resolve({ data: [] }),
+        p.kind === 'shop_page' && p.shop_id
+            ? supabase
+                  .from('shop_review_cards')
+                  .select('id, rating, body, verified_purchase, owner_reply, owner_reply_at, created_at, reviewer_name, reviewer_is_verified')
+                  .eq('shop_id', p.shop_id)
+                  .order('created_at', { ascending: false })
+                  .limit(10)
+            : Promise.resolve({ data: [] }),
+        p.kind === 'shop_page' && p.shop_id
+            ? supabase
+                  .from('shop_review_stats')
+                  .select('rating_count, rating_avg')
+                  .eq('shop_id', p.shop_id)
+                  .maybeSingle()
+            : Promise.resolve({ data: null }),
     ]);
 
     return {
@@ -158,6 +205,8 @@ async function loadHandle(rawHandle: string) {
         events: ((eventsRes.data ?? []) as EventCard[]) || [],
         eventsCount: (eventsCountRes as any)?.count ?? 0,
         vehicles: ((vehiclesRes.data ?? []) as Vehicle[]) || [],
+        reviews: ((reviewsRes.data ?? []) as ReviewCard[]) || [],
+        reviewStats: (statsRes.data ?? null) as ReviewStats | null,
     };
 }
 
@@ -220,10 +269,12 @@ export default async function HandlePage({
 
     if (!data) notFound();
 
-    const { profile, shop, card, posts, events, eventsCount, vehicles } = data;
+    const { profile, shop, card, posts, events, eventsCount, vehicles, reviews, reviewStats } = data;
     const cleanHandle = stripAt(profile.handle);
     const displayName = profile.display_name || cleanHandle;
     const isShop = profile.kind === 'shop_page';
+    const ratingCount = reviewStats?.rating_count ?? 0;
+    const ratingAvg = Number(reviewStats?.rating_avg ?? 0);
 
     const primary = shop?.primary_color || 'var(--gold)';
     const heroBg = profile.banner_url
@@ -558,6 +609,73 @@ export default async function HandlePage({
                                             <span className="accent" style={{ fontSize: 18 }}>→</span>
                                         </div>
                                     </Link>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </section>
+            ) : null}
+
+            {/* ── REVIEWS (shop only) ──────────────────────────────────── */}
+            {isShop ? (
+                <section className="section" style={{ padding: '56px 0', borderTop: '1px solid var(--line)' }}>
+                    <div className="container">
+                        <div className="eyebrow eyebrow-gold mb-4">／ REVIEWS</div>
+                        <div style={{ display: 'flex', alignItems: 'baseline', gap: 16, marginBottom: 32, flexWrap: 'wrap' }}>
+                            <h2 style={{ margin: 0 }}>RATINGS</h2>
+                            {ratingCount > 0 ? (
+                                <div className="mono-row" style={{ fontSize: 13 }}>
+                                    <span className="accent" style={{ fontSize: 18, letterSpacing: 2 }}>{stars(ratingAvg)}</span>
+                                    <span className="sep" />
+                                    <span style={{ color: 'var(--text)' }}>{ratingAvg.toFixed(1)}</span>
+                                    <span className="sep" />
+                                    <span>{ratingCount} {ratingCount === 1 ? 'REVIEW' : 'REVIEWS'}</span>
+                                </div>
+                            ) : null}
+                        </div>
+
+                        {reviews.length === 0 ? (
+                            <p className="text-dim">No reviews yet. Book an appointment in the app to be the first.</p>
+                        ) : (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                                {reviews.map((rev) => (
+                                    <div
+                                        key={rev.id}
+                                        style={{
+                                            padding: '20px 24px',
+                                            background: 'var(--bg-2)',
+                                            border: '1px solid var(--line)',
+                                        }}
+                                    >
+                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                                            <span className="accent" style={{ fontSize: 16, letterSpacing: 2 }}>{stars(rev.rating)}</span>
+                                            <span className="text-dim" style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: 'var(--track-wider)' }}>
+                                                {reviewAge(rev.created_at)}
+                                            </span>
+                                        </div>
+                                        <div className="mono-row" style={{ fontSize: 11, marginTop: 8 }}>
+                                            <span style={{ color: 'var(--text)' }}>{rev.reviewer_name || 'Someone'}</span>
+                                            {rev.verified_purchase ? (
+                                                <>
+                                                    <span className="sep" />
+                                                    <span className="accent">✓ VERIFIED</span>
+                                                </>
+                                            ) : null}
+                                        </div>
+                                        {rev.body ? (
+                                            <p style={{ color: 'var(--text-2)', fontSize: 14, lineHeight: 1.55, marginTop: 12, marginBottom: 0 }}>
+                                                {rev.body}
+                                            </p>
+                                        ) : null}
+                                        {rev.owner_reply ? (
+                                            <div style={{ marginTop: 14, marginLeft: 12, paddingLeft: 14, borderLeft: '2px solid var(--line-mid)' }}>
+                                                <div className="eyebrow" style={{ marginBottom: 6 }}>SHOP REPLY</div>
+                                                <p style={{ color: 'var(--text-2)', fontSize: 13, lineHeight: 1.5, margin: 0 }}>
+                                                    {rev.owner_reply}
+                                                </p>
+                                            </div>
+                                        ) : null}
+                                    </div>
                                 ))}
                             </div>
                         )}

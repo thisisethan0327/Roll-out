@@ -29,6 +29,7 @@ const NAV: SidebarItem[] = [
     { href: 'customers', label: 'CUSTOMERS', section: 'CUSTOMERS', minRole: 'installer' },
     { href: 'posts',     label: 'POSTS',     section: 'PUBLIC',   minRole: 'manager' },
     { href: 'events',    label: 'EVENTS',    section: 'PUBLIC',   minRole: 'manager' },
+    { href: 'reviews',   label: 'REVIEWS',   section: 'PUBLIC',   minRole: 'manager' },
     { href: 'page',      label: 'SHOP PAGE', section: 'PUBLIC',   minRole: 'owner' },
     { href: 'staff',     label: 'STAFF',     section: 'SETTINGS', minRole: 'owner' },
     { href: 'services',  label: 'SERVICES',  section: 'SETTINGS', minRole: 'manager' },

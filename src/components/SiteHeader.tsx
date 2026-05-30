@@ -24,6 +24,9 @@ export function SiteHeader() {
                 </Link>
 
                 <nav className="flex items-center gap-6" style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: 'var(--track-wider)' }}>
+                    <Link href="/meets" className="text-dim" style={{ textTransform: 'uppercase' }}>
+                        Meets
+                    </Link>
                     <Link href="/#features" className="text-dim" style={{ textTransform: 'uppercase' }}>
                         Features
                     </Link>

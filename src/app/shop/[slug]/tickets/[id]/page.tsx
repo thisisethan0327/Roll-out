@@ -128,6 +128,13 @@ export default async function TicketDetailPage({
                         )}
                     </div>
                 </div>
+                <Link
+                    href={`/shop/${slug}/tickets/${id}/invoice`}
+                    className="admin-action-btn"
+                    style={{ textDecoration: 'none' }}
+                >
+                    INVOICE
+                </Link>
             </div>
 
             <div
