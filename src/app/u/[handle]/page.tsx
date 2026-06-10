@@ -24,6 +24,13 @@ type Shop = {
     secondary_color: string | null;
     from_name: string | null;
     email_logo_url: string | null;
+    address_line: string | null;
+    city: string | null;
+    state_region: string | null;
+    postal: string | null;
+    lat: number | null;
+    lng: number | null;
+    show_on_map: boolean | null;
 };
 
 type ProfileCard = {
@@ -145,7 +152,7 @@ async function loadHandle(rawHandle: string) {
         p.shop_id
             ? supabase
                   .from('shops')
-                  .select('id, primary_color, secondary_color, from_name, email_logo_url')
+                  .select('id, primary_color, secondary_color, from_name, email_logo_url, address_line, city, state_region, postal, lat, lng, show_on_map')
                   .eq('id', p.shop_id)
                   .maybeSingle()
             : Promise.resolve({ data: null }),
@@ -679,6 +686,57 @@ export default async function HandlePage({
                                 ))}
                             </div>
                         )}
+                    </div>
+                </section>
+            ) : null}
+
+            {/* ── LOCATION (shop only, with coords + opted in) ─────────── */}
+            {isShop && shop?.lat != null && shop?.lng != null && shop?.show_on_map !== false ? (
+                <section className="section" style={{ padding: '56px 0', borderTop: '1px solid var(--line)' }}>
+                    <div className="container">
+                        <div className="eyebrow eyebrow-gold mb-4">／ LOCATION</div>
+                        <h2 style={{ marginBottom: 8 }}>FIND US</h2>
+                        <p className="text-dim" style={{ fontSize: 15, margin: '0 0 18px' }}>
+                            {[shop.address_line, shop.city, shop.state_region, shop.postal].filter(Boolean).join(', ') || 'Tap through for directions.'}
+                        </p>
+                        <div
+                            className="corner-wrap"
+                            style={{
+                                position: 'relative',
+                                aspectRatio: '16 / 7',
+                                background: 'var(--bg-2)',
+                                border: '1px solid var(--line)',
+                                overflow: 'hidden',
+                            }}
+                        >
+                            <span className="corner-bottom-left" />
+                            <span className="corner-bottom-right" />
+                            <iframe
+                                src={`https://www.openstreetmap.org/export/embed.html?bbox=${shop.lng - 0.006},${shop.lat - 0.006},${shop.lng + 0.006},${shop.lat + 0.006}&layer=mapnik&marker=${shop.lat},${shop.lng}`}
+                                title="Shop location map"
+                                style={{ width: '100%', height: '100%', border: 0, filter: 'grayscale(0.6) sepia(0.3) saturate(1.4) brightness(0.85)' }}
+                                loading="lazy"
+                                referrerPolicy="no-referrer-when-downgrade"
+                            />
+                        </div>
+                        <div style={{ marginTop: 16 }}>
+                            <a
+                                className="text-link"
+                                href={`https://www.google.com/maps?q=${shop.lat},${shop.lng}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{
+                                    fontSize: 12,
+                                    fontFamily: 'var(--font-display)',
+                                    letterSpacing: 'var(--track-wider)',
+                                    textDecoration: 'none',
+                                    borderBottom: '1px solid var(--line-mid)',
+                                    paddingBottom: 2,
+                                }}
+                            >
+                                GET DIRECTIONS ›
+                            </a>
+                        </div>
                     </div>
                 </section>
             ) : null}

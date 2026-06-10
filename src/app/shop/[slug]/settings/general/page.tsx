@@ -9,7 +9,7 @@ async function loadShop(shopId: number) {
     const admin = getSupabaseAdmin();
     const { data } = await admin
         .from('shops')
-        .select('id, slug, name, region, primary_color, secondary_color')
+        .select('id, slug, name, region, primary_color, secondary_color, address_line, city, state_region, postal, lat, lng, show_on_map')
         .eq('id', shopId)
         .maybeSingle();
     return data as any;
