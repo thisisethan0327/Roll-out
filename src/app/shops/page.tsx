@@ -9,6 +9,11 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 
+// Render at request time, not build time: this page reads via the service-role
+// admin client whose key is runtime-only on Coolify. Static prerender at build
+// would have no key and fail. Still fully SSR/crawlable for SEO.
+export const dynamic = 'force-dynamic';
+
 type ShopRow = {
     id: number;
     slug: string;
