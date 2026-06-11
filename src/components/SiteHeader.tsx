@@ -27,6 +27,9 @@ export function SiteHeader() {
                     <Link href="/meets" className="text-dim" style={{ textTransform: 'uppercase' }}>
                         Meets
                     </Link>
+                    <Link href="/shops" className="text-dim" style={{ textTransform: 'uppercase' }}>
+                        Shops
+                    </Link>
                     <Link href="/#features" className="text-dim" style={{ textTransform: 'uppercase' }}>
                         Features
                     </Link>
