@@ -2,6 +2,9 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { getSellingShops } from '@/lib/store-shops';
+import { fetchCatalogByHandles, type MedusaProduct } from '@/lib/medusa';
+import { ProductCard } from '@/components/ProductCard';
 
 // ── Types (loose; rollout schema not codegen'd) ────────────────────────────
 type Profile = {
@@ -204,6 +207,24 @@ async function loadHandle(rawHandle: string) {
             : Promise.resolve({ data: null }),
     ]);
 
+    // Storefront: if this shop_page belongs to a selling shop, fetch its Medusa
+    // catalog (Rollout sales channel) to render a product grid + link to /store.
+    let products: MedusaProduct[] = [];
+    let storeSlug: string | null = null;
+    if (p.kind === 'shop_page' && p.shop_id != null) {
+        try {
+            const sellingShops = await getSellingShops();
+            const sellShop = sellingShops.find((s) => s.shopId === Number(p.shop_id));
+            if (sellShop) {
+                storeSlug = sellShop.slug;
+                const { products: fetched } = await fetchCatalogByHandles(sellShop.categoryHandles);
+                products = fetched.slice(0, 8);
+            }
+        } catch {
+            /* catalog is best-effort — never block the profile */
+        }
+    }
+
     return {
         profile: p,
         shop: (shopRes.data ?? null) as Shop | null,
@@ -214,6 +235,8 @@ async function loadHandle(rawHandle: string) {
         vehicles: ((vehiclesRes.data ?? []) as Vehicle[]) || [],
         reviews: ((reviewsRes.data ?? []) as ReviewCard[]) || [],
         reviewStats: (statsRes.data ?? null) as ReviewStats | null,
+        products,
+        storeSlug,
     };
 }
 
@@ -276,7 +299,7 @@ export default async function HandlePage({
 
     if (!data) notFound();
 
-    const { profile, shop, card, posts, events, eventsCount, vehicles, reviews, reviewStats } = data;
+    const { profile, shop, card, posts, events, eventsCount, vehicles, reviews, reviewStats, products, storeSlug } = data;
     const cleanHandle = stripAt(profile.handle);
     const displayName = profile.display_name || cleanHandle;
     const isShop = profile.kind === 'shop_page';
@@ -471,6 +494,38 @@ export default async function HandlePage({
                     )}
                 </div>
             </section>
+
+            {/* ── SHOP PRODUCTS (selling shops) ────────────────────────── */}
+            {isShop && products.length > 0 ? (
+                <section className="section" style={{ padding: '56px 0', borderTop: '1px solid var(--line)' }}>
+                    <div className="container">
+                        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, marginBottom: 32, flexWrap: 'wrap' }}>
+                            <div>
+                                <div className="eyebrow eyebrow-gold mb-4">／ SHOP</div>
+                                <h2 style={{ margin: 0 }}>PRODUCTS</h2>
+                            </div>
+                            <Link
+                                href={storeSlug ? `/store?shop=${storeSlug}` : '/store'}
+                                className="font-display"
+                                style={{ fontSize: 11, letterSpacing: 'var(--track-wider)', color: 'var(--gold)', textDecoration: 'none' }}
+                            >
+                                SHOP ALL →
+                            </Link>
+                        </div>
+                        <div
+                            style={{
+                                display: 'grid',
+                                gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+                                gap: 16,
+                            }}
+                        >
+                            {products.map((p) => (
+                                <ProductCard key={p.id} product={p} />
+                            ))}
+                        </div>
+                    </div>
+                </section>
+            ) : null}
 
             {/* ── RECENT BUILDS (user-only) ────────────────────────────── */}
             {!isShop && vehicles.length > 0 ? (
