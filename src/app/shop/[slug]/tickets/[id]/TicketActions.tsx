@@ -7,13 +7,14 @@
 import { useState, useTransition } from 'react';
 import { setStatus, setServiceDay, setPriority, appendNote } from '../actions';
 
+// Must match the public.tickets `tickets_status_check` DB constraint.
 const STATUS_OPTIONS = [
-    'new',
-    'scheduled',
-    'in_progress',
-    'awaiting_parts',
-    'awaiting_payment',
+    'quote',
+    'estimate',
+    'pending',
+    'in-progress',
     'completed',
+    'declined',
     'cancelled',
 ];
 
@@ -29,7 +30,7 @@ export function StatusSelect({
     initial: string | null;
 }) {
     const [pending, start] = useTransition();
-    const [value, setValue] = useState(initial ?? 'new');
+    const [value, setValue] = useState(initial ?? 'pending');
     return (
         <select
             disabled={pending}
@@ -42,7 +43,7 @@ export function StatusSelect({
                         await setStatus(slug, ticketRowId, next);
                     } catch (err: any) {
                         alert('Status update failed: ' + (err?.message ?? 'unknown'));
-                        setValue(initial ?? 'new');
+                        setValue(initial ?? 'pending');
                     }
                 });
             }}
@@ -51,7 +52,7 @@ export function StatusSelect({
         >
             {STATUS_OPTIONS.map((s) => (
                 <option key={s} value={s}>
-                    {s.toUpperCase().replace(/_/g, ' ')}
+                    {s.toUpperCase().replace(/[_-]/g, ' ')}
                 </option>
             ))}
         </select>

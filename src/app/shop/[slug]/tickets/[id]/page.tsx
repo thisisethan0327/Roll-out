@@ -26,9 +26,9 @@ export const metadata = { title: 'Ticket' };
 
 function statusPillVariant(status: string | null): '' | 'gold' | 'neon' | 'warn' {
     const s = (status ?? '').toLowerCase();
-    if (s === 'new') return 'gold';
-    if (s === 'in_progress' || s === 'scheduled') return 'neon';
-    if (s === 'cancelled' || s === 'awaiting_parts' || s === 'awaiting_payment') return 'warn';
+    if (s === 'quote' || s === 'estimate' || s === 'pending') return 'gold';
+    if (s === 'in-progress' || s === 'completed') return 'neon';
+    if (s === 'cancelled' || s === 'declined') return 'warn';
     return '';
 }
 
@@ -333,7 +333,7 @@ export default async function TicketDetailPage({
                         <ServiceDayInput slug={slug} ticketRowId={t.id} initial={t.service_day ?? null} />
                     </Section>
                     <Section title="STATUS">
-                        <StatusSelect slug={slug} ticketRowId={t.id} initial={t.status ?? 'new'} />
+                        <StatusSelect slug={slug} ticketRowId={t.id} initial={t.status ?? 'pending'} />
                     </Section>
                     <Section title="PRIORITY">
                         <PrioritySelect slug={slug} ticketRowId={t.id} initial={t.priority ?? 'normal'} />

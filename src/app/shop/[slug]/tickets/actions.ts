@@ -207,7 +207,7 @@ export async function createTicket(slug: string, formData: FormData) {
         car_model: carModel,
         services,
         notes,
-        status: 'new',
+        status: 'pending',
         priority: priorityRaw === 'normal' ? null : priorityRaw,
         source: 'manual',
     };

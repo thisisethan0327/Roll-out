@@ -11,22 +11,31 @@ import { getSupabasePublicAdmin } from '@/lib/supabase/admin';
 
 export const metadata = { title: 'Tickets' };
 
-type StatusKey = 'all' | 'new' | 'scheduled' | 'in_progress' | 'completed' | 'cancelled';
+// Keys match the public.tickets `tickets_status_check` DB constraint.
+type StatusKey =
+    | 'all'
+    | 'quote'
+    | 'estimate'
+    | 'pending'
+    | 'in-progress'
+    | 'completed'
+    | 'cancelled';
 
 const STATUS_FILTERS: { key: StatusKey; label: string }[] = [
     { key: 'all', label: 'ALL' },
-    { key: 'new', label: 'NEW' },
-    { key: 'scheduled', label: 'SCHEDULED' },
-    { key: 'in_progress', label: 'IN PROGRESS' },
+    { key: 'quote', label: 'QUOTE' },
+    { key: 'estimate', label: 'ESTIMATE' },
+    { key: 'pending', label: 'PENDING' },
+    { key: 'in-progress', label: 'IN PROGRESS' },
     { key: 'completed', label: 'COMPLETED' },
     { key: 'cancelled', label: 'CANCELLED' },
 ];
 
 function statusPillVariant(status: string | null): '' | 'gold' | 'neon' | 'warn' {
     const s = (status ?? '').toLowerCase();
-    if (s === 'new') return 'gold';
-    if (s === 'in_progress' || s === 'scheduled') return 'neon';
-    if (s === 'cancelled' || s === 'awaiting_parts' || s === 'awaiting_payment') return 'warn';
+    if (s === 'quote' || s === 'estimate' || s === 'pending') return 'gold';
+    if (s === 'in-progress' || s === 'completed') return 'neon';
+    if (s === 'cancelled' || s === 'declined') return 'warn';
     return '';
 }
 
