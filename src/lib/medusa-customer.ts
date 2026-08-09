@@ -57,17 +57,12 @@ function pkHeaders(extra?: Record<string, string>): Record<string, string> {
 }
 
 /**
- * Exchange the caller's Supabase access token for a Medusa customer JWT.
- * Returns null when there is no session or the exchange fails.
+ * Hand a Supabase access token to Medusa's `supabase` auth provider and return
+ * the resulting Medusa token. For an identity that is not yet linked to a
+ * customer this is a registration-scoped token; once a customer exists it is an
+ * actor-scoped (customer) token. Returns null on any failure.
  */
-async function exchangeForMedusaToken(): Promise<string | null> {
-    const supabase = await getSupabaseServer();
-    const {
-        data: { session },
-    } = await supabase.auth.getSession();
-    const accessToken = session?.access_token;
-    if (!accessToken) return null;
-
+async function authExchange(accessToken: string): Promise<string | null> {
     try {
         const res = await fetch(`${MEDUSA_URL}/auth/customer/supabase`, {
             method: 'POST',
@@ -82,6 +77,110 @@ async function exchangeForMedusaToken(): Promise<string | null> {
     } catch {
         return null;
     }
+}
+
+/**
+ * Exchange the caller's Supabase access token for a Medusa customer JWT.
+ * Returns null when there is no session or the exchange fails.
+ */
+async function exchangeForMedusaToken(): Promise<string | null> {
+    const supabase = await getSupabaseServer();
+    const {
+        data: { session },
+    } = await supabase.auth.getSession();
+    const accessToken = session?.access_token;
+    if (!accessToken) return null;
+    return authExchange(accessToken);
+}
+
+/** Best-effort first/last name from Supabase user metadata (may be empty). */
+function nameParts(user: {
+    user_metadata?: Record<string, unknown> | null;
+}): { firstName?: string; lastName?: string } {
+    const meta = (user?.user_metadata ?? {}) as Record<string, unknown>;
+    const first = typeof meta.first_name === 'string' ? meta.first_name : '';
+    const last = typeof meta.last_name === 'string' ? meta.last_name : '';
+    if (first || last) return { firstName: first || undefined, lastName: last || undefined };
+
+    const full =
+        (typeof meta.full_name === 'string' && meta.full_name) ||
+        (typeof meta.name === 'string' && meta.name) ||
+        (typeof meta.display_name === 'string' && meta.display_name) ||
+        '';
+    if (full.trim()) {
+        const parts = full.trim().split(/\s+/);
+        return { firstName: parts[0], lastName: parts.slice(1).join(' ') || undefined };
+    }
+    return {};
+}
+
+/**
+ * Resolve the signed-in platform user to a linked Medusa customer, creating one
+ * on first sight, and return an actor-scoped Medusa customer JWT. Mirrors the
+ * NeferStock storefront's `loginWithSupabase` sequence (find-or-create), but is
+ * fully best-effort: returns null when there is no session or any step fails, so
+ * a caller can safely fall back to anonymous behaviour.
+ *
+ *   1. Exchange the platform JWT for a Medusa token.
+ *   2. If GET /store/customers/me succeeds, the identity is already linked — the
+ *      token is actor-scoped; return it.
+ *   3. Otherwise create + link the customer with the registration-scoped token,
+ *      stamping metadata.supabase_user_id (the one ecosystem id).
+ *   4. Re-exchange to obtain the now actor-scoped token and return it.
+ */
+export async function ensureMedusaCustomerToken(): Promise<string | null> {
+    const supabase = await getSupabaseServer();
+    const {
+        data: { session },
+    } = await supabase.auth.getSession();
+    const accessToken = session?.access_token;
+    const user = session?.user;
+    if (!accessToken || !user) return null;
+
+    // 1. Platform JWT → Medusa token.
+    const token = await authExchange(accessToken);
+    if (!token) return null;
+
+    // 2. Already linked? Then this token is actor-scoped and we're done.
+    try {
+        const meRes = await fetch(`${MEDUSA_URL}/store/customers/me`, {
+            method: 'GET',
+            headers: pkHeaders({ Authorization: `Bearer ${token}` }),
+            cache: 'no-store',
+        });
+        if (meRes.ok) return token;
+        // 401/404 = authenticated identity with no linked customer yet → create.
+    } catch {
+        return token; // transient — use what we have rather than block the caller
+    }
+
+    // 3. Create + link the Medusa customer with the registration-scoped token.
+    const { firstName, lastName } = nameParts(user);
+    try {
+        const createRes = await fetch(`${MEDUSA_URL}/store/customers`, {
+            method: 'POST',
+            headers: pkHeaders({ Authorization: `Bearer ${token}` }),
+            body: JSON.stringify({
+                email: user.email ?? undefined,
+                first_name: firstName,
+                last_name: lastName,
+                metadata: { supabase_user_id: user.id },
+            }),
+            cache: 'no-store',
+        });
+        if (!createRes.ok) {
+            // A concurrent request may have created it first — re-exchange to
+            // pick up the now-linked (actor-scoped) token either way.
+            const retry = await authExchange(accessToken);
+            return retry ?? token;
+        }
+    } catch {
+        return token;
+    }
+
+    // 4. Re-exchange → actor-scoped customer token now that the link exists.
+    const actorToken = await authExchange(accessToken);
+    return actorToken ?? token;
 }
 
 /**

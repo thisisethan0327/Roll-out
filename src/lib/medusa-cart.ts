@@ -25,6 +25,7 @@ import {
     isPausedMeta,
 } from './medusa';
 import { getSellingShops, resolveVendorShop } from './store-shops';
+import { ensureMedusaCustomerToken } from './medusa-customer';
 import type {
     ActionResult,
     AddressInput,
@@ -412,10 +413,37 @@ export async function initStripePaymentSession(): Promise<ActionResult<{ clientS
     }
 }
 
+/**
+ * Best-effort: link the cart to the signed-in platform user's Medusa customer
+ * so the completed order carries customer_id and surfaces in /me/orders.
+ *
+ * - Anonymous checkout is unchanged: no session ⇒ ensureMedusaCustomerToken()
+ *   returns null and we leave the cart email-only.
+ * - Never throws and never blocks completion: a failed linkage falls through to
+ *   an anonymous order rather than losing the sale.
+ */
+async function linkCartToSignedInCustomer(cartId: string): Promise<void> {
+    try {
+        const token = await ensureMedusaCustomerToken();
+        if (!token) return;
+        // POST /store/carts/{id}/customer — transfers the cart to the customer
+        // resolved from the Bearer token (mirrors sdk.store.cart.transferCart).
+        await medusaFetch(`/store/carts/${cartId}/customer`, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${token}` },
+        });
+    } catch {
+        // Swallow: linkage is a best-effort enhancement, not a checkout gate.
+    }
+}
+
 /** Complete the cart into an order after Stripe confirms the payment. */
 export async function completeCart(): Promise<ActionResult<{ orderId: string }>> {
     const cartId = await getCartIdCookie();
     if (!cartId) return { ok: false, error: 'No cart.' };
+    // Associate the cart with the signed-in customer before completion so the
+    // order is attributed to their identity. Best-effort — see helper.
+    await linkCartToSignedInCustomer(cartId);
     try {
         const res = await medusaFetch<any>(`/store/carts/${cartId}/complete`, {
             method: 'POST',

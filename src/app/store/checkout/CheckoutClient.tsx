@@ -26,16 +26,30 @@ function getStripe(key: string): Promise<Stripe | null> {
 
 type Step = 'address' | 'shipping' | 'payment';
 
-export function CheckoutClient({ initialCart, stripeKey }: { initialCart: Cart; stripeKey: string }) {
+export function CheckoutClient({
+    initialCart,
+    stripeKey,
+    signedInEmail,
+}: {
+    initialCart: Cart;
+    stripeKey: string;
+    signedInEmail?: string | null;
+}) {
     const stripePromise = useMemo(() => getStripe(stripeKey), [stripeKey]);
     return (
         <Elements stripe={stripePromise}>
-            <CheckoutInner initialCart={initialCart} />
+            <CheckoutInner initialCart={initialCart} signedInEmail={signedInEmail ?? null} />
         </Elements>
     );
 }
 
-function CheckoutInner({ initialCart }: { initialCart: Cart }) {
+function CheckoutInner({
+    initialCart,
+    signedInEmail,
+}: {
+    initialCart: Cart;
+    signedInEmail: string | null;
+}) {
     const router = useRouter();
     const stripe = useStripe();
     const elements = useElements();
@@ -47,7 +61,7 @@ function CheckoutInner({ initialCart }: { initialCart: Cart }) {
     const [placing, setPlacing] = useState(false);
 
     const [form, setForm] = useState<AddressInput & { email: string }>({
-        email: cart.email ?? '',
+        email: cart.email ?? signedInEmail ?? '',
         firstName: '',
         lastName: '',
         address1: '',
@@ -165,6 +179,13 @@ function CheckoutInner({ initialCart }: { initialCart: Cart }) {
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.3fr) minmax(0, 1fr)', gap: 36, alignItems: 'start' }} className="pdp-grid">
             {/* LEFT: steps */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
+                {signedInEmail ? (
+                    <div className="mono-row" style={{ fontSize: 11 }}>
+                        <span className="accent">SIGNED IN AS</span>
+                        <span className="sep" />
+                        <span style={{ color: 'var(--text)' }}>{signedInEmail}</span>
+                    </div>
+                ) : null}
                 {/* STEP 1 — contact + address */}
                 <StepBlock n={1} title="CONTACT & SHIPPING" active={step === 'address'} done={step !== 'address'} onEdit={() => setStep('address')}>
                     {step === 'address' ? (
