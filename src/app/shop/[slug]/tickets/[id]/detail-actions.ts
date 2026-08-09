@@ -66,11 +66,6 @@ function bust(slug: string, ticketRowId: string) {
 // ── CHECK-INS / INSPECTIONS ─────────────────────────────────────────────────
 
 const CHECKIN_TYPES = new Set(['check-in', 'progress', 'check-out']);
-const CHECKIN_ACTIVITY: Record<string, string> = {
-    'check-in': 'checkin',
-    'check-out': 'checkout',
-    progress: 'progress',
-};
 
 export async function createCheckin(
     slug: string,
@@ -107,15 +102,8 @@ export async function createCheckin(
     if (error) throw new Error(error.message);
     const checkinId = (data as any).id;
 
-    await logTicketActivity(pub, {
-        ticketId: ticketRowId,
-        type: CHECKIN_ACTIVITY[type] ?? 'checkin',
-        title: `${type.replace('-', ' ').toUpperCase()} recorded`,
-        description: (fields.condition_notes ?? '').trim() || null,
-        createdBy: checkedInBy,
-        metadata: { checkin_id: checkinId },
-    });
-
+    // NOTE: the DB trigger `trg_ticket_checkin_log` already writes a
+    // ticket_activity row on check-in insert — do not double-log here.
     bust(slug, ticketRowId);
     return { checkinId };
 }
@@ -179,14 +167,8 @@ export async function attachCheckinPhoto(
         .eq('ticket_id', ticketRowId);
     if (error) throw new Error(error.message);
 
-    await logTicketActivity(pub, {
-        ticketId: ticketRowId,
-        type: 'photo_added',
-        title: 'Photo added',
-        createdBy: checkedInBy,
-        metadata: { checkin_id: checkinId },
-    });
-
+    // NOTE: the DB trigger `trg_ticket_checkin_media_added` already writes a
+    // ticket_activity 'photo_added' row on media update — do not double-log.
     bust(slug, ticketRowId);
     return { url };
 }

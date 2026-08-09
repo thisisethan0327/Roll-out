@@ -53,29 +53,16 @@ function bustPaths(slug: string, ticketId?: string) {
 }
 
 export async function setStatus(slug: string, ticketRowId: string, status: string) {
-    const { profile, shopId } = await guardInstaller(slug);
+    const { shopId } = await guardInstaller(slug);
     const pub = getSupabasePublicAdmin();
-    const { data: before } = await pub
-        .from('tickets')
-        .select('status')
-        .eq('id', ticketRowId)
-        .eq('shop_id', shopId)
-        .maybeSingle();
     const { error } = await pub
         .from('tickets')
         .update({ status, updated_at: new Date().toISOString() })
         .eq('id', ticketRowId)
         .eq('shop_id', shopId);
     if (error) throw new Error(error.message);
-    const createdBy = await resolveActingWorkerId(profile.email);
-    await logTicketActivity(pub, {
-        ticketId: ticketRowId,
-        type: 'status_change',
-        title: 'Status changed',
-        description: `${((before as any)?.status ?? '—').toString().toUpperCase()} → ${status.toUpperCase()}`,
-        createdBy,
-        metadata: { from: (before as any)?.status ?? null, to: status },
-    });
+    // NOTE: the DB trigger `trg_ticket_status_change` already writes a
+    // ticket_activity row on status change — do not double-log here.
     bustPaths(slug, ticketRowId);
 }
 
