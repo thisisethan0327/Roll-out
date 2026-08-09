@@ -203,6 +203,13 @@ export default async function ShopCustomersPage({
                         {shop.name.toUpperCase()} · UNIFIED CONTACT BOOK
                     </div>
                 </div>
+                <Link
+                    href={`/shop/${slug}/customers/new`}
+                    className="admin-action-btn"
+                    style={{ textDecoration: 'none' }}
+                >
+                    + NEW CUSTOMER
+                </Link>
             </div>
 
             <div className="admin-stat-grid">

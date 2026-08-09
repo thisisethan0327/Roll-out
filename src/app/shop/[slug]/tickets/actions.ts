@@ -13,6 +13,8 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { requireShopMember } from '@/lib/auth-guard';
 import { getSupabaseAdmin, getSupabasePublicAdmin } from '@/lib/supabase/admin';
+import { logTicketActivity } from '@/lib/ticket-activity';
+import { resolveActingWorkerId } from '@/lib/staff-bridge';
 
 const INSTALLER_ROLES = new Set(['owner', 'admin', 'manager', 'installer']);
 const MANAGER_ROLES = new Set(['owner', 'admin', 'manager']);
@@ -51,19 +53,34 @@ function bustPaths(slug: string, ticketId?: string) {
 }
 
 export async function setStatus(slug: string, ticketRowId: string, status: string) {
-    const { shopId } = await guardInstaller(slug);
+    const { profile, shopId } = await guardInstaller(slug);
     const pub = getSupabasePublicAdmin();
+    const { data: before } = await pub
+        .from('tickets')
+        .select('status')
+        .eq('id', ticketRowId)
+        .eq('shop_id', shopId)
+        .maybeSingle();
     const { error } = await pub
         .from('tickets')
         .update({ status, updated_at: new Date().toISOString() })
         .eq('id', ticketRowId)
         .eq('shop_id', shopId);
     if (error) throw new Error(error.message);
+    const createdBy = await resolveActingWorkerId(profile.email);
+    await logTicketActivity(pub, {
+        ticketId: ticketRowId,
+        type: 'status_change',
+        title: 'Status changed',
+        description: `${((before as any)?.status ?? '—').toString().toUpperCase()} → ${status.toUpperCase()}`,
+        createdBy,
+        metadata: { from: (before as any)?.status ?? null, to: status },
+    });
     bustPaths(slug, ticketRowId);
 }
 
 export async function setServiceDay(slug: string, ticketRowId: string, dateString: string) {
-    const { shopId } = await guardManager(slug);
+    const { profile, shopId } = await guardManager(slug);
     const pub = getSupabasePublicAdmin();
     const value = dateString && dateString.trim() ? dateString : null;
     const { error } = await pub
@@ -72,11 +89,20 @@ export async function setServiceDay(slug: string, ticketRowId: string, dateStrin
         .eq('id', ticketRowId)
         .eq('shop_id', shopId);
     if (error) throw new Error(error.message);
+    const createdBy = await resolveActingWorkerId(profile.email);
+    await logTicketActivity(pub, {
+        ticketId: ticketRowId,
+        type: 'note',
+        title: 'Service day set',
+        description: value ? `Scheduled ${value}` : 'Service day cleared',
+        internal: true,
+        createdBy,
+    });
     bustPaths(slug, ticketRowId);
 }
 
 export async function setPriority(slug: string, ticketRowId: string, priority: string) {
-    const { shopId } = await guardManager(slug);
+    const { profile, shopId } = await guardManager(slug);
     const pub = getSupabasePublicAdmin();
     // Treat 'normal' as null in case priority column is nullable; harmless if it isn't.
     const value = priority === 'normal' ? null : priority;
@@ -86,6 +112,15 @@ export async function setPriority(slug: string, ticketRowId: string, priority: s
         .eq('id', ticketRowId)
         .eq('shop_id', shopId);
     if (error) throw new Error(error.message);
+    const createdBy = await resolveActingWorkerId(profile.email);
+    await logTicketActivity(pub, {
+        ticketId: ticketRowId,
+        type: 'note',
+        title: 'Priority changed',
+        description: `Priority → ${(value ?? 'normal').toUpperCase()}`,
+        internal: true,
+        createdBy,
+    });
     bustPaths(slug, ticketRowId);
 }
 
@@ -113,11 +148,20 @@ export async function appendNote(slug: string, ticketRowId: string, text: string
         .eq('id', ticketRowId)
         .eq('shop_id', shopId);
     if (error) throw new Error(error.message);
+    const createdBy = await resolveActingWorkerId(profile.email);
+    await logTicketActivity(pub, {
+        ticketId: ticketRowId,
+        type: 'note',
+        title: 'Note added',
+        description: trimmed.slice(0, 140),
+        internal: true,
+        createdBy,
+    });
     bustPaths(slug, ticketRowId);
 }
 
 export async function createTicket(slug: string, formData: FormData) {
-    const { shopId } = await guardManager(slug);
+    const { profile, shopId } = await guardManager(slug);
     const pub = getSupabasePublicAdmin();
 
     const customerName = (formData.get('customer_name') as string | null)?.trim() ?? '';
@@ -178,6 +222,14 @@ export async function createTicket(slug: string, formData: FormData) {
     bustPaths(slug);
     const newRowId = (inserted as any)?.id;
     if (newRowId) {
+        const createdBy = await resolveActingWorkerId(profile.email);
+        await logTicketActivity(pub, {
+            ticketId: newRowId,
+            type: 'created',
+            title: 'Ticket created',
+            description: `${ticketId} · ${customerName}`,
+            createdBy,
+        });
         redirect(`/shop/${slug}/tickets/${newRowId}`);
     }
     redirect(`/shop/${slug}/tickets`);

@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import { requireShopMemberBySlug } from '@/lib/auth-guard';
 import { getSupabaseAdmin, getSupabasePublicAdmin } from '@/lib/supabase/admin';
+import { CustomerVehicles } from './CustomerVehicles';
+import { CustomerEditForm } from './CustomerEditForm';
 
 export const metadata = { title: 'Customer · Detail' };
 
@@ -118,7 +120,7 @@ async function loadRolloutCustomer(profileId: string, shopId: number) {
 async function loadLegacyCustomer(customerId: string, shopId: number) {
     const pub = getSupabasePublicAdmin();
 
-    const [custRes, ticketsRes] = await Promise.all([
+    const [custRes, ticketsRes, vehiclesRes] = await Promise.all([
         pub
             .from('customers')
             .select(
@@ -135,11 +137,18 @@ async function loadLegacyCustomer(customerId: string, shopId: number) {
             .eq('customer_id', customerId)
             .order('created_at', { ascending: false })
             .limit(50),
+        pub
+            .from('vehicles')
+            .select('id, year, make, model, trim, color, vin, license_plate')
+            .eq('shop_id', shopId)
+            .eq('customer_id', customerId)
+            .order('year', { ascending: false }),
     ]);
 
     return {
         customer: custRes.data as any,
         tickets: (ticketsRes.data ?? []) as any[],
+        vehicles: (vehiclesRes.data ?? []) as any[],
     };
 }
 
@@ -149,7 +158,7 @@ export default async function CustomerDetailPage({
     params: Promise<{ slug: string; id: string }>;
 }) {
     const { slug, id } = await params;
-    const { shop } = await requireShopMemberBySlug(slug);
+    const { shop, role } = await requireShopMemberBySlug(slug);
 
     const prefix = id.slice(0, 2);
     const rawId = id.slice(2);
@@ -182,7 +191,7 @@ export default async function CustomerDetailPage({
             <RolloutBranch slug={slug} shopId={shop.shopId} profileId={rawId} />
         );
     }
-    return <LegacyBranch slug={slug} shopId={shop.shopId} customerId={rawId} />;
+    return <LegacyBranch slug={slug} shopId={shop.shopId} customerId={rawId} role={role} />;
 }
 
 async function RolloutBranch({
@@ -349,12 +358,14 @@ async function LegacyBranch({
     slug,
     shopId,
     customerId,
+    role,
 }: {
     slug: string;
     shopId: number;
     customerId: string;
+    role: string;
 }) {
-    const { customer, tickets } = await loadLegacyCustomer(customerId, shopId);
+    const { customer, tickets, vehicles } = await loadLegacyCustomer(customerId, shopId);
 
     if (!customer) {
         return (
@@ -435,6 +446,7 @@ async function LegacyBranch({
                 location={customer.company ?? null}
                 joined={customer.created_at}
             />
+            <CustomerEditForm slug={slug} customer={customer} callerRole={role} />
 
             <SectionHead
                 title="ACTIVITY TIMELINE"
@@ -442,11 +454,13 @@ async function LegacyBranch({
             />
             <Timeline entries={topTimeline} slug={slug} />
 
-            <SectionHead title="VEHICLES" />
-            <div className="admin-empty">
-                LEGACY CUSTOMERS DON&apos;T HAVE OWNED VEHICLE RECORDS — VEHICLE DETAILS
-                LIVE ON EACH TICKET.
-            </div>
+            <SectionHead title="VEHICLES" sub={`${vehicles.length} ON FILE`} />
+            <CustomerVehicles
+                slug={slug}
+                customerId={customer.id}
+                vehicles={vehicles}
+                callerRole={role}
+            />
 
             <SectionHead title="NOTES" />
             {customer.notes ? (
