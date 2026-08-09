@@ -22,6 +22,7 @@ export type ConsumerProfile = {
     handle: string;
     displayName: string;
     email: string | null;
+    avatarUrl: string | null;
 };
 
 /**
@@ -41,7 +42,7 @@ export async function getConsumerProfile(): Promise<ConsumerProfile | null> {
     // Fast path: profile already linked.
     const { data: existing } = await admin
         .from('profiles')
-        .select('id, handle, display_name')
+        .select('id, handle, display_name, avatar_url')
         .eq('auth_user_id', user.id)
         .maybeSingle();
 
@@ -52,6 +53,7 @@ export async function getConsumerProfile(): Promise<ConsumerProfile | null> {
             handle: (existing as any).handle,
             displayName: (existing as any).display_name,
             email: user.email ?? null,
+            avatarUrl: (existing as any).avatar_url ?? null,
         };
     }
 
@@ -66,7 +68,7 @@ export async function getConsumerProfile(): Promise<ConsumerProfile | null> {
 
     const { data: created } = await admin
         .from('profiles')
-        .select('id, handle, display_name')
+        .select('id, handle, display_name, avatar_url')
         .eq('id', newId as string)
         .maybeSingle();
     if (!created) return null;
@@ -77,6 +79,7 @@ export async function getConsumerProfile(): Promise<ConsumerProfile | null> {
         handle: (created as any).handle,
         displayName: (created as any).display_name,
         email: user.email ?? null,
+        avatarUrl: (created as any).avatar_url ?? null,
     };
 }
 

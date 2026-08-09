@@ -78,6 +78,14 @@ export function OtpLoginForm({ successPath, redirectSuffix, allowSignup = false 
                 options: {
                     shouldCreateUser: allowSignup,
                     emailRedirectTo: `${origin}${redirectSuffix}`,
+                    // SECURITY: consumer sign-ups MUST carry app='rollout' in
+                    // raw_user_meta_data. Without it a legacy public.* trigger
+                    // auto-provisions the new auth user as an EMWRAPS STAFF
+                    // profile (public.profiles) — a cross-tenant privilege leak.
+                    // options.data is only consumed when a user is created, so
+                    // this is inert for existing users and for the shop/admin
+                    // gates (allowSignup=false → shouldCreateUser=false).
+                    ...(allowSignup ? { data: { app: 'rollout' } } : {}),
                 },
             });
             if (error) {

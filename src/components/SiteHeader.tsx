@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { SiteAuthLink } from './SiteAuthLink';
 
 export function SiteHeader() {
     return (
@@ -30,12 +31,16 @@ export function SiteHeader() {
                     <Link href="/shops" className="text-dim" style={{ textTransform: 'uppercase' }}>
                         Shops
                     </Link>
+                    <Link href="/store" className="text-dim" style={{ textTransform: 'uppercase' }}>
+                        Store
+                    </Link>
                     <Link href="/#features" className="text-dim" style={{ textTransform: 'uppercase' }}>
                         Features
                     </Link>
                     <Link href="/help" className="text-dim" style={{ textTransform: 'uppercase' }}>
                         Help
                     </Link>
+                    <SiteAuthLink />
                     <Link href="/#download" className="btn" style={{ padding: '10px 20px', fontSize: 11 }}>
                         Get The App
                     </Link>

@@ -2,8 +2,8 @@
  * Refreshes the Supabase auth cookie on every request so Server Components
  * always see a valid session. Required for SSR auth with @supabase/ssr.
  *
- * Only runs on /admin/* and /shop/* (the auth-gated trees). The marketing
- * site stays cookie-free.
+ * Only runs on /admin/*, /shop/*, and /me/* (the auth-gated trees). The
+ * marketing site stays cookie-free.
  */
 import { type NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
@@ -39,5 +39,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-    matcher: ['/admin/:path*', '/shop/:path*'],
+    matcher: ['/admin/:path*', '/shop/:path*', '/me/:path*'],
 };
