@@ -104,28 +104,37 @@ function mapProduct(p: any): MedusaProduct {
     };
 }
 
+/**
+ * Resolve a shop's registry handles to Medusa category ids — matching the
+ * parent category AND its children (handle === h OR handle starts with `h-`).
+ * Medusa's category_id filter is NOT recursive, so a shop whose products live
+ * only in child categories (e.g. divine: products sit in `divine-wheel-builds`,
+ * registry handle is `divine`) would otherwise return an empty catalog.
+ */
 async function resolveCategoryIds(handles: string[]): Promise<string[]> {
-    const ids: string[] = [];
-    await Promise.all(
-        handles.map(async (h) => {
-            try {
-                const url = new URL(`${MEDUSA_URL}/store/product-categories`);
-                url.searchParams.set('handle', h);
-                url.searchParams.set('limit', '1');
-                const res = await fetch(url.toString(), {
-                    headers: medusaHeaders(),
-                    next: { revalidate: 300 },
-                });
-                if (!res.ok) return;
-                const json = await res.json();
-                const cat = json?.product_categories?.[0];
-                if (cat?.id) ids.push(cat.id);
-            } catch {
-                /* best-effort */
+    const ids = new Set<string>();
+    try {
+        const url = new URL(`${MEDUSA_URL}/store/product-categories`);
+        url.searchParams.set('limit', '200');
+        url.searchParams.set('fields', 'id,handle');
+        const res = await fetch(url.toString(), {
+            headers: medusaHeaders(),
+            next: { revalidate: 300 },
+        });
+        if (res.ok) {
+            const json = await res.json();
+            for (const cat of json?.product_categories ?? []) {
+                const ch: string | undefined = cat?.handle;
+                if (!ch || !cat?.id) continue;
+                if (handles.some((h) => ch === h || ch.startsWith(h + '-'))) {
+                    ids.add(cat.id);
+                }
             }
-        }),
-    );
-    return ids;
+        }
+    } catch {
+        /* best-effort — empty catalog is handled by the caller */
+    }
+    return [...ids];
 }
 
 /**
