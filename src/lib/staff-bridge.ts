@@ -72,6 +72,9 @@ export async function listShopWorkerPool(shopId: number): Promise<WorkerPoolEntr
     const memberEmails = Array.from(new Set(Array.from(emailByAuth.values())));
 
     const byProfileId = new Map<string, WorkerPoolEntry>();
+    // Emails already represented by a public.profiles row, so branch (c) below
+    // doesn't add a duplicate virtual entry for the same person.
+    const representedEmails = new Set<string>();
 
     if (memberEmails.length > 0) {
         const { data: staff } = await pub
@@ -88,6 +91,7 @@ export async function listShopWorkerPool(shopId: number): Promise<WorkerPoolEntr
                 email: s.email ?? null,
                 role: s.role ?? null,
             });
+            if (s.email) representedEmails.add(String(s.email).toLowerCase());
         }
     }
 
@@ -131,9 +135,107 @@ export async function listShopWorkerPool(shopId: number): Promise<WorkerPoolEntr
         }
     }
 
+    // (c) Rollout shop members with NO email-matched public.profiles staffer and
+    // no historical assignment — non-EMWRAPS shops live here. They are surfaced
+    // as VIRTUAL pool entries keyed by their auth_user_id, which is exactly the
+    // FK-safe id a lazily-created bridge row will carry (public.profiles.id →
+    // auth.users(id); the rollout member owns that auth account). No row is
+    // written just by listing — the bridge row is materialized only when the
+    // shop actually assigns them (setTicketWorkers → ensureBridgeProfile), which
+    // keeps the EMWRAPS Settings roster clean for members nobody ever assigns.
+    for (const m of memberRows) {
+        const authId = m.profiles?.auth_user_id as string | undefined;
+        if (!authId || byProfileId.has(authId)) continue;
+        const email = emailByAuth.get(authId) ?? null;
+        if (email && representedEmails.has(email)) continue;
+        const name =
+            (m.profiles?.display_name && String(m.profiles.display_name).trim()) ||
+            (m.profiles?.handle ? `@${m.profiles.handle}` : null) ||
+            email ||
+            'STAFF';
+        byProfileId.set(authId, {
+            profileId: authId,
+            name,
+            email,
+            // Display label only — the materialized bridge row's role is NULL so
+            // is_staff() stays false and EMWRAPS worker UIs exclude it.
+            role: (m.role as string | null) ?? null,
+        });
+    }
+
     return Array.from(byProfileId.values()).sort((a, b) =>
         a.name.localeCompare(b.name),
     );
+}
+
+/**
+ * Lazily materialize the FK-safe bridge row for a Rollout shop member so it can
+ * be written into public.ticket_workers.worker_id. Called at ASSIGNMENT time
+ * (not while merely listing the pool) so shops that never assign a member never
+ * create a row for them.
+ *
+ * Tenancy + safety invariants:
+ *  - Only an auth user who is an actual member of `shopId` is materialized — an
+ *    arbitrary id can never be turned into a public.profiles row here.
+ *  - The bridge row is written with role = NULL. That is deliberate and load-
+ *    bearing: public.is_staff() is `role IS NOT NULL`, is_god/is_admin require
+ *    specific roles, and 0 RLS policies grant by bare profiles membership — so a
+ *    NULL-role row grants ZERO EMWRAPS access. The emwraps-tickets worker lists
+ *    filter role IN ('admin','manager','worker'), so it is also invisible there.
+ *  - ON CONFLICT (id) DO NOTHING: never overwrites a real EMWRAPS staffer's row
+ *    (or an already-bridged row), so a real role can never be clobbered to NULL.
+ *
+ * Returns the public.profiles.id (== authUserId) on success, or null when the
+ * user is not a member of this shop (caller then drops them from the write).
+ */
+export async function ensureBridgeProfile(
+    shopId: number,
+    authUserId: string,
+): Promise<string | null> {
+    if (!authUserId) return null;
+    const admin = getSupabaseAdmin();
+    const pub = getSupabasePublicAdmin();
+
+    // Verify membership of THIS shop (never materialize a non-member).
+    const { data: member } = await admin
+        .from('shop_memberships')
+        .select('role, profiles!inner(auth_user_id, display_name, handle)')
+        .eq('shop_id', shopId)
+        .eq('profiles.auth_user_id', authUserId)
+        .maybeSingle();
+    if (!member) return null;
+
+    // Resolve display + email for the roster row.
+    let email: string | null = null;
+    try {
+        const { data } = await pub.auth.admin.getUserById(authUserId);
+        email = data?.user?.email ?? null;
+    } catch {
+        /* best-effort */
+    }
+    const dn =
+        ((member as any).profiles?.display_name &&
+            String((member as any).profiles.display_name).trim()) ||
+        ((member as any).profiles?.handle
+            ? String((member as any).profiles.handle)
+            : '') ||
+        '';
+    const [first, ...rest] = dn.split(/\s+/).filter(Boolean);
+
+    const { error } = await pub.from('profiles').upsert(
+        {
+            id: authUserId,
+            first_name: first ?? null,
+            last_name: rest.length ? rest.join(' ') : null,
+            email,
+            // NULL role = cross-tenant bridge row (see invariants above).
+            role: null,
+            is_active: true,
+        },
+        { onConflict: 'id', ignoreDuplicates: true },
+    );
+    if (error) return null;
+    return authUserId;
 }
 
 /**

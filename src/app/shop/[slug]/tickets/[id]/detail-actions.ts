@@ -14,7 +14,7 @@ import { revalidatePath } from 'next/cache';
 import { requireShopMember } from '@/lib/auth-guard';
 import { getSupabaseAdmin, getSupabasePublicAdmin } from '@/lib/supabase/admin';
 import { logTicketActivity } from '@/lib/ticket-activity';
-import { resolveActingWorkerId } from '@/lib/staff-bridge';
+import { resolveActingWorkerId, ensureBridgeProfile } from '@/lib/staff-bridge';
 import {
     mintCheckinUploadPath,
     mintMessageUploadPath,
@@ -224,7 +224,28 @@ export async function setTicketWorkers(
         (prev ?? []).map((r: any) => r.worker_id).filter(Boolean) as string[],
     );
 
-    const unique = Array.from(new Set(workerIds.filter(Boolean)));
+    const requested = Array.from(new Set(workerIds.filter(Boolean)));
+
+    // Some requested ids are Rollout shop members with no public.profiles row yet
+    // (virtual pool entries keyed by auth_user_id). Materialize FK-safe bridge
+    // rows for those before the insert; drop any id that neither already exists
+    // as a profile nor resolves to a member of this shop (so a hand-crafted id
+    // can never violate the FK or smuggle in a non-member).
+    let unique = requested;
+    if (requested.length > 0) {
+        const { data: existing } = await pub
+            .from('profiles')
+            .select('id')
+            .in('id', requested);
+        const have = new Set((existing ?? []).map((r: any) => r.id));
+        const missing = requested.filter((id) => !have.has(id));
+        const bridged = new Set<string>();
+        for (const id of missing) {
+            const ok = await ensureBridgeProfile(shopId, id);
+            if (ok) bridged.add(ok);
+        }
+        unique = requested.filter((id) => have.has(id) || bridged.has(id));
+    }
 
     // delete-all-then-insert.
     const { error: delErr } = await pub
