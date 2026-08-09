@@ -1,18 +1,27 @@
 /**
- * /event/[id] — public event page for shareable links + SEO.
+ * /event/[id] — public event page for shareable links + SEO, now with web RSVP.
  *
- * Only public, non-cancelled events render (others 404). Read-only: RSVP happens
- * in the app, so the primary CTA deep-links to the Rollout app. Includes JSON-LD
- * Event structured data so meets are indexable + rich-previewable.
+ * Loads from the base rollout.events table (via the service-role client) so
+ * PAST and CANCELLED public events still render with the right banner — the
+ * event_cards view hides cancelled rows, which is wrong for a shareable link.
+ * Only public events render; non-public 404. Logged-in members RSVP inline
+ * (RLS-enforced writes); signed-out members get a sign-in CTA that returns here.
+ * JSON-LD Event structured data keeps meets indexable + rich-previewable.
  */
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { getConsumerProfile } from '@/lib/consumer';
 import { Countdown } from './Countdown';
+import { RsvpControls } from './RsvpControls';
+import { ShareBar } from './ShareBar';
+import type { RsvpChoice } from './actions';
 
-type EventCard = {
+type EventRow = {
     id: string;
+    shop_id: number | null;
+    host_id: string | null;
     code: string | null;
     type: string | null;
     title: string | null;
@@ -28,11 +37,10 @@ type EventCard = {
     attending_count: number | null;
     visibility: string | null;
     is_official: boolean | null;
-    spots_left: number | null;
-    host_handle: string | null;
-    host_name: string | null;
-    host_is_verified: boolean | null;
+    cancelled_at: string | null;
     tags: string[] | null;
+    host: { handle: string | null; display_name: string | null; is_verified: boolean | null } | null;
+    shop: { slug: string | null } | null;
 };
 
 type Attendee = {
@@ -42,14 +50,28 @@ type Attendee = {
     avatar_url: string | null;
 };
 
-async function loadEvent(id: string): Promise<{ event: EventCard; attendees: Attendee[] } | null> {
-    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) return null;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+async function loadEvent(
+    id: string,
+): Promise<{ event: EventRow; attendees: Attendee[]; spotsLeft: number | null } | null> {
+    if (!UUID_RE.test(id)) return null;
     const supabase = getSupabaseAdmin();
-    const { data: evRaw } = await supabase.from('event_cards').select('*').eq('id', id).maybeSingle();
-    const ev = evRaw as EventCard | null;
+    const { data: evRaw } = await supabase
+        .from('events')
+        .select(
+            `id, shop_id, host_id, code, type, title, description, location_name, location_detail,
+             lat, lng, sector_code, hero_image_url, start_at, capacity, attending_count,
+             visibility, is_official, cancelled_at, tags,
+             host:profiles!events_host_id_fkey(handle, display_name, is_verified),
+             shop:shops!events_shop_id_fkey(slug)`,
+        )
+        .eq('id', id)
+        .maybeSingle();
+
+    const ev = evRaw as EventRow | null;
     if (!ev || ev.visibility !== 'public') return null;
 
-    // Pull a short attendee list for the "convoy" strip. Going-only, newest first.
     const { data: rsvpRaw } = await supabase
         .from('event_rsvps')
         .select('profile_id, rsvped_at, profile:profiles!event_rsvps_profile_id_fkey(handle, display_name, avatar_url)')
@@ -67,21 +89,42 @@ async function loadEvent(id: string): Promise<{ event: EventCard; attendees: Att
         }))
         .filter((a) => a.handle);
 
-    return { event: ev, attendees };
+    const spotsLeft =
+        ev.capacity != null ? Math.max(ev.capacity - (ev.attending_count ?? 0), 0) : null;
+
+    return { event: ev, attendees, spotsLeft };
+}
+
+/** The signed-in member's current RSVP for this event (or null). */
+async function loadMyRsvp(eventId: string): Promise<{ isLoggedIn: boolean; status: RsvpChoice | null }> {
+    const me = await getConsumerProfile();
+    if (!me) return { isLoggedIn: false, status: null };
+    const supabase = getSupabaseAdmin();
+    const { data } = await supabase
+        .from('event_rsvps')
+        .select('status')
+        .eq('event_id', eventId)
+        .eq('profile_id', me.profileId)
+        .maybeSingle();
+    const s = (data as any)?.status as string | undefined;
+    const status: RsvpChoice | null =
+        s === 'going' || s === 'maybe' || s === 'declined' ? s : null;
+    return { isLoggedIn: true, status };
 }
 
 function formatDate(iso: string | null | undefined): string {
     if (!iso) return 'Date TBA';
     try {
-        const d = new Date(iso);
-        return d.toLocaleString('en-US', {
-            weekday: 'short',
-            month: 'short',
-            day: 'numeric',
-            hour: 'numeric',
-            minute: '2-digit',
-            timeZone: 'America/Los_Angeles',
-        }) + ' PT';
+        return (
+            new Date(iso).toLocaleString('en-US', {
+                weekday: 'short',
+                month: 'short',
+                day: 'numeric',
+                hour: 'numeric',
+                minute: '2-digit',
+                timeZone: 'America/Los_Angeles',
+            }) + ' PT'
+        );
     } catch {
         return 'Date TBA';
     }
@@ -100,24 +143,23 @@ function initials(name: string, handle: string): string {
     return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
-// Calendar helpers — no API key, no client JS needed.
 function toCalDate(iso: string): string {
-    // Convert to UTC YYYYMMDDTHHmmssZ (Google + ICS spec).
     const d = new Date(iso);
     const pad = (n: number) => String(n).padStart(2, '0');
     return (
         d.getUTCFullYear().toString() +
         pad(d.getUTCMonth() + 1) +
-        pad(d.getUTCDate()) + 'T' +
+        pad(d.getUTCDate()) +
+        'T' +
         pad(d.getUTCHours()) +
         pad(d.getUTCMinutes()) +
-        pad(d.getUTCSeconds()) + 'Z'
+        pad(d.getUTCSeconds()) +
+        'Z'
     );
 }
-function googleCalUrl(ev: EventCard): string | null {
+function googleCalUrl(ev: EventRow): string | null {
     if (!ev.start_at) return null;
     const start = toCalDate(ev.start_at);
-    // Default to 3-hour duration since end_at isn't in the schema.
     const endIso = new Date(new Date(ev.start_at).getTime() + 3 * 3600_000).toISOString();
     const end = toCalDate(endIso);
     const params = new URLSearchParams({
@@ -140,7 +182,8 @@ export async function generateMetadata({
     if (!data) return { title: 'Event not found' };
     const { event: ev } = data;
 
-    const title = `${ev.title ?? 'Car meet'} · Rollout`;
+    const cancelledPrefix = ev.cancelled_at ? '[Cancelled] ' : '';
+    const title = `${cancelledPrefix}${ev.title ?? 'Car meet'} · Rollout`;
     const desc = ev.description
         ? truncate(ev.description, 160)
         : `${ev.type ?? 'Meet'} at ${ev.location_name ?? 'TBA'} — ${formatDate(ev.start_at)}. RSVP on Rollout.`;
@@ -162,14 +205,22 @@ export default async function PublicEventPage({
     const { id } = await params;
     const data = await loadEvent(id);
     if (!data) notFound();
-    const { event: ev, attendees } = data;
+    const { event: ev, attendees, spotsLeft } = data;
+    const { isLoggedIn, status: myStatus } = await loadMyRsvp(id);
 
-    const hostHandle = ev.host_handle ?? '';
+    const isCancelled = !!ev.cancelled_at;
+    const isPast = !!ev.start_at && new Date(ev.start_at).getTime() < Date.now();
+    const rsvpOpen = !isCancelled && !isPast;
+
+    const hostHandle = ev.host?.handle ?? '';
+    const hostName = ev.host?.display_name ?? '';
+    const hostVerified = !!ev.host?.is_verified;
+    const shopSlug = ev.shop?.slug ?? null;
+
     const heroBg = ev.hero_image_url
         ? `linear-gradient(180deg, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.92) 100%), url(${ev.hero_image_url}) center/cover no-repeat`
         : 'radial-gradient(ellipse at top, var(--gold-dim) 0%, transparent 60%), linear-gradient(180deg, #0a0a0a 0%, #000 100%)';
 
-    // OpenStreetMap embed — no API key, free. Build a tight bbox around the point.
     const mapEmbedUrl =
         ev.lat != null && ev.lng != null
             ? (() => {
@@ -178,23 +229,21 @@ export default async function PublicEventPage({
                   return `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${ev.lat},${ev.lng}`;
               })()
             : null;
-    const mapsUrl =
-        ev.lat != null && ev.lng != null
-            ? `https://www.google.com/maps?q=${ev.lat},${ev.lng}`
-            : null;
+    const mapsUrl = ev.lat != null && ev.lng != null ? `https://www.google.com/maps?q=${ev.lat},${ev.lng}` : null;
 
-    const calUrl = googleCalUrl(ev);
-    const remaining = attendees.length < (ev.attending_count ?? 0)
-        ? (ev.attending_count ?? 0) - attendees.length
-        : 0;
+    const calUrl = rsvpOpen ? googleCalUrl(ev) : null;
+    const remaining = attendees.length < (ev.attending_count ?? 0) ? (ev.attending_count ?? 0) - attendees.length : 0;
+    const shareUrl = `https://rollout.club/event/${ev.id}`;
+    const shareTitle = ev.title ?? 'Car meet on Rollout';
 
-    // JSON-LD structured data for search engines.
     const jsonLd = {
         '@context': 'https://schema.org',
         '@type': 'Event',
         name: ev.title ?? 'Car meet',
         startDate: ev.start_at ?? undefined,
-        eventStatus: 'https://schema.org/EventScheduled',
+        eventStatus: isCancelled
+            ? 'https://schema.org/EventCancelled'
+            : 'https://schema.org/EventScheduled',
         eventAttendanceMode: 'https://schema.org/OfflineEventAttendanceMode',
         location: {
             '@type': 'Place',
@@ -205,17 +254,47 @@ export default async function PublicEventPage({
         },
         ...(ev.hero_image_url ? { image: [ev.hero_image_url] } : {}),
         ...(ev.description ? { description: ev.description } : {}),
-        ...(ev.host_name ? { organizer: { '@type': 'Organization', name: ev.host_name } } : {}),
+        ...(hostName ? { organizer: { '@type': 'Organization', name: hostName } } : {}),
     };
 
     return (
         <>
-            <script
-                type="application/ld+json"
-                dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-            />
+            <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
 
-            {/* HERO — HUD chrome with corner brackets + countdown + tags */}
+            {/* STATUS BANNER — cancelled or past */}
+            {isCancelled ? (
+                <div
+                    style={{
+                        background: 'rgba(200,60,60,0.14)',
+                        borderBottom: '1px solid rgba(220,80,80,0.5)',
+                        color: '#ff8f8f',
+                        textAlign: 'center',
+                        padding: '12px 16px',
+                        fontFamily: 'var(--font-display)',
+                        fontSize: 12,
+                        letterSpacing: 'var(--track-wider)',
+                    }}
+                >
+                    ✕ THIS MEET HAS BEEN CANCELLED
+                </div>
+            ) : isPast ? (
+                <div
+                    style={{
+                        background: 'var(--bg-2)',
+                        borderBottom: '1px solid var(--line)',
+                        color: 'var(--text-2)',
+                        textAlign: 'center',
+                        padding: '12px 16px',
+                        fontFamily: 'var(--font-display)',
+                        fontSize: 12,
+                        letterSpacing: 'var(--track-wider)',
+                    }}
+                >
+                    ● THIS MEET HAS ENDED · RSVPS ARE CLOSED
+                </div>
+            ) : null}
+
+            {/* HERO */}
             <section
                 className="corner-wrap"
                 style={{
@@ -223,12 +302,12 @@ export default async function PublicEventPage({
                     minHeight: 440,
                     background: heroBg,
                     borderBottom: '1px solid var(--line)',
+                    filter: isCancelled ? 'grayscale(0.5)' : undefined,
                 }}
             >
                 <span className="corner-bottom-left" />
                 <span className="corner-bottom-right" />
 
-                {/* Top-left readout — sector + coords */}
                 <div
                     style={{
                         position: 'absolute',
@@ -260,7 +339,6 @@ export default async function PublicEventPage({
                     ) : null}
                 </div>
 
-                {/* Top-right readout — code + tier */}
                 <div
                     style={{
                         position: 'absolute',
@@ -297,15 +375,7 @@ export default async function PublicEventPage({
                         maxWidth: 1100,
                     }}
                 >
-                    <h1
-                        style={{
-                            fontSize: 'clamp(32px, 6vw, 64px)',
-                            letterSpacing: 1,
-                            lineHeight: 1.05,
-                            margin: 0,
-                            maxWidth: 900,
-                        }}
-                    >
+                    <h1 style={{ fontSize: 'clamp(32px, 6vw, 64px)', letterSpacing: 1, lineHeight: 1.05, margin: 0, maxWidth: 900 }}>
                         {(ev.title ?? 'Car meet').toUpperCase()}
                     </h1>
 
@@ -313,7 +383,7 @@ export default async function PublicEventPage({
                         <span style={{ color: 'var(--text)' }}>{formatDate(ev.start_at)}</span>
                         <span className="sep" />
                         <span>{ev.location_name ?? 'Location TBA'}</span>
-                        {ev.host_name ? (
+                        {hostName ? (
                             <>
                                 <span className="sep" />
                                 <span>HOSTED BY</span>
@@ -322,9 +392,9 @@ export default async function PublicEventPage({
                                         @{hostHandle}
                                     </Link>
                                 ) : (
-                                    <span className="accent">{ev.host_name}</span>
+                                    <span className="accent">{hostName}</span>
                                 )}
-                                {ev.host_is_verified ? <span className="accent">✓</span> : null}
+                                {hostVerified ? <span className="accent">✓</span> : null}
                             </>
                         ) : null}
                     </div>
@@ -351,7 +421,7 @@ export default async function PublicEventPage({
                         </div>
                     ) : null}
 
-                    {ev.start_at ? (
+                    {ev.start_at && rsvpOpen ? (
                         <div style={{ marginTop: 12 }}>
                             <Countdown startAt={ev.start_at} />
                         </div>
@@ -373,54 +443,70 @@ export default async function PublicEventPage({
                         </div>
                         <div className="stat-cell">
                             <div className="lbl">Spots Left</div>
-                            <div className="val">{ev.spots_left ?? '—'}</div>
+                            <div className="val">{spotsLeft ?? '—'}</div>
                         </div>
                     </div>
                 </div>
             </section>
 
-            {/* CTAs — RSVP + Add to Calendar */}
+            {/* RSVP + Calendar + Share */}
             <section className="section" style={{ padding: '48px 0', textAlign: 'center' }}>
-                <div className="container">
-                    <a className="btn btn-lg" href={`https://rollout.club/sign-in-on-phone?next=/event/${ev.id}`}>
-                        RSVP in the App
-                    </a>
-                    <p
-                        className="text-muted"
-                        style={{
-                            fontSize: 11,
-                            marginTop: 14,
-                            fontFamily: 'var(--font-display)',
-                            letterSpacing: 'var(--track-wider)',
-                        }}
-                    >
-                        OPEN ROLLOUT TO RSVP + GET DIRECTIONS
-                    </p>
-                    {calUrl ? (
-                        <div style={{ marginTop: 14 }}>
+                <div className="container" style={{ display: 'flex', flexDirection: 'column', gap: 26, alignItems: 'center' }}>
+                    {rsvpOpen ? (
+                        <RsvpControls
+                            eventId={ev.id}
+                            isLoggedIn={isLoggedIn}
+                            initialStatus={myStatus}
+                            nextPath={`/event/${ev.id}`}
+                        />
+                    ) : (
+                        <p
+                            className="text-muted"
+                            style={{ fontSize: 12, fontFamily: 'var(--font-display)', letterSpacing: 'var(--track-wider)', margin: 0 }}
+                        >
+                            {isCancelled ? 'THIS MEET WAS CANCELLED' : 'THIS MEET HAS ALREADY HAPPENED'}
+                        </p>
+                    )}
+
+                    <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center' }}>
+                        {calUrl ? (
                             <a
                                 href={calUrl}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="text-link"
-                                style={{
-                                    fontSize: 12,
-                                    fontFamily: 'var(--font-display)',
-                                    letterSpacing: 'var(--track-wider)',
-                                    textDecoration: 'none',
-                                    borderBottom: '1px solid var(--line-mid)',
-                                    paddingBottom: 2,
-                                }}
+                                style={{ fontSize: 12, fontFamily: 'var(--font-display)', letterSpacing: 'var(--track-wider)', textDecoration: 'none', borderBottom: '1px solid var(--line-mid)', paddingBottom: 2 }}
                             >
-                                + ADD TO GOOGLE CALENDAR
+                                + GOOGLE CALENDAR
                             </a>
-                        </div>
+                        ) : null}
+                        {rsvpOpen ? (
+                            <a
+                                href={`/event/${ev.id}/ics`}
+                                className="text-link"
+                                style={{ fontSize: 12, fontFamily: 'var(--font-display)', letterSpacing: 'var(--track-wider)', textDecoration: 'none', borderBottom: '1px solid var(--line-mid)', paddingBottom: 2 }}
+                            >
+                                + DOWNLOAD .ICS
+                            </a>
+                        ) : null}
+                    </div>
+
+                    <ShareBar url={shareUrl} title={shareTitle} />
+
+                    {shopSlug ? (
+                        <Link
+                            href={`/shop/${shopSlug}/events/${ev.id}`}
+                            className="text-link"
+                            style={{ fontSize: 11, fontFamily: 'var(--font-display)', letterSpacing: 'var(--track-wider)', textDecoration: 'none', color: 'var(--text-3)' }}
+                        >
+                            HOST · MANAGE THIS EVENT ›
+                        </Link>
                     ) : null}
                 </div>
             </section>
 
             {/* CONVOY — attendee preview */}
-            {(attendees.length > 0 || (ev.attending_count ?? 0) > 0) ? (
+            {attendees.length > 0 || (ev.attending_count ?? 0) > 0 ? (
                 <section className="section" style={{ padding: '40px 0', borderTop: '1px solid var(--line)', background: 'var(--bg-1)' }}>
                     <div className="container">
                         <div className="eyebrow eyebrow-gold mb-4">／ CONVOY</div>
@@ -433,39 +519,21 @@ export default async function PublicEventPage({
                         </div>
 
                         {attendees.length === 0 ? (
-                            <p className="text-dim">
-                                {ev.attending_count ?? 0} attending. Open the app to see who&apos;s in.
-                            </p>
+                            <p className="text-dim">{ev.attending_count ?? 0} attending.</p>
                         ) : (
-                            <div
-                                style={{
-                                    display: 'grid',
-                                    gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
-                                    gap: 12,
-                                }}
-                            >
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 12 }}>
                                 {attendees.map((a) => (
                                     <Link
                                         key={a.profile_id}
                                         href={`/u/${a.handle}`}
-                                        style={{
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: 10,
-                                            padding: '10px 12px',
-                                            background: 'var(--bg-2)',
-                                            border: '1px solid var(--line)',
-                                            textDecoration: 'none',
-                                        }}
+                                        style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: 'var(--bg-2)', border: '1px solid var(--line)', textDecoration: 'none' }}
                                     >
                                         <div
                                             style={{
                                                 width: 36,
                                                 height: 36,
                                                 borderRadius: '50%',
-                                                background: a.avatar_url
-                                                    ? `url(${a.avatar_url}) center/cover no-repeat`
-                                                    : 'var(--bg-3)',
+                                                background: a.avatar_url ? `url(${a.avatar_url}) center/cover no-repeat` : 'var(--bg-3)',
                                                 border: '1px solid var(--gold)',
                                                 display: 'flex',
                                                 alignItems: 'center',
@@ -480,28 +548,10 @@ export default async function PublicEventPage({
                                             {!a.avatar_url && initials(a.display_name, a.handle)}
                                         </div>
                                         <div style={{ minWidth: 0, flex: 1 }}>
-                                            <div
-                                                style={{
-                                                    color: 'var(--text)',
-                                                    fontFamily: 'var(--font-display)',
-                                                    fontSize: 12,
-                                                    letterSpacing: 0.5,
-                                                    overflow: 'hidden',
-                                                    textOverflow: 'ellipsis',
-                                                    whiteSpace: 'nowrap',
-                                                }}
-                                            >
+                                            <div style={{ color: 'var(--text)', fontFamily: 'var(--font-display)', fontSize: 12, letterSpacing: 0.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                                 @{a.handle}
                                             </div>
-                                            <div
-                                                style={{
-                                                    color: 'var(--text-3)',
-                                                    fontFamily: 'var(--font-display)',
-                                                    fontSize: 9,
-                                                    letterSpacing: 'var(--track-wider)',
-                                                    marginTop: 2,
-                                                }}
-                                            >
+                                            <div style={{ color: 'var(--text-3)', fontFamily: 'var(--font-display)', fontSize: 9, letterSpacing: 'var(--track-wider)', marginTop: 2 }}>
                                                 GOING
                                             </div>
                                         </div>
@@ -509,18 +559,7 @@ export default async function PublicEventPage({
                                 ))}
                                 {remaining > 0 ? (
                                     <div
-                                        style={{
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            padding: '10px 12px',
-                                            border: '1px dashed var(--line-mid)',
-                                            background: 'transparent',
-                                            color: 'var(--gold)',
-                                            fontFamily: 'var(--font-display)',
-                                            fontSize: 11,
-                                            letterSpacing: 'var(--track-wider)',
-                                        }}
+                                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '10px 12px', border: '1px dashed var(--line-mid)', background: 'transparent', color: 'var(--gold)', fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: 'var(--track-wider)' }}
                                     >
                                         +{remaining} MORE
                                     </div>
@@ -532,7 +571,7 @@ export default async function PublicEventPage({
             ) : null}
 
             {/* BRIEF + HOST */}
-            {(ev.description || ev.host_name) ? (
+            {ev.description || hostName ? (
                 <section className="section" style={{ padding: '48px 0', borderTop: '1px solid var(--line)' }}>
                     <div className="container container-narrow">
                         {ev.description ? (
@@ -542,48 +581,24 @@ export default async function PublicEventPage({
                             </>
                         ) : null}
 
-                        {ev.host_name ? (
+                        {hostName ? (
                             <>
                                 <div className="eyebrow eyebrow-gold mb-4">／ HOSTED BY</div>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                                     <div
-                                        style={{
-                                            width: 48,
-                                            height: 48,
-                                            borderRadius: '50%',
-                                            background: 'var(--bg-3)',
-                                            border: '1px solid var(--gold)',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            fontFamily: 'var(--font-display)',
-                                            fontWeight: 700,
-                                            color: 'var(--gold)',
-                                            fontSize: 14,
-                                        }}
+                                        style={{ width: 48, height: 48, borderRadius: '50%', background: 'var(--bg-3)', border: '1px solid var(--gold)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-display)', fontWeight: 700, color: 'var(--gold)', fontSize: 14 }}
                                     >
-                                        {initials(ev.host_name, hostHandle)}
+                                        {initials(hostName, hostHandle)}
                                     </div>
                                     <div>
                                         {hostHandle ? (
-                                            <Link
-                                                href={`/u/${hostHandle}`}
-                                                style={{
-                                                    fontFamily: 'var(--font-display)',
-                                                    fontSize: 16,
-                                                    color: 'var(--text)',
-                                                    textDecoration: 'none',
-                                                    letterSpacing: 0.5,
-                                                }}
-                                            >
-                                                {ev.host_name}{ev.host_is_verified ? ' ✓' : ''}
+                                            <Link href={`/u/${hostHandle}`} style={{ fontFamily: 'var(--font-display)', fontSize: 16, color: 'var(--text)', textDecoration: 'none', letterSpacing: 0.5 }}>
+                                                {hostName}{hostVerified ? ' ✓' : ''}
                                             </Link>
                                         ) : (
-                                            <span style={{ fontSize: 16 }}>{ev.host_name}</span>
+                                            <span style={{ fontSize: 16 }}>{hostName}</span>
                                         )}
-                                        {hostHandle ? (
-                                            <div className="text-dim" style={{ fontSize: 12, marginTop: 2 }}>@{hostHandle}</div>
-                                        ) : null}
+                                        {hostHandle ? <div className="text-dim" style={{ fontSize: 12, marginTop: 2 }}>@{hostHandle}</div> : null}
                                     </div>
                                 </div>
                             </>
@@ -592,27 +607,15 @@ export default async function PublicEventPage({
                 </section>
             ) : null}
 
-            {/* LOCATION — title + map embed */}
+            {/* LOCATION */}
             <section className="section" style={{ padding: '48px 0', borderTop: '1px solid var(--line)', background: 'var(--bg-1)' }}>
                 <div className="container">
                     <div className="eyebrow eyebrow-gold mb-4">／ LOCATION</div>
                     <h2 style={{ margin: '0 0 8px' }}>{(ev.location_name ?? 'TBA').toUpperCase()}</h2>
-                    {ev.location_detail ? (
-                        <p className="text-dim" style={{ fontSize: 14, margin: '0 0 18px' }}>{ev.location_detail}</p>
-                    ) : null}
+                    {ev.location_detail ? <p className="text-dim" style={{ fontSize: 14, margin: '0 0 18px' }}>{ev.location_detail}</p> : null}
 
                     {mapEmbedUrl ? (
-                        <div
-                            className="corner-wrap"
-                            style={{
-                                position: 'relative',
-                                marginTop: 12,
-                                aspectRatio: '16 / 7',
-                                background: 'var(--bg-2)',
-                                border: '1px solid var(--line)',
-                                overflow: 'hidden',
-                            }}
-                        >
+                        <div className="corner-wrap" style={{ position: 'relative', marginTop: 12, aspectRatio: '16 / 7', background: 'var(--bg-2)', border: '1px solid var(--line)', overflow: 'hidden' }}>
                             <span className="corner-bottom-left" />
                             <span className="corner-bottom-right" />
                             <iframe
@@ -632,17 +635,17 @@ export default async function PublicEventPage({
                                 href={mapsUrl}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                style={{
-                                    fontSize: 12,
-                                    fontFamily: 'var(--font-display)',
-                                    letterSpacing: 'var(--track-wider)',
-                                    textDecoration: 'none',
-                                    borderBottom: '1px solid var(--line-mid)',
-                                    paddingBottom: 2,
-                                }}
+                                style={{ fontSize: 12, fontFamily: 'var(--font-display)', letterSpacing: 'var(--track-wider)', textDecoration: 'none', borderBottom: '1px solid var(--line-mid)', paddingBottom: 2 }}
                             >
                                 OPEN IN GOOGLE MAPS ›
                             </a>
+                            <Link
+                                className="text-link"
+                                href="/meets/map"
+                                style={{ fontSize: 12, fontFamily: 'var(--font-display)', letterSpacing: 'var(--track-wider)', textDecoration: 'none', borderBottom: '1px solid var(--line-mid)', paddingBottom: 2 }}
+                            >
+                                VIEW MEETS MAP ›
+                            </Link>
                         </div>
                     ) : null}
                 </div>

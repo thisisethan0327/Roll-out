@@ -21,9 +21,13 @@ export type OtpLoginFormProps = {
     /** Path appended to current origin for the emailRedirectTo magic-link
      *  fallback (also serves as the tenant signal for the Auth Hook). */
     redirectSuffix: string;
+    /** When true, a brand-new email creates an auth user (consumer sign-up).
+     *  Defaults to false so the shop/admin gates stay invite-only — those
+     *  callers must omit this prop and keep their existing behavior. */
+    allowSignup?: boolean;
 };
 
-export function OtpLoginForm({ successPath, redirectSuffix }: OtpLoginFormProps) {
+export function OtpLoginForm({ successPath, redirectSuffix, allowSignup = false }: OtpLoginFormProps) {
     const router = useRouter();
     const [phase, setPhase] = useState<Phase>('email');
     const [email, setEmail] = useState('');
@@ -72,7 +76,7 @@ export function OtpLoginForm({ successPath, redirectSuffix }: OtpLoginFormProps)
             const { error } = await supabase.auth.signInWithOtp({
                 email: email.trim().toLowerCase(),
                 options: {
-                    shouldCreateUser: false,
+                    shouldCreateUser: allowSignup,
                     emailRedirectTo: `${origin}${redirectSuffix}`,
                 },
             });
