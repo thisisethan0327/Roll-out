@@ -7,6 +7,7 @@
  */
 import { useEffect, useRef, useState, useTransition } from 'react';
 import { checkHandleAction, claimProfileAction } from './actions';
+import { PendingButton } from '@/components/feedback';
 
 type HandleState =
     | { kind: 'idle' }
@@ -142,9 +143,15 @@ export function OnboardingForm({
 
             {formErr && <div className="admin-login-error">{formErr}</div>}
 
-            <button type="submit" disabled={!canSubmit} className="admin-login-btn">
-                {pending ? 'SETTING UP…' : 'ENTER ROLLOUT ›'}
-            </button>
+            <PendingButton
+                type="submit"
+                pending={pending}
+                pendingLabel="SETTING UP"
+                disabled={!canSubmit}
+                className="admin-login-btn"
+            >
+                ENTER ROLLOUT ›
+            </PendingButton>
             <p
                 style={{
                     fontSize: 10,

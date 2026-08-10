@@ -8,6 +8,7 @@
 import { useEffect, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { sendTicketMessage } from './detail-actions';
+import { PendingButton } from '@/components/feedback';
 
 type Message = {
     id: string;
@@ -190,14 +191,16 @@ export function TicketChat({
                     style={{ width: '100%', resize: 'vertical' }}
                 />
                 <div>
-                    <button
+                    <PendingButton
                         type="button"
                         className="admin-action-btn"
-                        disabled={pending || !text.trim()}
+                        pending={pending}
+                        pendingLabel="SENDING"
+                        disabled={!text.trim()}
                         onClick={send}
                     >
-                        {pending ? 'SENDING…' : visibility === 'internal' ? 'ADD NOTE' : 'SEND'}
-                    </button>
+                        {visibility === 'internal' ? 'ADD NOTE' : 'SEND'}
+                    </PendingButton>
                 </div>
             </div>
         </div>

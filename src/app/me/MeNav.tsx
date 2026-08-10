@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTransition } from 'react';
 import { signOutAction } from './actions';
+import { LinkPending } from '@/components/feedback';
 
 const LINKS: { href: string; label: string }[] = [
     { href: '/me', label: 'Overview' },
@@ -96,9 +97,13 @@ export function MeNav({ displayName }: { displayName: string }) {
                                         color: active ? 'var(--bg-0)' : 'var(--text-2)',
                                         background: active ? 'var(--gold)' : 'transparent',
                                         border: '1px solid ' + (active ? 'var(--gold)' : 'transparent'),
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: 6,
                                     }}
                                 >
                                     {l.label}
+                                    <LinkPending />
                                 </Link>
                             );
                         })}

@@ -2,6 +2,7 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { getSupabaseBrowser } from '@/lib/supabase/browser';
+import { LinkPending } from '@/components/feedback';
 
 type SidebarItem = {
     href: string;
@@ -94,7 +95,10 @@ export function ShopSidebar({
                                     href={href}
                                     className={`admin-sidebar-link ${active ? 'active' : ''}`}
                                 >
-                                    <span>{n.label}</span>
+                                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                                        {n.label}
+                                        <LinkPending />
+                                    </span>
                                     {active && <span>›</span>}
                                 </Link>
                             );

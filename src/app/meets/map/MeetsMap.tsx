@@ -8,7 +8,7 @@
  * Debugging note: this file uses window.L (loaded via CDN). We guard init with
  * a ref so React 18/19 strict-mode double-invoke doesn't create two maps.
  */
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 export type MapEvent = {
     id: string;
@@ -94,6 +94,11 @@ function fmtDate(iso: string | null): string {
 export function MeetsMap({ events, shops }: { events: MapEvent[]; shops: MapShop[] }) {
     const containerRef = useRef<HTMLDivElement>(null);
     const mapRef = useRef<any>(null);
+    // Drives the "LOADING MAP" placeholder: true until the first tile layer
+    // reports it has painted (or we fail). Leaflet + CARTO tiles load from a
+    // CDN and can take 1–3s, during which the canvas is otherwise blank.
+    const [tilesReady, setTilesReady] = useState(false);
+    const [failed, setFailed] = useState(false);
 
     useEffect(() => {
         let cancelled = false;
@@ -110,12 +115,22 @@ export function MeetsMap({ events, shops }: { events: MapEvent[]; shops: MapShop
                 });
                 mapRef.current = map;
 
-                L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                const tiles = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
                     attribution:
                         '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
                     subdomains: 'abcd',
                     maxZoom: 20,
-                }).addTo(map);
+                });
+                // Clear the placeholder once tiles have painted (or errored).
+                tiles.on('load', () => {
+                    if (!cancelled) setTilesReady(true);
+                });
+                tiles.addTo(map);
+                // Fallback: never leave the placeholder up forever if 'load'
+                // doesn't fire (all tiles cached, sparse viewport, etc.).
+                setTimeout(() => {
+                    if (!cancelled) setTilesReady(true);
+                }, 2500);
 
                 const bounds: [number, number][] = [];
 
@@ -178,7 +193,8 @@ export function MeetsMap({ events, shops }: { events: MapEvent[]; shops: MapShop
                 map.on('mouseout', () => map.scrollWheelZoom.disable());
             })
             .catch(() => {
-                /* CDN blocked — the fallback notice below stays visible. */
+                /* CDN blocked — surface a fallback notice instead of a spinner. */
+                if (!cancelled) setFailed(true);
             });
 
         return () => {
@@ -193,6 +209,26 @@ export function MeetsMap({ events, shops }: { events: MapEvent[]; shops: MapShop
     return (
         <div style={{ position: 'relative', width: '100%', height: '68vh', minHeight: 420, background: 'var(--bg-2)' }}>
             <div ref={containerRef} style={{ position: 'absolute', inset: 0, zIndex: 1 }} />
+            {/* Animated placeholder while Leaflet + tiles load; Leaflet paints
+                over it on success (zIndex:1 > 0). Cleared once tiles report load. */}
+            {!tilesReady && !failed && (
+                <div className="rl-map-loading">
+                    <div className="rl-map-inner">
+                        <div className="rl-map-grid" />
+                        <span className="rl-skel-eyebrow">
+                            LOADING MAP
+                            <span className="rl-dots" aria-hidden="true"><i /><i /><i /></span>
+                        </span>
+                    </div>
+                </div>
+            )}
+            {failed && (
+                <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', color: 'var(--text-2)', zIndex: 2, textAlign: 'center', padding: 24 }}>
+                    <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: 'var(--track-wider)' }}>
+                        MAP UNAVAILABLE · CHECK CONNECTION
+                    </div>
+                </div>
+            )}
             {/* Fallback shown until Leaflet paints over it (or if the CDN is blocked). */}
             <noscript>
                 <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', color: 'var(--text-2)' }}>

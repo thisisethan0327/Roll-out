@@ -10,6 +10,7 @@
  */
 import { Suspense } from 'react';
 import { AuthCallbackClient } from './AuthCallbackClient';
+import { Dots } from '@/components/feedback';
 
 export const metadata = { title: 'Signing you in · Rollout' };
 export const dynamic = 'force-dynamic';
@@ -22,7 +23,9 @@ export default function AuthCallbackPage() {
                     <span className="accent">ROLLOUT</span>
                     <span>VERIFYING ACCESS</span>
                 </div>
-                <h1 className="admin-login-title">SIGNING YOU IN…</h1>
+                <h1 className="admin-login-title" style={{ display: 'inline-flex', alignItems: 'center', gap: 12 }}>
+                    SIGNING YOU IN <Dots />
+                </h1>
                 <p className="admin-login-sub">
                     Hold tight — consuming your secure link.
                 </p>

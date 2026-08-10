@@ -7,6 +7,7 @@
  */
 import { useState, useTransition } from 'react';
 import { inviteStaffByEmail } from './actions';
+import { PendingButton } from '@/components/feedback';
 
 const ROLES = ['owner', 'admin', 'manager', 'installer', 'staff'] as const;
 
@@ -88,13 +89,15 @@ export function InviteStaffForm({
                     {ok}
                 </div>
             )}
-            <button
+            <PendingButton
                 type="submit"
-                disabled={pending || !email.trim()}
+                pending={pending}
+                pendingLabel="ADDING"
+                disabled={!email.trim()}
                 className="admin-form-btn"
             >
-                {pending ? 'ADDING…' : '+ ADD STAFF'}
-            </button>
+                + ADD STAFF
+            </PendingButton>
             <p
                 style={{
                     fontSize: 10,

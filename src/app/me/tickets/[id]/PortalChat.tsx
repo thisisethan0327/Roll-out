@@ -13,6 +13,7 @@ import { useEffect, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { getSupabaseBrowser, isSupabaseConfigured } from '@/lib/supabase/browser';
 import { sendCustomerMessage } from './actions';
+import { PendingButton } from '@/components/feedback';
 
 type Message = {
     id: string;
@@ -190,14 +191,16 @@ export function PortalChat({
                     style={{ width: '100%', resize: 'vertical' }}
                 />
                 <div>
-                    <button
+                    <PendingButton
                         type="button"
                         className="admin-action-btn"
-                        disabled={pending || !text.trim()}
+                        pending={pending}
+                        pendingLabel="SENDING"
+                        disabled={!text.trim()}
                         onClick={send}
                     >
-                        {pending ? 'SENDING…' : 'SEND'}
-                    </button>
+                        SEND
+                    </PendingButton>
                 </div>
             </div>
         </div>

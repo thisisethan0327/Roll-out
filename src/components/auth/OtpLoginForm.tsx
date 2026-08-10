@@ -11,6 +11,7 @@
 import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getSupabaseBrowser, isSupabaseConfigured } from '@/lib/supabase/browser';
+import { PendingButton } from '@/components/feedback';
 
 type Phase = 'email' | 'otp';
 
@@ -215,9 +216,14 @@ export function OtpLoginForm({
                     required
                 />
                 {err && <div className="admin-login-error">{err}</div>}
-                <button type="submit" disabled={busy} className="admin-login-btn">
-                    {busy ? 'SENDING...' : 'SEND CODE ›'}
-                </button>
+                <PendingButton
+                    type="submit"
+                    pending={busy}
+                    pendingLabel="SENDING"
+                    className="admin-login-btn"
+                >
+                    SEND CODE ›
+                </PendingButton>
             </form>
         );
     }
@@ -243,9 +249,15 @@ export function OtpLoginForm({
                 SENT TO <span style={{ color: 'var(--gold)' }}>{email.toUpperCase()}</span>
             </div>
             {err && <div className="admin-login-error">{err}</div>}
-            <button type="submit" disabled={busy || otp.length !== 6} className="admin-login-btn">
-                {busy ? 'VERIFYING...' : 'VERIFY ›'}
-            </button>
+            <PendingButton
+                type="submit"
+                pending={busy}
+                pendingLabel="VERIFYING"
+                disabled={otp.length !== 6}
+                className="admin-login-btn"
+            >
+                VERIFY ›
+            </PendingButton>
             <button
                 type="button"
                 disabled={busy || resendIn > 0}

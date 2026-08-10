@@ -5,6 +5,7 @@
  * Medusa customer renders a graceful empty state — the exchange still validates
  * the plumbing.
  */
+import Link from 'next/link';
 import { requireConsumer } from '@/lib/me-guard';
 import { loadMyOrders, formatMoney } from '@/lib/medusa-customer';
 import { fmtDay, StatusPill, EmptyRow } from '../ui';
@@ -43,9 +44,16 @@ export default async function OrdersPage() {
             ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                     {orders.map((o) => (
-                        <section
+                        <Link
                             key={o.id}
-                            style={{ border: '1px solid var(--line)', background: 'var(--bg-1)', padding: 16 }}
+                            href={`/me/orders/${o.id}`}
+                            style={{
+                                display: 'block',
+                                border: '1px solid var(--line)',
+                                background: 'var(--bg-1)',
+                                padding: 16,
+                                textDecoration: 'none',
+                            }}
                         >
                             <div
                                 style={{
@@ -141,7 +149,21 @@ export default async function OrdersPage() {
                                     ))}
                                 </div>
                             )}
-                        </section>
+                            <div
+                                style={{
+                                    marginTop: 12,
+                                    paddingTop: 10,
+                                    borderTop: '1px solid var(--line)',
+                                    textAlign: 'right',
+                                    fontFamily: 'var(--font-display)',
+                                    fontSize: 10,
+                                    letterSpacing: 'var(--track-wider)',
+                                    color: 'var(--gold)',
+                                }}
+                            >
+                                VIEW DETAILS ›
+                            </div>
+                        </Link>
                     ))}
                 </div>
             )}
