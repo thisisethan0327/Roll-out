@@ -13,6 +13,7 @@ import { fetchProductByHandle, formatMoney } from '@/lib/medusa';
 import { getSellingShops, resolveVendorShop } from '@/lib/store-shops';
 import { CartLink } from '../../CartLink';
 import { AddToCartClient } from './AddToCartClient';
+import { ProductGallery } from './ProductGallery';
 
 export const dynamic = 'force-dynamic';
 
@@ -92,55 +93,11 @@ export default async function ProductDetailPage({
                     className="pdp-grid"
                 >
                     {/* GALLERY */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                        <div
-                            className="corner-wrap"
-                            style={{
-                                position: 'relative',
-                                aspectRatio: '1 / 1',
-                                background: product.images[0]
-                                    ? `url(${product.images[0]}) center/cover no-repeat`
-                                    : 'var(--bg-3)',
-                                border: '1px solid var(--line)',
-                                filter: product.paused ? 'grayscale(0.85) brightness(0.6)' : 'none',
-                            }}
-                        >
-                            <span className="corner-bottom-left" />
-                            <span className="corner-bottom-right" />
-                            {product.paused ? (
-                                <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                    <span
-                                        style={{
-                                            fontFamily: 'var(--font-display)',
-                                            fontSize: 13,
-                                            fontWeight: 700,
-                                            letterSpacing: 'var(--track-wider)',
-                                            padding: '8px 18px',
-                                            border: '1px solid var(--gold)',
-                                            background: 'rgba(0,0,0,0.72)',
-                                            color: 'var(--gold)',
-                                        }}
-                                    >
-                                        COMING SOON
-                                    </span>
-                                </div>
-                            ) : null}
-                        </div>
-                        {product.images.length > 1 ? (
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(72px, 1fr))', gap: 8 }}>
-                                {product.images.slice(1, 7).map((img, i) => (
-                                    <div
-                                        key={i}
-                                        style={{
-                                            aspectRatio: '1 / 1',
-                                            background: `url(${img}) center/cover no-repeat`,
-                                            border: '1px solid var(--line)',
-                                        }}
-                                    />
-                                ))}
-                            </div>
-                        ) : null}
-                    </div>
+                    <ProductGallery
+                        images={product.images}
+                        title={product.title}
+                        paused={product.paused}
+                    />
 
                     {/* INFO + BUY */}
                     <div>

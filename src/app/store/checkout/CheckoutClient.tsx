@@ -13,6 +13,7 @@ import {
 } from '@/lib/medusa-cart';
 import { formatMoney } from '@/lib/medusa-types';
 import type { Cart, ShippingOption, AddressInput } from '@/lib/medusa-types';
+import { Dots, SweepBar } from '../_ui';
 
 // Stripe.js is loaded once per key. Kept at module scope so it isn't re-created
 // on every render.
@@ -109,6 +110,7 @@ function CheckoutInner({
 
     // Step 3: init Stripe session, confirm card, complete cart.
     const placeOrder = async () => {
+        if (placing) return; // guard against double-submit on payment
         setError(null);
         if (!stripe || !elements) return setError('Payment is still loading. One sec…');
         const card = elements.getElement(CardElement);
@@ -206,7 +208,7 @@ function CheckoutInner({
                                 <Field label="Phone (optional)" value={form.phone ?? ''} onChange={set('phone')} />
                             </Row2>
                             <button type="submit" className="btn btn-lg" disabled={pending} style={{ marginTop: 6 }}>
-                                {pending ? 'SAVING…' : 'CONTINUE TO SHIPPING →'}
+                                {pending ? <>SAVING<Dots /></> : 'CONTINUE TO SHIPPING →'}
                             </button>
                         </form>
                     ) : (
@@ -250,7 +252,7 @@ function CheckoutInner({
                                 ))
                             )}
                             <button type="button" className="btn btn-lg" disabled={pending || !selectedShipping} onClick={submitShipping} style={{ marginTop: 6 }}>
-                                {pending ? 'SAVING…' : 'CONTINUE TO PAYMENT →'}
+                                {pending ? <>SAVING<Dots /></> : 'CONTINUE TO PAYMENT →'}
                             </button>
                         </div>
                     ) : step === 'payment' ? (
@@ -267,25 +269,34 @@ function CheckoutInner({
                     {step === 'payment' ? (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                             <div style={{ padding: '14px 14px', border: '1px solid var(--line)', background: 'var(--bg-2)' }}>
-                                <CardElement
-                                    options={{
-                                        style: {
-                                            base: {
-                                                color: '#f0f0f0',
-                                                fontFamily: 'monospace',
-                                                fontSize: '15px',
-                                                '::placeholder': { color: '#8a8a9a' },
+                                {stripe ? (
+                                    <CardElement
+                                        options={{
+                                            style: {
+                                                base: {
+                                                    color: '#f0f0f0',
+                                                    fontFamily: 'monospace',
+                                                    fontSize: '15px',
+                                                    '::placeholder': { color: '#8a8a9a' },
+                                                },
+                                                invalid: { color: '#ff6b6b' },
                                             },
-                                            invalid: { color: '#ff6b6b' },
-                                        },
-                                    }}
-                                />
+                                        }}
+                                    />
+                                ) : (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                                        <span className="text-dim font-display" style={{ fontSize: 11, letterSpacing: 'var(--track-wider)' }}>
+                                            LOADING SECURE PAYMENT…
+                                        </span>
+                                        <SweepBar />
+                                    </div>
+                                )}
                             </div>
                             <p className="text-muted" style={{ fontSize: 11, margin: 0 }}>
                                 TEST MODE — use 4242 4242 4242 4242, any future date + CVC.
                             </p>
                             <button type="button" className="btn btn-lg" onClick={placeOrder} disabled={placing || !stripe} style={{ width: '100%' }}>
-                                {placing ? 'PLACING ORDER…' : `PLACE ORDER · ${formatMoney(cart.total, currency)}`}
+                                {placing ? <>PLACING ORDER<Dots /></> : `PLACE ORDER · ${formatMoney(cart.total, currency)}`}
                             </button>
                         </div>
                     ) : (
@@ -372,6 +383,8 @@ function Field({
             <input
                 {...props}
                 style={{
+                    width: '100%',
+                    boxSizing: 'border-box',
                     background: 'var(--bg-1)',
                     border: '1px solid var(--line)',
                     color: 'var(--text)',
@@ -385,7 +398,7 @@ function Field({
 }
 
 function Row2({ children }: { children: React.ReactNode }) {
-    return <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>{children}</div>;
+    return <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 12 }}>{children}</div>;
 }
 
 function SumRow({ label, value, strong }: { label: string; value: string; strong?: boolean }) {

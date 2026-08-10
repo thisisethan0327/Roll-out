@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { addToCart } from '@/lib/medusa-cart';
 import { formatMoney } from '@/lib/medusa-types';
 import type { MedusaVariant } from '@/lib/medusa-types';
+import { Dots } from '../../_ui';
 
 type Props = {
     paused: boolean;
@@ -20,6 +21,7 @@ export function AddToCartClient({ paused, options, variants, currency }: Props) 
     const [pending, startTransition] = useTransition();
     const [error, setError] = useState<string | null>(null);
     const [added, setAdded] = useState(false);
+    const [justAdded, setJustAdded] = useState(false);
 
     // "Default" single-variant products have one no-op option — skip the UI.
     const realOptions = options.filter(
@@ -50,6 +52,7 @@ export function AddToCartClient({ paused, options, variants, currency }: Props) 
     }
 
     const onAdd = () => {
+        if (pending) return; // guard against double-submit
         setError(null);
         setAdded(false);
         if (!selectedVariant) {
@@ -63,6 +66,8 @@ export function AddToCartClient({ paused, options, variants, currency }: Props) 
                 return;
             }
             setAdded(true);
+            setJustAdded(true);
+            setTimeout(() => setJustAdded(false), 1900);
             router.refresh();
         });
     };
@@ -111,13 +116,17 @@ export function AddToCartClient({ paused, options, variants, currency }: Props) 
                 disabled={pending || soldOut || (!selectedVariant && variants.length > 1)}
                 style={{ width: '100%' }}
             >
-                {pending
-                    ? 'ADDING…'
-                    : soldOut
-                        ? 'SOLD OUT'
-                        : priceText
-                            ? `ADD TO CART · ${priceText}`
-                            : 'ADD TO CART'}
+                {pending ? (
+                    <>ADDING<Dots /></>
+                ) : justAdded ? (
+                    'ADDED ✓'
+                ) : soldOut ? (
+                    'SOLD OUT'
+                ) : priceText ? (
+                    `ADD TO CART · ${priceText}`
+                ) : (
+                    'ADD TO CART'
+                )}
             </button>
 
             {added ? (

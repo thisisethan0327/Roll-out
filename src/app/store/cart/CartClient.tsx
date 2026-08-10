@@ -2,10 +2,12 @@
 
 import { useState, useTransition } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { updateLineItem, removeLineItem } from '@/lib/medusa-cart';
 import { formatMoney } from '@/lib/medusa-types';
 import type { Cart } from '@/lib/medusa-types';
+import { Dots } from '../_ui';
 
 export function CartClient({ initialCart }: { initialCart: Cart | null }) {
     const router = useRouter();
@@ -49,7 +51,16 @@ export function CartClient({ initialCart }: { initialCart: Cart | null }) {
                 </div>
             ) : null}
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div
+                style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 12,
+                    opacity: pending ? 0.6 : 1,
+                    transition: 'opacity 120ms ease',
+                }}
+                aria-busy={pending}
+            >
                 {cart.items.map((it) => (
                     <div
                         key={it.id}
@@ -64,15 +75,26 @@ export function CartClient({ initialCart }: { initialCart: Cart | null }) {
                     >
                         <div
                             style={{
+                                position: 'relative',
                                 width: 72,
                                 height: 72,
                                 flexShrink: 0,
-                                background: it.thumbnail
-                                    ? `url(${it.thumbnail}) center/cover no-repeat`
-                                    : 'var(--bg-3)',
+                                overflow: 'hidden',
+                                background: 'var(--bg-3)',
                                 border: '1px solid var(--line)',
                             }}
-                        />
+                        >
+                            {it.thumbnail ? (
+                                <Image
+                                    src={it.thumbnail}
+                                    alt={it.productTitle}
+                                    fill
+                                    loading="lazy"
+                                    sizes="72px"
+                                    style={{ objectFit: 'cover' }}
+                                />
+                            ) : null}
+                        </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ color: 'var(--text)', fontSize: 15, marginBottom: 4 }}>
                                 {it.productHandle ? (
@@ -138,9 +160,16 @@ export function CartClient({ initialCart }: { initialCart: Cart | null }) {
             <div style={{ borderTop: '1px solid var(--line)', paddingTop: 18, display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <Row label="Subtotal" value={formatMoney(cart.subtotal, currency)} />
                 <Row label="Total" value={formatMoney(cart.total, currency)} strong />
-                <p className="text-dim" style={{ fontSize: 12, margin: '2px 0 0' }}>
-                    Shipping + tax calculated at checkout.
-                </p>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', minHeight: 16 }}>
+                    <p className="text-dim" style={{ fontSize: 12, margin: '2px 0 0' }}>
+                        Shipping + tax calculated at checkout.
+                    </p>
+                    {pending ? (
+                        <span className="font-display" style={{ fontSize: 10, letterSpacing: 'var(--track-wider)', color: 'var(--gold)', display: 'inline-flex', alignItems: 'center' }}>
+                            UPDATING<Dots />
+                        </span>
+                    ) : null}
+                </div>
             </div>
 
             {error ? <p style={{ color: 'var(--danger, #ff6b6b)', fontSize: 13, margin: 0 }}>{error}</p> : null}

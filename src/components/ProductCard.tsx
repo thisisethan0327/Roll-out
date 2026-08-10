@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import type { MedusaProduct } from '@/lib/medusa';
 import { formatMoney } from '@/lib/medusa';
 
@@ -27,17 +28,20 @@ export function ProductCard({ product }: { product: MedusaProduct }) {
             >
                 <span className="corner-bottom-left" />
                 <span className="corner-bottom-right" />
-                <div style={{ position: 'relative' }}>
-                    <div
-                        style={{
-                            width: '100%',
-                            aspectRatio: '1 / 1',
-                            background: product.thumbnail
-                                ? `url(${product.thumbnail}) center/cover no-repeat`
-                                : 'var(--bg-3)',
-                            filter: paused ? 'grayscale(0.85) brightness(0.6)' : 'none',
-                        }}
-                    />
+                <div style={{ position: 'relative', width: '100%', aspectRatio: '1 / 1', overflow: 'hidden', background: 'var(--bg-3)' }}>
+                    {product.thumbnail ? (
+                        <Image
+                            src={product.thumbnail}
+                            alt={product.title}
+                            fill
+                            loading="lazy"
+                            sizes="(max-width: 600px) 50vw, (max-width: 1024px) 33vw, 300px"
+                            style={{
+                                objectFit: 'cover',
+                                filter: paused ? 'grayscale(0.85) brightness(0.6)' : 'none',
+                            }}
+                        />
+                    ) : null}
                     {paused ? (
                         <div
                             style={{
