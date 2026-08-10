@@ -2,8 +2,9 @@
  * /shops — public directory of shops on Rollout.
  *
  * Lists every map-visible shop (show_on_map) with a known location, joined to
- * its public @handle and review stats. SEO-targeted so "<city> car wrap shop"
- * style searches can find the directory + individual /u/[handle] pages.
+ * its public @handle, shop_page avatar (logo), verification, review stats, and
+ * service capabilities. SEO-targeted so "<city> car wrap shop" style searches
+ * can find the directory + individual /u/[handle] pages.
  */
 import type { Metadata } from 'next';
 import Link from 'next/link';
@@ -23,10 +24,13 @@ type ShopRow = {
     state_region: string | null;
     address_line: string | null;
     primary_color: string | null;
+    offers_services: boolean | null;
+    sells_products: boolean | null;
 };
 
 type ShopCard = ShopRow & {
     handle: string | null;
+    avatar_url: string | null;
     is_verified: boolean;
     rating_avg: number;
     rating_count: number;
@@ -37,7 +41,9 @@ async function loadShops(): Promise<ShopCard[]> {
 
     const { data: shopsRaw } = await admin
         .from('shops')
-        .select('id, slug, name, region, city, state_region, address_line, primary_color')
+        .select(
+            'id, slug, name, region, city, state_region, address_line, primary_color, offers_services, sells_products',
+        )
         .eq('show_on_map', true)
         .not('lat', 'is', null)
         .order('name', { ascending: true })
@@ -51,7 +57,7 @@ async function loadShops(): Promise<ShopCard[]> {
     const [pagesRes, statsRes] = await Promise.all([
         admin
             .from('profiles')
-            .select('shop_id, handle, is_verified')
+            .select('shop_id, handle, is_verified, avatar_url')
             .eq('kind', 'shop_page')
             .in('shop_id', ids),
         admin
@@ -60,9 +66,13 @@ async function loadShops(): Promise<ShopCard[]> {
             .in('shop_id', ids),
     ]);
 
-    const pageByShop = new Map<number, { handle: string; is_verified: boolean }>();
+    const pageByShop = new Map<number, { handle: string; is_verified: boolean; avatar_url: string | null }>();
     for (const p of (pagesRes.data as any[]) ?? []) {
-        pageByShop.set(p.shop_id, { handle: p.handle, is_verified: !!p.is_verified });
+        pageByShop.set(p.shop_id, {
+            handle: p.handle,
+            is_verified: !!p.is_verified,
+            avatar_url: p.avatar_url ?? null,
+        });
     }
     const statByShop = new Map<number, { rating_avg: number; rating_count: number }>();
     for (const st of (statsRes.data as any[]) ?? []) {
@@ -75,6 +85,7 @@ async function loadShops(): Promise<ShopCard[]> {
     return shops.map((s) => ({
         ...s,
         handle: pageByShop.get(s.id)?.handle ?? null,
+        avatar_url: pageByShop.get(s.id)?.avatar_url ?? null,
         is_verified: pageByShop.get(s.id)?.is_verified ?? false,
         rating_avg: statByShop.get(s.id)?.rating_avg ?? 0,
         rating_count: statByShop.get(s.id)?.rating_count ?? 0,
@@ -114,6 +125,14 @@ export default async function ShopsDirectoryPage() {
                         Vehicle wraps, paint protection film, ceramic coating, tint, and more —
                         find a shop near you, check the reviews, and book in the app.
                     </p>
+                    {shops.length > 0 && (
+                        <div className="mono-row" style={{ marginTop: 22 }}>
+                            <span className="accent">{shops.length}</span>
+                            <span>{shops.length === 1 ? 'SHOP LISTED' : 'SHOPS LISTED'}</span>
+                            <span className="sep" />
+                            <span>SEATTLE · PNW</span>
+                        </div>
+                    )}
                 </div>
             </section>
 
@@ -123,65 +142,141 @@ export default async function ShopsDirectoryPage() {
                     {shops.length === 0 ? (
                         <div className="admin-empty">No shops on the map yet. Check back soon.</div>
                     ) : (
-                        <div
-                            style={{
-                                display: 'grid',
-                                gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
-                                gap: 16,
-                            }}
-                        >
-                            {shops.map((s) => {
-                                const inner = (
-                                    <article
-                                        className="feature-card corner-wrap"
-                                        style={{ height: '100%', display: 'flex', flexDirection: 'column', gap: 10 }}
-                                    >
-                                        <span className="corner-bottom-left" />
-                                        <span className="corner-bottom-right" />
-                                        <div className="mono-row" style={{ fontSize: 10 }}>
-                                            <span className="accent">SHOP</span>
-                                            {s.is_verified ? (
-                                                <>
-                                                    <span className="sep" />
-                                                    <span className="accent">VERIFIED</span>
-                                                </>
-                                            ) : null}
-                                            {s.region ? (
-                                                <>
-                                                    <span className="sep" />
-                                                    <span>{s.region}</span>
-                                                </>
-                                            ) : null}
-                                        </div>
-                                        <h3 style={{ fontSize: 19, letterSpacing: 0.6, margin: 0, color: 'var(--text)' }}>
-                                            {(s.name ?? s.slug).toUpperCase()}
-                                        </h3>
-                                        <div className="text-dim" style={{ fontSize: 13 }}>
-                                            {[s.address_line, s.city, s.state_region].filter(Boolean).join(', ') || '—'}
-                                        </div>
-                                        <div className="mono-row" style={{ fontSize: 12, marginTop: 'auto', paddingTop: 8 }}>
-                                            <span className="accent" style={{ letterSpacing: 2 }}>{stars(s.rating_avg)}</span>
-                                            <span className="sep" />
-                                            <span>
-                                                {s.rating_count > 0
-                                                    ? `${s.rating_avg.toFixed(1)} · ${s.rating_count} ${s.rating_count === 1 ? 'REVIEW' : 'REVIEWS'}`
-                                                    : 'NO REVIEWS YET'}
-                                            </span>
-                                        </div>
-                                    </article>
-                                );
-                                return s.handle ? (
-                                    <Link key={s.id} href={`/u/${s.handle}`} style={{ textDecoration: 'none', display: 'block' }}>
-                                        {inner}
-                                    </Link>
-                                ) : (
-                                    <div key={s.id}>{inner}</div>
-                                );
-                            })}
+                        <div className="shop-grid">
+                            {shops.map((s) => (
+                                <ShopDirectoryCard key={s.id} shop={s} />
+                            ))}
                         </div>
                     )}
                 </div>
             </section>
+
+            {/* MAP TEASER */}
+            <section style={{ borderTop: '1px solid var(--line)', background: 'var(--bg-1)' }}>
+                <div
+                    className="container shop-map-teaser"
+                    style={{ padding: '56px 0' }}
+                >
+                    <div style={{ flex: 1, minWidth: 260 }}>
+                        <div className="eyebrow eyebrow-gold mb-4">／ MAP</div>
+                        <h2 style={{ fontSize: 'clamp(24px, 3.5vw, 36px)', margin: 0 }}>
+                            SEE EVERY SHOP ON THE MAP
+                        </h2>
+                        <p style={{ color: 'var(--text-2)', fontSize: 15, marginTop: 12, maxWidth: 520 }}>
+                            Shops, meets, and convoys plotted together. Find what&apos;s near you and
+                            plan the route.
+                        </p>
+                        <Link href="/meets/map" className="btn" style={{ marginTop: 22 }}>
+                            Open The Map
+                        </Link>
+                    </div>
+                    <div className="shop-map-glyph corner-wrap" aria-hidden>
+                        <span className="corner-bottom-left" />
+                        <span className="corner-bottom-right" />
+                        <svg width="72" height="72" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth="1.2">
+                            <path d="M12 21s-6-5.3-6-10a6 6 0 0 1 12 0c0 4.7-6 10-6 10z" />
+                            <circle cx="12" cy="11" r="2.2" />
+                        </svg>
+                    </div>
+                </div>
+            </section>
+
+            {/* RUN A SHOP CTA */}
+            <section style={{ borderTop: '1px solid var(--line)' }}>
+                <div
+                    className="container shop-run-cta"
+                    style={{ padding: '48px 0' }}
+                >
+                    <div>
+                        <div className="eyebrow mb-4">／ FOR SHOPS</div>
+                        <h3 style={{ fontSize: 'clamp(20px, 2.6vw, 28px)', margin: 0 }}>
+                            RUN A SHOP?
+                        </h3>
+                        <p style={{ color: 'var(--text-2)', fontSize: 14, marginTop: 10, maxWidth: 480 }}>
+                            Get on the map, take bookings, message customers, and sell — all from one
+                            console.
+                        </p>
+                    </div>
+                    <Link href="/shop/login" className="btn btn-ghost" style={{ whiteSpace: 'nowrap' }}>
+                        Shop Console →
+                    </Link>
+                </div>
+            </section>
         </>
+    );
+}
+
+/* ── Card ─────────────────────────────────────────────────────────────── */
+function ShopDirectoryCard({ shop: s }: { shop: ShopCard }) {
+    const location = [s.city, s.state_region].filter(Boolean).join(', ') || s.region || '—';
+    const initial = (s.name ?? s.slug ?? '?').trim().charAt(0).toUpperCase();
+
+    const inner = (
+        <article className="shop-card feature-card corner-wrap">
+            <span className="corner-bottom-left" />
+            <span className="corner-bottom-right" />
+
+            <div className="shop-card-head">
+                <div className="shop-logo">
+                    {s.avatar_url ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={s.avatar_url} alt={`${s.name ?? s.slug} logo`} loading="lazy" />
+                    ) : (
+                        <span className="shop-logo-fallback">{initial}</span>
+                    )}
+                </div>
+                <div style={{ minWidth: 0 }}>
+                    <div className="mono-row" style={{ fontSize: 10 }}>
+                        {s.is_verified ? (
+                            <span className="accent">✓ VERIFIED</span>
+                        ) : (
+                            <span>SHOP</span>
+                        )}
+                        {s.region ? (
+                            <>
+                                <span className="sep" />
+                                <span>{s.region}</span>
+                            </>
+                        ) : null}
+                    </div>
+                    <h3 style={{ fontSize: 18, letterSpacing: 0.5, margin: '6px 0 0', color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {(s.name ?? s.slug).toUpperCase()}
+                    </h3>
+                </div>
+            </div>
+
+            <div className="text-dim" style={{ fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden style={{ flexShrink: 0 }}>
+                    <path d="M12 21s-6-5.3-6-10a6 6 0 0 1 12 0c0 4.7-6 10-6 10z" />
+                    <circle cx="12" cy="11" r="2" />
+                </svg>
+                {location}
+            </div>
+
+            {(s.offers_services || s.sells_products) && (
+                <div className="shop-chips">
+                    {s.offers_services && <span className="shop-chip">SERVICES</span>}
+                    {s.sells_products && <span className="shop-chip">STORE</span>}
+                </div>
+            )}
+
+            <div className="mono-row shop-card-foot" style={{ fontSize: 12 }}>
+                <span className="accent" style={{ letterSpacing: 2 }}>{stars(s.rating_avg)}</span>
+                <span className="sep" />
+                <span>
+                    {s.rating_count > 0
+                        ? `${s.rating_avg.toFixed(1)} · ${s.rating_count} ${s.rating_count === 1 ? 'REVIEW' : 'REVIEWS'}`
+                        : 'NO REVIEWS YET'}
+                </span>
+            </div>
+        </article>
+    );
+
+    return s.handle ? (
+        <Link href={`/u/${s.handle}`} style={{ textDecoration: 'none', display: 'block', height: '100%' }}>
+            {inner}
+        </Link>
+    ) : (
+        <div style={{ height: '100%' }}>{inner}</div>
     );
 }
