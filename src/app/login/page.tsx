@@ -10,6 +10,7 @@
  * No middleware involvement: gating for authenticated areas lives in the
  * destination server components themselves.
  */
+import Link from 'next/link';
 import { OtpLoginForm } from '@/components/auth/OtpLoginForm';
 
 export const metadata = { title: 'Sign In · Rollout' };
@@ -28,6 +29,12 @@ export default async function ConsumerLoginPage({
 }) {
     const { next, error } = await searchParams;
     const successPath = safeNext(next);
+    // Carry ?next onward so "New here? → /signup" returns the member to the same
+    // destination after onboarding.
+    const signupHref =
+        next && next.startsWith('/') && !next.startsWith('//')
+            ? `/signup?next=${encodeURIComponent(next)}`
+            : '/signup';
 
     return (
         <div className="admin-login-wrap">
@@ -38,7 +45,7 @@ export default async function ConsumerLoginPage({
                 </div>
                 <h1 className="admin-login-title">SIGN IN</h1>
                 <p className="admin-login-sub">
-                    Email OTP. New here? Entering your email signs you up.
+                    Email OTP — no password.
                 </p>
                 {error === 'rsvp' && (
                     <div className="admin-login-error">
@@ -46,6 +53,20 @@ export default async function ConsumerLoginPage({
                     </div>
                 )}
                 <OtpLoginForm successPath={successPath} redirectSuffix="/login" allowSignup />
+
+                <p
+                    style={{
+                        marginTop: 16,
+                        fontSize: 12,
+                        color: 'var(--text-2, var(--text-3))',
+                        textAlign: 'center',
+                    }}
+                >
+                    New here?{' '}
+                    <Link href={signupHref} style={{ color: 'var(--gold)', textDecoration: 'none' }}>
+                        Create your account
+                    </Link>
+                </p>
             </div>
         </div>
     );

@@ -39,8 +39,13 @@ export function SiteAuthLink() {
         );
     }
     return (
-        <Link href="/login" className="text-dim" style={{ textTransform: 'uppercase' }}>
-            Sign In
-        </Link>
+        <>
+            <Link href="/login" className="text-dim" style={{ textTransform: 'uppercase' }}>
+                Sign In
+            </Link>
+            <Link href="/signup" className="text-dim" style={{ textTransform: 'uppercase', color: 'var(--gold)' }}>
+                Sign Up
+            </Link>
+        </>
     );
 }

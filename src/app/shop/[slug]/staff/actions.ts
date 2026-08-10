@@ -1,9 +1,10 @@
 'use server';
 import { revalidatePath } from 'next/cache';
 import { requireShopMember } from '@/lib/auth-guard';
-import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { getSupabaseAdmin, getSupabasePublicAdmin } from '@/lib/supabase/admin';
 
 const OWNER_ROLES = new Set(['owner']);
+const VALID_ROLES = new Set(['owner', 'admin', 'manager', 'installer', 'staff']);
 
 async function assertOwner(shopId: number) {
     const { profile, role } = await requireShopMember(shopId);
@@ -11,6 +12,141 @@ async function assertOwner(shopId: number) {
         throw new Error('Only owners can manage staff.');
     }
     return { profile, role };
+}
+
+export type InviteStaffResult =
+    | { ok: true; created: boolean; email: string; role: string; emailed: boolean }
+    | { ok: false; error: string };
+
+/**
+ * Admin-driven staff onboarding. The founder rule: staff do NOT self-sign-up —
+ * an owner adds them here by EMAIL. This:
+ *   1. Finds or admin-creates the platform auth user, ALWAYS stamping
+ *      raw_user_meta_data.app='rollout' so the legacy public.handle_new_user
+ *      trigger does NOT auto-provision them as EMWRAPS staff (public.profiles),
+ *      and the rollout trigger mints their rollout.profiles row instead.
+ *   2. Ensures a rollout.profiles row exists (idempotent backfill for an
+ *      existing consumer / EMWRAPS-only account).
+ *   3. Grants shop access via rollout.shop_memberships(role) — the ONLY place
+ *      shop access is granted.
+ *   4. Sends a Rollout co-branded "you've been added" email pointing them at
+ *      /shop/login (the working web OTP entry). Best-effort — a mail failure
+ *      does not roll back the membership.
+ *
+ * Invited staff are never routed through consumer onboarding (that lives only
+ * under /signup); their first OTP sign-in lands them at /shop → their dashboard.
+ */
+export async function inviteStaffByEmail(
+    rawEmail: string,
+    role: string,
+    shopId: number,
+    slug: string,
+): Promise<InviteStaffResult> {
+    try {
+        await assertOwner(shopId);
+    } catch (e: any) {
+        return { ok: false, error: e?.message ?? 'Not authorized.' };
+    }
+
+    const email = rawEmail.trim().toLowerCase();
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        return { ok: false, error: 'Enter a valid email address.' };
+    }
+    if (!VALID_ROLES.has(role)) {
+        return { ok: false, error: 'Invalid role.' };
+    }
+
+    const admin = getSupabaseAdmin();
+    const publicAdmin = getSupabasePublicAdmin();
+    const displayFallback = email.split('@')[0];
+    const originBase = (process.env.NEXT_PUBLIC_SUPABASE_URL ?? '').includes('localhost')
+        ? 'http://localhost:3000'
+        : 'https://rollout.club';
+
+    // ── 1. Find or create the auth user (always app='rollout') ───────────────
+    let authUserId: string;
+    let created = false;
+    const createRes = await admin.auth.admin.createUser({
+        email,
+        email_confirm: true,
+        user_metadata: { app: 'rollout', home_shop_slug: slug, display_name: displayFallback },
+    });
+
+    if (createRes.data?.user) {
+        authUserId = createRes.data.user.id;
+        created = true;
+    } else {
+        // Likely already exists — resolve the existing user's id without sending
+        // any email (generateLink returns the user but does not dispatch mail).
+        const msg = (createRes.error?.message ?? '').toLowerCase();
+        const looksLikeExists =
+            msg.includes('already') || msg.includes('registered') || msg.includes('exists');
+        if (!looksLikeExists && createRes.error) {
+            return { ok: false, error: createRes.error.message };
+        }
+        const link = await admin.auth.admin.generateLink({ type: 'magiclink', email });
+        const existingId = link.data?.user?.id;
+        if (!existingId) {
+            return {
+                ok: false,
+                error: createRes.error?.message ?? 'Could not resolve that account.',
+            };
+        }
+        authUserId = existingId;
+    }
+
+    // ── 2. Ensure a rollout.profiles row (idempotent) ────────────────────────
+    const { data: profileId, error: profErr } = await publicAdmin.rpc('ensure_rollout_profile', {
+        p_auth_user_id: authUserId,
+        p_home_shop_slug: slug,
+        p_display_name: displayFallback,
+        p_email: email,
+    });
+    if (profErr || !profileId) {
+        return { ok: false, error: profErr?.message ?? 'Could not create the staff profile.' };
+    }
+
+    // ── 3. Grant shop access (the only place membership is created) ──────────
+    const { error: memErr } = await admin
+        .from('shop_memberships')
+        .upsert({ profile_id: profileId as string, shop_id: shopId, role });
+    if (memErr) {
+        return { ok: false, error: memErr.message };
+    }
+
+    // ── 4. Best-effort branded notification email ────────────────────────────
+    let emailed = false;
+    try {
+        const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+        const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+        if (url && key) {
+            const resp = await fetch(`${url}/functions/v1/send-shop-notification`, {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${key}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    shop_id: shopId,
+                    template: 'shop_message',
+                    to: email,
+                    subject_override: 'You\'ve been added to the shop dashboard on Rollout',
+                    vars: {
+                        customer_name: 'there',
+                        title: 'You\'re on the team.',
+                        subject: 'You\'ve been added to the shop dashboard on Rollout',
+                        message: `you've been added as ${role.toUpperCase()}. Sign in at ${originBase}/shop/login with this email to open the shop dashboard.`,
+                    },
+                }),
+            });
+            emailed = resp.ok;
+        }
+    } catch {
+        emailed = false;
+    }
+
+    revalidatePath(`/shop/${slug}/staff`, 'page');
+    return { ok: true, created, email, role, emailed };
 }
 
 export async function setStaffRole(
