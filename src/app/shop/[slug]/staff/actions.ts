@@ -64,32 +64,41 @@ export async function inviteStaffByEmail(
         : 'https://rollout.club';
 
     // ── 1. Find or create the auth user (always app='rollout') ───────────────
+    // NEW users are created via inviteUserByEmail, which — through the
+    // send-auth-email hook — dispatches a Rollout-branded invite email (the same
+    // hook that already powers OTP sign-in). The invite carries app='rollout' in
+    // user_metadata so the legacy public.handle_new_user trigger skips them and
+    // the rollout trigger mints their profile. redirectTo points at /shop/login,
+    // where the browser client consumes the magic-link fragment (and, worst case,
+    // they simply sign in with the emailed 6-digit code).
     let authUserId: string;
     let created = false;
-    const createRes = await admin.auth.admin.createUser({
-        email,
-        email_confirm: true,
-        user_metadata: { app: 'rollout', home_shop_slug: slug, display_name: displayFallback },
+    let emailed = false;
+    const invite = await admin.auth.admin.inviteUserByEmail(email, {
+        data: { app: 'rollout', home_shop_slug: slug, display_name: displayFallback },
+        redirectTo: `${originBase}/shop/login`,
     });
 
-    if (createRes.data?.user) {
-        authUserId = createRes.data.user.id;
+    if (invite.data?.user) {
+        authUserId = invite.data.user.id;
         created = true;
+        emailed = true; // GoTrue dispatched the branded invite email
     } else {
-        // Likely already exists — resolve the existing user's id without sending
-        // any email (generateLink returns the user but does not dispatch mail).
-        const msg = (createRes.error?.message ?? '').toLowerCase();
+        // Already registered — resolve the existing user's id WITHOUT sending an
+        // auth email (generateLink returns the user but dispatches nothing), then
+        // fall through to a best-effort co-branded "you've been added" notice.
+        const msg = (invite.error?.message ?? '').toLowerCase();
         const looksLikeExists =
             msg.includes('already') || msg.includes('registered') || msg.includes('exists');
-        if (!looksLikeExists && createRes.error) {
-            return { ok: false, error: createRes.error.message };
+        if (!looksLikeExists && invite.error) {
+            return { ok: false, error: invite.error.message };
         }
         const link = await admin.auth.admin.generateLink({ type: 'magiclink', email });
         const existingId = link.data?.user?.id;
         if (!existingId) {
             return {
                 ok: false,
-                error: createRes.error?.message ?? 'Could not resolve that account.',
+                error: invite.error?.message ?? 'Could not resolve that account.',
             };
         }
         authUserId = existingId;
@@ -114,9 +123,11 @@ export async function inviteStaffByEmail(
         return { ok: false, error: memErr.message };
     }
 
-    // ── 4. Best-effort branded notification email ────────────────────────────
-    let emailed = false;
-    try {
+    // ── 4. Existing users: best-effort co-branded "you've been added" notice ──
+    // New users already got the branded invite email in step 1. For an existing
+    // account we can't re-trigger an auth email, so we fire the shop-notification
+    // function (co-branded, Reply-To the shop). Best-effort — never rolls back.
+    if (!created) try {
         const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
         const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
         if (url && key) {
