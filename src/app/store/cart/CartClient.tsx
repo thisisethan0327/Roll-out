@@ -51,6 +51,18 @@ export function CartClient({ initialCart }: { initialCart: Cart | null }) {
                 </div>
             ) : null}
 
+            <style>{`
+                .cart-line{display:flex;flex-wrap:wrap;align-items:center;gap:16px;padding:14px;background:var(--bg-2);border:1px solid var(--line)}
+                .cart-line-media{position:relative;width:72px;height:72px;flex-shrink:0;overflow:hidden;background:var(--bg-3);border:1px solid var(--line)}
+                .cart-line-info{flex:1 1 150px;min-width:0}
+                .cart-line-actions{display:flex;align-items:center;gap:16px}
+                .cart-line-total{min-width:70px;text-align:right;color:var(--text)}
+                /* Phones: image + title stay on the top row, controls wrap to a full-width row below */
+                @media (max-width:560px){
+                    .cart-line-actions{width:100%;justify-content:space-between;gap:12px}
+                    .cart-line-total{margin-left:auto}
+                }
+            `}</style>
             <div
                 style={{
                     display: 'flex',
@@ -62,28 +74,8 @@ export function CartClient({ initialCart }: { initialCart: Cart | null }) {
                 aria-busy={pending}
             >
                 {cart.items.map((it) => (
-                    <div
-                        key={it.id}
-                        style={{
-                            display: 'flex',
-                            gap: 16,
-                            alignItems: 'center',
-                            padding: 14,
-                            background: 'var(--bg-2)',
-                            border: '1px solid var(--line)',
-                        }}
-                    >
-                        <div
-                            style={{
-                                position: 'relative',
-                                width: 72,
-                                height: 72,
-                                flexShrink: 0,
-                                overflow: 'hidden',
-                                background: 'var(--bg-3)',
-                                border: '1px solid var(--line)',
-                            }}
-                        >
+                    <div key={it.id} className="cart-line">
+                        <div className="cart-line-media">
                             {it.thumbnail ? (
                                 <Image
                                     src={it.thumbnail}
@@ -95,7 +87,7 @@ export function CartClient({ initialCart }: { initialCart: Cart | null }) {
                                 />
                             ) : null}
                         </div>
-                        <div style={{ flex: 1, minWidth: 0 }}>
+                        <div className="cart-line-info">
                             <div style={{ color: 'var(--text)', fontSize: 15, marginBottom: 4 }}>
                                 {it.productHandle ? (
                                     <Link href={`/store/p/${it.productHandle}`} style={{ color: 'var(--text)', textDecoration: 'none' }}>
@@ -113,45 +105,47 @@ export function CartClient({ initialCart }: { initialCart: Cart | null }) {
                             </div>
                         </div>
 
-                        {/* qty */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <button
-                                type="button"
-                                className="btn-ghost"
-                                style={{ padding: '4px 10px' }}
-                                disabled={pending}
-                                onClick={() => mutate(() => updateLineItem(it.id, it.quantity - 1))}
-                                aria-label="Decrease quantity"
-                            >
-                                −
-                            </button>
-                            <span style={{ minWidth: 20, textAlign: 'center', color: 'var(--text)' }}>
-                                {it.quantity}
-                            </span>
-                            <button
-                                type="button"
-                                className="btn-ghost"
-                                style={{ padding: '4px 10px' }}
-                                disabled={pending}
-                                onClick={() => mutate(() => updateLineItem(it.id, it.quantity + 1))}
-                                aria-label="Increase quantity"
-                            >
-                                +
-                            </button>
-                        </div>
+                        <div className="cart-line-actions">
+                            {/* qty */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <button
+                                    type="button"
+                                    className="btn-ghost"
+                                    style={{ padding: '4px 10px' }}
+                                    disabled={pending}
+                                    onClick={() => mutate(() => updateLineItem(it.id, it.quantity - 1))}
+                                    aria-label="Decrease quantity"
+                                >
+                                    −
+                                </button>
+                                <span style={{ minWidth: 20, textAlign: 'center', color: 'var(--text)' }}>
+                                    {it.quantity}
+                                </span>
+                                <button
+                                    type="button"
+                                    className="btn-ghost"
+                                    style={{ padding: '4px 10px' }}
+                                    disabled={pending}
+                                    onClick={() => mutate(() => updateLineItem(it.id, it.quantity + 1))}
+                                    aria-label="Increase quantity"
+                                >
+                                    +
+                                </button>
+                            </div>
 
-                        <div style={{ minWidth: 70, textAlign: 'right', color: 'var(--text)' }}>
-                            {formatMoney(it.total, currency)}
+                            <div className="cart-line-total">
+                                {formatMoney(it.total, currency)}
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => mutate(() => removeLineItem(it.id))}
+                                disabled={pending}
+                                aria-label="Remove item"
+                                style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', fontSize: 18 }}
+                            >
+                                ×
+                            </button>
                         </div>
-                        <button
-                            type="button"
-                            onClick={() => mutate(() => removeLineItem(it.id))}
-                            disabled={pending}
-                            aria-label="Remove item"
-                            style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', fontSize: 18 }}
-                        >
-                            ×
-                        </button>
                     </div>
                 ))}
             </div>

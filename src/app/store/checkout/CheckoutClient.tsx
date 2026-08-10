@@ -76,6 +76,13 @@ function CheckoutInner({
 
     const [shippingOptions, setShippingOptions] = useState<ShippingOption[]>([]);
     const [selectedShipping, setSelectedShipping] = useState<string | null>(null);
+    // A shipping method chosen THIS session. The cart can carry a stale method
+    // from a previous visit (Medusa's Store API has no delete-shipping-method
+    // endpoint), so we never trust cart.shipping_total until the shopper has
+    // confirmed a method here. Choosing one replaces any stale method on the
+    // cart (verified: Medusa replaces per shipping profile) and re-prices the
+    // payment collection, so the amount charged is always items + chosen ship.
+    const [shippingSet, setShippingSet] = useState(false);
 
     const currency = cart.currencyCode;
     const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
@@ -104,6 +111,7 @@ function CheckoutInner({
             const res = await setShippingMethod(selectedShipping);
             if (!res.ok) return setError(res.error);
             if (res.data) setCart(res.data);
+            setShippingSet(true);
             setStep('payment');
         });
     };
@@ -189,7 +197,7 @@ function CheckoutInner({
                     </div>
                 ) : null}
                 {/* STEP 1 — contact + address */}
-                <StepBlock n={1} title="CONTACT & SHIPPING" active={step === 'address'} done={step !== 'address'} onEdit={() => setStep('address')}>
+                <StepBlock n={1} title="CONTACT & SHIPPING" active={step === 'address'} done={step !== 'address'} onEdit={() => { setShippingSet(false); setStep('address'); }}>
                     {step === 'address' ? (
                         <form onSubmit={submitAddress} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                             <Field label="Email" value={form.email} onChange={set('email')} type="email" required />
@@ -219,7 +227,7 @@ function CheckoutInner({
                 </StepBlock>
 
                 {/* STEP 2 — shipping */}
-                <StepBlock n={2} title="SHIPPING METHOD" active={step === 'shipping'} done={step === 'payment'} onEdit={step === 'payment' ? () => setStep('shipping') : undefined}>
+                <StepBlock n={2} title="SHIPPING METHOD" active={step === 'shipping'} done={step === 'payment'} onEdit={step === 'payment' ? () => { setShippingSet(false); setStep('shipping'); } : undefined}>
                     {step === 'shipping' ? (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                             {shippingOptions.length === 0 ? (
@@ -330,9 +338,9 @@ function CheckoutInner({
                 </div>
                 <div style={{ borderTop: '1px solid var(--line)', paddingTop: 14, display: 'flex', flexDirection: 'column', gap: 8 }}>
                     <SumRow label="Subtotal" value={formatMoney(cart.subtotal, currency)} />
-                    <SumRow label="Shipping" value={cart.shippingTotal ? formatMoney(cart.shippingTotal, currency) : '—'} />
-                    {cart.taxTotal ? <SumRow label="Tax" value={formatMoney(cart.taxTotal, currency)} /> : null}
-                    <SumRow label="Total" value={formatMoney(cart.total, currency)} strong />
+                    <SumRow label="Shipping" value={shippingSet ? formatMoney(cart.shippingTotal, currency) : '—'} />
+                    {shippingSet && cart.taxTotal ? <SumRow label="Tax" value={formatMoney(cart.taxTotal, currency)} /> : null}
+                    <SumRow label="Total" value={shippingSet ? formatMoney(cart.total, currency) : 'TBD'} strong />
                 </div>
             </aside>
         </div>
