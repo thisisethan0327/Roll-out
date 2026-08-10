@@ -102,6 +102,7 @@ export default async function OrderDetailPage({
     const capturedAt = o.payments.find((p) => p.captured_at)?.captured_at ?? null;
     const shippedAt = o.fulfillments.find((f) => f.shipped_at)?.shipped_at ?? null;
     const deliveredAt = o.fulfillments.find((f) => f.delivered_at)?.delivered_at ?? null;
+    const trackingLinks = o.fulfillments.flatMap((f) => f.tracking ?? []);
     const payStatus = (o.payment_status ?? '').toLowerCase();
     const fulStatus = (o.fulfillment_status ?? '').toLowerCase();
 
@@ -276,6 +277,28 @@ export default async function OrderDetailPage({
                                     <span style={{ fontFamily: 'var(--font-mono, monospace)', color: 'var(--text)' }}>
                                         {formatMoney(m.amount, cur)}
                                     </span>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                    {trackingLinks.length > 0 && (
+                        <div style={{ marginTop: 12, borderTop: '1px solid var(--line)', paddingTop: 10 }}>
+                            <div style={{ ...SECTION_TITLE, marginBottom: 8 }}>TRACKING</div>
+                            {trackingLinks.map((t, i) => (
+                                <div key={i} style={{ fontSize: 12, fontFamily: 'var(--font-mono, monospace)', marginTop: i ? 4 : 0 }}>
+                                    {t.url ? (
+                                        <a
+                                            href={t.url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-link"
+                                            style={{ color: 'var(--gold)', textDecoration: 'none' }}
+                                        >
+                                            {t.number ?? 'Track shipment'} ↗
+                                        </a>
+                                    ) : (
+                                        <span style={{ color: 'var(--text)' }}>{t.number}</span>
+                                    )}
                                 </div>
                             ))}
                         </div>

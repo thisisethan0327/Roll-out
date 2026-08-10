@@ -98,3 +98,51 @@ export async function getSellingShopBySlug(slug: string): Promise<SellingShop | 
     const shops = await getSellingShops();
     return shops.find((s) => s.slug === slug || s.handle === slug) ?? null;
 }
+
+/**
+ * Vendor category roots — mirrors the Medusa backend tenant registry
+ * (Neferstock apps/backend/src/modules/tenant-registry/static-registry.ts). The
+ * `order.placed` subscriber stamps `order.metadata.vendor` with the tenant SLUG
+ * resolved from these same roots (via resolveProductVendor). A shop's "vendor
+ * key" MUST be derived identically so the dashboard's vendor filter lines up
+ * with what is written on the order. KEEP IN SYNC with that registry: a shop
+ * whose Medusa category handles fall under one of these root sets is that
+ * vendor; a shop with no catalog (e.g. EMWRAPS, empty handles) has NO vendor key
+ * and therefore gets no Orders section.
+ */
+const VENDOR_CATEGORY_ROOTS: Record<string, string[]> = {
+    neferstock: ['nac', 'house', 'tees', 'accessories'],
+    divine: ['divine'],
+    // emwraps: no Medusa catalog yet → intentionally absent (no vendor key).
+};
+
+/**
+ * Resolve a selling shop to the vendor slug stamped on its Medusa orders, or
+ * null when the shop has no Medusa catalog. Read-only, pure (no I/O).
+ */
+export function resolveShopVendorKey(
+    shop: Pick<SellingShop, 'categoryHandles'>,
+): string | null {
+    const handles = shop.categoryHandles ?? [];
+    if (handles.length === 0) return null;
+    for (const [vendor, roots] of Object.entries(VENDOR_CATEGORY_ROOTS)) {
+        if (handles.some((ch) => roots.some((rh) => handleMatches(ch, rh)))) {
+            return vendor;
+        }
+    }
+    return null;
+}
+
+/**
+ * Slug → { shop, vendorKey } for the Orders section. Returns null when the slug
+ * is not a selling shop OR the shop has no vendor key (Orders unavailable).
+ */
+export async function getShopVendorBySlug(
+    slug: string,
+): Promise<{ shop: SellingShop; vendorKey: string } | null> {
+    const shop = await getSellingShopBySlug(slug);
+    if (!shop) return null;
+    const vendorKey = resolveShopVendorKey(shop);
+    if (!vendorKey) return null;
+    return { shop, vendorKey };
+}

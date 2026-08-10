@@ -8,6 +8,7 @@
 import { cookies } from 'next/headers';
 import { requireShopMemberBySlug } from '@/lib/auth-guard';
 import { getSupabaseAdmin, getSupabasePublicAdmin } from '@/lib/supabase/admin';
+import { getShopVendorBySlug } from '@/lib/store-shops';
 import { ShopSidebar } from './ShopSidebar';
 
 const ACTIVE_SHOP_COOKIE = 'rollout_active_shop';
@@ -45,6 +46,9 @@ export default async function ShopLayout({
     const { slug } = await params;
     const { profile, role, shop } = await requireShopMemberBySlug(slug);
     const showProducts = await computeShowProducts(shop.shopId);
+    // Orders section is gated on the shop resolving to a Medusa vendor key
+    // (NeferStock, divine). Catalog-less shops (EMWRAPS) get no vendor → no link.
+    const showOrders = (await getShopVendorBySlug(slug)) !== null;
 
     // Persist "last active shop" so /shop root → this slug next time. 30-day
     // sliding window so it expires for long-inactive users.
@@ -71,6 +75,7 @@ export default async function ShopLayout({
                 callerHandle={profile.handle}
                 callerRole={role}
                 showProducts={showProducts}
+                showOrders={showOrders}
             />
             <div className="admin-main">{children}</div>
         </div>

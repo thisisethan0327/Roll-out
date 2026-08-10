@@ -29,6 +29,7 @@ const NAV: SidebarItem[] = [
     { href: 'tickets',   label: 'TICKETS',   section: 'TODAY',    minRole: 'installer' },
     { href: 'customers', label: 'CUSTOMERS', section: 'CUSTOMERS', minRole: 'installer' },
     { href: 'products',  label: 'PRODUCTS',  section: 'CUSTOMERS', minRole: 'installer' },
+    { href: 'orders',    label: 'ORDERS',    section: 'CUSTOMERS', minRole: 'installer' },
     { href: 'posts',     label: 'POSTS',     section: 'PUBLIC',   minRole: 'manager' },
     { href: 'events',    label: 'EVENTS',    section: 'PUBLIC',   minRole: 'manager' },
     { href: 'kiosk-events', label: 'KIOSK EVENTS', section: 'PUBLIC', minRole: 'manager' },
@@ -47,12 +48,14 @@ export function ShopSidebar({
     callerHandle,
     callerRole,
     showProducts = false,
+    showOrders = false,
 }: {
     slug: string;
     shopName: string;
     callerHandle: string;
     callerRole: string;
     showProducts?: boolean;
+    showOrders?: boolean;
 }) {
     const pathname = usePathname() || '';
     const router = useRouter();
@@ -70,7 +73,8 @@ export function ShopSidebar({
     const visible = NAV.filter(
         (n) =>
             (!n.minRole || rank >= RANK[n.minRole]) &&
-            (n.href !== 'products' || showProducts),
+            (n.href !== 'products' || showProducts) &&
+            (n.href !== 'orders' || showOrders),
     );
     const sections: SidebarItem['section'][] = ['TODAY', 'CUSTOMERS', 'PUBLIC', 'SETTINGS'];
 

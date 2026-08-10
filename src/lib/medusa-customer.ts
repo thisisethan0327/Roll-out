@@ -289,11 +289,18 @@ export type MedusaPayment = {
     cardLast4: string | null;
 };
 
+export type MedusaTracking = {
+    number: string | null;
+    url: string | null;
+};
+
 export type MedusaFulfillment = {
     id: string;
     shipped_at: string | null;
     delivered_at: string | null;
     packed_at: string | null;
+    /** Tracking numbers + carrier URLs attached when the fulfillment shipped. */
+    tracking: MedusaTracking[];
 };
 
 export type MedusaOrderDetail = MedusaOrder & {
@@ -385,6 +392,8 @@ export async function loadMyOrder(orderId: string): Promise<OrderDetailResult> {
                 '*payment_collections',
                 '*payment_collections.payments',
                 '*fulfillments',
+                'fulfillments.labels.tracking_number',
+                'fulfillments.labels.tracking_url',
             ].join(','),
         );
         const res = await fetch(url.toString(), {
@@ -455,6 +464,12 @@ export async function loadMyOrder(orderId: string): Promise<OrderDetailResult> {
                 shipped_at: f.shipped_at ?? null,
                 delivered_at: f.delivered_at ?? null,
                 packed_at: f.packed_at ?? null,
+                tracking: ((f.labels ?? []) as any[])
+                    .map((l) => ({
+                        number: l?.tracking_number ?? null,
+                        url: l?.tracking_url ?? null,
+                    }))
+                    .filter((t) => t.number || t.url),
             })),
         };
         return { exchanged: true, order };
