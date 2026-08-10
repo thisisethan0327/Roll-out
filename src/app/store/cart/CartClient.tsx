@@ -159,7 +159,8 @@ export function CartClient({ initialCart }: { initialCart: Cart | null }) {
             {/* summary */}
             <div style={{ borderTop: '1px solid var(--line)', paddingTop: 18, display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <Row label="Subtotal" value={formatMoney(cart.subtotal, currency)} />
-                <Row label="Total" value={formatMoney(cart.total, currency)} strong />
+                {/* shipping + tax aren't chosen until checkout */}
+                <Row label="Total" value="TBD" strong />
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', minHeight: 16 }}>
                     <p className="text-dim" style={{ fontSize: 12, margin: '2px 0 0' }}>
                         Shipping + tax calculated at checkout.

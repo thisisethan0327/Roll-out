@@ -40,7 +40,7 @@ const PROVIDER_ID = process.env.MEDUSA_STRIPE_PROVIDER_ID || 'pp_stripe_stripe';
 const CART_FIELDS =
     '*items,*items.variant,*items.product,+items.total,+items.unit_price,' +
     '*shipping_methods,*shipping_address,*payment_collection,' +
-    '*payment_collection.payment_sessions,+subtotal,+shipping_total,+tax_total,+total,+item_total';
+    '*payment_collection.payment_sessions,+subtotal,+item_subtotal,+shipping_total,+tax_total,+total,+item_total';
 
 // ── low-level fetch ─────────────────────────────────────────────────────────
 async function medusaFetch<T = any>(
@@ -116,7 +116,9 @@ function normalizeCart(raw: any): Cart {
         currencyCode: raw.currency_code ?? 'usd',
         items,
         itemCount: items.reduce((s, i) => s + i.quantity, 0),
-        subtotal: num(raw.subtotal ?? raw.item_total),
+        // items-only: Medusa's `subtotal` includes any shipping method already
+        // attached to the cart (bit us on emails + order pages too)
+        subtotal: num(raw.item_subtotal ?? raw.item_total ?? raw.subtotal),
         shippingTotal: num(raw.shipping_total),
         taxTotal: num(raw.tax_total),
         total: num(raw.total),
