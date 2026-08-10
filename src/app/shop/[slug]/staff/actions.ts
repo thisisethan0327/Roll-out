@@ -68,15 +68,21 @@ export async function inviteStaffByEmail(
     // send-auth-email hook — dispatches a Rollout-branded invite email (the same
     // hook that already powers OTP sign-in). The invite carries app='rollout' in
     // user_metadata so the legacy public.handle_new_user trigger skips them and
-    // the rollout trigger mints their profile. redirectTo points at /shop/login,
-    // where the browser client consumes the magic-link fragment (and, worst case,
-    // they simply sign in with the emailed 6-digit code).
+    // the rollout trigger mints their profile. redirectTo points at /auth/callback
+    // (carrying next=/shop + the email), which consumes the invite token — session
+    // arrives in the URL hash from GoTrue's /verify redirect — and signs them
+    // straight into the dashboard. If the token can't be consumed (expired/reused),
+    // the callback bounces them to /shop/login with the email prefilled and the
+    // 6-digit code step ready, so they never have to re-type their address.
     let authUserId: string;
     let created = false;
     let emailed = false;
+    const inviteCallback = new URL(`${originBase}/auth/callback`);
+    inviteCallback.searchParams.set('next', '/shop');
+    inviteCallback.searchParams.set('email', email);
     const invite = await admin.auth.admin.inviteUserByEmail(email, {
         data: { app: 'rollout', home_shop_slug: slug, display_name: displayFallback },
-        redirectTo: `${originBase}/shop/login`,
+        redirectTo: inviteCallback.toString(),
     });
 
     if (invite.data?.user) {

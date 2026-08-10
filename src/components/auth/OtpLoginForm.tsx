@@ -18,19 +18,41 @@ export type OtpLoginFormProps = {
     /** Where to push after a successful OTP verify. Server gate at the
      *  destination should re-verify the role and bounce if mismatched. */
     successPath: string;
-    /** Path appended to current origin for the emailRedirectTo magic-link
-     *  fallback (also serves as the tenant signal for the Auth Hook). */
+    /** Retained for API stability across callers. The magic-link fallback now
+     *  routes through /auth/callback (which carries next + email), and the
+     *  tenant signal for the Auth Hook comes from the rollout.club callback
+     *  origin. Not otherwise consumed. */
     redirectSuffix: string;
     /** When true, a brand-new email creates an auth user (consumer sign-up).
      *  Defaults to false so the shop/admin gates stay invite-only — those
      *  callers must omit this prop and keep their existing behavior. */
     allowSignup?: boolean;
+    /** Pre-fill the email field. Set when arriving from an auth email whose link
+     *  couldn't be consumed (see /auth/callback) so the user never re-types it. */
+    initialEmail?: string;
+    /** Jump straight to the 6-digit code step (skip the email step) WITHOUT
+     *  auto-sending a new code — the code already sitting in the user's inbox is
+     *  still valid, and re-sending would invalidate it. Only honored when an
+     *  initialEmail is supplied. */
+    startAtCode?: boolean;
+    /** Optional friendly banner shown above the form (e.g. "link expired — enter
+     *  the code from your email instead"). */
+    notice?: string;
 };
 
-export function OtpLoginForm({ successPath, redirectSuffix, allowSignup = false }: OtpLoginFormProps) {
+export function OtpLoginForm({
+    successPath,
+    redirectSuffix: _redirectSuffix,
+    allowSignup = false,
+    initialEmail = '',
+    startAtCode = false,
+    notice,
+}: OtpLoginFormProps) {
     const router = useRouter();
-    const [phase, setPhase] = useState<Phase>('email');
-    const [email, setEmail] = useState('');
+    const [phase, setPhase] = useState<Phase>(
+        startAtCode && initialEmail ? 'otp' : 'email',
+    );
+    const [email, setEmail] = useState(initialEmail);
     const [otp, setOtp] = useState('');
     const [busy, setBusy] = useState(false);
     const [err, setErr] = useState<string | null>(null);
@@ -73,11 +95,19 @@ export function OtpLoginForm({ successPath, redirectSuffix, allowSignup = false 
             const supabase = getSupabaseBrowser();
             const origin =
                 typeof window !== 'undefined' ? window.location.origin : 'https://rollout.club';
+            const cleanEmail = email.trim().toLowerCase();
+            // Magic-link fallback target: the shared /auth/callback consumer,
+            // carrying where to land (next) and the email so a token-consumption
+            // failure still lands with the address prefilled + code step ready.
+            // The rollout.club origin also serves as the Auth Hook tenant signal.
+            const callback = new URL('/auth/callback', origin);
+            callback.searchParams.set('next', successPath);
+            callback.searchParams.set('email', cleanEmail);
             const { error } = await supabase.auth.signInWithOtp({
-                email: email.trim().toLowerCase(),
+                email: cleanEmail,
                 options: {
                     shouldCreateUser: allowSignup,
-                    emailRedirectTo: `${origin}${redirectSuffix}`,
+                    emailRedirectTo: callback.toString(),
                     // SECURITY: consumer sign-ups MUST carry app='rollout' in
                     // raw_user_meta_data. Without it a legacy public.* trigger
                     // auto-provisions the new auth user as an EMWRAPS STAFF
@@ -153,9 +183,27 @@ export function OtpLoginForm({ successPath, redirectSuffix, allowSignup = false 
         }
     };
 
+    // Friendly banner (e.g. an expired link routed the user back here). Rendered
+    // atop whichever phase is active. Styled like the error banner but muted.
+    const noticeBanner = notice ? (
+        <div
+            className="admin-login-error"
+            style={{
+                borderColor: 'var(--gold, #e8a845)',
+                color: 'var(--gold, #e8a845)',
+                background: 'transparent',
+            }}
+        >
+            {notice === 'link_expired'
+                ? 'That sign-in link expired or was already used — enter the 6-digit code from your email below.'
+                : notice}
+        </div>
+    ) : null;
+
     if (phase === 'email') {
         return (
             <form onSubmit={sendCode} className="admin-login-form">
+                {noticeBanner}
                 <label className="admin-login-label">EMAIL</label>
                 <input
                     type="email"
@@ -176,6 +224,7 @@ export function OtpLoginForm({ successPath, redirectSuffix, allowSignup = false 
 
     return (
         <form onSubmit={verify} className="admin-login-form">
+            {noticeBanner}
             <label className="admin-login-label">CODE FROM EMAIL</label>
             <input
                 ref={otpInputRef}

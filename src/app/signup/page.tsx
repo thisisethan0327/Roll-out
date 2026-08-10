@@ -30,10 +30,16 @@ function safeNext(raw: string | undefined): string | null {
 export default async function ConsumerSignupPage({
     searchParams,
 }: {
-    searchParams: Promise<{ next?: string }>;
+    searchParams: Promise<{
+        next?: string;
+        email?: string;
+        step?: string;
+        notice?: string;
+    }>;
 }) {
-    const { next } = await searchParams;
+    const { next, email, step, notice } = await searchParams;
     const cleanNext = safeNext(next);
+    const startAtCode = step === 'code';
     // After OTP verify, route into onboarding, carrying ?next through so the
     // final redirect lands the member back where they intended.
     const onboardingPath = cleanNext
@@ -55,7 +61,14 @@ export default async function ConsumerSignupPage({
                     Enter your email — we&apos;ll send a 6-digit code. No password.
                 </p>
 
-                <OtpLoginForm successPath={onboardingPath} redirectSuffix="/signup" allowSignup />
+                <OtpLoginForm
+                    successPath={onboardingPath}
+                    redirectSuffix="/signup"
+                    allowSignup
+                    initialEmail={email ?? ''}
+                    startAtCode={startAtCode}
+                    notice={notice}
+                />
 
                 <p
                     style={{

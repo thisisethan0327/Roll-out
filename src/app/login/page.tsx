@@ -25,10 +25,17 @@ function safeNext(raw: string | undefined): string {
 export default async function ConsumerLoginPage({
     searchParams,
 }: {
-    searchParams: Promise<{ next?: string; error?: string }>;
+    searchParams: Promise<{
+        next?: string;
+        error?: string;
+        email?: string;
+        step?: string;
+        notice?: string;
+    }>;
 }) {
-    const { next, error } = await searchParams;
+    const { next, error, email, step, notice } = await searchParams;
     const successPath = safeNext(next);
+    const startAtCode = step === 'code';
     // Carry ?next onward so "New here? → /signup" returns the member to the same
     // destination after onboarding.
     const signupHref =
@@ -52,7 +59,14 @@ export default async function ConsumerLoginPage({
                         Sign in to RSVP to this meet.
                     </div>
                 )}
-                <OtpLoginForm successPath={successPath} redirectSuffix="/login" allowSignup />
+                <OtpLoginForm
+                    successPath={successPath}
+                    redirectSuffix="/login"
+                    allowSignup
+                    initialEmail={email ?? ''}
+                    startAtCode={startAtCode}
+                    notice={notice}
+                />
 
                 <p
                     style={{

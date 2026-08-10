@@ -2,12 +2,26 @@ import { OtpLoginForm } from '@/components/auth/OtpLoginForm';
 
 export const metadata = { title: 'Shop · Sign In' };
 
+/** Only allow same-origin absolute paths, never protocol-relative (`//evil`). */
+function safeNext(raw: string | undefined): string {
+    if (!raw) return '/shop';
+    if (!raw.startsWith('/') || raw.startsWith('//')) return '/shop';
+    return raw;
+}
+
 export default async function ShopLoginPage({
     searchParams,
 }: {
-    searchParams: Promise<{ error?: string }>;
+    searchParams: Promise<{
+        error?: string;
+        email?: string;
+        step?: string;
+        notice?: string;
+        next?: string;
+    }>;
 }) {
-    const { error } = await searchParams;
+    const { error, email, step, notice, next } = await searchParams;
+    const startAtCode = step === 'code';
     return (
         <div className="admin-login-wrap">
             <div className="admin-login-card">
@@ -29,7 +43,13 @@ export default async function ShopLoginPage({
                         No Rollout profile for that account. Sign up via the mobile app first.
                     </div>
                 )}
-                <OtpLoginForm successPath="/shop" redirectSuffix="/shop/login" />
+                <OtpLoginForm
+                    successPath={safeNext(next)}
+                    redirectSuffix="/shop/login"
+                    initialEmail={email ?? ''}
+                    startAtCode={startAtCode}
+                    notice={notice}
+                />
             </div>
         </div>
     );
