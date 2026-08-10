@@ -298,6 +298,7 @@ export type MedusaFulfillment = {
 
 export type MedusaOrderDetail = MedusaOrder & {
     email: string | null;
+    /** Items-only subtotal — Medusa's `subtotal` includes shipping. */
     subtotal: number | null;
     shipping_total: number | null;
     tax_total: number | null;
@@ -373,6 +374,7 @@ export async function loadMyOrder(orderId: string): Promise<OrderDetailResult> {
                 'created_at',
                 'metadata',
                 'subtotal',
+                'item_subtotal',
                 'shipping_total',
                 'tax_total',
                 'discount_total',
@@ -430,7 +432,7 @@ export async function loadMyOrder(orderId: string): Promise<OrderDetailResult> {
             created_at: o.created_at ?? null,
             vendor: o?.metadata?.vendor ?? null,
             email: o.email ?? null,
-            subtotal: o.subtotal ?? null,
+            subtotal: o.item_subtotal ?? o.subtotal ?? null,
             shipping_total: o.shipping_total ?? null,
             tax_total: o.tax_total ?? null,
             discount_total: o.discount_total ?? null,
