@@ -35,6 +35,7 @@ const NAV: SidebarItem[] = [
     { href: 'kiosk-events', label: 'KIOSK EVENTS', section: 'PUBLIC', minRole: 'manager' },
     { href: 'reviews',   label: 'REVIEWS',   section: 'PUBLIC',   minRole: 'manager' },
     { href: 'page',      label: 'SHOP PAGE', section: 'PUBLIC',   minRole: 'owner' },
+    { href: 'account',   label: 'MY ACCOUNT', section: 'SETTINGS' },
     { href: 'staff',     label: 'STAFF',     section: 'SETTINGS', minRole: 'owner' },
     { href: 'services',  label: 'SERVICES',  section: 'SETTINGS', minRole: 'manager' },
     { href: 'settings/general', label: 'GENERAL',  section: 'SETTINGS', minRole: 'owner' },
@@ -42,11 +43,21 @@ const NAV: SidebarItem[] = [
     { href: 'settings/billing', label: 'BILLING',  section: 'SETTINGS', minRole: 'owner' },
 ];
 
+/** Compact an email for the narrow sidebar footer (keeps the domain visible). */
+function truncEmail(email: string | null): string | null {
+    if (!email) return null;
+    if (email.length <= 24) return email;
+    const [user, domain] = email.split('@');
+    if (!domain) return email.slice(0, 23) + '…';
+    return `${user.slice(0, 8)}…@${domain}`;
+}
+
 export function ShopSidebar({
     slug,
     shopName,
     callerHandle,
     callerRole,
+    callerEmail = null,
     showProducts = false,
     showOrders = false,
 }: {
@@ -54,6 +65,7 @@ export function ShopSidebar({
     shopName: string;
     callerHandle: string;
     callerRole: string;
+    callerEmail?: string | null;
     showProducts?: boolean;
     showOrders?: boolean;
 }) {
@@ -111,9 +123,23 @@ export function ShopSidebar({
                 );
             })}
             <div className="admin-sidebar-foot">
-                <div>SIGNED IN AS</div>
-                <div style={{ color: 'var(--gold)', marginTop: 4 }}>@{callerHandle}</div>
-                <div style={{ marginTop: 6 }}>ROLE: {callerRole.toUpperCase()}</div>
+                <Link
+                    href={`/shop/${slug}/account`}
+                    style={{ display: 'block', textDecoration: 'none', color: 'inherit' }}
+                    title="View / edit your account"
+                >
+                    <div>SIGNED IN AS ›</div>
+                    <div style={{ color: 'var(--gold)', marginTop: 4 }}>@{callerHandle}</div>
+                    {truncEmail(callerEmail) && (
+                        <div
+                            style={{ marginTop: 4, color: 'var(--text-3)', wordBreak: 'break-all' }}
+                            title={callerEmail ?? undefined}
+                        >
+                            {truncEmail(callerEmail)}
+                        </div>
+                    )}
+                    <div style={{ marginTop: 6 }}>ROLE: {callerRole.toUpperCase()}</div>
+                </Link>
                 <div style={{ marginTop: 10 }}>
                     <Link
                         href="/shop/picker"

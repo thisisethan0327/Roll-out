@@ -74,6 +74,7 @@ export default async function ShopLayout({
                 shopName={shop.name}
                 callerHandle={profile.handle}
                 callerRole={role}
+                callerEmail={profile.email}
                 showProducts={showProducts}
                 showOrders={showOrders}
             />
