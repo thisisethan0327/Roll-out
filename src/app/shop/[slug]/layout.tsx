@@ -67,8 +67,15 @@ export default async function ShopLayout({
         }
     }
 
+    // Stamp the console theme server-side from the cookie so the first paint is
+    // already correct (no flash-of-wrong-theme). Dark is the default; only an
+    // explicit 'light' cookie flips it. The attribute lives solely on this
+    // wrapper, so the scoped light tokens never leak outside /shop/*.
+    const shopTheme =
+        cookieStore.get('rollout_shop_theme')?.value === 'light' ? 'light' : 'dark';
+
     return (
-        <div className="shop-layout">
+        <div className="shop-layout" data-theme={shopTheme}>
             <ShopSidebar
                 slug={shop.slug}
                 shopName={shop.name}

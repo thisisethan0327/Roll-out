@@ -24,6 +24,9 @@
   --gold: #ffb733;
   --gold-dim: rgba(255, 183, 51, 0.18);
   --gold-glow: rgba(255, 183, 51, 0.08);
+  /* Ink for text/content that sits on a gold fill (buttons, chat bubbles).
+     Dark by default; flips to white under the light theme where gold darkens. */
+  --on-gold: #1a1a1a;
 
   --neon: #84e12e;
   --orange: #ff8000;
@@ -394,6 +397,117 @@ h4 { font-size: 16px; letter-spacing: var(--track-wide); }
 .mt-8 { margin-top: 32px; }
 .mb-4 { margin-bottom: 16px; }
 .mb-6 { margin-bottom: 24px; }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   LIGHT THEME  ·  SHOP CONSOLE ONLY
+   ---------------------------------------------------------------------------
+   The whole app is a dark HUD by default (tokens on :root). Shop owners asked
+   for a readable light mode for office work. We scope a light token set to the
+   shop-console root — `.shop-layout[data-theme="light"]` — so every descendant
+   that reads var(--bg-*) / var(--text-*) / var(--gold) etc. flips automatically.
+   Because the attribute lives only on .shop-layout, nothing outside /shop/*
+   (marketing, /me, /admin) is touched. Dark stays the default (no attribute, or
+   data-theme="dark"). Colors are contrast-checked: body text ≥4.5:1, mono/large
+   labels ≥3:1 against the surfaces they appear on.
+   ══════════════════════════════════════════════════════════════════════════ */
+.shop-layout[data-theme='light'] {
+  /* Paper-like surfaces: soft gray page so white panels lift off it. */
+  --bg-0: #eceef1;   /* page base (shop-layout background)            */
+  --bg-1: #ffffff;   /* sidebar, cards, tables, forms                 */
+  --bg-2: #e7eaee;   /* table heads, input fills, row/link hovers     */
+  --bg-3: #dde1e6;   /* deeper hover / nested fills                   */
+  --surface: #f3f5f7;
+  --surface-2: #e7eaee;
+
+  /* Lines become dark-on-light hairlines. */
+  --line: rgba(15, 23, 42, 0.10);
+  --line-mid: rgba(15, 23, 42, 0.20);
+  --line-strong: rgba(15, 23, 42, 0.34);
+
+  /* Ink scale (dark text on light). */
+  --text: #14161a;   /* primary body — ~16:1 on white                */
+  --text-2: #454a54; /* secondary body — ~8.9:1 on white             */
+  --text-3: #616671; /* muted mono labels — ≥4.5:1 on all surfaces   */
+  --text-4: #a2a8b2;
+
+  /* Gold retuned to an accessible dark amber for text/border/accent on light
+     (~5.7:1 on white, ≥4.5:1 on the gray surfaces). */
+  --gold: #8c5d00;
+  --gold-dim: rgba(140, 93, 0, 0.16);
+  --gold-glow: rgba(140, 93, 0, 0.10);
+  --on-gold: #ffffff; /* white ink reads on the darker amber fill     */
+
+  /* Status / badge colors retuned for light contrast. */
+  --warn: #c62828;
+  --neon: #2e7d32;
+  --orange: #b45309;
+  --blue: #1d6fa5;
+}
+
+/* Gold-filled buttons in the light console: dark-amber fill needs light ink,
+   and the hardcoded bright-yellow hovers must darken instead of lightening.
+   Scoped so the marketing site's own .btn (on :root gold) is unaffected. */
+.shop-layout[data-theme='light'] .btn,
+.shop-layout[data-theme='light'] .admin-form-btn,
+.shop-layout[data-theme='light'] .admin-login-btn {
+  color: var(--on-gold);
+}
+.shop-layout[data-theme='light'] .btn:hover,
+.shop-layout[data-theme='light'] .admin-form-btn:hover,
+.shop-layout[data-theme='light'] .admin-login-btn:hover {
+  background: #a06a00;
+}
+
+/* ── Shop console theme toggle (ShopSidebar footer) ──────────────────── */
+.shop-theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  margin-top: 12px;
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-display);
+  font-size: 9px;
+  letter-spacing: var(--track-wider);
+  color: var(--text-3);
+}
+.shop-theme-toggle:hover { color: var(--text); }
+.shop-theme-toggle-track {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 44px;
+  height: 22px;
+  padding: 0 5px;
+  border: 1px solid var(--line-mid);
+  background: var(--bg-2);
+}
+.shop-theme-toggle-icon {
+  font-size: 10px;
+  line-height: 1;
+  z-index: 1;
+  color: var(--text-3);
+}
+.shop-theme-toggle-track[data-on='true'] .shop-theme-toggle-icon.sun { color: var(--gold); }
+.shop-theme-toggle-track[data-on='false'] .shop-theme-toggle-icon.moon { color: var(--gold); }
+.shop-theme-toggle-knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  background: var(--gold);
+  transition: transform 0.16s ease;
+}
+.shop-theme-toggle-track[data-on='true'] .shop-theme-toggle-knob {
+  transform: translateX(22px);
+}
+@media (prefers-reduced-motion: reduce) {
+  .shop-theme-toggle-knob { transition: none; }
+}
 
 /* ── ADMIN CONSOLE — god mode + shop dashboard ──────────────────────── */
 

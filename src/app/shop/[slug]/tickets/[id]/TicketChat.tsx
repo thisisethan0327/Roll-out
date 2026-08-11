@@ -110,7 +110,7 @@ export function TicketChat({
                                     maxWidth: '80%',
                                     border: '1px solid var(--line)',
                                     background: internal
-                                        ? 'rgba(232,168,69,0.08)'
+                                        ? 'var(--gold-glow)'
                                         : isStaff
                                           ? 'var(--bg-1)'
                                           : 'var(--bg-3, var(--bg-2))',
