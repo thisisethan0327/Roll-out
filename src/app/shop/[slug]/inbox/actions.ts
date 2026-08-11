@@ -1,14 +1,10 @@
 'use server';
 import { revalidatePath } from 'next/cache';
-import { requireShopMember } from '@/lib/auth-guard';
+import { requireShopMember, isShopModuleEnabledById } from '@/lib/auth-guard';
 import { getSupabaseAdmin, getSupabasePublicAdmin } from '@/lib/supabase/admin';
+import { ModuleKey } from '@/lib/shop-modules';
 
 const MANAGER_ROLES = new Set(['owner', 'admin', 'manager']);
-
-// EMWRAPS shop_id — gates the SaaS bridge until other tenants opt in.
-// TODO: when rollout.shops gets a `tickets_enabled` flag column, gate this on
-// that flag instead of shop_id=1 hardcoding.
-const EMWRAPS_SHOP_ID = 1;
 
 // Mirrors the SERVICE_LABEL map in inbox/page.tsx — kept inline because the
 // page export isn't shareable with this server-action module without an extra
@@ -230,13 +226,13 @@ export async function acceptAppointment(appointmentId: string, shopId: number) {
         .eq('shop_id', shopId);
     if (error) throw new Error(error.message);
 
-    // EMWRAPS-only SaaS bridge: spin the accepted appointment into a real
-    // public.tickets row so it flows into the ticketing app. Best-effort — if
-    // anything fails, the appointment is still accepted and surfaceable in the
-    // inbox; staff can retry by re-running the action.
-    // TODO: when rollout.shops gets a `tickets_enabled` flag column, gate this
-    // on that flag instead of shop_id=1 hardcoding.
-    if (shopId === EMWRAPS_SHOP_ID) {
+    // SaaS bridge: spin the accepted appointment into a real public.tickets row
+    // so it flows into the ticketing app. Gated on the shop having the TICKETS
+    // module enabled (tier-3 by default, or an explicit override) — this retires
+    // the old `shop_id === 1` hardcode: any tickets-enabled tenant now bridges,
+    // and none that lacks the module does. Best-effort — if anything fails, the
+    // appointment is still accepted and surfaceable; staff can retry the action.
+    if (await isShopModuleEnabledById(shopId, ModuleKey.Tickets)) {
         try {
             await bridgeAppointmentToTicket(appointmentId, shopId);
         } catch (e) {

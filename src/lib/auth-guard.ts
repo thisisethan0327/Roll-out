@@ -11,9 +11,16 @@
  * trust the session — we just need to know whether the user is on the list).
  */
 import 'server-only';
-import { redirect } from 'next/navigation';
+import { redirect, notFound } from 'next/navigation';
 import { getSupabaseServer } from './supabase/server';
 import { getSupabaseAdmin } from './supabase/admin';
+import {
+    assertModuleEnabled,
+    isModuleEnabled,
+    type ModuleKey,
+    type ModuleOverrides,
+    type ShopModuleConfig,
+} from './shop-modules';
 
 export type GuardedProfile = {
     profileId: string;
@@ -160,4 +167,60 @@ export async function requireShopMemberBySlug(slug: string): Promise<{
     if (!shop) redirect('/shop/picker?error=shop_not_found');
     const { profile, role } = await requireShopMember(shop.shopId);
     return { profile, role, shop };
+}
+
+// ── Tier module gating resolvers ────────────────────────────────────────────
+// Thin server-side fetchers that feed the pure resolver in `@/lib/shop-modules`
+// (tier baseline ± per-shop overrides). Gating is nav + route-guard only and
+// never touches shop data — see the reversibility note in shop-modules.ts.
+
+/** Fetch a shop's tier + overrides by slug (admin client, bypasses RLS). */
+export async function getShopModuleConfigBySlug(
+    slug: string,
+): Promise<ShopModuleConfig | null> {
+    if (!slug) return null;
+    const admin = getSupabaseAdmin();
+    const { data } = await admin
+        .from('shops')
+        .select('commerce_tier, module_overrides')
+        .eq('slug', slug)
+        .maybeSingle();
+    if (!data) return null;
+    return {
+        commerce_tier: (data as any).commerce_tier ?? null,
+        module_overrides: ((data as any).module_overrides ?? {}) as ModuleOverrides,
+    };
+}
+
+/**
+ * Section route guard: `notFound()` unless `key` is enabled for the shop `slug`.
+ * Drop this in a gated section's `layout.tsx` so every nested route inherits the
+ * check — nav-hiding in the sidebar is not a security boundary; this is.
+ */
+export async function requireShopModule(slug: string, key: ModuleKey): Promise<void> {
+    const cfg = await getShopModuleConfigBySlug(slug);
+    if (!cfg) notFound();
+    assertModuleEnabled(cfg, key);
+}
+
+/**
+ * Boolean module check by shop id (for server actions that already hold a
+ * shopId rather than a slug — e.g. the inbox → tickets SaaS bridge).
+ */
+export async function isShopModuleEnabledById(
+    shopId: number,
+    key: ModuleKey,
+): Promise<boolean> {
+    const admin = getSupabaseAdmin();
+    const { data } = await admin
+        .from('shops')
+        .select('commerce_tier, module_overrides')
+        .eq('id', shopId)
+        .maybeSingle();
+    if (!data) return false;
+    return isModuleEnabled(
+        (data as any).commerce_tier,
+        ((data as any).module_overrides ?? {}) as ModuleOverrides,
+        key,
+    );
 }

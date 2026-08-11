@@ -9,31 +9,50 @@ import { cookies } from 'next/headers';
 import { requireShopMemberBySlug } from '@/lib/auth-guard';
 import { getSupabaseAdmin, getSupabasePublicAdmin } from '@/lib/supabase/admin';
 import { getShopVendorBySlug } from '@/lib/store-shops';
+import {
+    enabledModules,
+    ModuleKey,
+    type ModuleOverrides,
+} from '@/lib/shop-modules';
 import { ShopSidebar } from './ShopSidebar';
 
 const ACTIVE_SHOP_COOKIE = 'rollout_active_shop';
 
-/** Whether the PRODUCTS section is available for this shop. */
-async function computeShowProducts(shopId: number): Promise<boolean> {
+/**
+ * Load the pieces that drive sidebar module visibility in one shop-row read:
+ *   • tier + overrides → the tier module gate (shop-modules.ts)
+ *   • showProducts     → the PRODUCTS data-precondition (kept, layered on top)
+ * Orders' precondition (a resolved Medusa vendor key) is fetched separately by
+ * the caller via getShopVendorBySlug.
+ */
+async function loadModuleContext(shopId: number): Promise<{
+    tier: number | null;
+    overrides: ModuleOverrides;
+    showProducts: boolean;
+}> {
     const admin = getSupabaseAdmin();
     const { data: shopRow } = await admin
         .from('shops')
-        .select('sells_products, medusa_category_handles')
+        .select('sells_products, medusa_category_handles, commerce_tier, module_overrides')
         .eq('id', shopId)
         .maybeSingle();
-    const handles = (shopRow as any)?.medusa_category_handles;
-    if (
-        (shopRow as any)?.sells_products ||
-        (Array.isArray(handles) && handles.length > 0)
-    ) {
-        return true;
+    const row = shopRow as any;
+    const handles = row?.medusa_category_handles;
+    let showProducts =
+        !!row?.sells_products || (Array.isArray(handles) && handles.length > 0);
+    if (!showProducts) {
+        const pub = getSupabasePublicAdmin();
+        const { count } = await pub
+            .from('products')
+            .select('id', { count: 'exact', head: true })
+            .eq('shop_id', shopId);
+        showProducts = (count ?? 0) > 0;
     }
-    const pub = getSupabasePublicAdmin();
-    const { count } = await pub
-        .from('products')
-        .select('id', { count: 'exact', head: true })
-        .eq('shop_id', shopId);
-    return (count ?? 0) > 0;
+    return {
+        tier: row?.commerce_tier ?? null,
+        overrides: (row?.module_overrides ?? {}) as ModuleOverrides,
+        showProducts,
+    };
 }
 
 export default async function ShopLayout({
@@ -45,10 +64,20 @@ export default async function ShopLayout({
 }) {
     const { slug } = await params;
     const { profile, role, shop } = await requireShopMemberBySlug(slug);
-    const showProducts = await computeShowProducts(shop.shopId);
+    const { tier, overrides, showProducts } = await loadModuleContext(shop.shopId);
     // Orders section is gated on the shop resolving to a Medusa vendor key
     // (NeferStock, divine). Catalog-less shops (EMWRAPS) get no vendor → no link.
     const showOrders = (await getShopVendorBySlug(slug)) !== null;
+
+    // Tier module gate ± per-shop overrides, then layer the data-precondition
+    // refinements on top: a module is visible only when the tier grants it AND
+    // its precondition (if any) is met. Products/Orders keep their existing
+    // data gates; everything else is pure tier/override. (Route guards in each
+    // gated section enforce the same resolver server-side — see shop-modules.ts.)
+    const enabled = enabledModules(tier, overrides);
+    if (!showProducts) enabled.delete(ModuleKey.Products);
+    if (!showOrders) enabled.delete(ModuleKey.Orders);
+    const enabledList = [...enabled];
 
     // Persist "last active shop" so /shop root → this slug next time. 30-day
     // sliding window so it expires for long-inactive users.
@@ -82,8 +111,7 @@ export default async function ShopLayout({
                 callerHandle={profile.handle}
                 callerRole={role}
                 callerEmail={profile.email}
-                showProducts={showProducts}
-                showOrders={showOrders}
+                enabledModules={enabledList}
             />
             <div className="admin-main">{children}</div>
         </div>
