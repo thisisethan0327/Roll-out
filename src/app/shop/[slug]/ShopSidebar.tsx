@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { getSupabaseBrowser } from '@/lib/supabase/browser';
 import { LinkPending } from '@/components/feedback';
+import { ShopThemeToggle } from './ShopThemeToggle';
 
 type SidebarItem = {
     href: string;
@@ -154,6 +155,7 @@ export function ShopSidebar({
                         ⇄ SWITCH SHOP
                     </Link>
                 </div>
+                <ShopThemeToggle />
                 <button className="admin-sidebar-signout" onClick={signOut}>
                     SIGN OUT
                 </button>

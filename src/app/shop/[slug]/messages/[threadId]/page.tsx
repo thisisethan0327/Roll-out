@@ -223,7 +223,7 @@ export default async function ShopThreadPage({
                                             background: isShop
                                                 ? 'var(--gold)'
                                                 : 'var(--bg-2)',
-                                            color: isShop ? '#1a1a1a' : 'var(--text)',
+                                            color: isShop ? 'var(--on-gold)' : 'var(--text)',
                                             border: isShop
                                                 ? '1px solid var(--gold)'
                                                 : '1px solid var(--line-mid)',

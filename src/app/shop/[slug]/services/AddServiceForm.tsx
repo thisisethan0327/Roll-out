@@ -47,8 +47,8 @@ export function AddServiceForm({ shopId }: { shopId: number }) {
         >
             <div
                 style={{
-                    background: 'var(--surface-1, #0c0c14)',
-                    border: '1px solid var(--gold, #e8a845)',
+                    background: 'var(--bg-1)',
+                    border: '1px solid var(--gold)',
                     padding: 20,
                     width: '100%',
                     maxWidth: 720,
