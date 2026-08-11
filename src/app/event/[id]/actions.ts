@@ -27,9 +27,12 @@ const VALID: RsvpChoice[] = ['going', 'maybe', 'declined'];
  * Returns a discriminated result the client turns into UI state — it never
  * throws for the expected cases (not signed in, full, closed).
  */
+const TOKEN_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export async function setRsvp(
     eventId: string,
     status: RsvpChoice | null,
+    inviteToken?: string | null,
 ): Promise<RsvpResult> {
     if (!UUID_RE.test(eventId)) return { ok: false, error: 'invalid' };
     if (status !== null && !VALID.includes(status)) return { ok: false, error: 'invalid' };
@@ -89,6 +92,23 @@ export async function setRsvp(
             { onConflict: 'event_id,profile_id' },
         );
     if (error) return { ok: false, error: 'write' };
+
+    // Invite attribution: if the member arrived via ?invite=<token>, stamp the
+    // matching event_invite's rsvp_status. The DB function verifies the token
+    // belongs to this event AND was addressed to this member's email, so a
+    // shared link can't misattribute. Best-effort — never fails the RSVP.
+    if (inviteToken && TOKEN_RE.test(inviteToken)) {
+        try {
+            await admin.rpc('event_invite_attribute_rsvp', {
+                p_token: inviteToken,
+                p_event_id: eventId,
+                p_profile_id: me.profileId,
+                p_status: status,
+            });
+        } catch {
+            // ignore — attribution is non-critical
+        }
+    }
 
     revalidatePath(`/event/${eventId}`);
     return { ok: true, status };
