@@ -8,86 +8,160 @@ export function ApplyForm({ withCommerce }: { withCommerce: boolean }) {
     const [state, action, pending] = useActionState(submitShopApplication, APPLY_INITIAL);
 
     return (
-        <form action={action} className="apply-form" style={{ display: 'grid', gap: 18 }}>
+        <form action={action} className="apply-form" style={{ display: 'grid', gap: 22 }}>
             {withCommerce ? <input type="hidden" name="with_commerce" value="1" /> : null}
 
             {state.error ? (
-                <div className="admin-empty" role="alert" style={{ borderColor: 'var(--danger, #d33)', color: 'var(--danger, #d33)' }}>
+                <div
+                    role="alert"
+                    style={{
+                        border: '1px solid var(--danger, #d33)',
+                        color: 'var(--danger, #d33)',
+                        background: 'color-mix(in srgb, var(--danger, #d33) 8%, transparent)',
+                        padding: '12px 14px',
+                        fontSize: 13,
+                    }}
+                >
                     {state.error}
                 </div>
             ) : null}
 
-            <fieldset style={{ border: 0, padding: 0, margin: 0, display: 'grid', gap: 14 }}>
-                <legend className="eyebrow eyebrow-gold" style={{ marginBottom: 6 }}>／ SHOP BASICS</legend>
+            {/* ── SHOP BASICS ── */}
+            <div style={{ display: 'grid', gap: 14 }}>
+                <SectionHeading>SHOP BASICS</SectionHeading>
 
-                <label className="field">
-                    <span>Shop name *</span>
-                    <input name="name" required maxLength={60} placeholder="EMWRAPS" />
-                </label>
+                <Field label="SHOP NAME *">
+                    <input className="admin-form-input" name="name" required maxLength={60} placeholder="Apex Auto Styling" />
+                </Field>
 
-                <label className="field">
-                    <span>URL handle * — rollout.club/u/<b>your-handle</b></span>
-                    <input name="slug" required placeholder="emwraps" pattern="[a-z0-9][a-z0-9\-]{2,29}" />
-                </label>
+                <Field label="URL HANDLE *" hint="rollout.club/u/your-handle">
+                    <input className="admin-form-input" name="slug" required placeholder="apex-auto" pattern="[a-z0-9][a-z0-9\-]{2,29}" />
+                </Field>
 
-                <label className="field">
-                    <span>Category *</span>
-                    <select name="category" required defaultValue="">
+                <Field label="CATEGORY *">
+                    <select className="admin-form-input" name="category" required defaultValue="">
                         <option value="" disabled>Select…</option>
                         {SHOP_CATEGORIES.map((c) => (
                             <option key={c} value={c}>{c}</option>
                         ))}
                     </select>
-                </label>
+                </Field>
 
-                <label className="field">
-                    <span>Description</span>
-                    <textarea name="description" rows={3} maxLength={600} placeholder="What you do, brands you run, what makes you you." />
-                </label>
-            </fieldset>
+                <Field label="DESCRIPTION">
+                    <textarea className="admin-form-input" name="description" rows={4} maxLength={600} placeholder="What you do, brands you run, what makes you you." style={{ resize: 'vertical' }} />
+                </Field>
+            </div>
 
-            <fieldset style={{ border: 0, padding: 0, margin: 0, display: 'grid', gap: 14 }}>
-                <legend className="eyebrow" style={{ marginBottom: 6 }}>／ LOCATION & CONTACT</legend>
-                <label className="field"><span>Address</span><input name="address_line" placeholder="1900 Airport Way S #103" /></label>
-                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 10 }}>
-                    <label className="field"><span>City</span><input name="city" placeholder="Seattle" /></label>
-                    <label className="field"><span>State</span><input name="state_region" placeholder="WA" /></label>
-                    <label className="field"><span>ZIP</span><input name="postal" placeholder="98134" /></label>
-                </div>
-                <label className="field"><span>Region</span><input name="region" placeholder="PNW" /></label>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                    <label className="field"><span>Phone</span><input name="contact_phone" type="tel" placeholder="(206) 555-0000" /></label>
-                    <label className="field"><span>Support email</span><input name="support_email" type="email" placeholder="hello@yourshop.com" /></label>
-                </div>
-                <label className="field"><span>Website</span><input name="website_url" type="url" placeholder="https://yourshop.com" /></label>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                    <label className="field"><span>Instagram</span><input name="social_instagram" placeholder="@yourshop" /></label>
-                    <label className="field"><span>TikTok</span><input name="social_tiktok" placeholder="@yourshop" /></label>
-                </div>
-            </fieldset>
+            {/* ── LOCATION & CONTACT ── */}
+            <div style={{ display: 'grid', gap: 14 }}>
+                <SectionHeading>LOCATION &amp; CONTACT</SectionHeading>
 
+                <Field label="ADDRESS">
+                    <input className="admin-form-input" name="address_line" placeholder="123 Main St" />
+                </Field>
+
+                <div className="apply-row apply-row-3">
+                    <Field label="CITY"><input className="admin-form-input" name="city" placeholder="Your City" /></Field>
+                    <Field label="STATE"><input className="admin-form-input" name="state_region" placeholder="CA" /></Field>
+                    <Field label="ZIP"><input className="admin-form-input" name="postal" placeholder="90210" /></Field>
+                </div>
+
+                <Field label="REGION">
+                    <input className="admin-form-input" name="region" placeholder="SoCal" />
+                </Field>
+
+                <div className="apply-row apply-row-2">
+                    <Field label="PHONE"><input className="admin-form-input" name="contact_phone" type="tel" placeholder="(555) 555-0100" /></Field>
+                    <Field label="SUPPORT EMAIL"><input className="admin-form-input" name="support_email" type="email" placeholder="hello@yourshop.com" /></Field>
+                </div>
+
+                <Field label="WEBSITE">
+                    <input className="admin-form-input" name="website_url" type="url" placeholder="https://yourshop.com" />
+                </Field>
+
+                <div className="apply-row apply-row-2">
+                    <Field label="INSTAGRAM"><input className="admin-form-input" name="social_instagram" placeholder="@yourshop" /></Field>
+                    <Field label="TIKTOK"><input className="admin-form-input" name="social_tiktok" placeholder="@yourshop" /></Field>
+                </div>
+            </div>
+
+            {/* ── SELL ON NEFERSTOCK (bordered card) ── */}
             {withCommerce ? (
-                <fieldset style={{ border: '1px solid var(--line)', padding: 16, margin: 0, display: 'grid', gap: 14, borderRadius: 8 }}>
-                    <legend className="eyebrow eyebrow-gold" style={{ padding: '0 8px' }}>／ SELL ON NEFERSTOCK</legend>
-                    <p style={{ color: 'var(--text-2)', fontSize: 13, margin: 0 }}>
+                <div
+                    style={{
+                        border: '1px solid var(--gold)',
+                        background: 'var(--bg-1)',
+                        padding: 20,
+                        display: 'grid',
+                        gap: 14,
+                    }}
+                >
+                    <SectionHeading noRule>SELL ON NEFERSTOCK</SectionHeading>
+                    <p style={{ color: 'var(--text-2)', fontSize: 13, margin: 0, lineHeight: 1.6 }}>
                         To sell products you’ll complete a short KYC. Enter your UBI now; we’ll request
                         your business license and reseller certificate after you submit.
                     </p>
-                    <label className="field"><span>Legal business name</span><input name="legal_name" placeholder="Unity USA LLC" /></label>
-                    <label className="field"><span>UBI (9 digits)</span><input name="ubi" inputMode="numeric" pattern="\d{9}" placeholder="123456789" /></label>
-                    <div className="admin-empty" style={{ fontSize: 12 }}>
-                        Payouts setup (Stripe) — <b>coming soon</b>. You can be approved to sell on interim
-                        settlement before payouts are connected.
+                    <Field label="LEGAL BUSINESS NAME">
+                        <input className="admin-form-input" name="legal_name" placeholder="Apex Auto Styling LLC" />
+                    </Field>
+                    <Field label="UBI (9 DIGITS)">
+                        <input className="admin-form-input" name="ubi" inputMode="numeric" pattern="\d{9}" placeholder="601123456" />
+                    </Field>
+                    <div style={{ border: '1px dashed var(--line)', padding: '10px 12px', fontSize: 12, color: 'var(--text-2)', lineHeight: 1.6 }}>
+                        Payouts setup (Stripe) — <b style={{ color: 'var(--text)' }}>coming soon</b>. You can be approved to sell
+                        on interim settlement before payouts are connected.
                     </div>
-                </fieldset>
+                </div>
             ) : null}
 
-            <button type="submit" className="btn" disabled={pending} style={{ justifySelf: 'start' }}>
-                {pending ? 'Submitting…' : 'Submit application'}
-            </button>
-            <p style={{ color: 'var(--text-2)', fontSize: 12, margin: 0 }}>
+            <div>
+                <button type="submit" className="admin-form-btn" disabled={pending} style={{ justifySelf: 'start' }}>
+                    {pending ? 'SUBMITTING…' : 'SUBMIT APPLICATION ›'}
+                </button>
+            </div>
+            <p style={{ color: 'var(--text-2)', fontSize: 12, margin: 0, lineHeight: 1.6 }}>
                 You’ll become the owner immediately. Your shop stays hidden until a Rollout admin verifies it.
             </p>
+
+            <style>{`
+                .apply-form .admin-form-input { width: 100%; box-sizing: border-box; }
+                .apply-form select.admin-form-input { appearance: none; -webkit-appearance: none; cursor: pointer; }
+                .apply-row { display: grid; gap: 12px; }
+                .apply-row-2 { grid-template-columns: 1fr 1fr; }
+                .apply-row-3 { grid-template-columns: 2fr 1fr 1fr; }
+                @media (max-width: 560px) {
+                    .apply-row-2, .apply-row-3 { grid-template-columns: 1fr; }
+                }
+            `}</style>
         </form>
+    );
+}
+
+function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
+    return (
+        <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <span className="admin-form-label" style={{ textTransform: 'uppercase' }}>
+                {label}
+                {hint ? <span style={{ color: 'var(--text-3)', textTransform: 'none', marginLeft: 6 }}>· {hint}</span> : null}
+            </span>
+            {children}
+        </label>
+    );
+}
+
+function SectionHeading({ children, noRule = false }: { children: React.ReactNode; noRule?: boolean }) {
+    return (
+        <div
+            style={{
+                fontFamily: 'var(--font-display)',
+                fontSize: 11,
+                letterSpacing: 'var(--track-wider)',
+                color: 'var(--gold)',
+                borderTop: noRule ? 'none' : '1px solid var(--rule, var(--line))',
+                paddingTop: noRule ? 0 : 12,
+            }}
+        >
+            ／ {children}
+        </div>
     );
 }

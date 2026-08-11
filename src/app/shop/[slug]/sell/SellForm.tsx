@@ -108,10 +108,10 @@ export function SellForm({ shopId, slug }: { shopId: number; slug: string }) {
         <div className="admin-form" style={{ maxWidth: 640 }}>
             <SectionHeading>BUSINESS DETAILS</SectionHeading>
             <label className="admin-form-label">LEGAL BUSINESS NAME</label>
-            <input className="admin-form-input" value={legalName} onChange={(e) => setLegalName(e.target.value)} placeholder="Neferstock LLC" disabled={pending} />
+            <input className="admin-form-input" value={legalName} onChange={(e) => setLegalName(e.target.value)} placeholder="Apex Auto Styling LLC" disabled={pending} />
 
             <label className="admin-form-label">UBI NUMBER (9 DIGITS)</label>
-            <input className="admin-form-input" value={ubi} onChange={(e) => setUbi(e.target.value)} inputMode="numeric" placeholder="601234567" disabled={pending} />
+            <input className="admin-form-input" value={ubi} onChange={(e) => setUbi(e.target.value)} inputMode="numeric" placeholder="601123456" disabled={pending} />
 
             <SectionHeading>DOCUMENTS</SectionHeading>
             {SLOTS.map((s) => (
