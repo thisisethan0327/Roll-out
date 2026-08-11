@@ -35,7 +35,7 @@ export const MEDUSA_REGION_ID =
 // Medusa. Prefer the env var; fall back to the known test key from the creds.
 export const STRIPE_PUBLISHABLE_KEY =
     process.env.NEXT_PUBLIC_STRIPE_KEY ||
-    'pk_test_51TAbtzGSfA0A0IKBKWIGoId2QY2YPJbh8ZV9x1ZiC7cMGIzlYVXp9Kvm0BkHDaXPNpmAgWCSTtaSs8f5kGRqpVTA00ZjmUpuSE';
+    'pk_test_51U3MFoEXiz5SDbA84AS0Ie4H6DdQD3OrAtwQl88JT9RFjtyq53vEIlFqFOmwUAAySnvWk3ElNeKfG1M22QGSdcft002dK3kREL';
 
 export function medusaHeaders(): Record<string, string> {
     return {
