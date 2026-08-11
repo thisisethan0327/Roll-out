@@ -9,6 +9,11 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { resolveCover } from '@/lib/event-covers';
+import { loadMapData } from './mapData';
+import { MeetsSplit } from './MeetsSplit';
+
+// Read at request time: the map loader uses the runtime-only service-role key.
+export const dynamic = 'force-dynamic';
 
 const EVENT_TYPES = ['NIGHT_RUN', 'CAR_MEET', 'TRACK_DAY', 'CRUISE', 'SHOW'] as const;
 type EventType = (typeof EVENT_TYPES)[number];
@@ -125,7 +130,7 @@ export default async function MeetsDirectoryPage({
 }) {
     const { type: raw } = await searchParams;
     const type = isValidType(raw) ? raw : null;
-    const { upcoming, past } = await loadMeets(type);
+    const [{ upcoming, past }, mapData] = await Promise.all([loadMeets(type), loadMapData(type)]);
     const mapHref = type ? `/meets/map?type=${type}` : '/meets/map';
 
     return (
@@ -160,7 +165,8 @@ export default async function MeetsDirectoryPage({
                             />
                         ))}
                     </div>
-                    <div style={{ display: 'flex', gap: 8 }}>
+                    {/* View toggle — mobile/tablet only; desktop shows the split. */}
+                    <div className="meets-view-toggle" style={{ display: 'flex', gap: 8 }}>
                         <span
                             style={{
                                 padding: '8px 14px',
@@ -188,11 +194,18 @@ export default async function MeetsDirectoryPage({
                             No upcoming {type ? TYPE_LABEL[type].toLowerCase() + ' ' : ''}meets right now. Check back soon.
                         </div>
                     ) : (
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 16 }}>
-                            {upcoming.map((m) => (
-                                <MeetTile key={m.id} m={m} />
-                            ))}
-                        </div>
+                        <>
+                            {/* Desktop (≥1024): list + live map side by side, cross-highlighting. */}
+                            <div className="meets-split-desktop">
+                                <MeetsSplit meets={upcoming} events={mapData.events} shops={mapData.shops} />
+                            </div>
+                            {/* Mobile/tablet (<1024): classic grid; the map lives at /meets/map. */}
+                            <div className="meets-grid-mobile">
+                                {upcoming.map((m) => (
+                                    <MeetTile key={m.id} m={m} />
+                                ))}
+                            </div>
+                        </>
                     )}
                 </div>
             </section>

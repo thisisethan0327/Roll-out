@@ -1,9 +1,22 @@
 'use client';
 /**
- * Client-side Leaflet map for /meets/map. Leaflet is loaded from the unpkg CDN
- * at runtime (no npm dep, no SSR window issues) and CARTO dark tiles keep it on
- * theme with no API key. Two marker styles — gold for events, outlined square
- * for shops — each with a popup that deep-links into the site.
+ * Client-side Leaflet map for the meets surfaces. Leaflet is loaded from the
+ * unpkg CDN at runtime (no npm dep, no SSR window issues) and CARTO dark tiles
+ * keep it on theme with no API key.
+ *
+ * Two marker styles:
+ *   - Events  — solid gold dot (the visual priority), gentle glow, grows when
+ *               its list card is hovered/selected (`activeId`).
+ *   - Shops   — a divIcon with a small gold dot wrapped in animated beacon rings
+ *               (CSS keyframes, transform/opacity only, reduced-motion aware).
+ *
+ * Popups are dark-themed branded cards (Leaflet chrome overridden in globals.css
+ * via the `rl-popup` className). Shop popups reuse the /shops directory data —
+ * logo, verified chip, rating, capability chips, and shop/store links.
+ *
+ * Cross-highlighting: the desktop split (/meets) passes `activeId` (card →
+ * pin) and `onSelectEvent` (pin click → card). The standalone /meets/map page
+ * omits both and behaves as before.
  *
  * Debugging note: this file uses window.L (loaded via CDN). We guard init with
  * a ref so React 18/19 strict-mode double-invoke doesn't create two maps.
@@ -34,6 +47,12 @@ export type MapShop = {
     state_region: string | null;
     primary_color: string | null;
     handle: string | null;
+    avatar_url: string | null;
+    is_verified: boolean;
+    rating_avg: number;
+    rating_count: number;
+    offers_services: boolean;
+    sells_products: boolean;
 };
 
 const LEAFLET_CSS = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
@@ -91,9 +110,107 @@ function fmtDate(iso: string | null): string {
     }
 }
 
-export function MeetsMap({ events, shops }: { events: MapEvent[]; shops: MapShop[] }) {
+function starStr(rating: number): string {
+    const r = Math.max(0, Math.min(5, Math.round(rating)));
+    return '★'.repeat(r) + '☆'.repeat(5 - r);
+}
+
+function buildEventPopup(e: MapEvent): string {
+    const meta = [fmtDate(e.start_at), e.location_name].filter(Boolean).map(esc).join(' · ');
+    return `
+        <div class="rl-pop rl-pop-event">
+          <div class="rl-pop-kicker">
+            <span class="rl-pop-tag rl-pop-tag-gold">${esc(e.code || e.type || 'MEET')}</span>
+            ${e.is_official ? '<span class="rl-pop-badge">OFFICIAL</span>' : ''}
+          </div>
+          <div class="rl-pop-name">${esc(e.title)}</div>
+          <div class="rl-pop-meta">${meta}</div>
+          <div class="rl-pop-sub"><span class="rl-pop-going">${e.attending_count}</span> going${
+              e.host_handle ? ` · @${esc(e.host_handle)}` : ''
+          }</div>
+          <div class="rl-pop-actions">
+            <a class="rl-pop-btn" href="/event/${esc(e.id)}">View event →</a>
+          </div>
+        </div>`;
+}
+
+function buildShopPopup(s: MapShop): string {
+    const loc = [s.city, s.state_region].filter(Boolean).join(', ');
+    const viewHref = s.handle ? `/u/${esc(s.handle)}` : '/shops';
+    const initial = (s.name || '?').trim().charAt(0).toUpperCase();
+    const logo = s.avatar_url
+        ? `<img src="${esc(s.avatar_url)}" alt="" loading="lazy" />`
+        : `<span class="rl-pop-logo-fallback">${esc(initial)}</span>`;
+
+    const kicker = s.is_verified
+        ? '<span class="rl-pop-verified">✓ VERIFIED</span>'
+        : '<span class="rl-pop-tag">SHOP</span>';
+    const locPart = loc ? `<span class="rl-pop-sep">·</span>${esc(loc)}` : '';
+
+    const rating =
+        s.rating_count > 0
+            ? `<div class="rl-pop-rating"><span class="rl-pop-stars">${starStr(
+                  s.rating_avg,
+              )}</span> ${s.rating_avg.toFixed(1)} · ${s.rating_count} ${
+                  s.rating_count === 1 ? 'REVIEW' : 'REVIEWS'
+              }</div>`
+            : `<div class="rl-pop-rating rl-pop-rating-empty"><span class="rl-pop-stars">${starStr(
+                  0,
+              )}</span> NO REVIEWS YET</div>`;
+
+    const chips: string[] = [];
+    if (s.offers_services) chips.push('SERVICES');
+    if (s.sells_products) chips.push('STORE');
+    const chipsHtml = chips.length
+        ? `<div class="rl-pop-chips">${chips.map((c) => `<span class="rl-pop-chip">${c}</span>`).join('')}</div>`
+        : '';
+
+    const products =
+        s.sells_products && s.slug
+            ? `<a class="rl-pop-btn rl-pop-btn-ghost" href="/store?shop=${esc(s.slug)}">Products →</a>`
+            : '';
+
+    return `
+        <div class="rl-pop rl-pop-shop">
+          <div class="rl-pop-head">
+            <div class="rl-pop-logo">${logo}</div>
+            <div class="rl-pop-head-txt">
+              <div class="rl-pop-kicker">${kicker}${locPart}</div>
+              <div class="rl-pop-name">${esc(s.name)}</div>
+            </div>
+          </div>
+          ${rating}
+          ${chipsHtml}
+          <div class="rl-pop-actions">
+            <a class="rl-pop-btn" href="${viewHref}">View shop →</a>
+            ${products}
+          </div>
+        </div>`;
+}
+
+export function MeetsMap({
+    events,
+    shops,
+    fill = false,
+    activeId = null,
+    onSelectEvent,
+}: {
+    events: MapEvent[];
+    shops: MapShop[];
+    /** Fill the parent's height (split view) instead of the default 68vh. */
+    fill?: boolean;
+    /** Event id whose pin should be highlighted (card → pin cross-highlight). */
+    activeId?: string | null;
+    /** Fired when an event pin is clicked (pin → card cross-highlight). */
+    onSelectEvent?: (id: string) => void;
+}) {
     const containerRef = useRef<HTMLDivElement>(null);
     const mapRef = useRef<any>(null);
+    const eventMarkersRef = useRef<Map<string, any>>(new Map());
+    // Keep the latest callback without re-running the init effect.
+    const onSelectRef = useRef(onSelectEvent);
+    onSelectRef.current = onSelectEvent;
+
     // Drives the "LOADING MAP" placeholder: true until the first tile layer
     // reports it has painted (or we fail). Leaflet + CARTO tiles load from a
     // CDN and can take 1–3s, during which the canvas is otherwise blank.
@@ -131,51 +248,46 @@ export function MeetsMap({ events, shops }: { events: MapEvent[]; shops: MapShop
                 setTimeout(() => {
                     if (!cancelled) setTilesReady(true);
                 }, 2500);
+                // Sticky/flex containers can measure 0 on first paint; correct it.
+                setTimeout(() => {
+                    if (!cancelled && mapRef.current) mapRef.current.invalidateSize();
+                }, 60);
 
                 const bounds: [number, number][] = [];
 
-                // Event markers — gold dot.
+                // Event markers — solid gold dot (priority), highlightable.
                 const eventIcon = L.divIcon({
                     className: '',
-                    html:
-                        '<div style="width:18px;height:18px;border-radius:50%;background:#e8a845;border:2px solid #000;box-shadow:0 0 0 2px rgba(232,168,69,0.5);"></div>',
-                    iconSize: [18, 18],
-                    iconAnchor: [9, 9],
+                    html: '<div class="rl-pin rl-pin-event"><span class="rl-pin-dot"></span></div>',
+                    iconSize: [22, 22],
+                    iconAnchor: [11, 11],
+                    popupAnchor: [0, -12],
                 });
+                eventMarkersRef.current.clear();
                 for (const e of events) {
-                    const m = L.marker([e.lat, e.lng], { icon: eventIcon }).addTo(map);
-                    const popup = `
-                        <div style="font-family:system-ui,sans-serif;min-width:180px">
-                          <div style="font-size:10px;letter-spacing:1px;color:#e8a845;text-transform:uppercase">${esc(e.code || e.type || 'MEET')}${e.is_official ? ' · OFFICIAL' : ''}</div>
-                          <div style="font-size:14px;font-weight:700;margin:4px 0;color:#111">${esc(e.title)}</div>
-                          <div style="font-size:12px;color:#555">${esc(fmtDate(e.start_at))}${e.location_name ? ' · ' + esc(e.location_name) : ''}</div>
-                          <div style="font-size:11px;color:#777;margin-top:2px">${e.attending_count} going${e.host_handle ? ' · @' + esc(e.host_handle) : ''}</div>
-                          <a href="/event/${e.id}" style="display:inline-block;margin-top:8px;font-size:12px;font-weight:700;color:#b06f00;text-decoration:none">View event ›</a>
-                        </div>`;
-                    m.bindPopup(popup);
+                    const marker = L.marker([e.lat, e.lng], { icon: eventIcon, riseOnHover: true }).addTo(map);
+                    marker.bindPopup(buildEventPopup(e), { className: 'rl-popup', maxWidth: 300, minWidth: 210 });
+                    marker.on('click', () => onSelectRef.current?.(e.id));
+                    eventMarkersRef.current.set(e.id, marker);
                     bounds.push([e.lat, e.lng]);
                 }
 
-                // Shop markers — outlined square.
+                // Shop markers — beacon (dot + animated rings).
                 const shopIcon = L.divIcon({
                     className: '',
                     html:
-                        '<div style="width:16px;height:16px;border-radius:3px;background:#0c0c14;border:2px solid #f0f0f0;box-shadow:0 0 0 2px rgba(0,0,0,0.4);"></div>',
+                        '<div class="rl-pin rl-pin-shop">' +
+                        '<span class="rl-beacon-ring"></span>' +
+                        '<span class="rl-beacon-ring rl-beacon-ring-2"></span>' +
+                        '<span class="rl-pin-dot"></span>' +
+                        '</div>',
                     iconSize: [16, 16],
                     iconAnchor: [8, 8],
+                    popupAnchor: [0, -9],
                 });
                 for (const s of shops) {
-                    const m = L.marker([s.lat, s.lng], { icon: shopIcon }).addTo(map);
-                    const loc = [s.city, s.state_region].filter(Boolean).join(', ');
-                    const link = s.handle ? `/u/${s.handle}` : '/shops';
-                    const popup = `
-                        <div style="font-family:system-ui,sans-serif;min-width:170px">
-                          <div style="font-size:10px;letter-spacing:1px;color:#888;text-transform:uppercase">SHOP</div>
-                          <div style="font-size:14px;font-weight:700;margin:4px 0;color:#111">${esc(s.name)}</div>
-                          ${loc ? `<div style="font-size:12px;color:#555">${esc(loc)}</div>` : ''}
-                          <a href="${link}" style="display:inline-block;margin-top:8px;font-size:12px;font-weight:700;color:#b06f00;text-decoration:none">View shop ›</a>
-                        </div>`;
-                    m.bindPopup(popup);
+                    const marker = L.marker([s.lat, s.lng], { icon: shopIcon }).addTo(map);
+                    marker.bindPopup(buildShopPopup(s), { className: 'rl-popup', maxWidth: 300, minWidth: 220 });
                     bounds.push([s.lat, s.lng]);
                 }
 
@@ -199,6 +311,7 @@ export function MeetsMap({ events, shops }: { events: MapEvent[]; shops: MapShop
 
         return () => {
             cancelled = true;
+            eventMarkersRef.current.clear();
             if (mapRef.current) {
                 mapRef.current.remove();
                 mapRef.current = null;
@@ -206,8 +319,28 @@ export function MeetsMap({ events, shops }: { events: MapEvent[]; shops: MapShop
         };
     }, [events, shops]);
 
+    // Cross-highlight: reflect the active event id onto its pin.
+    useEffect(() => {
+        const markers = eventMarkersRef.current;
+        markers.forEach((marker, id) => {
+            const el = marker.getElement?.();
+            const pin = el?.querySelector?.('.rl-pin');
+            const on = id === activeId;
+            if (pin) pin.classList.toggle('rl-pin-active', on);
+            marker.setZIndexOffset?.(on ? 1000 : 0);
+        });
+    }, [activeId]);
+
     return (
-        <div style={{ position: 'relative', width: '100%', height: '68vh', minHeight: 420, background: 'var(--bg-2)' }}>
+        <div
+            style={{
+                position: 'relative',
+                width: '100%',
+                height: fill ? '100%' : '68vh',
+                minHeight: fill ? 0 : 420,
+                background: 'var(--bg-2)',
+            }}
+        >
             <div ref={containerRef} style={{ position: 'absolute', inset: 0, zIndex: 1 }} />
             {/* Animated placeholder while Leaflet + tiles load; Leaflet paints
                 over it on success (zIndex:1 > 0). Cleared once tiles report load. */}
