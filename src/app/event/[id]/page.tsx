@@ -112,6 +112,33 @@ async function loadMyRsvp(eventId: string): Promise<{ isLoggedIn: boolean; statu
     return { isLoggedIn: true, status };
 }
 
+type HostChip = { name: string; handle: string | null };
+
+/** Accepted co-host shops for the "hosted by" chips (host + co-hosts). */
+async function loadCoHostChips(eventId: string): Promise<HostChip[]> {
+    const supabase = getSupabaseAdmin();
+    const { data } = await supabase
+        .from('event_cohosts')
+        .select('shop_id, invited_at, shop:shops!event_cohosts_shop_id_fkey(name)')
+        .eq('event_id', eventId)
+        .eq('status', 'accepted')
+        .order('invited_at', { ascending: true });
+    const rows = (data as any[]) ?? [];
+    if (rows.length === 0) return [];
+    const shopIds = rows.map((r) => r.shop_id);
+    const { data: pages } = await supabase
+        .from('profiles')
+        .select('shop_id, handle')
+        .in('shop_id', shopIds)
+        .eq('kind', 'shop_page');
+    const handleByShop = new Map<number, string>();
+    for (const p of (pages as any[]) ?? []) handleByShop.set(p.shop_id, p.handle);
+    return rows.map((r) => ({
+        name: r.shop?.name ?? 'Shop',
+        handle: handleByShop.get(r.shop_id) ?? null,
+    }));
+}
+
 function formatDate(iso: string | null | undefined): string {
     if (!iso) return 'Date TBA';
     try {
@@ -199,14 +226,24 @@ export async function generateMetadata({
 
 export default async function PublicEventPage({
     params,
+    searchParams,
 }: {
     params: Promise<{ id: string }>;
+    searchParams: Promise<{ invite?: string }>;
 }) {
     const { id } = await params;
+    const { invite } = await searchParams;
+    const inviteToken = typeof invite === 'string' && invite.trim() ? invite.trim() : null;
     const data = await loadEvent(id);
     if (!data) notFound();
     const { event: ev, attendees, spotsLeft } = data;
-    const { isLoggedIn, status: myStatus } = await loadMyRsvp(id);
+    const [{ isLoggedIn, status: myStatus }, coHostChips] = await Promise.all([
+        loadMyRsvp(id),
+        loadCoHostChips(id),
+    ]);
+    const rsvpReturnPath = inviteToken
+        ? `/event/${id}?invite=${encodeURIComponent(inviteToken)}`
+        : `/event/${id}`;
 
     const isCancelled = !!ev.cancelled_at;
     const isPast = !!ev.start_at && new Date(ev.start_at).getTime() < Date.now();
@@ -395,6 +432,22 @@ export default async function PublicEventPage({
                                     <span className="accent">{hostName}</span>
                                 )}
                                 {hostVerified ? <span className="accent">✓</span> : null}
+                                {coHostChips.map((c) => (
+                                    <span key={c.name} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                                        <span style={{ opacity: 0.6 }}>×</span>
+                                        {c.handle ? (
+                                            <Link
+                                                href={`/u/${c.handle}`}
+                                                className="accent"
+                                                style={{ textDecoration: 'none' }}
+                                            >
+                                                @{c.handle}
+                                            </Link>
+                                        ) : (
+                                            <span className="accent">{c.name}</span>
+                                        )}
+                                    </span>
+                                ))}
                             </>
                         ) : null}
                     </div>
@@ -457,7 +510,8 @@ export default async function PublicEventPage({
                             eventId={ev.id}
                             isLoggedIn={isLoggedIn}
                             initialStatus={myStatus}
-                            nextPath={`/event/${ev.id}`}
+                            nextPath={rsvpReturnPath}
+                            inviteToken={inviteToken}
                         />
                     ) : (
                         <p

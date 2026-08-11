@@ -17,6 +17,8 @@ type Props = {
     initialStatus: RsvpChoice | null;
     /** Full path (with query) to return to after sign-in. */
     nextPath: string;
+    /** Per-invite token from ?invite= — stamps invite attribution on RSVP. */
+    inviteToken?: string | null;
 };
 
 const CHOICES: { key: RsvpChoice; label: string }[] = [
@@ -33,7 +35,7 @@ const ERROR_COPY: Record<'auth' | 'full' | 'closed' | 'invalid' | 'write', strin
     write: "Couldn't save your RSVP. Try again.",
 };
 
-export function RsvpControls({ eventId, isLoggedIn, initialStatus, nextPath }: Props) {
+export function RsvpControls({ eventId, isLoggedIn, initialStatus, nextPath, inviteToken }: Props) {
     const router = useRouter();
     const [status, setStatus] = useState<RsvpChoice | null>(initialStatus);
     const [msg, setMsg] = useState<string | null>(null);
@@ -71,7 +73,7 @@ export function RsvpControls({ eventId, isLoggedIn, initialStatus, nextPath }: P
         const prev = status;
         setStatus(next); // optimistic
         startTransition(async () => {
-            const res = await setRsvp(eventId, next);
+            const res = await setRsvp(eventId, next, inviteToken ?? null);
             if (res.ok) {
                 setStatus(res.status);
                 router.refresh();

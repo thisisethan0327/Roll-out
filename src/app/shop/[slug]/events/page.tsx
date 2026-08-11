@@ -2,8 +2,40 @@ import Link from 'next/link';
 import { requireShopMemberBySlug } from '@/lib/auth-guard';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { EventActions } from './EventActions';
+import { CoHostInboxActions } from './CoHostInboxActions';
 
 export const metadata = { title: 'Events' };
+
+/** Events this shop is invited to co-host or is co-hosting (not its own). */
+async function loadCoHostEvents(shopId: number) {
+    const admin = getSupabaseAdmin();
+    const { data } = await admin
+        .from('event_cohosts')
+        .select(
+            `status, invited_at,
+             event:events!event_cohosts_event_id_fkey(
+                id, code, title, type, start_at, location_name, cancelled_at,
+                shop:shops!events_shop_id_fkey(name, slug)
+             )`,
+        )
+        .eq('shop_id', shopId)
+        .neq('status', 'declined')
+        .order('invited_at', { ascending: false })
+        .limit(100);
+    return ((data as any[]) ?? [])
+        .filter((r) => r.event)
+        .map((r) => ({
+            status: r.status as string,
+            id: r.event.id as string,
+            code: r.event.code as string,
+            title: r.event.title as string,
+            type: r.event.type as string,
+            start_at: r.event.start_at as string,
+            location_name: r.event.location_name as string | null,
+            cancelled_at: r.event.cancelled_at as string | null,
+            hostName: (r.event.shop?.name as string) ?? 'Host',
+        }));
+}
 
 const FILTER_TABS = ['UPCOMING', 'PAST', 'CANCELLED', 'ALL'] as const;
 type FilterTab = (typeof FILTER_TABS)[number];
@@ -138,7 +170,10 @@ export default async function ShopEventsPage({
         );
     }
 
-    const data = await loadEvents(shop.shopId, hostId, filter);
+    const [data, coHostEvents] = await Promise.all([
+        loadEvents(shop.shopId, hostId, filter),
+        loadCoHostEvents(shop.shopId),
+    ]);
 
     return (
         <>
@@ -180,6 +215,88 @@ export default async function ShopEventsPage({
                     );
                 })}
             </div>
+
+            {coHostEvents.length > 0 && (
+                <div style={{ marginBottom: 18 }}>
+                    <div className="admin-page-head" style={{ borderBottom: 'none', paddingBottom: 0 }}>
+                        <div>
+                            <div className="admin-page-title" style={{ fontSize: 14 }}>
+                                CO-HOSTING
+                            </div>
+                            <div className="admin-page-sub">
+                                EVENTS OTHER SHOPS INVITED {shop.name.toUpperCase()} TO
+                            </div>
+                        </div>
+                    </div>
+                    <div className="admin-table-wrap">
+                        <table className="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>CODE</th>
+                                    <th>TITLE</th>
+                                    <th>HOST</th>
+                                    <th>STARTS</th>
+                                    <th>STATUS</th>
+                                    <th style={{ textAlign: 'right' }}>ACTIONS</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {coHostEvents.map((e) => (
+                                    <tr key={e.id}>
+                                        <td>
+                                            {e.status === 'accepted' ? (
+                                                <Link
+                                                    href={`/shop/${slug}/events/${e.id}`}
+                                                    className="text-link"
+                                                >
+                                                    {e.code}
+                                                </Link>
+                                            ) : (
+                                                e.code
+                                            )}
+                                        </td>
+                                        <td>
+                                            <div style={{ fontWeight: 700, color: 'var(--text)' }}>
+                                                {e.title}
+                                            </div>
+                                            {e.location_name && (
+                                                <div className="admin-handle">{e.location_name}</div>
+                                            )}
+                                        </td>
+                                        <td>{e.hostName}</td>
+                                        <td>
+                                            {new Date(e.start_at)
+                                                .toISOString()
+                                                .slice(0, 16)
+                                                .replace('T', ' ')}
+                                        </td>
+                                        <td>
+                                            <span
+                                                className={
+                                                    e.status === 'accepted'
+                                                        ? 'admin-pill neon'
+                                                        : 'admin-pill gold'
+                                                }
+                                            >
+                                                {e.status === 'invited'
+                                                    ? 'CO-HOST INVITE'
+                                                    : e.status.toUpperCase()}
+                                            </span>
+                                        </td>
+                                        <td style={{ textAlign: 'right' }}>
+                                            <CoHostInboxActions
+                                                eventId={e.id}
+                                                shopId={shop.shopId}
+                                                status={e.status}
+                                            />
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
 
             <div className="admin-table-wrap">
                 <table className="admin-table">
