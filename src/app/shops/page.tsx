@@ -1,10 +1,14 @@
 /**
  * /shops — public directory of shops on Rollout.
  *
- * Lists every map-visible shop (show_on_map) with a known location, joined to
- * its public @handle, shop_page avatar (logo), verification, review stats, and
- * service capabilities. SEO-targeted so "<city> car wrap shop" style searches
- * can find the directory + individual /u/[handle] pages.
+ * Lists every verified, map-visible shop (show_on_map) — including shops that
+ * have no geocoded coordinates yet (e.g. approved via /shop/apply before their
+ * address is geocoded). Joined to its public @handle, shop_page avatar (logo),
+ * verification, review stats, and service capabilities. Coord-less shops still
+ * get a card (degraded to city/region text or an ONLINE tag); the map at
+ * /meets/map is a separate data path that only pins shops with lat/lng.
+ * SEO-targeted so "<city> car wrap shop" style searches can find the directory
+ * + individual /u/[handle] pages.
  */
 import type { Metadata } from 'next';
 import Link from 'next/link';
@@ -46,10 +50,12 @@ async function loadShops(): Promise<ShopCard[]> {
         )
         // Only verified shops are publicly listed — pending/suspended/rejected
         // applications never surface in the directory (service-role bypasses RLS,
-        // so the gate must live in the query).
+        // so the gate must live in the query). show_on_map stays the opt-out
+        // visibility flag. We intentionally do NOT require lat to be set: a
+        // verified shop without geocoded coords still belongs in the directory
+        // (it just can't be pinned on the map — its card degrades gracefully).
         .eq('status', 'verified')
         .eq('show_on_map', true)
-        .not('lat', 'is', null)
         .order('name', { ascending: true })
         .limit(200);
 
@@ -212,7 +218,7 @@ export default async function ShopsDirectoryPage() {
 
 /* ── Card ─────────────────────────────────────────────────────────────── */
 function ShopDirectoryCard({ shop: s }: { shop: ShopCard }) {
-    const location = [s.city, s.state_region].filter(Boolean).join(', ') || s.region || '—';
+    const locationText = [s.city, s.state_region].filter(Boolean).join(', ') || s.region || '';
     const initial = (s.name ?? s.slug ?? '?').trim().charAt(0).toUpperCase();
 
     const inner = (
@@ -250,11 +256,18 @@ function ShopDirectoryCard({ shop: s }: { shop: ShopCard }) {
             </div>
 
             <div className="text-dim" style={{ fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden style={{ flexShrink: 0 }}>
-                    <path d="M12 21s-6-5.3-6-10a6 6 0 0 1 12 0c0 4.7-6 10-6 10z" />
-                    <circle cx="12" cy="11" r="2" />
-                </svg>
-                {location}
+                {locationText ? (
+                    <>
+                        {/* Only show the map-pin affordance when we actually have a place. */}
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden style={{ flexShrink: 0 }}>
+                            <path d="M12 21s-6-5.3-6-10a6 6 0 0 1 12 0c0 4.7-6 10-6 10z" />
+                            <circle cx="12" cy="11" r="2" />
+                        </svg>
+                        {locationText}
+                    </>
+                ) : (
+                    <span className="shop-chip">ONLINE</span>
+                )}
             </div>
 
             {(s.offers_services || s.sells_products) && (

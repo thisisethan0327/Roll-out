@@ -48,6 +48,51 @@ export async function decideVerification(input: {
 
     if (error) return { ok: false, error: error.message };
 
+    // Best-effort geocode after a shop APPROVE: /shop/apply collects a street
+    // address as text but never geocodes it, so a freshly-verified shop lands
+    // with lat/lng null and can't be pinned on the map. Resolve coords from the
+    // address via Nominatim so the shop shows up on /meets/map. Fully failure-
+    // tolerant — any error/timeout is logged and never blocks the approval.
+    // (Shop id 15 = NeferStock KYC Test, swept separately — never touch it.)
+    const decided = reqRow as any;
+    if (input.approve && decided && decided.kind === 'shop' && decided.shop_id != null && decided.shop_id !== 15) {
+        try {
+            const { data: shopRow } = await admin
+                .from('shops')
+                .select('lat, lng, address_line, city, state_region, postal')
+                .eq('id', decided.shop_id)
+                .maybeSingle();
+            const shop = shopRow as any;
+            const parts = [shop?.address_line, shop?.city, shop?.state_region, shop?.postal]
+                .map((p) => (p ?? '').toString().trim())
+                .filter(Boolean);
+            // Only geocode when there's no coord yet AND we have something to search.
+            if (shop && shop.lat == null && parts.length > 0) {
+                const q = parts.join(', ');
+                const res = await fetch(
+                    `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(q)}`,
+                    {
+                        headers: {
+                            'User-Agent': 'rollout.club shop directory (info@neferstock.com)',
+                        },
+                        signal: AbortSignal.timeout(5000),
+                    },
+                );
+                if (res.ok) {
+                    const hits = (await res.json()) as Array<{ lat?: string; lon?: string }>;
+                    const hit = Array.isArray(hits) ? hits[0] : undefined;
+                    const lat = hit?.lat != null ? Number(hit.lat) : NaN;
+                    const lng = hit?.lon != null ? Number(hit.lon) : NaN;
+                    if (Number.isFinite(lat) && Number.isFinite(lng)) {
+                        await admin.from('shops').update({ lat, lng }).eq('id', decided.shop_id);
+                    }
+                }
+            }
+        } catch (e) {
+            console.error('[decideVerification] shop geocode failed (non-fatal):', e);
+        }
+    }
+
     // Best-effort approved/rejected email to the applicant/nominee.
     const req = reqRow as any;
     if (req) {
