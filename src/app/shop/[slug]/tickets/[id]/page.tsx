@@ -1,26 +1,38 @@
 /**
  * /shop/[slug]/tickets/[id] — single ticket detail with full lifecycle depth:
- * customer/vehicle, editable services, scheduling, worker assignment,
+ * customer/vehicle (editable), editable services, scheduling, worker assignment,
  * check-ins/inspections + photos, materials, customer chat + internal notes,
- * and an activity timeline. All mutations go through ./detail-actions.ts and
- * ../actions.ts and are shop-scoped.
+ * and an activity timeline.
+ *
+ * PERF: only the ticket CORE (loadTicket, ~1 indexed round-trip) blocks first
+ * paint — header, customer, vehicle, services, pricing, notes, scheduling,
+ * status, priority render immediately. The heavy panels (installers/worker
+ * pool, inspections, materials, chat, activity) stream in behind <Suspense>
+ * via ./sections.tsx so they never hold up the interactive shell. Mutations go
+ * through ./detail-actions.ts, ../actions.ts and ../form-actions.ts (shop-scoped).
  */
+import { Suspense } from 'react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requireShopMemberBySlug } from '@/lib/auth-guard';
 import { getSupabasePublicAdmin } from '@/lib/supabase/admin';
-import { listShopWorkerPool } from '@/lib/staff-bridge';
+import { Skeleton, SkeletonRows, SkeletonText } from '@/components/feedback';
 import {
     StatusSelect,
     PrioritySelect,
-    ServiceDayInput,
+    ScheduleEditor,
     AppendNoteForm,
 } from './TicketActions';
-import { TicketCheckins } from './TicketCheckins';
-import { TicketWorkers } from './TicketWorkers';
 import { TicketServicesEditor } from './TicketServicesEditor';
-import { TicketChat } from './TicketChat';
-import { TicketMaterials } from './TicketMaterials';
+import { TicketCustomerEditor } from './TicketCustomerEditor';
+import { TicketVehicleEditor } from './TicketVehicleEditor';
+import {
+    WorkersSection,
+    CheckinsSection,
+    MaterialsSection,
+    ChatSection,
+    ActivitySection,
+} from './sections';
 
 export const metadata = { title: 'Ticket' };
 
@@ -31,18 +43,6 @@ function statusPillVariant(status: string | null): '' | 'gold' | 'neon' | 'warn'
     if (s === 'cancelled' || s === 'declined') return 'warn';
     return '';
 }
-
-const ACTIVITY_PILL: Record<string, '' | 'gold' | 'neon' | 'warn'> = {
-    created: 'gold',
-    status_change: 'neon',
-    checkin: 'neon',
-    checkout: 'neon',
-    progress: '',
-    worker_assigned: '',
-    service_added: 'gold',
-    photo_added: '',
-    note: '',
-};
 
 async function loadTicket(shopId: number, id: string) {
     const pub = getSupabasePublicAdmin();
@@ -55,129 +55,6 @@ async function loadTicket(shopId: number, id: string) {
     return data as any;
 }
 
-/** Load all child data for the ticket detail in parallel. */
-async function loadDetail(shopId: number, ticketRowId: string) {
-    const pub = getSupabasePublicAdmin();
-
-    const [checkinsRes, workersRes, materialsRes, messagesRes, activityRes, poolRes] =
-        await Promise.all([
-            pub
-                .from('ticket_checkins')
-                .select('id, type, notes, condition_notes, odometer, fuel_level, media, checked_in_by, created_at')
-                .eq('ticket_id', ticketRowId)
-                .order('created_at', { ascending: false }),
-            pub
-                .from('ticket_workers')
-                .select('worker_id')
-                .eq('ticket_id', ticketRowId),
-            pub
-                .from('ticket_materials')
-                .select(
-                    'id, quantity_used, unit, applied_area, notes, serial_number:serial_numbers(serial_number, product:products(name))',
-                )
-                .eq('ticket_id', ticketRowId)
-                .order('created_at', { ascending: false }),
-            pub
-                .from('ticket_messages')
-                .select('id, sender_type, sender_name, message, visibility, attachments, created_at')
-                .eq('ticket_id', ticketRowId)
-                .order('created_at', { ascending: true }),
-            pub
-                .from('ticket_activity')
-                .select('id, type, title, description, created_by, created_at')
-                .eq('ticket_id', ticketRowId)
-                .neq('type', 'message')
-                .order('created_at', { ascending: false })
-                .limit(50),
-            listShopWorkerPool(shopId),
-        ]);
-
-    const checkins = (checkinsRes.data ?? []) as any[];
-    const activity = (activityRes.data ?? []) as any[];
-
-    // Resolve names for checkin workers + activity authors (public.profiles).
-    const nameIds = Array.from(
-        new Set(
-            [
-                ...checkins.map((c) => c.checked_in_by),
-                ...activity.map((a) => a.created_by),
-            ].filter(Boolean),
-        ),
-    ) as string[];
-    const nameById = new Map<string, string>();
-    if (nameIds.length > 0) {
-        const { data: staff } = await pub
-            .from('profiles')
-            .select('id, first_name, last_name, email')
-            .in('id', nameIds);
-        for (const s of (staff ?? []) as any[]) {
-            nameById.set(
-                s.id,
-                `${s.first_name ?? ''} ${s.last_name ?? ''}`.trim() || s.email || 'STAFF',
-            );
-        }
-    }
-
-    // Shop-scoped products + their in-stock serials for the materials picker.
-    const { data: productRows } = await pub
-        .from('products')
-        .select('id, name, default_unit')
-        .eq('shop_id', shopId)
-        .eq('is_active', true)
-        .order('name')
-        .limit(500);
-    const products = (productRows ?? []) as any[];
-    const productIds = products.map((p) => p.id);
-    const serialsByProduct = new Map<string, any[]>();
-    if (productIds.length > 0) {
-        const { data: serials } = await pub
-            .from('serial_numbers')
-            .select('id, serial_number, status, product_id')
-            .in('product_id', productIds)
-            .in('status', ['in_stock', 'low_stock', 'split'])
-            .limit(2000);
-        for (const s of (serials ?? []) as any[]) {
-            const arr = serialsByProduct.get(s.product_id) ?? [];
-            arr.push({ id: s.id, serial_number: s.serial_number, status: s.status });
-            serialsByProduct.set(s.product_id, arr);
-        }
-    }
-    const productOptions = products
-        .map((p) => ({
-            id: p.id,
-            name: p.name,
-            default_unit: p.default_unit,
-            serials: serialsByProduct.get(p.id) ?? [],
-        }))
-        .filter((p) => p.serials.length > 0);
-
-    return {
-        checkins: checkins.map((c) => ({
-            ...c,
-            worker_name: c.checked_in_by ? nameById.get(c.checked_in_by) ?? null : null,
-        })),
-        assignedIds: ((workersRes.data ?? []) as any[])
-            .map((r) => r.worker_id)
-            .filter(Boolean),
-        materials: ((materialsRes.data ?? []) as any[]).map((m) => ({
-            id: m.id,
-            quantity_used: m.quantity_used,
-            unit: m.unit,
-            applied_area: m.applied_area,
-            notes: m.notes,
-            product_name: m.serial_number?.product?.name ?? null,
-            serial_number: m.serial_number?.serial_number ?? null,
-        })),
-        messages: (messagesRes.data ?? []) as any[],
-        activity: activity.map((a) => ({
-            ...a,
-            author: a.created_by ? nameById.get(a.created_by) ?? null : null,
-        })),
-        pool: poolRes,
-        productOptions,
-    };
-}
-
 export default async function TicketDetailPage({
     params,
 }: {
@@ -187,9 +64,6 @@ export default async function TicketDetailPage({
     const { shop, role } = await requireShopMemberBySlug(slug);
     const t = await loadTicket(shop.shopId, id);
     if (!t) notFound();
-
-    const detail = await loadDetail(shop.shopId, t.id);
-    const vehicle = [t.car_year, t.car_make, t.car_model].filter(Boolean).join(' ');
 
     return (
         <>
@@ -219,7 +93,7 @@ export default async function TicketDetailPage({
                         </span>
                         {t.priority && (
                             <span
-                                className={`admin-pill ${t.priority === 'urgent' ? 'warn' : 'neon'}`}
+                                className={`admin-pill ${t.priority === 'rush' ? 'warn' : 'neon'}`}
                                 style={{ marginLeft: 6 }}
                             >
                                 {String(t.priority).toUpperCase()}
@@ -256,30 +130,35 @@ export default async function TicketDetailPage({
                 {/* LEFT */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
                     <Section title="CUSTOMER">
-                        <KV label="NAME" value={t.customer_name ?? '—'} />
-                        <KV label="EMAIL" value={t.email ?? '—'} mono />
-                        <KV label="PHONE" value={t.phone ?? '—'} mono />
-                        {t.customer_id && (
-                            <KV
-                                label="CUSTOMER ID"
-                                value={
-                                    <Link
-                                        href={`/shop/${slug}/customers/l-${t.customer_id}`}
-                                        className="text-link"
-                                        style={{ fontFamily: 'var(--font-mono, monospace)' }}
-                                    >
-                                        {t.customer_id}
-                                    </Link>
-                                }
-                            />
-                        )}
+                        <TicketCustomerEditor
+                            slug={slug}
+                            ticketRowId={t.id}
+                            callerRole={role}
+                            current={{
+                                customerId: t.customer_id ?? null,
+                                name: t.customer_name ?? null,
+                                email: t.email ?? null,
+                                phone: t.phone ?? null,
+                            }}
+                        />
                     </Section>
 
                     <Section title="VEHICLE">
-                        <KV label="YEAR / MAKE / MODEL" value={vehicle || '—'} />
-                        <KV label="TRIM" value={t.trim ?? '—'} />
-                        <KV label="COLOR" value={t.color ?? '—'} />
-                        <KV label="VIN" value={t.vin ?? '—'} mono />
+                        <TicketVehicleEditor
+                            slug={slug}
+                            ticketRowId={t.id}
+                            callerRole={role}
+                            customerId={t.customer_id ?? null}
+                            current={{
+                                vehicleId: t.vehicle_id ?? null,
+                                year: t.car_year ?? null,
+                                make: t.car_make ?? null,
+                                model: t.car_model ?? null,
+                                trim: t.trim ?? null,
+                                color: t.color ?? null,
+                                vin: t.vin ?? null,
+                            }}
+                        />
                     </Section>
 
                     <Section title="SERVICES">
@@ -329,8 +208,13 @@ export default async function TicketDetailPage({
 
                 {/* RIGHT */}
                 <aside style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-                    <Section title="SERVICE DAY">
-                        <ServiceDayInput slug={slug} ticketRowId={t.id} initial={t.service_day ?? null} />
+                    <Section title="SCHEDULE">
+                        <ScheduleEditor
+                            slug={slug}
+                            ticketRowId={t.id}
+                            initialServiceDay={t.service_day ?? null}
+                            initialEndDate={t.end_date ?? null}
+                        />
                     </Section>
                     <Section title="STATUS">
                         <StatusSelect slug={slug} ticketRowId={t.id} initial={t.status ?? 'pending'} />
@@ -339,13 +223,14 @@ export default async function TicketDetailPage({
                         <PrioritySelect slug={slug} ticketRowId={t.id} initial={t.priority ?? 'normal'} />
                     </Section>
                     <Section title="INSTALLERS">
-                        <TicketWorkers
-                            slug={slug}
-                            ticketRowId={t.id}
-                            pool={detail.pool}
-                            assignedIds={detail.assignedIds}
-                            callerRole={role}
-                        />
+                        <Suspense fallback={<SkeletonText lines={3} />}>
+                            <WorkersSection
+                                slug={slug}
+                                shopId={shop.shopId}
+                                ticketRowId={t.id}
+                                callerRole={role}
+                            />
+                        </Suspense>
                     </Section>
                     <Section title="METADATA">
                         <KV
@@ -359,73 +244,30 @@ export default async function TicketDetailPage({
                 </aside>
             </div>
 
-            {/* FULL-WIDTH SECTIONS */}
+            {/* FULL-WIDTH STREAMED SECTIONS */}
             <div style={{ marginTop: 22, display: 'flex', flexDirection: 'column', gap: 18 }}>
                 <Section title="INSPECTIONS">
-                    <TicketCheckins
-                        slug={slug}
-                        ticketRowId={t.id}
-                        checkins={detail.checkins}
-                        callerRole={role}
-                    />
+                    <Suspense fallback={<SkeletonRows rows={2} cols={3} />}>
+                        <CheckinsSection slug={slug} ticketRowId={t.id} callerRole={role} />
+                    </Suspense>
                 </Section>
 
                 <Section title="MATERIALS">
-                    <TicketMaterials
-                        slug={slug}
-                        ticketRowId={t.id}
-                        materials={detail.materials}
-                        products={detail.productOptions}
-                        callerRole={role}
-                    />
+                    <Suspense fallback={<SkeletonRows rows={2} cols={4} />}>
+                        <MaterialsSection slug={slug} ticketRowId={t.id} callerRole={role} />
+                    </Suspense>
                 </Section>
 
                 <Section title="MESSAGES">
-                    <TicketChat slug={slug} ticketRowId={t.id} messages={detail.messages} />
+                    <Suspense fallback={<SkeletonText lines={4} />}>
+                        <ChatSection slug={slug} ticketRowId={t.id} />
+                    </Suspense>
                 </Section>
 
                 <Section title="ACTIVITY TIMELINE">
-                    {detail.activity.length === 0 ? (
-                        <div className="admin-empty">NO ACTIVITY YET</div>
-                    ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                            {detail.activity.map((a: any) => (
-                                <div
-                                    key={a.id}
-                                    style={{
-                                        display: 'grid',
-                                        gridTemplateColumns: '130px 1fr',
-                                        gap: 10,
-                                        fontSize: 12,
-                                        borderBottom: '1px solid var(--line)',
-                                        padding: '6px 0',
-                                    }}
-                                >
-                                    <div className="admin-handle">
-                                        {a.created_at
-                                            ? new Date(a.created_at).toISOString().slice(0, 16).replace('T', ' ')
-                                            : '—'}
-                                    </div>
-                                    <div>
-                                        <span
-                                            className={`admin-pill ${ACTIVITY_PILL[a.type] ?? ''}`}
-                                            style={{ marginRight: 8 }}
-                                        >
-                                            {(a.title ?? a.type ?? '—').toString()}
-                                        </span>
-                                        {a.description && (
-                                            <span style={{ color: 'var(--text-2)' }}>{a.description}</span>
-                                        )}
-                                        {a.author && (
-                                            <span className="admin-handle" style={{ marginLeft: 8 }}>
-                                                {a.author}
-                                            </span>
-                                        )}
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    )}
+                    <Suspense fallback={<SkeletonRows rows={4} cols={2} />}>
+                        <ActivitySection ticketRowId={t.id} />
+                    </Suspense>
                 </Section>
             </div>
         </>

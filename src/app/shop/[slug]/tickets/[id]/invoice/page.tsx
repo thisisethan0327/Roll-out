@@ -10,24 +10,9 @@ import { notFound } from 'next/navigation';
 import { requireShopMemberBySlug } from '@/lib/auth-guard';
 import { getSupabaseAdmin, getSupabasePublicAdmin } from '@/lib/supabase/admin';
 import { PrintButton } from './PrintButton';
+import { parseServices, lineTotal, totalFromLines } from '@/lib/ticket-services';
 
 export const metadata = { title: 'Invoice' };
-
-type LineItem = { name: string; qty: number; price: number | null };
-
-function parseServices(services: any): LineItem[] {
-    if (!Array.isArray(services)) return [];
-    return services.map((s: any) => {
-        if (s && typeof s === 'object') {
-            return {
-                name: String(s.name ?? s.notes ?? 'Service'),
-                qty: s.qty != null ? Number(s.qty) : 1,
-                price: s.price != null && !Number.isNaN(Number(s.price)) ? Number(s.price) : null,
-            };
-        }
-        return { name: String(s), qty: 1, price: null };
-    });
-}
 
 function money(n: number | null | undefined): string {
     if (n == null || Number.isNaN(Number(n))) return '—';
@@ -75,12 +60,9 @@ export default async function TicketInvoicePage({
     const shopName = branding.from_name || branding.name || shop.name;
     const vehicle = [t.car_year, t.car_make, t.car_model, t.trim].filter(Boolean).join(' ');
     const lineItems = parseServices(t.services);
-    const itemsSubtotal = lineItems.reduce(
-        (sum, li) => (li.price != null ? sum + li.price * (li.qty || 1) : sum),
-        0,
-    );
+    const itemsSubtotal = totalFromLines(lineItems) ?? 0;
     const total = t.total_price != null ? Number(t.total_price) : itemsSubtotal;
-    const hasPrices = lineItems.some((li) => li.price != null);
+    const hasPrices = lineItems.some((li) => lineTotal(li) != null);
 
     return (
         <>
@@ -177,10 +159,10 @@ export default async function TicketInvoicePage({
                         ) : (
                             lineItems.map((li, idx) => (
                                 <tr key={idx} style={{ borderBottom: '1px solid #eee' }}>
-                                    <td style={{ padding: '10px 0' }}>{li.name}</td>
-                                    <td style={{ padding: '10px 0', textAlign: 'center' }}>{li.qty || 1}</td>
+                                    <td style={{ padding: '10px 0' }}>{li.service || 'Service'}</td>
+                                    <td style={{ padding: '10px 0', textAlign: 'center' }}>{li.quantity || 1}</td>
                                     <td style={{ padding: '10px 0', textAlign: 'right', fontFamily: 'monospace' }}>
-                                        {li.price != null ? money(li.price * (li.qty || 1)) : '—'}
+                                        {money(lineTotal(li))}
                                     </td>
                                 </tr>
                             ))

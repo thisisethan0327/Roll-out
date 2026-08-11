@@ -5,7 +5,9 @@
  * action in useTransition so the UI shows a pending state.
  */
 import { useState, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
 import { setStatus, setServiceDay, setPriority, appendNote } from '../actions';
+import { setTicketSchedule } from '../form-actions';
 
 // Must match the public.tickets `tickets_status_check` DB constraint.
 const STATUS_OPTIONS = [
@@ -18,7 +20,9 @@ const STATUS_OPTIONS = [
     'cancelled',
 ];
 
-const PRIORITY_OPTIONS = ['normal', 'high', 'urgent'];
+// Must match the public.tickets `tickets_priority_check` DB constraint
+// (priority = ANY('normal','rush')); high/urgent would violate it.
+const PRIORITY_OPTIONS = ['normal', 'rush'];
 
 export function StatusSelect({
     slug,
@@ -129,6 +133,69 @@ export function ServiceDayInput({
             className="admin-form-input"
             style={{ width: '100%', fontFamily: 'var(--font-mono, monospace)', fontSize: 12 }}
         />
+    );
+}
+
+export function ScheduleEditor({
+    slug,
+    ticketRowId,
+    initialServiceDay,
+    initialEndDate,
+}: {
+    slug: string;
+    ticketRowId: string;
+    initialServiceDay: string | null;
+    initialEndDate: string | null;
+}) {
+    const router = useRouter();
+    const [pending, start] = useTransition();
+    const [serviceDay, setServiceDayVal] = useState(initialServiceDay ?? '');
+    const [endDate, setEndDate] = useState(initialEndDate ?? '');
+
+    const commit = (sd: string, ed: string) => {
+        start(async () => {
+            try {
+                await setTicketSchedule(slug, ticketRowId, sd || null, ed || null);
+                router.refresh();
+            } catch (err: any) {
+                alert('Reschedule failed: ' + (err?.message ?? 'unknown'));
+                setServiceDayVal(initialServiceDay ?? '');
+                setEndDate(initialEndDate ?? '');
+            }
+        });
+    };
+
+    return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <span className="admin-form-label">SERVICE DAY</span>
+                <input
+                    type="date"
+                    disabled={pending}
+                    value={serviceDay}
+                    onChange={(e) => {
+                        setServiceDayVal(e.target.value);
+                        commit(e.target.value, endDate);
+                    }}
+                    className="admin-form-input"
+                    style={{ width: '100%', fontFamily: 'var(--font-mono, monospace)', fontSize: 12 }}
+                />
+            </label>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <span className="admin-form-label">END DATE</span>
+                <input
+                    type="date"
+                    disabled={pending}
+                    value={endDate}
+                    onChange={(e) => {
+                        setEndDate(e.target.value);
+                        commit(serviceDay, e.target.value);
+                    }}
+                    className="admin-form-input"
+                    style={{ width: '100%', fontFamily: 'var(--font-mono, monospace)', fontSize: 12 }}
+                />
+            </label>
+        </div>
     );
 }
 

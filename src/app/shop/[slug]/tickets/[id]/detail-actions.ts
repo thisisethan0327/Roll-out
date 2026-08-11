@@ -22,6 +22,11 @@ import {
     assertTicketMediaPath,
     removeTicketMedia,
 } from '@/lib/ticket-media';
+import {
+    serializeServices,
+    totalFromPersisted,
+    type ServiceLine,
+} from '@/lib/ticket-services';
 
 const INSTALLER_ROLES = new Set(['owner', 'admin', 'manager', 'installer']);
 const MANAGER_ROLES = new Set(['owner', 'admin', 'manager']);
@@ -305,8 +310,11 @@ export async function setTicketWorkers(
 }
 
 // ── SERVICES (editable line items in services JSONB) ────────────────────────
-
-export type ServiceLine = { name: string; qty: number; price: number | null };
+//
+// Persisted in the emwraps-compatible shape ({ service, price, unit_price,
+// quantity, duration, custom? }) via the shared serializer so both consoles
+// read each other's tickets cleanly. `price` is the LINE TOTAL; total_price is
+// Σ line.price over priced lines.
 
 export async function updateTicketServices(
     slug: string,
@@ -317,24 +325,11 @@ export async function updateTicketServices(
     await ownedTicket(shopId, ticketRowId);
     const pub = getSupabasePublicAdmin();
 
-    const clean = items
-        .map((i) => ({
-            name: String(i.name ?? '').trim(),
-            qty: Number.isFinite(i.qty) && i.qty > 0 ? Math.round(i.qty) : 1,
-            price:
-                i.price != null && Number.isFinite(Number(i.price))
-                    ? Number(i.price)
-                    : null,
-        }))
-        .filter((i) => i.name.length > 0);
-
-    const hasAnyPrice = clean.some((i) => i.price != null);
-    const total = hasAnyPrice
-        ? clean.reduce((s, i) => s + (i.price ?? 0) * (i.qty || 1), 0)
-        : null;
+    const persisted = serializeServices(items);
+    const total = totalFromPersisted(persisted);
 
     const update: Record<string, any> = {
-        services: clean,
+        services: persisted,
         updated_at: new Date().toISOString(),
     };
     // Only overwrite total when we can compute one from priced line items.
@@ -352,7 +347,7 @@ export async function updateTicketServices(
         ticketId: ticketRowId,
         type: 'service_added',
         title: 'Services updated',
-        description: `${clean.length} line item${clean.length === 1 ? '' : 's'}${
+        description: `${persisted.length} line item${persisted.length === 1 ? '' : 's'}${
             total != null ? ` · $${total.toFixed(2)}` : ''
         }`,
         createdBy,

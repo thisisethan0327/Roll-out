@@ -4,10 +4,15 @@
  * products). View existing, add by picking a shop-scoped product then one of
  * its in-stock serial units, remove existing. Add prefers the emwraps
  * add_material_to_ticket RPC server-side for correct stock accounting.
+ *
+ * The product/serial picker options are LAZY: fetched via
+ * loadMaterialPickerOptions only when the user opens the "add" panel, so the
+ * ticket page's first paint never pays for the products+serials scan.
  */
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { addTicketMaterial, removeTicketMaterial } from './detail-actions';
+import { loadMaterialPickerOptions, type MaterialPickerProduct } from '../form-actions';
 
 const MANAGER_ROLES = new Set(['owner', 'admin', 'manager']);
 
@@ -21,28 +26,22 @@ type MaterialRow = {
     serial_number: string | null;
 };
 
-type ProductOption = {
-    id: string;
-    name: string | null;
-    default_unit: string | null;
-    serials: { id: string; serial_number: string | null; status: string | null }[];
-};
-
 export function TicketMaterials({
     slug,
     ticketRowId,
     materials,
-    products,
     callerRole,
 }: {
     slug: string;
     ticketRowId: string;
     materials: MaterialRow[];
-    products: ProductOption[];
     callerRole: string;
 }) {
     const router = useRouter();
     const [pending, start] = useTransition();
+    const [loadingOpts, startLoad] = useTransition();
+    const [products, setProducts] = useState<MaterialPickerProduct[] | null>(null);
+    const [panelOpen, setPanelOpen] = useState(false);
     const [productId, setProductId] = useState('');
     const [serialId, setSerialId] = useState('');
     const [qty, setQty] = useState('1');
@@ -51,7 +50,20 @@ export function TicketMaterials({
     const [armedDelete, setArmedDelete] = useState<string | null>(null);
     const canManage = MANAGER_ROLES.has(callerRole);
 
-    const selectedProduct = products.find((p) => p.id === productId);
+    const openPanel = () => {
+        setPanelOpen(true);
+        if (products == null && !loadingOpts) {
+            startLoad(async () => {
+                try {
+                    setProducts(await loadMaterialPickerOptions(slug));
+                } catch {
+                    setProducts([]);
+                }
+            });
+        }
+    };
+
+    const selectedProduct = (products ?? []).find((p) => p.id === productId);
 
     const add = () => {
         if (!serialId) {
@@ -115,9 +127,7 @@ export function TicketMaterials({
                                 <tr key={m.id}>
                                     <td>{m.product_name ?? '—'}</td>
                                     <td>
-                                        <span className="admin-handle">
-                                            {m.serial_number ?? '—'}
-                                        </span>
+                                        <span className="admin-handle">{m.serial_number ?? '—'}</span>
                                     </td>
                                     <td>
                                         {m.quantity_used ?? '—'} {m.unit ?? ''}
@@ -142,7 +152,15 @@ export function TicketMaterials({
                 </div>
             )}
 
-            {canManage && (
+            {canManage && !panelOpen && (
+                <div style={{ marginTop: 12 }}>
+                    <button type="button" className="admin-action-btn" onClick={openPanel}>
+                        + ADD MATERIAL
+                    </button>
+                </div>
+            )}
+
+            {canManage && panelOpen && (
                 <div
                     style={{
                         marginTop: 12,
@@ -154,7 +172,9 @@ export function TicketMaterials({
                         gap: 8,
                     }}
                 >
-                    {products.length === 0 ? (
+                    {loadingOpts && products == null ? (
+                        <div className="admin-empty">LOADING STOCK…</div>
+                    ) : (products ?? []).length === 0 ? (
                         <div className="admin-empty">
                             NO SHOP PRODUCTS WITH STOCK — ADD PRODUCTS IN THE PRODUCTS SECTION.
                         </div>
@@ -169,7 +189,7 @@ export function TicketMaterials({
                                 }}
                             >
                                 <option value="">Select product…</option>
-                                {products.map((p) => (
+                                {(products ?? []).map((p) => (
                                     <option key={p.id} value={p.id}>
                                         {p.name ?? p.id}
                                     </option>
@@ -215,7 +235,7 @@ export function TicketMaterials({
                                     style={{ flex: 1 }}
                                 />
                             </div>
-                            <div>
+                            <div style={{ display: 'flex', gap: 8 }}>
                                 <button
                                     type="button"
                                     className="admin-action-btn"
@@ -223,6 +243,13 @@ export function TicketMaterials({
                                     onClick={add}
                                 >
                                     {pending ? 'ADDING…' : '+ ADD MATERIAL'}
+                                </button>
+                                <button
+                                    type="button"
+                                    className="admin-action-btn muted"
+                                    onClick={() => setPanelOpen(false)}
+                                >
+                                    CANCEL
                                 </button>
                             </div>
                         </>

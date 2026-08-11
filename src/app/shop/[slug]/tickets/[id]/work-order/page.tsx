@@ -10,21 +10,9 @@ import { notFound } from 'next/navigation';
 import { requireShopMemberBySlug } from '@/lib/auth-guard';
 import { getSupabaseAdmin, getSupabasePublicAdmin } from '@/lib/supabase/admin';
 import { PrintButton } from '../invoice/PrintButton';
+import { parseServices, lineTotal } from '@/lib/ticket-services';
 
 export const metadata = { title: 'Work Order' };
-
-function parseServices(services: any): { name: string; qty: number; price: number | null }[] {
-    if (!Array.isArray(services)) return [];
-    return services.map((s: any) =>
-        s && typeof s === 'object'
-            ? {
-                  name: String(s.name ?? s.notes ?? 'Service'),
-                  qty: s.qty != null ? Number(s.qty) : 1,
-                  price: s.price != null && !Number.isNaN(Number(s.price)) ? Number(s.price) : null,
-              }
-            : { name: String(s), qty: 1, price: null },
-    );
-}
 
 function fmtDate(iso: string | null): string {
     const d = iso ? new Date(iso) : new Date();
@@ -188,15 +176,18 @@ export default async function WorkOrderPage({
                         {lineItems.length === 0 ? (
                             <tr><td colSpan={3} style={{ padding: '12px 0', color: '#888' }}>No services listed.</td></tr>
                         ) : (
-                            lineItems.map((li, i) => (
-                                <tr key={i} style={{ borderBottom: '1px solid #eee' }}>
-                                    <td style={{ padding: '9px 0' }}>{li.name}</td>
-                                    <td style={{ padding: '9px 0', textAlign: 'center' }}>{li.qty || 1}</td>
-                                    <td style={{ padding: '9px 0', textAlign: 'right', fontFamily: 'monospace' }}>
-                                        {li.price != null ? `$${(li.price * (li.qty || 1)).toFixed(2)}` : '—'}
-                                    </td>
-                                </tr>
-                            ))
+                            lineItems.map((li, i) => {
+                                const amt = lineTotal(li);
+                                return (
+                                    <tr key={i} style={{ borderBottom: '1px solid #eee' }}>
+                                        <td style={{ padding: '9px 0' }}>{li.service || 'Service'}</td>
+                                        <td style={{ padding: '9px 0', textAlign: 'center' }}>{li.quantity || 1}</td>
+                                        <td style={{ padding: '9px 0', textAlign: 'right', fontFamily: 'monospace' }}>
+                                            {amt != null ? `$${amt.toFixed(2)}` : '—'}
+                                        </td>
+                                    </tr>
+                                );
+                            })
                         )}
                     </tbody>
                 </table>
