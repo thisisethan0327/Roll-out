@@ -1334,10 +1334,11 @@ h4 { font-size: 16px; letter-spacing: var(--track-wide); }
 }
 .meets-split-map {
   position: sticky;
-  top: 64px;
+  top: 80px;
   align-self: start;
-  height: calc(100vh - 64px);
-  min-height: 480px;
+  /* founder: full-viewport was too tall — cap the map to a comfortable card */
+  height: min(calc(100vh - 160px), 560px);
+  min-height: 420px;
   border: 1px solid var(--line);
   background: var(--bg-2);
   overflow: hidden;
