@@ -10,11 +10,15 @@
  * Medusa `order.placed` subscriber stamps order.metadata.vendor from category
  * handles and sends the tenant-branded email.
  *
- * Two invariants enforced here:
+ * Invariants enforced here:
  *  - PAUSE GATE: a paused product (metadata.paused) can never be added, even by
  *    a hand-crafted request — the UI hides the control AND this re-checks.
- *  - SINGLE-VENDOR CART: one shop per order. The first add stamps the cart's
- *    vendor into cart.metadata; a later add from a different shop is rejected.
+ *  - LINE-LEVEL VENDOR ATTRIBUTION (P2A): every line carries its own vendor on
+ *    `line.metadata.vendor` (the tenant key the vendor dashboards filter on) plus
+ *    the owning shop for display. MIXED CARTS ARE ALLOWED — a customer may buy
+ *    from several shops (and install add-ons) in one cart / one order. The cart
+ *    metadata carries the PRIMARY (highest-value) shop for legacy single-vendor
+ *    display, plus a `vendors` list and a `multi` flag.
  */
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
@@ -24,13 +28,18 @@ import {
     medusaHeaders,
     isPausedMeta,
 } from './medusa';
-import { getSellingShops, resolveVendorShop } from './store-shops';
+import {
+    getSellingShops,
+    resolveVendorShop,
+    resolveShopVendorKey,
+} from './store-shops';
 import { ensureMedusaCustomerToken } from './medusa-customer';
 import type {
     ActionResult,
     AddressInput,
     Cart,
     CartLine,
+    CartVendor,
     ShippingOption,
 } from './medusa-types';
 
@@ -38,7 +47,7 @@ const CART_COOKIE = '_rollout_cart_id';
 const PROVIDER_ID = process.env.MEDUSA_STRIPE_PROVIDER_ID || 'pp_stripe_stripe';
 
 const CART_FIELDS =
-    '*items,*items.variant,*items.product,+items.total,+items.unit_price,' +
+    '*items,*items.variant,*items.product,+items.total,+items.unit_price,+items.metadata,' +
     '*shipping_methods,*shipping_address,*payment_collection,' +
     '*payment_collection.payment_sessions,+subtotal,+item_subtotal,+shipping_total,+tax_total,+total,+item_total';
 
@@ -99,17 +108,58 @@ function num(v: any): number {
 }
 
 function normalizeCart(raw: any): Cart {
-    const items: CartLine[] = (Array.isArray(raw?.items) ? raw.items : []).map((it: any) => ({
-        id: it.id,
-        productTitle: it.product_title ?? it.title ?? 'Item',
-        variantTitle: it.variant_title ?? it.variant?.title ?? null,
-        productHandle: it.product_handle ?? it.product?.handle ?? null,
-        thumbnail: it.thumbnail ?? it.product?.thumbnail ?? null,
-        quantity: num(it.quantity),
-        unitPrice: num(it.unit_price),
-        total: num(it.total ?? it.unit_price * it.quantity),
-    }));
-    const meta = raw?.metadata ?? {};
+    const items: CartLine[] = (Array.isArray(raw?.items) ? raw.items : []).map((it: any) => {
+        const lm = (it.metadata ?? {}) as Record<string, any>;
+        return {
+            id: it.id,
+            productTitle: it.product_title ?? it.title ?? 'Item',
+            variantTitle: it.variant_title ?? it.variant?.title ?? null,
+            productHandle: it.product_handle ?? it.product?.handle ?? null,
+            thumbnail: it.thumbnail ?? it.product?.thumbnail ?? null,
+            quantity: num(it.quantity),
+            unitPrice: num(it.unit_price),
+            total: num(it.total ?? it.unit_price * it.quantity),
+            vendor: lm.vendor ?? null,
+            shopName: lm.shop_name ?? null,
+            shopHandle: lm.shop_handle ?? null,
+        };
+    });
+
+    // Distinct owning shops across the cart's lines (by shop slug), and the
+    // PRIMARY = the shop whose lines sum to the highest money value. Derived
+    // purely from line metadata so it's always consistent with what was stamped.
+    const shopOrder: string[] = [];
+    const shopWeight = new Map<string, number>();
+    const shopByKey = new Map<string, CartVendor>();
+    for (const it of items) {
+        const lm = (raw.items?.find((r: any) => r.id === it.id)?.metadata ?? {}) as Record<string, any>;
+        const slug = lm.shop_slug ?? null;
+        if (!slug) continue; // install / unattributed line — not a shop
+        if (!shopWeight.has(slug)) {
+            shopWeight.set(slug, 0);
+            shopOrder.push(slug);
+            shopByKey.set(slug, {
+                shopId: lm.shop_id != null ? Number(lm.shop_id) : null,
+                slug,
+                name: lm.shop_name ?? null,
+                handle: lm.shop_handle ?? null,
+            });
+        }
+        shopWeight.set(slug, shopWeight.get(slug)! + it.total);
+    }
+    let primarySlug: string | null = shopOrder[0] ?? null;
+    for (const s of shopOrder) {
+        if (primarySlug == null || shopWeight.get(s)! > shopWeight.get(primarySlug)!) primarySlug = s;
+    }
+    const vendors: CartVendor[] = shopOrder.map((s) => shopByKey.get(s)!);
+    const primary: CartVendor =
+        (primarySlug && shopByKey.get(primarySlug)) || {
+            shopId: null,
+            slug: null,
+            name: null,
+            handle: null,
+        };
+
     return {
         id: raw.id,
         email: raw.email ?? null,
@@ -124,12 +174,9 @@ function normalizeCart(raw: any): Cart {
         total: num(raw.total),
         hasShippingAddress: Boolean(raw.shipping_address?.address_1),
         shippingOptionId: raw.shipping_methods?.[0]?.shipping_option_id ?? null,
-        vendor: {
-            shopId: meta.vendor_shop_id != null ? Number(meta.vendor_shop_id) : null,
-            slug: meta.vendor_slug ?? null,
-            name: meta.vendor_name ?? null,
-            handle: meta.vendor_handle ?? null,
-        },
+        vendor: primary,
+        vendors,
+        isMultiVendor: vendors.length > 1,
     };
 }
 
@@ -207,55 +254,35 @@ export async function addToCart(
 ): Promise<ActionResult<Cart>> {
     if (!variantId) return { ok: false, error: 'Missing variant.' };
 
-    // Resolve the owning product: enforces the pause gate AND single-vendor lock.
+    // Resolve the owning product: enforces the pause gate and resolves the line's
+    // vendor. Mixed carts are allowed — no single-vendor rejection.
     const owner = await resolveVariantOwner(variantId);
     if (owner?.paused) {
         return { ok: false, error: 'This product is coming soon and can’t be purchased yet.' };
     }
 
+    // Line-level attribution: the tenant vendor KEY (what vendor dashboards
+    // filter on) plus the owning shop for per-line display. Category-less lines
+    // (install add-ons) resolve to null and are bridged to appointments on the
+    // backend at order.placed — they carry no vendor here.
     const shops = await getSellingShops();
-    const vendor = owner ? resolveVendorShop(owner.categoryHandles, shops) : null;
+    const vendorShop = owner ? resolveVendorShop(owner.categoryHandles, shops) : null;
+    const vendorKey = owner ? resolveShopVendorKey({ categoryHandles: owner.categoryHandles }) : null;
+    const lineMetadata: Record<string, unknown> = {
+        vendor: vendorKey,
+        shop_id: vendorShop?.shopId ?? null,
+        shop_slug: vendorShop?.slug ?? null,
+        shop_name: vendorShop?.name ?? null,
+        shop_handle: vendorShop?.handle ?? null,
+    };
 
     const cartId = await ensureCartId();
-    const raw = await fetchRawCart(cartId);
-    const existingVendorId = raw?.metadata?.vendor_shop_id
-        ? Number(raw.metadata.vendor_shop_id)
-        : null;
-
-    if (
-        existingVendorId != null &&
-        vendor != null &&
-        existingVendorId !== vendor.shopId &&
-        (raw?.items?.length ?? 0) > 0
-    ) {
-        const existingName = raw?.metadata?.vendor_name || 'another shop';
-        return {
-            ok: false,
-            error: `One shop per order. Your cart already has items from ${existingName}. Check out or empty it before adding from a different shop.`,
-        };
-    }
 
     try {
         await medusaFetch(`/store/carts/${cartId}/line-items`, {
             method: 'POST',
-            body: JSON.stringify({ variant_id: variantId, quantity }),
+            body: JSON.stringify({ variant_id: variantId, quantity, metadata: lineMetadata }),
         });
-
-        // Stamp the vendor onto the cart on first add so attribution + the
-        // single-vendor guard survive across requests.
-        if (existingVendorId == null && vendor) {
-            await medusaFetch(`/store/carts/${cartId}`, {
-                method: 'POST',
-                body: JSON.stringify({
-                    metadata: {
-                        vendor_shop_id: String(vendor.shopId),
-                        vendor_slug: vendor.slug,
-                        vendor_name: vendor.name,
-                        vendor_handle: vendor.handle,
-                    },
-                }),
-            });
-        }
     } catch (e: any) {
         return { ok: false, error: e?.message ?? 'Could not add to cart.' };
     }
@@ -285,21 +312,8 @@ export async function updateLineItem(
     } catch (e: any) {
         return { ok: false, error: e?.message ?? 'Could not update item.' };
     }
-    const raw = await fetchRawCart(cartId);
-    // Clear the vendor lock once the cart is empty so the shopper can start over.
-    if (raw && (raw.items?.length ?? 0) === 0 && raw.metadata?.vendor_shop_id) {
-        await medusaFetch(`/store/carts/${cartId}`, {
-            method: 'POST',
-            body: JSON.stringify({
-                metadata: {
-                    vendor_shop_id: null,
-                    vendor_slug: null,
-                    vendor_name: null,
-                    vendor_handle: null,
-                },
-            }),
-        }).catch(() => {});
-    }
+    // Vendor attribution now lives on each LINE's metadata (see addToCart), so
+    // an empty cart needs no vendor-lock teardown — there is nothing to clear.
     revalidatePath('/store/cart');
     const fresh = await fetchRawCart(cartId);
     return { ok: true, data: fresh ? normalizeCart(fresh) : undefined };

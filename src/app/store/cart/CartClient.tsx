@@ -43,7 +43,15 @@ export function CartClient({ initialCart }: { initialCart: Cart | null }) {
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-            {cart.vendor.name ? (
+            {cart.isMultiVendor ? (
+                <div className="mono-row" style={{ fontSize: 12 }}>
+                    <span className="accent">SOLD BY</span>
+                    <span className="sep" />
+                    <span style={{ color: 'var(--text)' }}>
+                        {cart.vendors.map((v) => v.name).filter(Boolean).join(' · ')}
+                    </span>
+                </div>
+            ) : cart.vendor.name ? (
                 <div className="mono-row" style={{ fontSize: 12 }}>
                     <span className="accent">SOLD BY</span>
                     <span className="sep" />

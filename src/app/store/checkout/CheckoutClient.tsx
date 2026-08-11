@@ -318,7 +318,15 @@ function CheckoutInner({
             {/* RIGHT: order summary */}
             <aside style={{ border: '1px solid var(--line)', background: 'var(--bg-2)', padding: 20, position: 'sticky', top: 84 }}>
                 <div className="eyebrow eyebrow-gold mb-4">／ ORDER</div>
-                {cart.vendor.name ? (
+                {cart.isMultiVendor ? (
+                    <div className="mono-row" style={{ fontSize: 11, marginBottom: 14 }}>
+                        <span className="accent">SOLD BY</span>
+                        <span className="sep" />
+                        <span style={{ color: 'var(--text)' }}>
+                            {cart.vendors.map((v) => v.name).filter(Boolean).join(' · ')}
+                        </span>
+                    </div>
+                ) : cart.vendor.name ? (
                     <div className="mono-row" style={{ fontSize: 11, marginBottom: 14 }}>
                         <span className="accent">SOLD BY</span>
                         <span className="sep" />
