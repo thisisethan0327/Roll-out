@@ -83,7 +83,7 @@ export function VerificationRow({ req }: { req: VReq }) {
             : (req.shop?.name ?? req.shop?.slug ?? '—');
 
     return (
-        <div className="feature-card" style={{ padding: 16, display: 'grid', gap: 10 }}>
+        <div className="feature-card vrow" style={{ padding: 16, display: 'grid', gap: 10 }}>
             <div className="mono-row" style={{ fontSize: 11 }}>
                 <span className="accent">{req.kind.toUpperCase()}</span>
                 <span className="sep" />
@@ -157,38 +157,51 @@ export function VerificationRow({ req }: { req: VReq }) {
             </div>
 
             {req.kind === 'commerce' ? (
-                <div style={{ display: 'grid', gap: 8, borderTop: '1px solid var(--line)', paddingTop: 10 }}>
-                    <div className="eyebrow" style={{ fontSize: 10 }}>／ REGISTRY WIRING (on approve)</div>
-                    <label className="field" style={{ fontSize: 12 }}>
-                        <span>Commerce tier</span>
-                        <select value={tier} onChange={(e) => setTier(e.target.value)}>
+                <div
+                    style={{
+                        display: 'grid',
+                        gap: 12,
+                        border: '1px solid var(--line)',
+                        background: 'var(--bg-1)',
+                        padding: 14,
+                    }}
+                >
+                    <div className="eyebrow eyebrow-gold" style={{ fontSize: 10 }}>／ REGISTRY WIRING (on approve)</div>
+                    <Field label="COMMERCE TIER">
+                        <select className="admin-form-input" value={tier} onChange={(e) => setTier(e.target.value)}>
                             <option value="1">1 — storefront</option>
                             <option value="2">2 — +customers</option>
                             <option value="3">3 — full ops</option>
                         </select>
-                    </label>
-                    <label className="field" style={{ fontSize: 12 }}>
-                        <span>Medusa category handles (comma-separated)</span>
-                        <input value={handles} onChange={(e) => setHandles(e.target.value)} placeholder="nac, tees" />
-                    </label>
-                    <label className="field" style={{ fontSize: 12 }}>
-                        <span>Sender email</span>
-                        <input value={senderEmail} onChange={(e) => setSenderEmail(e.target.value)} placeholder="orders@send.neferstock.com" />
-                    </label>
-                    <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 12 }}>
-                        <input type="checkbox" checked={sellsProducts} onChange={(e) => setSellsProducts(e.target.checked)} />
-                        <span>Mark shop as selling products (sells_products)</span>
+                    </Field>
+                    <Field label="MEDUSA CATEGORY HANDLES" hint="comma-separated">
+                        <input className="admin-form-input" value={handles} onChange={(e) => setHandles(e.target.value)} placeholder="nac, tees" />
+                    </Field>
+                    <Field label="SENDER EMAIL">
+                        <input className="admin-form-input" value={senderEmail} onChange={(e) => setSenderEmail(e.target.value)} placeholder="orders@send.neferstock.com" />
+                    </Field>
+                    <label style={{ display: 'flex', gap: 10, alignItems: 'center', cursor: 'pointer' }}>
+                        <input
+                            type="checkbox"
+                            checked={sellsProducts}
+                            onChange={(e) => setSellsProducts(e.target.checked)}
+                            style={{ width: 16, height: 16, accentColor: 'var(--gold)', flexShrink: 0, margin: 0 }}
+                        />
+                        <span style={{ fontSize: 13, color: 'var(--text-2)' }}>
+                            Mark shop as selling products (sells_products)
+                        </span>
                     </label>
                 </div>
             ) : null}
 
-            <input
-                className="field"
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                placeholder="Review note (reason — shown to applicant on reject)"
-                style={{ fontSize: 13 }}
-            />
+            <Field label="REVIEW NOTE" hint="reason — shown to applicant on reject">
+                <input
+                    className="admin-form-input"
+                    value={note}
+                    onChange={(e) => setNote(e.target.value)}
+                    placeholder="Why this decision?"
+                />
+            </Field>
 
             {err ? <div style={{ color: 'var(--danger, #d33)', fontSize: 12 }}>{err}</div> : null}
 
@@ -200,6 +213,33 @@ export function VerificationRow({ req }: { req: VReq }) {
                     Reject
                 </button>
             </div>
+
+            <style>{`
+                .vrow .admin-form-input { width: 100%; box-sizing: border-box; }
+                .vrow select.admin-form-input { appearance: none; -webkit-appearance: none; cursor: pointer; }
+            `}</style>
         </div>
+    );
+}
+
+function Field({
+    label,
+    hint,
+    children,
+}: {
+    label: string;
+    hint?: string;
+    children: React.ReactNode;
+}) {
+    return (
+        <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <span className="admin-form-label">
+                {label}
+                {hint ? (
+                    <span style={{ color: 'var(--text-3)', textTransform: 'none', marginLeft: 6 }}>· {hint}</span>
+                ) : null}
+            </span>
+            {children}
+        </label>
     );
 }
