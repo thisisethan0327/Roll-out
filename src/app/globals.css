@@ -410,7 +410,8 @@ h4 { font-size: 16px; letter-spacing: var(--track-wide); }
    data-theme="dark"). Colors are contrast-checked: body text ≥4.5:1, mono/large
    labels ≥3:1 against the surfaces they appear on.
    ══════════════════════════════════════════════════════════════════════════ */
-.shop-layout[data-theme='light'] {
+.shop-layout[data-theme='light'],
+.light-scope {
   /* Paper-like surfaces: soft gray page so white panels lift off it. */
   --bg-0: #eceef1;   /* page base (shop-layout background)            */
   --bg-1: #ffffff;   /* sidebar, cards, tables, forms                 */
@@ -449,12 +450,18 @@ h4 { font-size: 16px; letter-spacing: var(--track-wide); }
    Scoped so the marketing site's own .btn (on :root gold) is unaffected. */
 .shop-layout[data-theme='light'] .btn,
 .shop-layout[data-theme='light'] .admin-form-btn,
-.shop-layout[data-theme='light'] .admin-login-btn {
+.shop-layout[data-theme='light'] .admin-login-btn,
+.light-scope .btn,
+.light-scope .admin-form-btn,
+.light-scope .admin-login-btn {
   color: var(--on-gold);
 }
 .shop-layout[data-theme='light'] .btn:hover,
 .shop-layout[data-theme='light'] .admin-form-btn:hover,
-.shop-layout[data-theme='light'] .admin-login-btn:hover {
+.shop-layout[data-theme='light'] .admin-login-btn:hover,
+.light-scope .btn:hover,
+.light-scope .admin-form-btn:hover,
+.light-scope .admin-login-btn:hover {
   background: #a06a00;
 }
 
