@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { resolveCover } from '@/lib/event-covers';
 import { getSellingShops } from '@/lib/store-shops';
 import { fetchCatalogByHandles, type MedusaProduct } from '@/lib/medusa';
 import { ProductCard } from '@/components/ProductCard';
@@ -59,6 +60,8 @@ type EventCard = {
     title: string | null;
     start_at: string | null;
     location_name: string | null;
+    type: string | null;
+    hero_image_url: string | null;
 };
 
 type Vehicle = {
@@ -172,7 +175,7 @@ async function loadHandle(rawHandle: string) {
             .limit(10),
         supabase
             .from('event_cards')
-            .select('id, code, title, start_at, location_name')
+            .select('id, code, title, start_at, location_name, type, hero_image_url')
             .eq('host_id', p.id)
             .gt('start_at', nowIso)
             .order('start_at', { ascending: true })
@@ -648,25 +651,38 @@ export default async function HandlePage({
                                                 display: 'flex',
                                                 alignItems: 'center',
                                                 justifyContent: 'space-between',
-                                                padding: '20px 24px',
+                                                padding: '16px 24px 16px 16px',
                                                 background: 'var(--bg-2)',
                                                 border: '1px solid var(--line)',
                                                 gap: 16,
                                                 flexWrap: 'wrap',
                                             }}
                                         >
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, minWidth: 0 }}>
-                                                <div className="mono-row" style={{ fontSize: 10 }}>
-                                                    <span className="accent">{ev.code || 'EVENT'}</span>
-                                                    <span className="sep" />
-                                                    <span>{formatEventDate(ev.start_at)}</span>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 16, minWidth: 0 }}>
+                                                <div
+                                                    aria-hidden
+                                                    style={{
+                                                        flex: 'none',
+                                                        width: 88,
+                                                        height: 56,
+                                                        borderRadius: 4,
+                                                        border: '1px solid var(--line)',
+                                                        background: `url(${resolveCover(ev.hero_image_url, ev.type, ev.id)}) center/cover no-repeat`,
+                                                    }}
+                                                />
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, minWidth: 0 }}>
+                                                    <div className="mono-row" style={{ fontSize: 10 }}>
+                                                        <span className="accent">{ev.code || 'EVENT'}</span>
+                                                        <span className="sep" />
+                                                        <span>{formatEventDate(ev.start_at)}</span>
+                                                    </div>
+                                                    <h3 style={{ fontSize: 17, margin: 0, color: 'var(--text)', letterSpacing: 0.8 }}>
+                                                        {(ev.title || 'Untitled event').toUpperCase()}
+                                                    </h3>
+                                                    {ev.location_name ? (
+                                                        <span className="text-dim" style={{ fontSize: 13 }}>{ev.location_name}</span>
+                                                    ) : null}
                                                 </div>
-                                                <h3 style={{ fontSize: 17, margin: 0, color: 'var(--text)', letterSpacing: 0.8 }}>
-                                                    {(ev.title || 'Untitled event').toUpperCase()}
-                                                </h3>
-                                                {ev.location_name ? (
-                                                    <span className="text-dim" style={{ fontSize: 13 }}>{ev.location_name}</span>
-                                                ) : null}
                                             </div>
                                             <span className="accent" style={{ fontSize: 18 }}>→</span>
                                         </div>

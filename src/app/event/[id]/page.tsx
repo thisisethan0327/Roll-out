@@ -13,6 +13,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { getConsumerProfile } from '@/lib/consumer';
+import { resolveCover } from '@/lib/event-covers';
 import { Countdown } from './Countdown';
 import { RsvpControls } from './RsvpControls';
 import { ShareBar } from './ShareBar';
@@ -187,7 +188,7 @@ export async function generateMetadata({
     const desc = ev.description
         ? truncate(ev.description, 160)
         : `${ev.type ?? 'Meet'} at ${ev.location_name ?? 'TBA'} — ${formatDate(ev.start_at)}. RSVP on Rollout.`;
-    const images = ev.hero_image_url ? [ev.hero_image_url] : ['/images/og-rollout.jpg'];
+    const images = [resolveCover(ev.hero_image_url, ev.type, ev.id)];
 
     return {
         title,
@@ -217,9 +218,8 @@ export default async function PublicEventPage({
     const hostVerified = !!ev.host?.is_verified;
     const shopSlug = ev.shop?.slug ?? null;
 
-    const heroBg = ev.hero_image_url
-        ? `linear-gradient(180deg, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.92) 100%), url(${ev.hero_image_url}) center/cover no-repeat`
-        : 'radial-gradient(ellipse at top, var(--gold-dim) 0%, transparent 60%), linear-gradient(180deg, #0a0a0a 0%, #000 100%)';
+    const coverUrl = resolveCover(ev.hero_image_url, ev.type, ev.id);
+    const heroBg = `linear-gradient(180deg, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.92) 100%), url(${coverUrl}) center/cover no-repeat`;
 
     const mapEmbedUrl =
         ev.lat != null && ev.lng != null
@@ -252,7 +252,7 @@ export default async function PublicEventPage({
                 ? { geo: { '@type': 'GeoCoordinates', latitude: ev.lat, longitude: ev.lng } }
                 : {}),
         },
-        ...(ev.hero_image_url ? { image: [ev.hero_image_url] } : {}),
+        image: [coverUrl],
         ...(ev.description ? { description: ev.description } : {}),
         ...(hostName ? { organizer: { '@type': 'Organization', name: hostName } } : {}),
     };

@@ -10,6 +10,7 @@ import {
     loadMyAppointments,
     loadMyUpcomingRsvps,
 } from '@/lib/me-data';
+import { resolveCover } from '@/lib/event-covers';
 import { fmtDate, StatusPill, Panel, EmptyRow } from './ui';
 
 export const dynamic = 'force-dynamic';
@@ -115,12 +116,25 @@ export default async function MeOverview() {
                                 href={`/event/${r.event_id}`}
                                 style={rowStyle}
                             >
-                                <div>
-                                    <div style={{ color: 'var(--text)', fontSize: 13 }}>
-                                        {r.title ?? 'Meet'}
-                                    </div>
-                                    <div className="text-dim" style={{ fontSize: 11 }}>
-                                        {r.location_name ?? '—'}
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                                    <div
+                                        aria-hidden
+                                        style={{
+                                            flex: 'none',
+                                            width: 52,
+                                            height: 34,
+                                            borderRadius: 3,
+                                            border: '1px solid var(--line)',
+                                            background: `url(${resolveCover(r.hero_image_url, r.type, r.event_id)}) center/cover no-repeat`,
+                                        }}
+                                    />
+                                    <div style={{ minWidth: 0 }}>
+                                        <div style={{ color: 'var(--text)', fontSize: 13 }}>
+                                            {r.title ?? 'Meet'}
+                                        </div>
+                                        <div className="text-dim" style={{ fontSize: 11 }}>
+                                            {r.location_name ?? '—'}
+                                        </div>
                                     </div>
                                 </div>
                                 <div style={{ textAlign: 'right' }}>

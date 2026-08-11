@@ -78,6 +78,19 @@ function parseNumber(raw: FormDataEntryValue | null): number | null {
     return Number.isFinite(n) ? n : null;
 }
 
+/**
+ * Cover URL from the picker. Empty → null (event falls back to the type
+ * default at render time). Otherwise must be an http(s) URL.
+ */
+function parseHeroUrl(raw: FormDataEntryValue | null): string | null {
+    if (raw == null) return null;
+    const s = String(raw).trim();
+    if (s.length === 0) return null;
+    if (!/^https?:\/\//i.test(s)) throw new Error('Cover URL must be an http(s) link.');
+    if (s.length > 1000) throw new Error('Cover URL is too long.');
+    return s;
+}
+
 export async function createEvent(shopId: number, formData: FormData) {
     await requireManager(shopId);
 
@@ -92,6 +105,7 @@ export async function createEvent(shopId: number, formData: FormData) {
     const capacity = parseNumber(formData.get('capacity'));
     const visibility = String(formData.get('visibility') ?? 'public').trim();
     const tags = parseTags(String(formData.get('tags') ?? ''));
+    const hero_image_url = parseHeroUrl(formData.get('hero_image_url'));
 
     const allowedTypes = new Set(['NIGHT_RUN', 'CAR_MEET', 'TRACK_DAY', 'CRUISE', 'SHOW']);
     const allowedVis = new Set(['public', 'followers', 'private']);
@@ -127,6 +141,7 @@ export async function createEvent(shopId: number, formData: FormData) {
             capacity,
             visibility,
             tags,
+            hero_image_url,
             is_official: true,
             attending_count: 0,
         })
@@ -157,6 +172,7 @@ export async function updateEvent(
     const capacity = parseNumber(formData.get('capacity'));
     const visibility = String(formData.get('visibility') ?? 'public').trim();
     const tags = parseTags(String(formData.get('tags') ?? ''));
+    const hero_image_url = parseHeroUrl(formData.get('hero_image_url'));
 
     const allowedVis = new Set(['public', 'followers', 'private']);
 
@@ -183,6 +199,7 @@ export async function updateEvent(
             capacity,
             visibility,
             tags,
+            hero_image_url,
             updated_at: new Date().toISOString(),
         })
         .eq('id', eventId)

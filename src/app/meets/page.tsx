@@ -8,6 +8,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { resolveCover } from '@/lib/event-covers';
 
 const EVENT_TYPES = ['NIGHT_RUN', 'CAR_MEET', 'TRACK_DAY', 'CRUISE', 'SHOW'] as const;
 type EventType = (typeof EVENT_TYPES)[number];
@@ -226,9 +227,7 @@ function MeetTile({ m, past = false }: { m: MeetCard; past?: boolean }) {
                     style={{
                         width: '100%',
                         aspectRatio: '16 / 9',
-                        background: m.hero_image_url
-                            ? `url(${m.hero_image_url}) center/cover no-repeat`
-                            : 'linear-gradient(135deg, var(--bg-3), var(--bg-2))',
+                        background: `url(${resolveCover(m.hero_image_url, m.type, m.id)}) center/cover no-repeat`,
                         borderBottom: '1px solid var(--line)',
                         filter: past ? 'grayscale(0.4)' : undefined,
                     }}

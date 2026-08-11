@@ -14,6 +14,13 @@ const nextConfig = {
                 hostname: 'gueivbfvqupweogjrpzs.supabase.co',
                 pathname: '/storage/v1/object/public/**',
             },
+            {
+                // Platform storage (event covers, kiosk media, etc.) — lets
+                // next/image fetch + transcode the event-cover WEBP heroes.
+                protocol: 'https',
+                hostname: 'sbbxsqvoxrzcgtslspbo.supabase.co',
+                pathname: '/storage/v1/object/public/**',
+            },
         ],
     },
 };

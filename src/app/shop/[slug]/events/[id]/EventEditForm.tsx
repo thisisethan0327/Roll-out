@@ -2,6 +2,7 @@
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { updateEvent, cancelEvent, uncancelEvent, deleteEvent } from '../actions';
+import { EventCoverPicker } from '../EventCoverPicker';
 
 const VISIBILITY: { value: string; label: string }[] = [
     { value: 'public', label: 'PUBLIC' },
@@ -204,6 +205,14 @@ export function EventEditForm({
                     </label>
                 ))}
             </div>
+
+            <SectionHeading>COVER</SectionHeading>
+            <EventCoverPicker
+                mode="edit"
+                initialType={event.type}
+                initialUrl={event.hero_image_url}
+                disabled={!canManage || pending}
+            />
 
             <SectionHeading>TAGS</SectionHeading>
             <label className="admin-form-label">TAGS (COMMA-SEPARATED)</label>

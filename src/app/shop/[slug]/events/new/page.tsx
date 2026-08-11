@@ -2,18 +2,11 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { requireShopMemberBySlug } from '@/lib/auth-guard';
 import { createEvent } from '../actions';
+import { EventCoverPicker } from '../EventCoverPicker';
 
 export const metadata = { title: 'Host Event' };
 
 const MANAGER_ROLES = new Set(['owner', 'admin', 'manager']);
-
-const TYPES: { value: string; label: string }[] = [
-    { value: 'NIGHT_RUN', label: 'NIGHT RUN' },
-    { value: 'CAR_MEET', label: 'CAR MEET' },
-    { value: 'TRACK_DAY', label: 'TRACK DAY' },
-    { value: 'CRUISE', label: 'CRUISE' },
-    { value: 'SHOW', label: 'SHOW' },
-];
 
 const VISIBILITY: { value: string; label: string }[] = [
     { value: 'public', label: 'PUBLIC' },
@@ -55,30 +48,8 @@ export default async function NewEventPage({
                 action={createEventBound}
                 style={{ maxWidth: 720 }}
             >
-                <SectionHeading>TYPE</SectionHeading>
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                    {TYPES.map((t, i) => (
-                        <label
-                            key={t.value}
-                            className="admin-form-label"
-                            style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: 6,
-                                cursor: 'pointer',
-                            }}
-                        >
-                            <input
-                                type="radio"
-                                name="type"
-                                value={t.value}
-                                defaultChecked={i === 0}
-                                required
-                            />
-                            {t.label}
-                        </label>
-                    ))}
-                </div>
+                <SectionHeading>TYPE & COVER</SectionHeading>
+                <EventCoverPicker mode="create" />
 
                 <SectionHeading>DETAILS</SectionHeading>
                 <label className="admin-form-label">TITLE</label>
