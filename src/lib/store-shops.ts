@@ -36,6 +36,11 @@ export async function getSellingShops(): Promise<SellingShop[]> {
         .from('shops')
         .select('id, slug, name, commerce_tier, medusa_category_handles, primary_color')
         .eq('sells_products', true)
+        // Gate the storefront on BOTH listing verification and commerce clearance:
+        // a shop only sells publicly once it is listed (status=verified) and its
+        // commerce KYC is at least docs_verified (interim-selling tier).
+        .eq('status', 'verified')
+        .in('commerce_status', ['docs_verified', 'verified'])
         .order('commerce_tier', { ascending: true });
 
     const rows = (shopsRaw as any[]) ?? [];

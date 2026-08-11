@@ -29,11 +29,13 @@ async function loadModuleContext(shopId: number): Promise<{
     tier: number | null;
     overrides: ModuleOverrides;
     showProducts: boolean;
+    status: string;
+    reviewNote: string | null;
 }> {
     const admin = getSupabaseAdmin();
     const { data: shopRow } = await admin
         .from('shops')
-        .select('sells_products, medusa_category_handles, commerce_tier, module_overrides')
+        .select('sells_products, medusa_category_handles, commerce_tier, module_overrides, status, review_note')
         .eq('id', shopId)
         .maybeSingle();
     const row = shopRow as any;
@@ -52,7 +54,69 @@ async function loadModuleContext(shopId: number): Promise<{
         tier: row?.commerce_tier ?? null,
         overrides: (row?.module_overrides ?? {}) as ModuleOverrides,
         showProducts,
+        status: (row?.status ?? 'pending') as string,
+        reviewNote: (row?.review_note ?? null) as string | null,
     };
+}
+
+/**
+ * Gate screen for a shop that is not yet verified. Renders instead of the full
+ * console — no operational tabs — until a platform admin approves the listing.
+ */
+function ShopPendingGate({
+    shopName,
+    status,
+    reviewNote,
+}: {
+    shopName: string;
+    status: string;
+    reviewNote: string | null;
+}) {
+    const copy =
+        status === 'rejected'
+            ? {
+                  eyebrow: '／ APPLICATION NOT APPROVED',
+                  title: 'This shop was not approved',
+                  body: 'Your Rollout listing application was declined. If you think this is a mistake, reply to the email we sent or reach out to support.',
+              }
+            : status === 'suspended'
+              ? {
+                    eyebrow: '／ SHOP SUSPENDED',
+                    title: 'This shop is suspended',
+                    body: 'Your shop is currently suspended and hidden from Rollout. Contact support to resolve it.',
+                }
+              : {
+                    eyebrow: '／ UNDER REVIEW',
+                    title: 'Your shop is pending verification',
+                    body: 'Thanks for applying. A Rollout admin is reviewing your shop. Once verified it goes live on the directory and map, and your console unlocks. We’ll email you the moment it’s approved.',
+                };
+    return (
+        <div className="shop-layout" data-theme="dark">
+            <div className="admin-main" style={{ display: 'flex', minHeight: '100vh', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+                <div className="feature-card corner-wrap" style={{ maxWidth: 560, width: '100%', padding: '40px 32px', textAlign: 'center' }}>
+                    <span className="corner-bottom-left" />
+                    <span className="corner-bottom-right" />
+                    <div className="eyebrow eyebrow-gold mb-4">{copy.eyebrow}</div>
+                    <h1 style={{ fontSize: 26, letterSpacing: 0.5, margin: '0 0 8px' }}>{copy.title}</h1>
+                    <div className="mono-row" style={{ justifyContent: 'center', fontSize: 12, marginBottom: 18 }}>
+                        <span className="accent">{(shopName || 'SHOP').toUpperCase()}</span>
+                        <span className="sep" />
+                        <span>{status.toUpperCase()}</span>
+                    </div>
+                    <p style={{ color: 'var(--text-2)', fontSize: 15, lineHeight: 1.6, margin: '0 0 20px' }}>{copy.body}</p>
+                    {reviewNote && (status === 'rejected' || status === 'suspended') ? (
+                        <p style={{ color: 'var(--text-2)', fontSize: 13, fontStyle: 'italic', margin: '0 0 20px' }}>
+                            Note from review: &ldquo;{reviewNote}&rdquo;
+                        </p>
+                    ) : null}
+                    <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
+                        <a href="/shop/picker" className="btn btn-ghost">Switch shop</a>
+                        <a href="/" className="btn btn-ghost">Back to Rollout</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
 }
 
 export default async function ShopLayout({
@@ -64,7 +128,14 @@ export default async function ShopLayout({
 }) {
     const { slug } = await params;
     const { profile, role, shop } = await requireShopMemberBySlug(slug);
-    const { tier, overrides, showProducts } = await loadModuleContext(shop.shopId);
+    const { tier, overrides, showProducts, status, reviewNote } = await loadModuleContext(shop.shopId);
+
+    // Not-yet-verified shops get the pending gate — no operational console until
+    // a platform admin approves the listing. (Platform admins reviewing the shop
+    // still use /admin/verifications, not this console.)
+    if (status !== 'verified') {
+        return <ShopPendingGate shopName={shop.name} status={status} reviewNote={reviewNote} />;
+    }
     // Orders section is gated on the shop resolving to a Medusa vendor key
     // (NeferStock, divine). Catalog-less shops (EMWRAPS) get no vendor → no link.
     const showOrders = (await getShopVendorBySlug(slug)) !== null;

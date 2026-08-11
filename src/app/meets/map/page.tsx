@@ -51,6 +51,8 @@ async function loadMapData(type: EventType | null): Promise<{ events: MapEvent[]
     const shopsQ = supabase
         .from('shops')
         .select('id, slug, name, lat, lng, city, state_region, primary_color, show_on_map')
+        // Pending/unverified shops are not pinned on the public map.
+        .eq('status', 'verified')
         .eq('show_on_map', true)
         .not('lat', 'is', null)
         .not('lng', 'is', null)

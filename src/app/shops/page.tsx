@@ -44,6 +44,10 @@ async function loadShops(): Promise<ShopCard[]> {
         .select(
             'id, slug, name, region, city, state_region, address_line, primary_color, offers_services, sells_products',
         )
+        // Only verified shops are publicly listed — pending/suspended/rejected
+        // applications never surface in the directory (service-role bypasses RLS,
+        // so the gate must live in the query).
+        .eq('status', 'verified')
         .eq('show_on_map', true)
         .not('lat', 'is', null)
         .order('name', { ascending: true })

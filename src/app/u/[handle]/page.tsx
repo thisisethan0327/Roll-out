@@ -158,7 +158,7 @@ async function loadHandle(rawHandle: string) {
         p.shop_id
             ? supabase
                   .from('shops')
-                  .select('id, primary_color, secondary_color, from_name, email_logo_url, address_line, city, state_region, postal, lat, lng, show_on_map')
+                  .select('id, status, primary_color, secondary_color, from_name, email_logo_url, address_line, city, state_region, postal, lat, lng, show_on_map')
                   .eq('id', p.shop_id)
                   .maybeSingle()
             : Promise.resolve({ data: null }),
@@ -226,6 +226,14 @@ async function loadHandle(rawHandle: string) {
         } catch {
             /* catalog is best-effort — never block the profile */
         }
+    }
+
+    // Public invisibility: a shop_page profile whose shop is not verified
+    // (pending / suspended / rejected) 404s publicly — owners manage it from the
+    // dashboard, not this page.
+    if (p.kind === 'shop_page') {
+        const shopStatus = (shopRes.data as { status?: string } | null)?.status ?? null;
+        if (shopStatus !== 'verified') return null;
     }
 
     return {
