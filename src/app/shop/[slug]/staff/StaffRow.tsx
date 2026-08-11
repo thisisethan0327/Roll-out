@@ -1,6 +1,6 @@
 'use client';
 import { useTransition } from 'react';
-import { removeStaff, setStaffRole } from './actions';
+import { removeStaff, setStaffRole, nominateHostAction } from './actions';
 
 const ROLES = ['owner', 'admin', 'manager', 'installer', 'staff'] as const;
 
@@ -35,6 +35,17 @@ export function StaffRow({
             } catch (err: any) {
                 alert('Failed: ' + (err?.message ?? 'unknown'));
             }
+        });
+    };
+
+    const hostStatus: string = p?.host_status ?? 'none';
+    const canNominate = (p?.kind ?? 'user') === 'user' && hostStatus === 'none';
+
+    const onNominate = () => {
+        if (!confirm(`Nominate @${p?.handle ?? 'user'} as a host? A Rollout admin reviews it.`)) return;
+        start(async () => {
+            const res = await nominateHostAction(m.profile_id, shopId, slug);
+            if (!res.ok) alert('Failed: ' + (res.error ?? 'unknown'));
         });
     };
 
@@ -73,13 +84,24 @@ export function StaffRow({
                     : '—'}
             </td>
             <td style={{ textAlign: 'right' }}>
-                <button
-                    className="admin-action-btn danger"
-                    disabled={pending}
-                    onClick={onRemove}
-                >
-                    REMOVE
-                </button>
+                <div style={{ display: 'inline-flex', gap: 6, alignItems: 'center', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                    {hostStatus === 'verified' ? (
+                        <span className="admin-pill neon" title="Verified individual host">HOST ✓</span>
+                    ) : hostStatus === 'pending' ? (
+                        <span className="admin-pill gold" title="Host nomination under review">HOST PENDING</span>
+                    ) : canNominate ? (
+                        <button className="admin-action-btn muted" disabled={pending} onClick={onNominate} title="Nominate as an individual host">
+                            NOMINATE HOST
+                        </button>
+                    ) : null}
+                    <button
+                        className="admin-action-btn danger"
+                        disabled={pending}
+                        onClick={onRemove}
+                    >
+                        REMOVE
+                    </button>
+                </div>
             </td>
         </tr>
     );

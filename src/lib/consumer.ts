@@ -23,6 +23,10 @@ export type ConsumerProfile = {
     displayName: string;
     email: string | null;
     avatarUrl: string | null;
+    /** Individual-host status: 'none' | 'pending' | 'verified' (migration 038). */
+    hostStatus: 'none' | 'pending' | 'verified';
+    /** If a shop nominated this member as a host, that shop's id. */
+    hostAppointedByShopId: number | null;
 };
 
 /**
@@ -42,7 +46,7 @@ export async function getConsumerProfile(): Promise<ConsumerProfile | null> {
     // Fast path: profile already linked.
     const { data: existing } = await admin
         .from('profiles')
-        .select('id, handle, display_name, avatar_url')
+        .select('id, handle, display_name, avatar_url, host_status, host_appointed_by_shop_id')
         .eq('auth_user_id', user.id)
         .maybeSingle();
 
@@ -54,6 +58,8 @@ export async function getConsumerProfile(): Promise<ConsumerProfile | null> {
             displayName: (existing as any).display_name,
             email: user.email ?? null,
             avatarUrl: (existing as any).avatar_url ?? null,
+            hostStatus: ((existing as any).host_status ?? 'none') as ConsumerProfile['hostStatus'],
+            hostAppointedByShopId: (existing as any).host_appointed_by_shop_id ?? null,
         };
     }
 
@@ -68,7 +74,7 @@ export async function getConsumerProfile(): Promise<ConsumerProfile | null> {
 
     const { data: created } = await admin
         .from('profiles')
-        .select('id, handle, display_name, avatar_url')
+        .select('id, handle, display_name, avatar_url, host_status, host_appointed_by_shop_id')
         .eq('id', newId as string)
         .maybeSingle();
     if (!created) return null;
@@ -80,6 +86,8 @@ export async function getConsumerProfile(): Promise<ConsumerProfile | null> {
         displayName: (created as any).display_name,
         email: user.email ?? null,
         avatarUrl: (created as any).avatar_url ?? null,
+        hostStatus: ((created as any).host_status ?? 'none') as ConsumerProfile['hostStatus'],
+        hostAppointedByShopId: (created as any).host_appointed_by_shop_id ?? null,
     };
 }
 

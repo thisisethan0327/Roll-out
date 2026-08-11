@@ -128,6 +128,22 @@ export function ShopSidebar({
                     </div>
                 );
             })}
+            {rank >= RANK.owner ? (() => {
+                const href = `/shop/${slug}/sell`;
+                const active = pathname === href || pathname.startsWith(href + '/');
+                return (
+                    <div>
+                        <div className="admin-sidebar-section">COMMERCE</div>
+                        <Link href={href} className={`admin-sidebar-link ${active ? 'active' : ''}`}>
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                                SELL ON NEFERSTOCK
+                                <LinkPending />
+                            </span>
+                            {active && <span>›</span>}
+                        </Link>
+                    </div>
+                );
+            })() : null}
             <div className="admin-sidebar-foot">
                 <Link
                     href={`/shop/${slug}/account`}

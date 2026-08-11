@@ -16,7 +16,10 @@ export default async function MeLayout({ children }: { children: React.ReactNode
     const profile = await requireConsumer('/me');
     return (
         <>
-            <MeNav displayName={profile.displayName || profile.handle || 'Member'} />
+            <MeNav
+                displayName={profile.displayName || profile.handle || 'Member'}
+                isHost={profile.hostStatus === 'verified'}
+            />
             <main className="container" style={{ paddingTop: 24, paddingBottom: 64 }}>
                 {children}
             </main>

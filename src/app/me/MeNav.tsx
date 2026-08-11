@@ -9,7 +9,7 @@ import { useTransition } from 'react';
 import { signOutAction } from './actions';
 import { LinkPending } from '@/components/feedback';
 
-const LINKS: { href: string; label: string }[] = [
+const BASE_LINKS: { href: string; label: string }[] = [
     { href: '/me', label: 'Overview' },
     { href: '/me/appointments', label: 'Appointments' },
     { href: '/me/tickets', label: 'Tickets' },
@@ -22,9 +22,12 @@ function isActive(pathname: string, href: string): boolean {
     return pathname === href || pathname.startsWith(href + '/');
 }
 
-export function MeNav({ displayName }: { displayName: string }) {
+export function MeNav({ displayName, isHost = false }: { displayName: string; isHost?: boolean }) {
     const pathname = usePathname() || '';
     const [pending, start] = useTransition();
+    const LINKS = isHost
+        ? [...BASE_LINKS, { href: '/me/events', label: 'Events' }]
+        : BASE_LINKS;
 
     return (
         <header

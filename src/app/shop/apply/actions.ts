@@ -13,6 +13,7 @@ import { redirect } from 'next/navigation';
 import { requireConsumer } from '@/lib/me-guard';
 import { getSupabaseServer } from '@/lib/supabase/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { sendPlatformNotification } from '@/lib/platform-notify';
 import { SLUG_RE, UBI_RE, type ApplyState } from './types';
 
 function str(fd: FormData, key: string): string {
@@ -23,7 +24,7 @@ export async function submitShopApplication(
     _prev: ApplyState,
     formData: FormData,
 ): Promise<ApplyState> {
-    await requireConsumer('/shop/apply');
+    const applicant = await requireConsumer('/shop/apply');
 
     const name = str(formData, 'name');
     const slug = str(formData, 'slug').toLowerCase();
@@ -90,7 +91,7 @@ export async function submitShopApplication(
 
     // ── atomic create via RPC (auth.uid() = caller through the SSR client) ──
     const supabase = await getSupabaseServer();
-    const { error } = await supabase.schema('rollout').rpc('create_shop', {
+    const { data: created, error } = await supabase.schema('rollout').rpc('create_shop', {
         p_slug: slug,
         p_name: name,
         p_handle: handle,
@@ -116,6 +117,31 @@ export async function submitShopApplication(
             ? 'That handle is already taken — try another.'
             : `Couldn’t submit your application: ${error.message}`;
         return { ok: false, error: msg, field: 'slug' };
+    }
+
+    // ── Best-effort "application received" acknowledgement(s) ──
+    // create_shop returns a single row (shop_id, …). Send the shop-listing
+    // acknowledgement, plus a commerce one when they applied with commerce
+    // intent. Never blocks the redirect below.
+    const row = Array.isArray(created) ? (created as any[])[0] : (created as any);
+    const newShopId = (row?.shop_id ?? null) as number | null;
+    if (applicant.email) {
+        await sendPlatformNotification({
+            template: 'platform_application_received',
+            to: applicant.email,
+            toProfileId: applicant.profileId,
+            shopId: newShopId,
+            vars: { kind: 'shop', shop_name: name, applicant_name: applicant.displayName || applicant.handle, cta_url: `https://rollout.club/shop/${slug}/overview` },
+        });
+        if (withCommerce) {
+            await sendPlatformNotification({
+                template: 'platform_application_received',
+                to: applicant.email,
+                toProfileId: applicant.profileId,
+                shopId: newShopId,
+                vars: { kind: 'commerce', shop_name: name, applicant_name: applicant.displayName || applicant.handle },
+            });
+        }
     }
 
     // Land them on their (pending-gated) console.

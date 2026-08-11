@@ -19,7 +19,7 @@ async function loadStaff(shopId: number) {
     const { data } = await admin
         .from('shop_memberships')
         .select(
-            'profile_id, role, created_at, profiles!inner(id, handle, display_name)',
+            'profile_id, role, created_at, profiles!inner(id, handle, display_name, kind, host_status)',
         )
         .eq('shop_id', shopId);
     const rows = (data ?? []) as any[];

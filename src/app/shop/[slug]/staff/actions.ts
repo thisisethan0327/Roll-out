@@ -2,6 +2,8 @@
 import { revalidatePath } from 'next/cache';
 import { requireShopMember } from '@/lib/auth-guard';
 import { getSupabaseAdmin, getSupabasePublicAdmin } from '@/lib/supabase/admin';
+import { getSupabaseServer } from '@/lib/supabase/server';
+import { sendPlatformNotification } from '@/lib/platform-notify';
 
 const OWNER_ROLES = new Set(['owner']);
 const VALID_ROLES = new Set(['owner', 'admin', 'manager', 'installer', 'staff']);
@@ -203,6 +205,56 @@ export async function setStaffRole(
         .upsert({ profile_id: profileId, shop_id: shopId, role });
     if (error) throw new Error(error.message);
     revalidatePath(`/shop/${slug}/staff`, 'page');
+}
+
+/**
+ * Nominate a staff member as an individual host. Calls rollout.nominate_host
+ * (SECURITY DEFINER; re-checks manager+ and nominee kind='user') through the
+ * anon SSR client so auth.uid() = the owner. Flips the member's host_status →
+ * 'pending' + files a verification_requests(host) row for admin review. Sends a
+ * best-effort "application received" note to the nominee.
+ */
+export async function nominateHostAction(
+    profileId: string,
+    shopId: number,
+    slug: string,
+): Promise<{ ok: boolean; error?: string }> {
+    try {
+        await assertOwner(shopId);
+    } catch (e: any) {
+        return { ok: false, error: e?.message ?? 'Not authorized.' };
+    }
+
+    const supabase = await getSupabaseServer();
+    const { error } = await supabase
+        .schema('rollout')
+        .rpc('nominate_host', { p_profile_id: profileId, p_shop_id: shopId, p_payload: {} });
+    if (error) {
+        const msg = /host_status/.test(error.message)
+            ? 'That member is already a host or pending.'
+            : error.message;
+        return { ok: false, error: msg };
+    }
+
+    // Best-effort: tell the nominee (email resolved server-side from profile).
+    const admin = getSupabaseAdmin();
+    const { data: prof } = await admin
+        .from('profiles')
+        .select('display_name, handle')
+        .eq('id', profileId)
+        .maybeSingle();
+    await sendPlatformNotification({
+        template: 'platform_application_received',
+        toProfileId: profileId,
+        vars: {
+            kind: 'host',
+            applicant_name: (prof as any)?.display_name ?? (prof as any)?.handle ?? 'there',
+            cta_url: 'https://rollout.club/me',
+        },
+    });
+
+    revalidatePath(`/shop/${slug}/staff`, 'page');
+    return { ok: true };
 }
 
 export async function removeStaff(

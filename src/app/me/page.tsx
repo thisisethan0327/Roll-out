@@ -12,6 +12,7 @@ import {
 } from '@/lib/me-data';
 import { resolveCover } from '@/lib/event-covers';
 import { fmtDate, StatusPill, Panel, EmptyRow } from './ui';
+import { HostPanel } from './HostPanel';
 
 export const dynamic = 'force-dynamic';
 
@@ -103,6 +104,12 @@ export default async function MeOverview() {
                 <QuickLink href="/me/orders" label="ORDERS" value="›" />
                 <QuickLink href="/me/garage" label="GARAGE" value="›" />
             </div>
+
+            {/* BECOME A HOST */}
+            <HostPanel
+                hostStatus={profile.hostStatus}
+                nominated={profile.hostAppointedByShopId != null}
+            />
 
             {/* UPCOMING RSVPS */}
             <Panel title="UPCOMING MEETS" href="/meets" hrefLabel="ALL MEETS">

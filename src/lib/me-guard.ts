@@ -27,3 +27,19 @@ export async function requireConsumer(nextPath: string = '/me'): Promise<Consume
     }
     return profile;
 }
+
+/**
+ * Ensure the caller is a signed-in member who is ALSO a verified individual
+ * host (host_status = 'verified'). Non-hosts are bounced to the /me host
+ * onboarding section rather than shown a 403 — the overview explains the states.
+ * Used to gate /me/events (create/manage own no-shop events).
+ */
+export async function requireVerifiedHost(
+    nextPath: string = '/me/events',
+): Promise<ConsumerProfile> {
+    const profile = await requireConsumer(nextPath);
+    if (profile.hostStatus !== 'verified') {
+        redirect('/me?host=not_verified');
+    }
+    return profile;
+}
