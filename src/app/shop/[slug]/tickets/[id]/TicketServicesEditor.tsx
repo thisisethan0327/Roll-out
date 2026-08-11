@@ -9,7 +9,7 @@ import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { updateTicketServices } from './detail-actions';
 import { ServiceLinesEditor } from '../ServiceLinesEditor';
-import { parseServices, type ServiceLine } from '@/lib/ticket-services';
+import { parseServices, visibleLines, serviceDisplayName, type ServiceLine } from '@/lib/ticket-services';
 
 const MANAGER_ROLES = new Set(['owner', 'admin', 'manager']);
 
@@ -48,16 +48,17 @@ export function TicketServicesEditor({
     };
 
     if (!canManage) {
-        return lines.length === 0 ? (
+        const shown = visibleLines(lines); // hide tombstones from read-only view
+        return shown.length === 0 ? (
             <div className="admin-empty">NO SERVICES LISTED</div>
         ) : (
             <ul style={{ margin: 0, paddingLeft: 18, lineHeight: 1.65 }}>
-                {lines.map((l, i) => {
+                {shown.map((l, i) => {
                     const total =
                         l.unitPrice != null ? l.unitPrice * (l.quantity || 1) : null;
                     return (
                         <li key={i} style={{ fontFamily: 'var(--font-body)' }}>
-                            {l.service}
+                            {serviceDisplayName(l)}
                             {l.quantity > 1 ? ` × ${l.quantity}` : ''}
                             {total != null ? ` — $${total.toFixed(2)}` : ''}
                         </li>

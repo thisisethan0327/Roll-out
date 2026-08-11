@@ -10,7 +10,7 @@ import { notFound } from 'next/navigation';
 import { requireShopMemberBySlug } from '@/lib/auth-guard';
 import { getSupabaseAdmin, getSupabasePublicAdmin } from '@/lib/supabase/admin';
 import { PrintButton } from './PrintButton';
-import { parseServices, lineTotal, totalFromLines } from '@/lib/ticket-services';
+import { parseServices, lineTotal, totalFromLines, visibleLines, serviceDisplayName } from '@/lib/ticket-services';
 
 export const metadata = { title: 'Invoice' };
 
@@ -59,7 +59,7 @@ export default async function TicketInvoicePage({
     const accent = branding.primary_color || '#ffb733';
     const shopName = branding.from_name || branding.name || shop.name;
     const vehicle = [t.car_year, t.car_make, t.car_model, t.trim].filter(Boolean).join(' ');
-    const lineItems = parseServices(t.services);
+    const lineItems = visibleLines(parseServices(t.services));
     const itemsSubtotal = totalFromLines(lineItems) ?? 0;
     const total = t.total_price != null ? Number(t.total_price) : itemsSubtotal;
     const hasPrices = lineItems.some((li) => lineTotal(li) != null);
@@ -159,7 +159,7 @@ export default async function TicketInvoicePage({
                         ) : (
                             lineItems.map((li, idx) => (
                                 <tr key={idx} style={{ borderBottom: '1px solid #eee' }}>
-                                    <td style={{ padding: '10px 0' }}>{li.service || 'Service'}</td>
+                                    <td style={{ padding: '10px 0' }}>{serviceDisplayName(li) || 'Service'}</td>
                                     <td style={{ padding: '10px 0', textAlign: 'center' }}>{li.quantity || 1}</td>
                                     <td style={{ padding: '10px 0', textAlign: 'right', fontFamily: 'monospace' }}>
                                         {money(lineTotal(li))}

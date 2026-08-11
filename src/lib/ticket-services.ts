@@ -32,10 +32,18 @@ export type ServiceLine = {
     /** true = free-form one-off line (not picked from the catalog) */
     custom: boolean;
     /**
+     * Tombstone flag (emwraps catalog remodel P3). A deleted line keeps its
+     * PERSISTED ARRAY SLOT — the position is a pay foreign key
+     * (ticket_line_assignments.service_line_index) — but is hidden from every
+     * display array and excluded from totals. Serialization preserves it, so a
+     * tombstone never resurrects or drops on a Rollout round-trip.
+     */
+    deleted?: boolean;
+    /**
      * The original persisted object this line was parsed from (if any). Carried
      * through parse→edit→serialize so unknown/foreign keys — e.g. the emwraps
-     * catalog remodel's forthcoming `spec:{short,…}`, or `customText` — are
-     * PRESERVED rather than stripped. Undefined for freshly-added lines.
+     * catalog remodel's `spec:{short,…}`, or `customText` — are PRESERVED rather
+     * than stripped. Undefined for freshly-added lines.
      */
     raw?: Record<string, unknown>;
 };
@@ -105,6 +113,7 @@ export function parseServices(raw: unknown): ServiceLine[] {
                 quantity,
                 duration: (s.duration ?? 'Varies').toString(),
                 custom: !!s.custom,
+                deleted: s.deleted === true,
                 raw: s as Record<string, unknown>,
             };
         }
@@ -123,7 +132,8 @@ export function serializeServices(lines: ServiceLine[]): PersistedServiceLine[] 
     return lines
         .map((l): PersistedServiceLine | null => {
             const service = (l.service ?? '').trim();
-            if (!service) return null;
+            // Drop blank NEW lines, but never a tombstone — it must keep its slot.
+            if (!service && !l.deleted) return null;
             const quantity = l.quantity > 0 ? Math.round(l.quantity) : 1;
             const priced = l.unitPrice != null && Number.isFinite(l.unitPrice);
 
@@ -141,21 +151,47 @@ export function serializeServices(lines: ServiceLine[]): PersistedServiceLine[] 
             };
             if (l.custom) out.custom = true;
             else delete out.custom;
+            // Preserve the tombstone flag verbatim: a deleted line keeps its slot
+            // and its `deleted:true` so pay indexes stay stable across the trip.
+            if (l.deleted) out.deleted = true;
+            else delete out.deleted;
             return out;
         })
         .filter((x): x is PersistedServiceLine => x !== null);
 }
 
-/** Total over persisted lines (Σ numeric price), or null when nothing is priced. */
+/** Total over persisted lines (Σ numeric price), or null when nothing is priced.
+ *  Tombstoned lines (deleted:true) never contribute. */
 export function totalFromPersisted(lines: PersistedServiceLine[]): number | null {
-    const priced = lines.filter((l) => typeof l.price === 'number');
+    const priced = lines.filter((l) => l.deleted !== true && typeof l.price === 'number');
     if (priced.length === 0) return null;
     return priced.reduce((s, l) => s + (l.price as number), 0);
 }
 
-/** Total over editor lines (Σ numeric line totals), or null when nothing is priced. */
+/** Total over editor lines (Σ numeric line totals), or null when nothing is priced.
+ *  Tombstoned lines never contribute. */
 export function totalFromLines(lines: ServiceLine[]): number | null {
-    const totals = lines.map(lineTotal).filter((t): t is number => t != null);
+    const totals = lines
+        .filter((l) => !l.deleted)
+        .map(lineTotal)
+        .filter((t): t is number => t != null);
     if (totals.length === 0) return null;
     return totals.reduce((s, t) => s + t, 0);
+}
+
+/**
+ * Display name for a service line, preferring an authored `spec.short` (from the
+ * emwraps catalog remodel) over the raw breadcrumb. Use this everywhere Rollout
+ * renders a line name (dashboard, invoice, work order, /me).
+ */
+export function serviceDisplayName(line: ServiceLine): string {
+    const spec = line.raw && (line.raw as any).spec;
+    const short = spec && typeof spec === 'object' ? spec.short : undefined;
+    if (typeof short === 'string' && short.trim()) return short.trim();
+    return line.service;
+}
+
+/** The display subset of parsed lines: tombstones filtered out, order preserved. */
+export function visibleLines(lines: ServiceLine[]): ServiceLine[] {
+    return lines.filter((l) => !l.deleted);
 }

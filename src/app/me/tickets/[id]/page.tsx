@@ -13,7 +13,7 @@ import { requireConsumer } from '@/lib/me-guard';
 import { loadTicketDetail } from '@/lib/me-data';
 import { fmtDate, fmtDay, money, StatusPill, EmptyRow, KV } from '../../ui';
 import { PortalChat } from './PortalChat';
-import { parseServices, lineTotal } from '@/lib/ticket-services';
+import { parseServices, lineTotal, visibleLines, serviceDisplayName } from '@/lib/ticket-services';
 
 export const dynamic = 'force-dynamic';
 
@@ -48,11 +48,11 @@ export default async function MeTicketDetail({
 
     const { ticket: t, shop, checkins, invoices, activity, messages } = detail;
     const vehicle = [t.car_year, t.car_make, t.car_model].filter(Boolean).join(' ');
-    // Canonical parse of the shared emwraps `tickets.services` contract. Prefer an
-    // authored `spec.short` when present; else the parser's `service` (breadcrumb).
-    const rawServices: any[] = Array.isArray(t.services) ? t.services : [];
-    const services = parseServices(rawServices).map((line, i) => ({
-        name: rawServices[i]?.spec?.short || line.service,
+    // Canonical parse of the shared emwraps `tickets.services` contract. Skip
+    // tombstoned lines (deleted:true) and prefer an authored `spec.short` when
+    // present; else the parser's `service` (breadcrumb).
+    const services = visibleLines(parseServices(t.services)).map((line) => ({
+        name: serviceDisplayName(line),
         quantity: line.quantity,
         total: lineTotal(line),
     }));

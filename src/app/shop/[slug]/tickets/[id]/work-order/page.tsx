@@ -10,7 +10,7 @@ import { notFound } from 'next/navigation';
 import { requireShopMemberBySlug } from '@/lib/auth-guard';
 import { getSupabaseAdmin, getSupabasePublicAdmin } from '@/lib/supabase/admin';
 import { PrintButton } from '../invoice/PrintButton';
-import { parseServices, lineTotal } from '@/lib/ticket-services';
+import { parseServices, lineTotal, visibleLines, serviceDisplayName } from '@/lib/ticket-services';
 
 export const metadata = { title: 'Work Order' };
 
@@ -80,7 +80,7 @@ export default async function WorkOrderPage({
     const accent = branding.primary_color || '#ffb733';
     const shopName = branding.from_name || branding.name || shop.name;
     const vehicle = [t.car_year, t.car_make, t.car_model, t.trim].filter(Boolean).join(' ');
-    const lineItems = parseServices(t.services);
+    const lineItems = visibleLines(parseServices(t.services));
     const location = [branding.city, branding.region].filter(Boolean).join(', ');
 
     return (
@@ -180,7 +180,7 @@ export default async function WorkOrderPage({
                                 const amt = lineTotal(li);
                                 return (
                                     <tr key={i} style={{ borderBottom: '1px solid #eee' }}>
-                                        <td style={{ padding: '9px 0' }}>{li.service || 'Service'}</td>
+                                        <td style={{ padding: '9px 0' }}>{serviceDisplayName(li) || 'Service'}</td>
                                         <td style={{ padding: '9px 0', textAlign: 'center' }}>{li.quantity || 1}</td>
                                         <td style={{ padding: '9px 0', textAlign: 'right', fontFamily: 'monospace' }}>
                                             {amt != null ? `$${amt.toFixed(2)}` : '—'}

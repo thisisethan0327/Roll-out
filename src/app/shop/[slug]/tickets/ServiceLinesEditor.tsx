@@ -14,7 +14,7 @@
  */
 import { useEffect, useState, useTransition } from 'react';
 import { loadServiceCatalog, type CatalogCategory } from './form-actions';
-import { lineTotal, totalFromLines, type ServiceLine } from '@/lib/ticket-services';
+import { lineTotal, totalFromLines, serviceDisplayName, type ServiceLine } from '@/lib/ticket-services';
 
 export function ServiceLinesEditor({
     slug,
@@ -85,23 +85,89 @@ export function ServiceLinesEditor({
 
     const patch = (i: number, p: Partial<ServiceLine>) =>
         onChange(lines.map((l, idx) => (idx === i ? { ...l, ...p } : l)));
-    const remove = (i: number) => onChange(lines.filter((_, idx) => idx !== i));
+    // Removal is TOMBSTONE-aware: a line parsed from the DB (`raw` present)
+    // occupies a persisted array slot that is a pay foreign key
+    // (ticket_line_assignments.service_line_index) — mark it deleted IN PLACE so
+    // the index never shifts. Brand-new lines (no `raw`) have no binding yet and
+    // are truly spliced out.
+    const remove = (i: number) => {
+        const l = lines[i];
+        if (l?.raw) onChange(lines.map((x, idx) => (idx === i ? { ...x, deleted: true } : x)));
+        else onChange(lines.filter((_, idx) => idx !== i));
+    };
+    const restore = (i: number) =>
+        onChange(lines.map((x, idx) => (idx === i ? { ...x, deleted: false } : x)));
 
     const total = totalFromLines(lines);
+    const activeCount = lines.filter((l) => !l.deleted).length;
 
     return (
         <div>
-            {lines.length === 0 ? (
+            {activeCount === 0 && lines.length === 0 ? (
                 <div className="admin-empty">NO SERVICES YET</div>
             ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                     {lines.map((l, i) => {
                         const amt = lineTotal(l);
+                        const short = serviceDisplayName(l);
+
+                        // Tombstoned line: kept for its pay-bound slot, shown
+                        // struck-through with a Restore (undo) affordance.
+                        if (l.deleted) {
+                            return (
+                                <div
+                                    key={i}
+                                    style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', opacity: 0.55 }}
+                                >
+                                    <span
+                                        style={{
+                                            flex: 1,
+                                            minWidth: 160,
+                                            textDecoration: 'line-through',
+                                            color: 'var(--text-2)',
+                                            fontFamily: 'var(--font-body)',
+                                            fontSize: 13,
+                                        }}
+                                    >
+                                        {short || l.service || '—'}
+                                    </span>
+                                    <span
+                                        style={{
+                                            fontSize: 10,
+                                            letterSpacing: 1,
+                                            textTransform: 'uppercase',
+                                            color: 'var(--text-3)',
+                                        }}
+                                    >
+                                        Removed
+                                    </span>
+                                    <button
+                                        type="button"
+                                        className="admin-action-btn muted"
+                                        onClick={() => restore(i)}
+                                        disabled={disabled}
+                                        aria-label="Restore line"
+                                    >
+                                        ↩ RESTORE
+                                    </button>
+                                </div>
+                            );
+                        }
+
+                        // Live line. Prefer the authored spec.short as a read
+                        // label above the editable breadcrumb field when present.
+                        const showShortHint = short && short !== l.service;
                         return (
                             <div
                                 key={i}
-                                style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}
+                                style={{ display: 'flex', flexDirection: 'column', gap: 2 }}
                             >
+                            {showShortHint && (
+                                <span style={{ fontSize: 11, color: 'var(--text-2)', fontFamily: 'var(--font-body)' }}>
+                                    {short}
+                                </span>
+                            )}
+                            <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
                                 <input
                                     className="admin-form-input"
                                     placeholder="Service name"
@@ -156,6 +222,7 @@ export function ServiceLinesEditor({
                                 >
                                     ✕
                                 </button>
+                            </div>
                             </div>
                         );
                     })}
