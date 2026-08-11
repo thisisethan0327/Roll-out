@@ -138,7 +138,7 @@ export default async function ProductDetailPage({
                                 <Link href={`/u/${vendor.handle}`} style={{ color: 'var(--gold)' }}>
                                     {vendor.name}
                                 </Link>
-                                . One shop per order.
+                                .
                             </p>
                         ) : null}
                     </div>

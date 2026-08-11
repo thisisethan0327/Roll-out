@@ -184,7 +184,7 @@ export type VendorOrderDetail = {
 // ── mapping ──────────────────────────────────────────────────────────────────
 
 const LIST_FIELDS =
-    'id,display_id,email,currency_code,total,payment_status,fulfillment_status,status,created_at,metadata,items.id,items.title,items.quantity';
+    'id,display_id,email,currency_code,total,payment_status,fulfillment_status,status,created_at,metadata,items.id,items.title,items.quantity,items.total,items.metadata';
 
 const DETAIL_FIELDS = [
     'id',
@@ -205,6 +205,8 @@ const DETAIL_FIELDS = [
     'items.title',
     'items.quantity',
     'items.unit_price',
+    'items.total',
+    'items.metadata',
     'items.thumbnail',
     'items.detail.quantity',
     'items.detail.fulfilled_quantity',
@@ -216,6 +218,8 @@ const DETAIL_FIELDS = [
     'fulfillments.delivered_at',
     'fulfillments.canceled_at',
     'fulfillments.packed_at',
+    'fulfillments.items.line_item_id',
+    'fulfillments.items.quantity',
     'fulfillments.labels.tracking_number',
     'fulfillments.labels.tracking_url',
     'payment_collections.payments.id',
@@ -224,8 +228,47 @@ const DETAIL_FIELDS = [
     'payment_collections.payments.canceled_at',
 ].join(',');
 
+/** Order-level vendor (legacy single-vendor stamp; primary vendor post-P2A). */
 function vendorOf(o: any): string | null {
     return o?.metadata?.vendor ?? null;
+}
+
+/** A single line's stamped vendor key (null when unattributed / install line). */
+function lineVendorOf(item: any): string | null {
+    return item?.metadata?.vendor ?? null;
+}
+
+/** True when ANY line on the order carries a vendor stamp (post-P2A order). */
+function hasLineVendorStamps(o: any): boolean {
+    return (Array.isArray(o?.items) ? o.items : []).some(
+        (it: any) => lineVendorOf(it) != null,
+    );
+}
+
+/**
+ * LINE-LEVEL vendor match (P2A). An order belongs to a vendor's dashboard when
+ * it CONTAINS at least one line stamped with that vendor key. Falls back to the
+ * order-level `metadata.vendor` for LEGACY orders placed before line stamping
+ * existed (no line carries a vendor). This is the single predicate every read
+ * and action re-checks — a shop only ever sees/acts on orders with its lines.
+ */
+function orderHasVendorLine(o: any, vendorKey: string): boolean {
+    if (hasLineVendorStamps(o)) {
+        return (Array.isArray(o?.items) ? o.items : []).some(
+            (it: any) => lineVendorOf(it) === vendorKey,
+        );
+    }
+    return vendorOf(o) === vendorKey;
+}
+
+/** This vendor's line items on the order (legacy: all lines when unstamped). */
+function vendorLines(o: any, vendorKey: string): any[] {
+    const items = Array.isArray(o?.items) ? o.items : [];
+    if (hasLineVendorStamps(o)) {
+        return items.filter((it: any) => lineVendorOf(it) === vendorKey);
+    }
+    // Legacy order (no line stamps) that matched at order level → all lines.
+    return vendorOf(o) === vendorKey ? items : [];
 }
 
 function itemsSummary(items: any[]): string {
@@ -236,21 +279,61 @@ function itemsSummary(items: any[]): string {
     return `${firstLabel} +${items.length - 1} more`;
 }
 
-function mapListItem(o: any): VendorOrderListItem {
-    const items = Array.isArray(o.items) ? o.items : [];
+/**
+ * List-row projection SCOPED to a vendor: item count, summary, and the row
+ * `total` reflect ONLY this vendor's lines (their subtotal), not the whole
+ * multi-vendor order. Payment status stays order-level (one shared payment).
+ */
+function mapListItem(o: any, vendorKey: string): VendorOrderListItem {
+    const lines = vendorLines(o, vendorKey);
+    const theirSubtotal = lines.reduce((n: number, it: any) => n + Number(it?.total ?? 0), 0);
     return {
         id: o.id,
         display_id: o.display_id ?? null,
         email: o.email ?? null,
-        total: o.total ?? null,
+        total: theirSubtotal,
         currency_code: o.currency_code ?? null,
         payment_status: o.payment_status ?? null,
-        fulfillment_status: o.fulfillment_status ?? null,
+        fulfillment_status: deriveVendorFulfillmentStatus(o, lines),
         status: o.status ?? null,
         created_at: o.created_at ?? null,
-        itemCount: items.reduce((n: number, it: any) => n + Number(it?.quantity ?? 0), 0),
-        itemsSummary: itemsSummary(items),
+        itemCount: lines.reduce((n: number, it: any) => n + Number(it?.quantity ?? 0), 0),
+        itemsSummary: itemsSummary(lines),
     };
+}
+
+/**
+ * Per-vendor fulfillment status derived from THIS vendor's lines (Medusa's
+ * order-level fulfillment_status reflects the whole order, which is wrong for a
+ * vendor slice). Looks at remaining unfulfilled quantity on their lines, then at
+ * the shipment/delivery state of the fulfillments that cover their lines.
+ */
+function deriveVendorFulfillmentStatus(o: any, lines: any[]): string {
+    if (lines.length === 0) return 'not_fulfilled';
+    const remaining = lines.reduce(
+        (n: number, it: any) =>
+            n + (Number(it?.quantity ?? 0) - Number(it?.detail?.fulfilled_quantity ?? 0)),
+        0,
+    );
+    const anyFulfilled = lines.some(
+        (it: any) => Number(it?.detail?.fulfilled_quantity ?? 0) > 0,
+    );
+    if (remaining > 0) return anyFulfilled ? 'partially_fulfilled' : 'not_fulfilled';
+
+    // All their lines fulfilled — refine by the fulfillments covering their lines.
+    const theirLineIds = new Set(lines.map((it) => it.id));
+    const theirFuls = (Array.isArray(o?.fulfillments) ? o.fulfillments : []).filter(
+        (f: any) =>
+            !f?.canceled_at &&
+            (Array.isArray(f?.items) ? f.items : []).some((fi: any) =>
+                theirLineIds.has(fi?.line_item_id),
+            ),
+    );
+    if (theirFuls.length === 0) return 'fulfilled';
+    if (theirFuls.every((f: any) => f.delivered_at)) return 'delivered';
+    if (theirFuls.every((f: any) => f.shipped_at)) return 'shipped';
+    if (theirFuls.some((f: any) => f.shipped_at)) return 'partially_shipped';
+    return 'fulfilled';
 }
 
 function mapAddress(a: any): VendorOrderAddress | null {
@@ -269,8 +352,19 @@ function mapAddress(a: any): VendorOrderAddress | null {
     };
 }
 
-function mapDetail(o: any): VendorOrderDetail {
-    const items: VendorOrderItem[] = (Array.isArray(o.items) ? o.items : []).map((it: any) => ({
+/**
+ * Detail projection SCOPED to a vendor. Shows ONLY this vendor's line items and
+ * their subtotal (sum of their line totals). Order-level shipping/tax/discount
+ * are intentionally omitted (they belong to the whole shared order, not one
+ * vendor's slice) and render as '—'; the platform (P2B) owns the whole-order
+ * view. Fulfillments are filtered to those covering this vendor's lines, and
+ * fulfillment status is derived from this vendor's lines only.
+ */
+function mapDetail(o: any, vendorKey: string): VendorOrderDetail {
+    const lines = vendorLines(o, vendorKey);
+    const theirLineIds = new Set(lines.map((it) => it.id));
+
+    const items: VendorOrderItem[] = lines.map((it: any) => ({
         id: it.id,
         title: it.title ?? it.product_title ?? null,
         quantity: it.quantity ?? null,
@@ -278,6 +372,8 @@ function mapDetail(o: any): VendorOrderDetail {
         unit_price: it.unit_price ?? null,
         thumbnail: it.thumbnail ?? null,
     }));
+
+    const theirSubtotal = lines.reduce((n: number, it: any) => n + Number(it?.total ?? 0), 0);
 
     const payments: VendorOrderPayment[] = [];
     for (const pc of (o.payment_collections ?? []) as any[]) {
@@ -291,20 +387,25 @@ function mapDetail(o: any): VendorOrderDetail {
         }
     }
 
+    // Only fulfillments that cover at least one of THIS vendor's lines.
     const fulfillments: VendorOrderFulfillment[] = (
         Array.isArray(o.fulfillments) ? o.fulfillments : []
-    ).map((f: any) => ({
-        id: f.id,
-        shipped_at: f.shipped_at ?? null,
-        delivered_at: f.delivered_at ?? null,
-        canceled_at: f.canceled_at ?? null,
-        packed_at: f.packed_at ?? null,
-        trackingNumbers: (Array.isArray(f.labels) ? f.labels : [])
-            .map((l: any) => ({ number: l?.tracking_number ?? null, url: l?.tracking_url ?? null }))
-            .filter((t: any) => t.number || t.url),
-    }));
-
-    const sm = Array.isArray(o.shipping_methods) ? o.shipping_methods[0] : null;
+    )
+        .filter((f: any) =>
+            (Array.isArray(f?.items) ? f.items : []).some((fi: any) =>
+                theirLineIds.has(fi?.line_item_id),
+            ),
+        )
+        .map((f: any) => ({
+            id: f.id,
+            shipped_at: f.shipped_at ?? null,
+            delivered_at: f.delivered_at ?? null,
+            canceled_at: f.canceled_at ?? null,
+            packed_at: f.packed_at ?? null,
+            trackingNumbers: (Array.isArray(f.labels) ? f.labels : [])
+                .map((l: any) => ({ number: l?.tracking_number ?? null, url: l?.tracking_url ?? null }))
+                .filter((t: any) => t.number || t.url),
+        }));
 
     const hasAuthorizedPayment = payments.some(
         (p) => !p.captured_at && !p.canceled_at,
@@ -320,17 +421,19 @@ function mapDetail(o: any): VendorOrderDetail {
         email: o.email ?? null,
         status: o.status ?? null,
         payment_status: o.payment_status ?? null,
-        fulfillment_status: o.fulfillment_status ?? null,
+        fulfillment_status: deriveVendorFulfillmentStatus(o, lines),
         currency_code: o.currency_code ?? null,
         created_at: o.created_at ?? null,
-        total: o.total ?? null,
-        item_subtotal: o.item_subtotal ?? null,
-        shipping_total: o.shipping_total ?? null,
-        tax_total: o.tax_total ?? null,
-        discount_total: o.discount_total ?? null,
+        // Per-vendor slice: total == their subtotal; order-level shipping/tax are
+        // not attributable to one vendor here (shown as '—').
+        total: theirSubtotal,
+        item_subtotal: theirSubtotal,
+        shipping_total: null,
+        tax_total: null,
+        discount_total: null,
         items,
         shipping_address: mapAddress(o.shipping_address),
-        shipping_method: sm ? { name: sm.name ?? null, amount: sm.amount ?? null } : null,
+        shipping_method: null,
         fulfillments,
         payments,
         hasAuthorizedPayment,
@@ -372,7 +475,9 @@ export async function listVendorOrders(
     } catch (e: any) {
         return { orders: [], error: e?.message ?? 'Order lookup failed.' };
     }
-    const mine = collected.filter((o) => vendorOf(o) === vendorKey).map(mapListItem);
+    const mine = collected
+        .filter((o) => orderHasVendorLine(o, vendorKey))
+        .map((o) => mapListItem(o, vendorKey));
     return { orders: mine, error: null };
 }
 
@@ -391,8 +496,8 @@ export async function getVendorOrder(
     );
     if (!res || !res.ok) return null;
     const o = (await res.json())?.order;
-    if (!o?.id || vendorOf(o) !== vendorKey) return null;
-    return mapDetail(o);
+    if (!o?.id || !orderHasVendorLine(o, vendorKey)) return null;
+    return mapDetail(o, vendorKey);
 }
 
 // ── actions (vendor-scoped, re-verify before acting) ─────────────────────────
@@ -409,8 +514,9 @@ async function assertVendorOrder(vendorKey: string, orderId: string): Promise<an
     if (!orderId) return null;
     const fields =
         'id,display_id,status,payment_status,fulfillment_status,metadata,' +
-        'items.id,items.quantity,items.detail.fulfilled_quantity,' +
+        'items.id,items.quantity,items.metadata,items.detail.fulfilled_quantity,' +
         'fulfillments.id,fulfillments.canceled_at,fulfillments.shipped_at,fulfillments.delivered_at,' +
+        'fulfillments.items.line_item_id,fulfillments.items.quantity,' +
         'payment_collections.payments.id,payment_collections.payments.amount,' +
         'payment_collections.payments.captured_at,payment_collections.payments.canceled_at';
     const res = await adminFetch(
@@ -418,7 +524,7 @@ async function assertVendorOrder(vendorKey: string, orderId: string): Promise<an
     );
     if (!res || !res.ok) return null;
     const o = (await res.json())?.order;
-    if (!o?.id || vendorOf(o) !== vendorKey) return null;
+    if (!o?.id || !orderHasVendorLine(o, vendorKey)) return null;
     return o;
 }
 
@@ -472,13 +578,14 @@ export async function createFulfillmentWithTracking(
     const o = await assertVendorOrder(vendorKey, orderId);
     if (!o) return { ok: false, error: 'Order not found for this shop.' };
 
-    const items = (o.items ?? [])
+    // Fulfill ONLY this vendor's remaining line items — never another vendor's.
+    const items = vendorLines(o, vendorKey)
         .map((it: any) => ({
             id: it.id,
             quantity: Number(it?.quantity ?? 0) - Number(it?.detail?.fulfilled_quantity ?? 0),
         }))
         .filter((x: any) => x.quantity > 0);
-    if (items.length === 0) return { ok: false, error: 'Nothing left to fulfill on this order.' };
+    if (items.length === 0) return { ok: false, error: 'Nothing left to fulfill for this shop on this order.' };
 
     const body: any = { items };
     const locationId = await defaultStockLocationId();
@@ -536,8 +643,14 @@ export async function markFulfillmentDelivered(
 ): Promise<ActionResult> {
     const o = await assertVendorOrder(vendorKey, orderId);
     if (!o) return { ok: false, error: 'Order not found for this shop.' };
+    // Only fulfillments that cover THIS vendor's lines.
+    const theirLineIds = new Set(vendorLines(o, vendorKey).map((it: any) => it.id));
     const fs = (Array.isArray(o.fulfillments) ? o.fulfillments : []).filter(
-        (f: any) => !f?.canceled_at,
+        (f: any) =>
+            !f?.canceled_at &&
+            (Array.isArray(f?.items) ? f.items : []).some((fi: any) =>
+                theirLineIds.has(fi?.line_item_id),
+            ),
     );
     const target = fs.length ? fs[fs.length - 1] : null;
     if (!target?.id) return { ok: false, error: 'No fulfillment to mark delivered.' };
@@ -589,6 +702,18 @@ export async function cancelVendorOrder(
     if (!o) return { ok: false, error: 'Order not found for this shop.' };
     if ((o.status ?? '').toLowerCase() === 'canceled') {
         return { ok: false, error: 'This order is already canceled.' };
+    }
+    // Cancel is a WHOLE-ORDER action in Medusa. On a multi-vendor order it would
+    // wrongly cancel other vendors' lines too, so a single shop may only cancel
+    // an order that is entirely its own. Cross-vendor cancellation belongs to the
+    // platform owner view (P2B).
+    const allItems = Array.isArray(o.items) ? o.items : [];
+    const mine = vendorLines(o, vendorKey);
+    if (mine.length !== allItems.length) {
+        return {
+            ok: false,
+            error: 'This order includes other shops — it can only be canceled by the platform owner.',
+        };
     }
     const res = await adminFetch(`/admin/orders/${encodeURIComponent(orderId)}/cancel`, {
         method: 'POST',

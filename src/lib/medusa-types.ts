@@ -52,6 +52,12 @@ export type CartLine = {
     quantity: number;
     unitPrice: number;
     total: number;
+    /** Tenant vendor key stamped on the line (null for install/unattributed). */
+    vendor: string | null;
+    /** Owning shop name for per-line display in a mixed cart (null if unknown). */
+    shopName: string | null;
+    /** Owning shop @handle for the /u/[handle] link (null if unknown). */
+    shopHandle: string | null;
 };
 
 export type CartVendor = {
@@ -73,7 +79,12 @@ export type Cart = {
     total: number;
     hasShippingAddress: boolean;
     shippingOptionId: string | null;
+    /** PRIMARY (highest-value) shop — kept for single-vendor display/back-compat. */
     vendor: CartVendor;
+    /** All distinct selling shops represented in the cart (P2A mixed carts). */
+    vendors: CartVendor[];
+    /** True when the cart spans more than one selling shop. */
+    isMultiVendor: boolean;
 };
 
 export type ShippingOption = {
