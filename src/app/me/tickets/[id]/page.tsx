@@ -13,10 +13,9 @@ import { requireConsumer } from '@/lib/me-guard';
 import { loadTicketDetail } from '@/lib/me-data';
 import { fmtDate, fmtDay, money, StatusPill, EmptyRow, KV } from '../../ui';
 import { PortalChat } from './PortalChat';
+import { parseServices, lineTotal } from '@/lib/ticket-services';
 
 export const dynamic = 'force-dynamic';
-
-type Service = { name?: string; label?: string; price?: number | string; qty?: number };
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
     return (
@@ -49,7 +48,14 @@ export default async function MeTicketDetail({
 
     const { ticket: t, shop, checkins, invoices, activity, messages } = detail;
     const vehicle = [t.car_year, t.car_make, t.car_model].filter(Boolean).join(' ');
-    const services: Service[] = Array.isArray(t.services) ? t.services : [];
+    // Canonical parse of the shared emwraps `tickets.services` contract. Prefer an
+    // authored `spec.short` when present; else the parser's `service` (breadcrumb).
+    const rawServices: any[] = Array.isArray(t.services) ? t.services : [];
+    const services = parseServices(rawServices).map((line, i) => ({
+        name: rawServices[i]?.spec?.short || line.service,
+        quantity: line.quantity,
+        total: lineTotal(line),
+    }));
 
     return (
         <div>
@@ -114,15 +120,15 @@ export default async function MeTicketDetail({
                                         }}
                                     >
                                         <span style={{ color: 'var(--text)' }}>
-                                            {s.name ?? s.label ?? 'Service'}
-                                            {s.qty && s.qty > 1 ? ` ×${s.qty}` : ''}
+                                            {s.name || 'Service'}
+                                            {s.quantity && s.quantity > 1 ? ` ×${s.quantity}` : ''}
                                         </span>
-                                        {s.price != null && (
+                                        {s.total != null && (
                                             <span
                                                 className="text-dim"
                                                 style={{ fontFamily: 'var(--font-mono, monospace)' }}
                                             >
-                                                ${Number(s.price).toFixed(2)}
+                                                ${Number(s.total).toFixed(2)}
                                             </span>
                                         )}
                                     </div>
