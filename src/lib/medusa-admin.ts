@@ -726,6 +726,127 @@ export async function captureOrderPayment(
     return { ok: true };
 }
 
+// ── console pulse (cross-vendor, cached) ─────────────────────────────────────
+// The god console's PULSE section needs whole-store numbers, not one vendor's
+// slice: total store revenue and the summed paid-but-unfulfilled backlog. This
+// is the ONLY function here that is not vendor-scoped — it is reachable solely
+// from the platform-admin /admin/overview (already gated by requirePlatformAdmin)
+// and returns aggregates, never another shop's order rows. It pages orders ONCE
+// and caches for 5 min so god-mode refreshes don't hammer Medusa.
+
+/** Real selling vendors (seed shops excluded). Mirrors store-shops VENDOR roots. */
+const PULSE_VENDORS: { key: string; label: string }[] = [
+    { key: 'neferstock', label: 'NeferStock' },
+    { key: 'divine', label: 'divine' },
+];
+
+/** Seed / KYC-test orders — excluded from every console count. */
+function isSeedOrder(o: any): boolean {
+    const m = o?.metadata ?? {};
+    const v = String(m.vendor ?? m.vendor_slug ?? '');
+    return v.startsWith('seed-') || v === 'nfs-kyc-test' || String(m.vendor_shop_id) === '15';
+}
+
+// item_subtotal is the ITEMS-ONLY pre-tax total (never Medusa's `subtotal`, which
+// folds shipping in — documented money trap). items.detail hydrates line totals so
+// item_subtotal foots. Fulfillment fields feed the per-vendor unfulfilled derive.
+const SCAN_FIELDS =
+    'id,display_id,status,payment_status,fulfillment_status,created_at,currency_code,item_subtotal,metadata,' +
+    'items.id,items.quantity,items.total,items.metadata,items.detail.fulfilled_quantity,' +
+    'fulfillments.canceled_at,fulfillments.shipped_at,fulfillments.delivered_at,fulfillments.items.line_item_id';
+
+export type MedusaPulse = {
+    /** Store revenue = SUM(item_subtotal) over non-canceled, non-seed orders. */
+    storeRevenue: {
+        d7: { count: number; subtotal: number };
+        d30: { count: number; subtotal: number };
+    };
+    /** Paid-but-unfulfilled backlog, summed + per real vendor (same predicate as the shop console). */
+    unfulfilled: { total: number; byVendor: { key: string; label: string; count: number }[] };
+    currency: string | null;
+    error: string | null;
+};
+
+let pulseCache: { at: number; data: MedusaPulse } | null = null;
+const PULSE_TTL_MS = 5 * 60 * 1000;
+
+/**
+ * Whole-store KPIs for the god console PULSE section. Pages recent orders once
+ * (bounded by MAX_SCAN), then derives store revenue windows and the summed
+ * paid-unfulfilled backlog. Degrades to zeros + an error string when Medusa
+ * admin creds are unset (local dev) or Medusa is unreachable — never throws.
+ */
+export async function getMedusaPulse(): Promise<MedusaPulse> {
+    if (pulseCache && Date.now() - pulseCache.at < PULSE_TTL_MS) return pulseCache.data;
+
+    const empty: MedusaPulse = {
+        storeRevenue: { d7: { count: 0, subtotal: 0 }, d30: { count: 0, subtotal: 0 } },
+        unfulfilled: { total: 0, byVendor: PULSE_VENDORS.map((v) => ({ ...v, count: 0 })) },
+        currency: null,
+        error: null,
+    };
+
+    const PAGE = 100;
+    const MAX_SCAN = 1000;
+    const collected: any[] = [];
+    try {
+        let offset = 0;
+        let total = Infinity;
+        while (offset < total && offset < MAX_SCAN) {
+            const res = await adminFetch(
+                `/admin/orders?limit=${PAGE}&offset=${offset}&order=-created_at&fields=${encodeURIComponent(
+                    SCAN_FIELDS,
+                )}`,
+            );
+            if (!res) return { ...empty, error: 'Store admin is unavailable right now.' };
+            if (!res.ok) return { ...empty, error: await errorMessage(res) };
+            const json = await res.json();
+            const batch: any[] = json?.orders ?? [];
+            collected.push(...batch);
+            total = Number(json?.count ?? batch.length);
+            if (batch.length < PAGE) break;
+            offset += PAGE;
+        }
+    } catch (e: any) {
+        return { ...empty, error: e?.message ?? 'Order lookup failed.' };
+    }
+
+    const now = Date.now();
+    const within = (iso: string | null, days: number) =>
+        iso ? now - new Date(iso).getTime() <= days * 86_400_000 : false;
+
+    // Revenue: non-canceled, non-seed orders; SUM their order-level item_subtotal.
+    const revenueOrders = collected.filter(
+        (o) => !isSeedOrder(o) && (o.status ?? '').toLowerCase() !== 'canceled',
+    );
+    const rev = (days: number) => {
+        const sel = revenueOrders.filter((o) => within(o.created_at, days));
+        return {
+            count: sel.length,
+            subtotal: sel.reduce((n, o) => n + Number(o.item_subtotal ?? 0), 0),
+        };
+    };
+
+    // Unfulfilled: reuse the EXACT vendor-scoped predicate the Orders list uses, so
+    // the console can never disagree with a shop's own backlog count.
+    const byVendor = PULSE_VENDORS.map((v) => {
+        const count = collected
+            .filter((o) => orderHasVendorLine(o, v.key))
+            .map((o) => mapListItem(o, v.key))
+            .filter(isPaidUnfulfilled).length;
+        return { ...v, count };
+    });
+
+    const data: MedusaPulse = {
+        storeRevenue: { d7: rev(7), d30: rev(30) },
+        unfulfilled: { total: byVendor.reduce((n, v) => n + v.count, 0), byVendor },
+        currency: collected.find((o) => o.currency_code)?.currency_code ?? null,
+        error: null,
+    };
+    pulseCache = { at: Date.now(), data };
+    return data;
+}
+
 /** Cancel an order. Vendor-scoped; re-verified before acting. */
 export async function cancelVendorOrder(
     vendorKey: string,

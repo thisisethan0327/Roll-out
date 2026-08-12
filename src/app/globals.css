@@ -654,6 +654,47 @@ h4 { font-size: 16px; letter-spacing: var(--track-wide); }
 .admin-stat-num.gold { color: var(--gold); }
 .admin-stat-num.warn { color: var(--warn); }
 
+/* PULSE tile extras — 7d/30d framing, per-status breakdown, degraded states. */
+.admin-stat-sub {
+  font-family: var(--font-display);
+  font-size: 9px;
+  letter-spacing: var(--track-wide);
+  color: var(--text-3);
+  margin-top: 8px;
+  line-height: 1.6;
+}
+.admin-stat-sub .k { color: var(--text-2); font-weight: 700; }
+.admin-stat-sub .sep { color: var(--line-mid); margin: 0 2px; }
+.admin-stat-tag {
+  display: inline-block;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 8px;
+  letter-spacing: var(--track-wider);
+  border: 1px solid var(--line-mid);
+  color: var(--text-3);
+  padding: 1px 5px;
+  margin-left: 8px;
+  vertical-align: middle;
+}
+.admin-stat-tag.sandbox { color: var(--gold); border-color: var(--gold); background: var(--gold-glow); }
+.admin-stat-note {
+  font-family: var(--font-display);
+  font-size: 9px;
+  letter-spacing: var(--track-wide);
+  color: var(--warn);
+  opacity: 0.85;
+  margin-top: 8px;
+  line-height: 1.5;
+}
+.admin-stat-connect {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: var(--track-wide);
+  color: var(--gold);
+}
+
 .admin-table-wrap {
   border: 1px solid var(--line);
   background: var(--bg-1);
