@@ -203,7 +203,7 @@ export function GeneralSettingsForm({
             </div>
             <p style={{ color: 'var(--text-3)', fontSize: 11, lineHeight: 1.5, margin: '6px 0 4px' }}>
                 {precision === 'area'
-                    ? 'Area only: we pin the center of your city — your street address stays private.'
+                    ? 'Area only: we pin the center of your CITY (if you leave city blank, we fall back to your region above) — your street address stays private.'
                     : precision === 'off'
                       ? 'Your shop is hidden from the public map and directory.'
                       : 'Exact: we pin your street address and show it on your map popup.'}
@@ -247,7 +247,7 @@ const PRECISIONS: {
     hint: string;
 }[] = [
     { value: 'exact', label: 'Exact address', hint: 'Pin your street address — shown on your map popup.' },
-    { value: 'area', label: 'Area only — city-level pin', hint: 'Online-based? Show a city pin, keep your street private.' },
+    { value: 'area', label: 'Area only — city-level pin', hint: 'Online-based? Your CITY drives the pin (region used if blank); street stays private.' },
     { value: 'off', label: 'Not on the map', hint: 'Hide your shop from the public map + directory.' },
 ];
 

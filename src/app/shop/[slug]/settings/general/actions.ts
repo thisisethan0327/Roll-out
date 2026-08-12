@@ -60,6 +60,13 @@ export async function updateShopGeneral(
     const precision: LocationPrecision = precisionRaw;
     const show_on_map = precision !== 'off';
 
+    // Area mode pins the city centroid, falling back to the region when no city
+    // is set. If neither is present there's nothing to geocode, so reject the
+    // save rather than silently storing an unpinnable "on map" state.
+    if (precision === 'area' && !city && !region) {
+        throw new Error('Area mode needs at least a city or region.');
+    }
+
     // Preserve existing coordinates by default; only overwrite on a geocode hit,
     // so a transient Nominatim failure never wipes a good pin.
     const { data: existing } = await admin
@@ -72,7 +79,7 @@ export async function updateShopGeneral(
 
     if (show_on_map) {
         const query = buildGeocodeQuery(
-            { address_line, city, state_region, postal },
+            { address_line, city, state_region, postal, region },
             precision,
         );
         if (query) {
@@ -107,7 +114,7 @@ export async function updateShopGeneral(
     if (show_on_map && lat == null) {
         const addressText =
             buildGeocodeQuery(
-                { address_line, city, state_region, postal },
+                { address_line, city, state_region, postal, region },
                 precision,
             ) ?? null;
         await raiseShopUnmapped(admin, shopId, name, addressText);

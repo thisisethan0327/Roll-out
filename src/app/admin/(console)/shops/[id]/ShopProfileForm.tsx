@@ -11,7 +11,7 @@ type PrecisionOpt = {
 
 const PRECISIONS: PrecisionOpt[] = [
     { value: 'exact', label: 'Exact address', hint: 'Street-address pin — popup shows the full address.' },
-    { value: 'area', label: 'Area only — city-level pin', hint: 'City-centroid pin — popup shows "ONLINE · BASED IN <city>", no street.' },
+    { value: 'area', label: 'Area only — city-level pin', hint: 'CITY drives the pin (region is used if no city). Popup shows "ONLINE · BASED IN <city>", no street.' },
     { value: 'off', label: 'Not on the map', hint: 'Hidden from the public map + directory.' },
 ];
 
@@ -231,9 +231,9 @@ export function ShopProfileForm({
             </div>
 
             <p style={{ color: 'var(--text-3)', fontSize: 11, lineHeight: 1.5, margin: '2px 0 0' }}>
-                Coordinates are resolved automatically on save from the address
-                ({precision === 'area' ? 'city only' : 'full street address'}). A good
-                pin is never overwritten if the lookup fails.
+                {precision === 'area'
+                    ? 'Coordinates are resolved on save from the CITY (the region above is used only if no city is set). A good pin is never overwritten if the lookup fails.'
+                    : 'Coordinates are resolved automatically on save from the full street address. A good pin is never overwritten if the lookup fails.'}
             </p>
 
             {err && (

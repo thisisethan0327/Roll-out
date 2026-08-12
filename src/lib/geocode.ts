@@ -31,12 +31,20 @@ export type ShopLocationInput = {
     city?: string | null;
     state_region?: string | null;
     postal?: string | null;
+    /**
+     * The shop's broad region field (e.g. "Seattle" or "PNW"). Used only as the
+     * area-mode fallback when `city` is empty, so a shop that filled in a region
+     * but not a city still gets a centroid pin instead of silently landing off
+     * the map.
+     */
+    region?: string | null;
 };
 
 /**
  * Build the Nominatim query for a shop given its precision:
  *   exact → full street address ("<line>, <city>, <state>, <postal>")
- *   area  → city centroid only ("<city>, <state>")
+ *   area  → city centroid ("<city>, <state>"), falling back to the shop's
+ *           region ("<region>, <state>") when no city is on file
  *   off   → null (nothing to geocode; the shop is not on the map)
  * Returns null when there aren't enough parts to form a meaningful query.
  */
@@ -48,18 +56,22 @@ export function buildGeocodeQuery(
 
     const clean = (v: unknown) => (v ?? '').toString().trim();
 
-    const parts =
-        precision === 'area'
-            ? [clean(loc.city), clean(loc.state_region)]
-            : [
-                  clean(loc.address_line),
-                  clean(loc.city),
-                  clean(loc.state_region),
-                  clean(loc.postal),
-              ];
+    if (precision === 'area') {
+        // City drives the area pin. When there's no city, fall back to the
+        // shop's region — which may be city-like ("Seattle") or broad ("PNW");
+        // either is passed to Nominatim as-is, and a miss is handled upstream.
+        const locality = clean(loc.city) || clean(loc.region);
+        const parts = [locality, clean(loc.state_region)].filter(Boolean);
+        return parts.length > 0 ? parts.join(', ') : null;
+    }
 
-    const usable = parts.filter(Boolean);
-    return usable.length > 0 ? usable.join(', ') : null;
+    const parts = [
+        clean(loc.address_line),
+        clean(loc.city),
+        clean(loc.state_region),
+        clean(loc.postal),
+    ].filter(Boolean);
+    return parts.length > 0 ? parts.join(', ') : null;
 }
 
 /**
