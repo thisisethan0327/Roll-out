@@ -482,6 +482,39 @@ export async function listVendorOrders(
 }
 
 /**
+ * A vendor order row is "needs-attention unfulfilled" when it is paid (captured)
+ * but still has line items awaiting fulfillment — the same predicate the Orders
+ * list uses for its UNFULFILLED filter, narrowed to paid orders. Canceled orders
+ * never qualify. Exported so the overview attention panel and the orders table
+ * stay in lock-step on what "unfulfilled" means.
+ */
+export function isPaidUnfulfilled(o: VendorOrderListItem): boolean {
+    const status = (o.status ?? '').toLowerCase();
+    const ful = (o.fulfillment_status ?? '').toLowerCase();
+    const pay = (o.payment_status ?? '').toLowerCase();
+    if (status === 'canceled') return false;
+    const unfulfilled = ful === 'not_fulfilled' || ful === 'partially_fulfilled';
+    // captured = money in hand; partially_refunded still leaves a paid balance.
+    const paid = pay === 'captured' || pay === 'partially_refunded';
+    return unfulfilled && paid;
+}
+
+/**
+ * Count a vendor's paid-but-unfulfilled orders — the shop overview's "needs
+ * attention" orders signal. Thin wrapper over `listVendorOrders` so the vendor
+ * scoping and the unfulfilled definition are never duplicated. DERIVED live from
+ * Medusa (nothing stored). Returns 0 on error alongside the error string so the
+ * caller can decide whether to surface a soft failure.
+ */
+export async function countPaidUnfulfilledOrders(
+    vendorKey: string,
+): Promise<{ count: number; error: string | null }> {
+    const { orders, error } = await listVendorOrders(vendorKey);
+    if (error) return { count: 0, error };
+    return { count: orders.filter(isPaidUnfulfilled).length, error: null };
+}
+
+/**
  * Fetch ONE order for a vendor. Returns null when the order does not exist OR
  * its metadata.vendor does not match — a foreign / unknown id is indistinguishable
  * from "not found", so the caller renders a 404 and never leaks existence.
