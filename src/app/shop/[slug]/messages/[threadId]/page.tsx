@@ -1,10 +1,19 @@
 /**
- * Shop messaging — single thread view + composer. Server-rendered messages
- * list. Composer is a client component; realtime client component subscribes
- * to inserts.
+ * Shop messaging — single thread view + composer. Server-rendered message list;
+ * the composer + RealtimeRefresh are client components.
  *
- * On load we bump the shop_page's membership.last_read_at = now() so the
- * unread badge on the list resets.
+ * Two thread models are handled:
+ *   kind='shop'         — unified shop DM (P2 §3.4). The customer is the only
+ *                         member; staff read/reply via shop membership. Replies
+ *                         post as the STAFF member's own profile
+ *                         (sendShopThreadMessage). No shop-side read state, so
+ *                         nothing to mark-read here.
+ *   kind='direct'/group — legacy shop_page threads. The synthetic shop_page is a
+ *                         member; staff post AS the shop (sendMessageAsShop) and
+ *                         we bump the shop_page's last_read_at on open.
+ *
+ * Access is already gated by requireShopMemberBySlug; we additionally verify the
+ * thread belongs to this shop.
  */
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
@@ -12,12 +21,14 @@ import { requireShopMemberBySlug } from '@/lib/auth-guard';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { RealtimeRefresh } from './RealtimeRefresh';
 import { MessageComposer } from './MessageComposer';
+import { ShopThreadComposer } from './ShopThreadComposer';
 import { markThreadRead } from '../actions';
 
 export const metadata = { title: 'Thread' };
 
 const MESSAGE_LIMIT = 100;
 const MANAGER_ROLES = new Set(['owner', 'admin', 'manager']);
+const INSTALLER_ROLES = new Set(['owner', 'admin', 'manager', 'installer']);
 
 async function fetchShopPageProfileId(shopId: number): Promise<string | null> {
     const admin = getSupabaseAdmin();
@@ -50,6 +61,14 @@ function fmtTime(iso: string | null | undefined): string {
     return `${d.getMonth() + 1}/${d.getDate()} ${hhmm}`;
 }
 
+type MessageBubble = {
+    id: string;
+    body: string | null;
+    created_at: string | null;
+    isOutbound: boolean;
+    senderName: string;
+};
+
 export default async function ShopThreadPage({
     params,
 }: {
@@ -59,59 +78,111 @@ export default async function ShopThreadPage({
     const { shop, role } = await requireShopMemberBySlug(slug);
 
     const admin = getSupabaseAdmin();
-    const shopPageId = await fetchShopPageProfileId(shop.shopId);
 
-    if (!shopPageId) {
-        notFound();
-    }
-
-    // Verify thread exists, belongs to this shop, and shop_page is a member.
+    // Verify thread exists and belongs to this shop.
     const { data: thread } = await admin
         .from('chat_threads')
-        .select('id, shop_id, kind, name')
+        .select('id, shop_id, kind, name, customer_profile_id')
         .eq('id', threadId)
         .maybeSingle();
     if (!thread || (thread as any).shop_id !== shop.shopId) {
         notFound();
     }
 
-    const { data: shopMembership } = await admin
-        .from('chat_thread_members')
-        .select('profile_id')
-        .eq('thread_id', threadId)
-        .eq('profile_id', shopPageId)
-        .maybeSingle();
-    if (!shopMembership) {
-        notFound();
+    const kind = (thread as any).kind as string;
+    const isShopThread = kind === 'shop';
+
+    let displayName = (thread as any).name ?? 'DIRECT THREAD';
+    let handle: string | null = null;
+    let bubbles: MessageBubble[] = [];
+    let canSend = false;
+
+    if (isShopThread) {
+        // Unified shop DM. Resolve the customer; staff reply as themselves.
+        const customerId: string | null = (thread as any).customer_profile_id ?? null;
+        if (customerId) {
+            const { data: customer } = await admin
+                .from('profiles')
+                .select('handle, display_name')
+                .eq('id', customerId)
+                .maybeSingle();
+            displayName = (customer as any)?.display_name ?? displayName;
+            handle = (customer as any)?.handle ?? null;
+        }
+
+        const { data: messages } = await admin
+            .from('chat_messages')
+            .select('id, sender_id, body, created_at, sender:profiles(display_name)')
+            .eq('thread_id', threadId)
+            .is('deleted_at', null)
+            .order('created_at', { ascending: false })
+            .limit(MESSAGE_LIMIT);
+
+        bubbles = ((messages as any[]) ?? [])
+            .slice()
+            .reverse()
+            .map((m) => {
+                const outbound = m.sender_id !== customerId; // shop-side (staff)
+                return {
+                    id: m.id,
+                    body: m.body ?? '',
+                    created_at: m.created_at,
+                    isOutbound: outbound,
+                    senderName: outbound ? m.sender?.display_name ?? 'STAFF' : m.sender?.display_name ?? '?',
+                };
+            });
+
+        canSend = INSTALLER_ROLES.has(role);
+    } else {
+        // Legacy shop_page thread.
+        const shopPageId = await fetchShopPageProfileId(shop.shopId);
+        if (!shopPageId) notFound();
+
+        const { data: shopMembership } = await admin
+            .from('chat_thread_members')
+            .select('profile_id')
+            .eq('thread_id', threadId)
+            .eq('profile_id', shopPageId)
+            .maybeSingle();
+        if (!shopMembership) notFound();
+
+        const { data: members } = await admin
+            .from('chat_thread_members')
+            .select('profile_id, profiles(handle, display_name)')
+            .eq('thread_id', threadId);
+        const other = ((members as any[]) ?? []).find((m) => m.profile_id !== shopPageId);
+        if (other?.profiles) {
+            displayName = other.profiles.display_name ?? displayName;
+            handle = other.profiles.handle ?? null;
+        }
+
+        const { data: messages } = await admin
+            .from('chat_messages')
+            .select('id, sender_id, body, created_at, sender:profiles(display_name)')
+            .eq('thread_id', threadId)
+            .is('deleted_at', null)
+            .order('created_at', { ascending: false })
+            .limit(MESSAGE_LIMIT);
+
+        bubbles = ((messages as any[]) ?? [])
+            .slice()
+            .reverse()
+            .map((m) => {
+                const outbound = m.sender_id === shopPageId;
+                return {
+                    id: m.id,
+                    body: m.body ?? '',
+                    created_at: m.created_at,
+                    isOutbound: outbound,
+                    senderName: outbound ? 'SHOP' : m.sender?.display_name ?? '?',
+                };
+            });
+
+        // Bump the shop_page's last_read_at so the unread badge resets.
+        await markThreadRead(threadId, shop.shopId);
+
+        canSend = MANAGER_ROLES.has(role);
     }
-
-    // Fetch all members so we can identify the "other" participant.
-    const { data: members } = await admin
-        .from('chat_thread_members')
-        .select('profile_id, profiles(id, handle, display_name, avatar_url, kind)')
-        .eq('thread_id', threadId);
-
-    const memberRows = (members as any[]) ?? [];
-    const others = memberRows.filter((m) => m.profile_id !== shopPageId);
-    const otherProfile = others[0]?.profiles ?? null;
-
-    // Last 100 messages, oldest first for rendering top→bottom.
-    const { data: messages } = await admin
-        .from('chat_messages')
-        .select('id, sender_id, body, created_at, sender:profiles(display_name)')
-        .eq('thread_id', threadId)
-        .is('deleted_at', null)
-        .order('created_at', { ascending: false })
-        .limit(MESSAGE_LIMIT);
-    const msgs = ((messages as any[]) ?? []).slice().reverse();
-
-    // Mark this thread read for the shop_page. Fire-and-forget; we don't want
-    // to block the render on it. Errors are swallowed inside the action.
-    await markThreadRead(threadId, shop.shopId);
-
-    const displayName = otherProfile?.display_name ?? (thread as any).name ?? 'DIRECT THREAD';
-    const handle = otherProfile?.handle ?? null;
-    const canSend = MANAGER_ROLES.has(role);
 
     return (
         <>
@@ -138,7 +209,8 @@ export default async function ShopThreadPage({
                     <div>
                         <div className="admin-page-title">{displayName.toUpperCase()}</div>
                         <div className="admin-page-sub">
-                            {handle ? `@${handle} · ` : ''}CUSTOMER
+                            {handle ? `@${handle} · ` : ''}
+                            {isShopThread ? 'DIRECT' : 'CUSTOMER'}
                         </div>
                     </div>
                 </div>
@@ -153,7 +225,7 @@ export default async function ShopThreadPage({
                         </Link>
                     )}
                     <Link
-                        href={`/shop/${slug}/messages`}
+                        href={`/shop/${slug}/messages${isShopThread ? '' : '?tab=shop-page'}`}
                         className="admin-action-btn muted"
                         style={{ textDecoration: 'none' }}
                     >
@@ -162,14 +234,7 @@ export default async function ShopThreadPage({
                 </div>
             </div>
 
-            <div
-                style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: 16,
-                    marginTop: 16,
-                }}
-            >
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 16 }}>
                 <div
                     style={{
                         border: '1px solid var(--line-mid)',
@@ -183,80 +248,83 @@ export default async function ShopThreadPage({
                         gap: 8,
                     }}
                 >
-                    {msgs.length === 0 ? (
+                    {bubbles.length === 0 ? (
                         <div className="admin-empty" style={{ margin: 'auto' }}>
-                            NO MESSAGES YET. SEND ONE BELOW.
+                            NO MESSAGES YET.{canSend ? ' SEND ONE BELOW.' : ''}
                         </div>
                     ) : (
-                        msgs.map((m: any) => {
-                            const isShop = m.sender_id === shopPageId;
-                            const senderName = isShop
-                                ? 'SHOP'
-                                : m.sender?.display_name ?? '?';
-                            return (
-                                <div
-                                    key={m.id}
-                                    style={{
-                                        display: 'flex',
-                                        flexDirection: 'column',
-                                        alignItems: isShop ? 'flex-end' : 'flex-start',
-                                        gap: 2,
-                                    }}
-                                >
-                                    {!isShop && (
-                                        <div
-                                            style={{
-                                                fontSize: 10,
-                                                color: 'var(--text-2)',
-                                                fontFamily: 'var(--font-display)',
-                                                letterSpacing: 'var(--track-wider)',
-                                                marginBottom: 2,
-                                            }}
-                                        >
-                                            {senderName.toUpperCase()}
-                                        </div>
-                                    )}
-                                    <div
-                                        style={{
-                                            maxWidth: '70%',
-                                            padding: '8px 12px',
-                                            background: isShop
-                                                ? 'var(--gold)'
-                                                : 'var(--bg-2)',
-                                            color: isShop ? 'var(--on-gold)' : 'var(--text)',
-                                            border: isShop
-                                                ? '1px solid var(--gold)'
-                                                : '1px solid var(--line-mid)',
-                                            fontSize: 14,
-                                            lineHeight: 1.4,
-                                            whiteSpace: 'pre-wrap',
-                                            wordBreak: 'break-word',
-                                        }}
-                                    >
-                                        {m.body ?? ''}
-                                    </div>
+                        bubbles.map((m) => (
+                            <div
+                                key={m.id}
+                                style={{
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    alignItems: m.isOutbound ? 'flex-end' : 'flex-start',
+                                    gap: 2,
+                                }}
+                            >
+                                {!m.isOutbound && (
                                     <div
                                         style={{
                                             fontSize: 10,
                                             color: 'var(--text-2)',
                                             fontFamily: 'var(--font-display)',
                                             letterSpacing: 'var(--track-wider)',
-                                            marginTop: 2,
+                                            marginBottom: 2,
                                         }}
                                     >
-                                        {fmtTime(m.created_at)}
+                                        {m.senderName.toUpperCase()}
                                     </div>
+                                )}
+                                {m.isOutbound && isShopThread && (
+                                    <div
+                                        style={{
+                                            fontSize: 10,
+                                            color: 'var(--text-2)',
+                                            fontFamily: 'var(--font-display)',
+                                            letterSpacing: 'var(--track-wider)',
+                                            marginBottom: 2,
+                                        }}
+                                    >
+                                        {m.senderName.toUpperCase()}
+                                    </div>
+                                )}
+                                <div
+                                    style={{
+                                        maxWidth: '70%',
+                                        padding: '8px 12px',
+                                        background: m.isOutbound ? 'var(--gold)' : 'var(--bg-2)',
+                                        color: m.isOutbound ? 'var(--on-gold)' : 'var(--text)',
+                                        border: m.isOutbound ? '1px solid var(--gold)' : '1px solid var(--line-mid)',
+                                        fontSize: 14,
+                                        lineHeight: 1.4,
+                                        whiteSpace: 'pre-wrap',
+                                        wordBreak: 'break-word',
+                                    }}
+                                >
+                                    {m.body ?? ''}
                                 </div>
-                            );
-                        })
+                                <div
+                                    style={{
+                                        fontSize: 10,
+                                        color: 'var(--text-2)',
+                                        fontFamily: 'var(--font-display)',
+                                        letterSpacing: 'var(--track-wider)',
+                                        marginTop: 2,
+                                    }}
+                                >
+                                    {fmtTime(m.created_at)}
+                                </div>
+                            </div>
+                        ))
                     )}
                 </div>
 
-                <MessageComposer
-                    threadId={threadId}
-                    shopId={shop.shopId}
-                    canSend={canSend}
-                />
+                {isShopThread ? (
+                    <ShopThreadComposer threadId={threadId} shopId={shop.shopId} canSend={canSend} />
+                ) : (
+                    <MessageComposer threadId={threadId} shopId={shop.shopId} canSend={canSend} />
+                )}
             </div>
         </>
     );

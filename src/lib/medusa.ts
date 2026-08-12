@@ -180,6 +180,47 @@ export async function fetchCatalogByHandles(
     }
 }
 
+/**
+ * Resolve a batch of Medusa product ids to lightweight product cards. Used by
+ * product-tag rendering on /post/[id]: a post can tag up to 5 store products by
+ * `medusa_product_id`. Products that no longer exist (deleted/unpublished) are
+ * simply absent from the result — the caller renders an "unavailable" shell for
+ * any id it asked for but didn't get back. Paused products come back with
+ * `paused=true` so the caller can show COMING SOON while still linking to the
+ * PDP. Returns [] on any error (best-effort; the tag section degrades quietly).
+ */
+export async function fetchProductsByIds(ids: string[]): Promise<MedusaProduct[]> {
+    const unique = [...new Set((ids ?? []).filter(Boolean))];
+    if (unique.length === 0) return [];
+    try {
+        const url = new URL(`${MEDUSA_URL}/store/products`);
+        url.searchParams.set('limit', String(Math.min(unique.length, 100)));
+        url.searchParams.set('region_id', MEDUSA_REGION_ID);
+        url.searchParams.set(
+            'fields',
+            'id,title,handle,thumbnail,description,+metadata,categories.handle,*variants,*variants.calculated_price',
+        );
+        for (const id of unique) url.searchParams.append('id[]', id);
+
+        const res = await fetch(url.toString(), {
+            headers: medusaHeaders(),
+            next: { revalidate: 120 },
+        });
+        if (!res.ok) return [];
+        const json = await res.json();
+        const seen = new Set<string>();
+        const products: MedusaProduct[] = [];
+        for (const raw of json?.products ?? []) {
+            if (seen.has(raw.id)) continue;
+            seen.add(raw.id);
+            products.push(mapProduct(raw));
+        }
+        return products;
+    } catch {
+        return [];
+    }
+}
+
 /** Full product detail (gallery, options, variants) for the PDP. */
 export async function fetchProductByHandle(
     handle: string,

@@ -109,6 +109,56 @@ export async function sendMessageAsShop(
 }
 
 /**
+ * Post a chat_messages row into a kind='shop' thread as the STAFF member's own
+ * profile (not the shop_page). This is the unified shop-DM model (P2 §3.4):
+ * kind='shop' threads have the customer as their only member; staff are not
+ * members — their access derives from shop membership (mirrors
+ * rollout.can_access_thread). So we send with sender_id = the caller's profile
+ * id via the service role. The notify_on_chat_message trigger then notifies the
+ * thread's members (the customer) — staff aren't members, so no self-notify.
+ *
+ * Installer+ (the same floor that can view the surface). Access is legitimate
+ * because the caller is a shop member and the thread belongs to this shop.
+ */
+export async function sendShopThreadMessage(
+    threadId: string,
+    shopId: number,
+    body: string,
+): Promise<void> {
+    const { profile } = await requireInstaller(shopId);
+    const trimmed = body.trim();
+    if (!trimmed) throw new Error('Empty message.');
+
+    const admin = getSupabaseAdmin();
+
+    const { data: thread, error: threadErr } = await admin
+        .from('chat_threads')
+        .select('id, shop_id, kind')
+        .eq('id', threadId)
+        .maybeSingle();
+    if (threadErr || !thread) throw new Error('Thread not found.');
+    if ((thread as any).shop_id !== shopId) {
+        throw new Error('Thread belongs to a different shop.');
+    }
+    if ((thread as any).kind !== 'shop') {
+        throw new Error('Not a shop thread.');
+    }
+
+    const { error: insertErr } = await admin.from('chat_messages').insert({
+        thread_id: threadId,
+        sender_id: profile.profileId,
+        body: trimmed,
+    });
+    if (insertErr) throw new Error(`message insert failed: ${insertErr.message}`);
+
+    const slug = await fetchSlug(shopId);
+    if (slug) {
+        revalidatePath(`/shop/${slug}/messages`, 'page');
+        revalidatePath(`/shop/${slug}/messages/${threadId}`, 'page');
+    }
+}
+
+/**
  * Look up a customer by @handle (case-insensitive) and either return an
  * existing direct thread between the shop_page and that customer, or create
  * one. Manager+ only. Redirects to the thread page on success.
