@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { DismissButton } from './DismissButton';
 import PulseSection from './PulseSection';
+import LauncherSection from './LauncherSection';
 
 export const metadata = { title: 'Overview' };
 
@@ -202,6 +203,9 @@ export default async function OverviewPage() {
 
             {/* ── PULSE — cross-ecosystem KPIs (Console Phase C2) ── */}
             <PulseSection />
+
+            {/* ── LAUNCHER + HEALTH ROW (Console Phase C3) ── */}
+            <LauncherSection />
 
             <div className="admin-page-head" style={{ marginTop: 12, borderBottom: 'none', paddingBottom: 0 }}>
                 <div>

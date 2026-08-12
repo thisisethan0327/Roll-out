@@ -5,6 +5,7 @@
 import { requirePlatformAdmin } from '@/lib/auth-guard';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { AdminSidebar } from '../AdminSidebar';
+import { JumpBar } from '../JumpBar';
 
 /**
  * Sidebar attention count = open action items + pending verification requests.
@@ -40,7 +41,12 @@ export default async function ConsoleLayout({
     return (
         <div className="admin-layout">
             <AdminSidebar adminLabel={`@${profile.handle}`} attentionCount={attentionCount} />
-            <div className="admin-main">{children}</div>
+            <div className="admin-main">
+                <div className="admin-header">
+                    <JumpBar />
+                </div>
+                {children}
+            </div>
         </div>
     );
 }

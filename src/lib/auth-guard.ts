@@ -84,6 +84,43 @@ export async function requirePlatformAdmin(): Promise<{ profile: GuardedProfile 
 }
 
 /**
+ * Non-redirecting platform-admin check for ROUTE HANDLERS (which must return a
+ * JSON 401 rather than a 307 to an HTML login page). Returns the profile when
+ * the caller is signed in AND on `platform_admins`, else null. Mirrors the gate
+ * in `requirePlatformAdmin` without the `redirect()` calls.
+ */
+export async function getPlatformAdmin(): Promise<GuardedProfile | null> {
+    const supabase = await getSupabaseServer();
+    const {
+        data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return null;
+
+    const admin = getSupabaseAdmin();
+    const { data: profile } = await admin
+        .from('profiles')
+        .select('id, auth_user_id, handle, display_name')
+        .eq('auth_user_id', user.id)
+        .maybeSingle();
+    if (!profile) return null;
+
+    const { data: padmin } = await admin
+        .from('platform_admins')
+        .select('profile_id')
+        .eq('profile_id', (profile as any).id)
+        .maybeSingle();
+    if (!padmin) return null;
+
+    return {
+        profileId: (profile as any).id,
+        authUserId: user.id,
+        email: user.email ?? null,
+        displayName: (profile as any).display_name,
+        handle: (profile as any).handle,
+    };
+}
+
+/**
  * Ensures the caller is a member (>= installer) of the given shop_id, OR is
  * a platform admin. Used by /shop/* routes.
  */

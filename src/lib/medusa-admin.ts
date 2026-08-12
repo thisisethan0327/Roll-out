@@ -847,6 +847,110 @@ export async function getMedusaPulse(): Promise<MedusaPulse> {
     return data;
 }
 
+// ── console jump search (cross-vendor, platform-admin only) ──────────────────
+// Universal-search readers for the god console's JUMP layer (Console Phase C3).
+// Like getMedusaPulse, these are NOT vendor-scoped — reachable only from the
+// platform-admin search path (gated by requirePlatformAdmin) and returning at
+// most 5 preview rows. They never mutate and never leak a shop's row set beyond
+// what the admin can already see in the console. Seed/KYC orders are excluded.
+
+export type AdminOrderHit = {
+    id: string;
+    display_id: number | string | null;
+    email: string | null;
+    total: number | null;
+    currency_code: string | null;
+    status: string | null;
+    payment_status: string | null;
+    fulfillment_status: string | null;
+    created_at: string | null;
+};
+
+/**
+ * Search orders for the console. Medusa's `q` matches email + display_id; we
+ * then re-filter client-side so a numeric query only returns display_id hits and
+ * an email query only returns email hits (guarding against `q` returning noise).
+ * Returns ≤5 non-seed orders, newest display_id first.
+ */
+export async function searchAdminOrders(
+    term: string,
+): Promise<{ orders: AdminOrderHit[]; error: string | null }> {
+    const t = term.trim();
+    if (!t) return { orders: [], error: null };
+    const fields =
+        'id,display_id,email,total,currency_code,status,payment_status,fulfillment_status,created_at,metadata';
+    const res = await adminFetch(
+        `/admin/orders?q=${encodeURIComponent(t)}&limit=15&order=-display_id&fields=${encodeURIComponent(
+            fields,
+        )}`,
+    );
+    if (!res) return { orders: [], error: 'Store admin is unavailable right now.' };
+    if (!res.ok) return { orders: [], error: await errorMessage(res) };
+    let list: any[] = [];
+    try {
+        list = (await res.json())?.orders ?? [];
+    } catch {
+        return { orders: [], error: 'Bad response from store admin.' };
+    }
+    const isEmail = t.includes('@');
+    const digits = t.replace(/[^0-9]/g, '');
+    const orders = list
+        .filter((o) => !isSeedOrder(o))
+        .filter((o) => {
+            if (isEmail) return String(o.email ?? '').toLowerCase().includes(t.toLowerCase());
+            if (digits) return String(o.display_id ?? '').includes(digits);
+            return true;
+        })
+        .slice(0, 5)
+        .map((o) => ({
+            id: o.id,
+            display_id: o.display_id ?? null,
+            email: o.email ?? null,
+            total: o.total ?? null,
+            currency_code: o.currency_code ?? null,
+            status: o.status ?? null,
+            payment_status: o.payment_status ?? null,
+            fulfillment_status: o.fulfillment_status ?? null,
+            created_at: o.created_at ?? null,
+        }));
+    return { orders, error: null };
+}
+
+export type AdminProductHit = {
+    id: string;
+    title: string | null;
+    handle: string | null;
+    thumbnail: string | null;
+    status: string | null;
+};
+
+/** Search products (title/handle) for the console. Returns ≤5 rows. */
+export async function searchAdminProducts(
+    term: string,
+): Promise<{ products: AdminProductHit[]; error: string | null }> {
+    const t = term.trim();
+    if (!t) return { products: [], error: null };
+    const res = await adminFetch(
+        `/admin/products?q=${encodeURIComponent(t)}&limit=8&fields=id,title,handle,status,thumbnail`,
+    );
+    if (!res) return { products: [], error: 'Store admin is unavailable right now.' };
+    if (!res.ok) return { products: [], error: await errorMessage(res) };
+    let list: any[] = [];
+    try {
+        list = (await res.json())?.products ?? [];
+    } catch {
+        return { products: [], error: 'Bad response from store admin.' };
+    }
+    const products = list.slice(0, 5).map((p) => ({
+        id: p.id,
+        title: p.title ?? null,
+        handle: p.handle ?? null,
+        thumbnail: p.thumbnail ?? null,
+        status: p.status ?? null,
+    }));
+    return { products, error: null };
+}
+
 /** Cancel an order. Vendor-scoped; re-verified before acting. */
 export async function cancelVendorOrder(
     vendorKey: string,
