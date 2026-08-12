@@ -1,32 +1,45 @@
 'use client';
 import { useState, useTransition } from 'react';
-import { updateShopGeneral } from './actions';
+import { updateShopProfile } from '../actions';
 
-export function GeneralSettingsForm({
+type PrecisionOpt = {
+    value: 'exact' | 'area' | 'off';
+    label: string;
+    hint: string;
+};
+
+const PRECISIONS: PrecisionOpt[] = [
+    { value: 'exact', label: 'Exact address', hint: 'Street-address pin — popup shows the full address.' },
+    { value: 'area', label: 'Area only — city-level pin', hint: 'City-centroid pin — popup shows "ONLINE · BASED IN <city>", no street.' },
+    { value: 'off', label: 'Not on the map', hint: 'Hidden from the public map + directory.' },
+];
+
+export function ShopProfileForm({
     shopId,
-    slug,
-    row,
+    shop,
+    bio,
 }: {
     shopId: number;
-    slug: string;
-    row: any;
+    shop: any;
+    bio: string;
 }) {
     const [pending, start] = useTransition();
     const [err, setErr] = useState<string | null>(null);
     const [ok, setOk] = useState(false);
 
-    const [name, setName] = useState(row?.name ?? '');
-    const [region, setRegion] = useState(row?.region ?? '');
-    const [primary, setPrimary] = useState(row?.primary_color ?? '');
-    const [secondary, setSecondary] = useState(row?.secondary_color ?? '');
-
-    // Location
-    const [addressLine, setAddressLine] = useState(row?.address_line ?? '');
-    const [city, setCity] = useState(row?.city ?? '');
-    const [stateRegion, setStateRegion] = useState(row?.state_region ?? '');
-    const [postal, setPostal] = useState(row?.postal ?? '');
+    const [name, setName] = useState(shop?.name ?? '');
+    const [category, setCategory] = useState(shop?.category ?? '');
+    const [region, setRegion] = useState(shop?.region ?? '');
+    const [bioText, setBioText] = useState(bio ?? '');
+    const [addressLine, setAddressLine] = useState(shop?.address_line ?? '');
+    const [city, setCity] = useState(shop?.city ?? '');
+    const [stateRegion, setStateRegion] = useState(shop?.state_region ?? '');
+    const [postal, setPostal] = useState(shop?.postal ?? '');
+    const [supportEmail, setSupportEmail] = useState(shop?.support_email ?? '');
+    const [contactPhone, setContactPhone] = useState(shop?.contact_phone ?? '');
+    const [websiteUrl, setWebsiteUrl] = useState(shop?.website_url ?? '');
     const [precision, setPrecision] = useState<'exact' | 'area' | 'off'>(
-        (row?.location_precision as any) ?? 'exact',
+        (shop?.location_precision as any) ?? 'exact',
     );
 
     const submit = (e: React.FormEvent) => {
@@ -35,17 +48,20 @@ export function GeneralSettingsForm({
         setOk(false);
         const fd = new FormData();
         fd.set('name', name);
+        fd.set('category', category);
         fd.set('region', region);
-        fd.set('primary_color', primary);
-        fd.set('secondary_color', secondary);
+        fd.set('bio', bioText);
         fd.set('address_line', addressLine);
         fd.set('city', city);
         fd.set('state_region', stateRegion);
         fd.set('postal', postal);
+        fd.set('support_email', supportEmail);
+        fd.set('contact_phone', contactPhone);
+        fd.set('website_url', websiteUrl);
         fd.set('location_precision', precision);
         start(async () => {
             try {
-                await updateShopGeneral(shopId, slug, fd);
+                await updateShopProfile(shopId, fd);
                 setOk(true);
             } catch (e: any) {
                 setErr(e?.message ?? 'Failed to save');
@@ -54,7 +70,15 @@ export function GeneralSettingsForm({
     };
 
     return (
-        <form onSubmit={submit} className="admin-form" style={{ maxWidth: 560 }}>
+        <form onSubmit={submit} className="admin-form" style={{ maxWidth: 620, marginTop: 24 }}>
+            <div className="admin-form-label" style={{ color: 'var(--gold)', fontSize: 11 }}>
+                EDIT PROFILE
+            </div>
+            <p style={{ color: 'var(--text-2)', fontSize: 12, lineHeight: 1.5, margin: '0 0 6px' }}>
+                Fix any field of this shop&apos;s public profile on the owner&apos;s behalf. Slug,
+                commerce tier/handles/fees, and Stripe are intentionally not editable here.
+            </p>
+
             <div className="admin-form-label">SHOP NAME</div>
             <input
                 type="text"
@@ -64,73 +88,82 @@ export function GeneralSettingsForm({
                 placeholder="EMWRAPS"
             />
 
-            <div className="admin-form-label">REGION</div>
-            <input
-                type="text"
-                value={region}
-                onChange={(e) => setRegion(e.target.value)}
+            <div style={{ display: 'flex', gap: 8 }}>
+                <div style={{ flex: 1 }}>
+                    <div className="admin-form-label">CATEGORY</div>
+                    <input
+                        type="text"
+                        value={category}
+                        onChange={(e) => setCategory(e.target.value)}
+                        className="admin-form-input"
+                        placeholder="Wrap shop"
+                        style={{ width: '100%' }}
+                    />
+                </div>
+                <div style={{ flex: 1 }}>
+                    <div className="admin-form-label">REGION</div>
+                    <input
+                        type="text"
+                        value={region}
+                        onChange={(e) => setRegion(e.target.value)}
+                        className="admin-form-input"
+                        placeholder="PNW"
+                        style={{ width: '100%' }}
+                    />
+                </div>
+            </div>
+
+            <div className="admin-form-label">BIO / DESCRIPTION</div>
+            <textarea
+                value={bioText}
+                onChange={(e) => setBioText(e.target.value)}
                 className="admin-form-input"
-                placeholder="PNW"
+                rows={3}
+                placeholder="Short description of the shop…"
+                style={{ resize: 'vertical', fontFamily: 'var(--font-body)' }}
             />
 
-            <div className="admin-form-label">PRIMARY COLOR</div>
-            <div
-                style={{
-                    display: 'flex',
-                    gap: 8,
-                    alignItems: 'center',
-                    marginBottom: 12,
-                }}
-            >
-                <input
-                    type="text"
-                    value={primary}
-                    onChange={(e) => setPrimary(e.target.value)}
-                    className="admin-form-input"
-                    placeholder="#ffb733"
-                    style={{ flex: 1, marginBottom: 0 }}
-                />
-                <div
-                    style={{
-                        width: 36,
-                        height: 36,
-                        border: '1px solid var(--line-mid)',
-                        background: primary || 'transparent',
-                    }}
-                />
-            </div>
+            <div className="admin-form-label">SUPPORT EMAIL</div>
+            <input
+                type="email"
+                value={supportEmail}
+                onChange={(e) => setSupportEmail(e.target.value)}
+                className="admin-form-input"
+                placeholder="hello@shop.com"
+                autoCapitalize="none"
+                autoCorrect="off"
+            />
 
-            <div className="admin-form-label">SECONDARY COLOR</div>
-            <div
-                style={{
-                    display: 'flex',
-                    gap: 8,
-                    alignItems: 'center',
-                    marginBottom: 12,
-                }}
-            >
-                <input
-                    type="text"
-                    value={secondary}
-                    onChange={(e) => setSecondary(e.target.value)}
-                    className="admin-form-input"
-                    placeholder="#1a1a1a"
-                    style={{ flex: 1, marginBottom: 0 }}
-                />
-                <div
-                    style={{
-                        width: 36,
-                        height: 36,
-                        border: '1px solid var(--line-mid)',
-                        background: secondary || 'transparent',
-                    }}
-                />
+            <div style={{ display: 'flex', gap: 8 }}>
+                <div style={{ flex: 1 }}>
+                    <div className="admin-form-label">SUPPORT PHONE</div>
+                    <input
+                        type="tel"
+                        value={contactPhone}
+                        onChange={(e) => setContactPhone(e.target.value)}
+                        className="admin-form-input"
+                        placeholder="(206) 555-0100"
+                        style={{ width: '100%' }}
+                    />
+                </div>
+                <div style={{ flex: 1 }}>
+                    <div className="admin-form-label">WEBSITE</div>
+                    <input
+                        type="text"
+                        value={websiteUrl}
+                        onChange={(e) => setWebsiteUrl(e.target.value)}
+                        className="admin-form-input"
+                        placeholder="https://shop.com"
+                        autoCapitalize="none"
+                        autoCorrect="off"
+                        style={{ width: '100%' }}
+                    />
+                </div>
             </div>
 
             <div
                 style={{
-                    marginTop: 18,
-                    marginBottom: 14,
+                    marginTop: 10,
                     paddingTop: 14,
                     borderTop: '1px solid var(--line)',
                     fontFamily: 'var(--font-display)',
@@ -141,18 +174,6 @@ export function GeneralSettingsForm({
             >
                 LOCATION · MAP
             </div>
-            <p
-                style={{
-                    color: 'var(--text-2)',
-                    fontSize: 12,
-                    lineHeight: 1.5,
-                    margin: '0 0 14px',
-                }}
-            >
-                Choose how your shop appears on the Rollout map, then give us an
-                address. We look up the coordinates for you automatically when you
-                save — no need to find lat/lng yourself.
-            </p>
 
             <PrecisionSelector value={precision} onChange={setPrecision} />
 
@@ -176,6 +197,7 @@ export function GeneralSettingsForm({
                         className="admin-form-input"
                         placeholder="Seattle"
                         disabled={precision === 'off'}
+                        style={{ width: '100%' }}
                     />
                 </div>
                 <div style={{ flex: 1 }}>
@@ -187,6 +209,7 @@ export function GeneralSettingsForm({
                         className="admin-form-input"
                         placeholder="WA"
                         disabled={precision === 'off'}
+                        style={{ width: '100%' }}
                     />
                 </div>
                 <div style={{ flex: 1 }}>
@@ -198,15 +221,15 @@ export function GeneralSettingsForm({
                         className="admin-form-input"
                         placeholder="98134"
                         disabled={precision === 'off'}
+                        style={{ width: '100%' }}
                     />
                 </div>
             </div>
-            <p style={{ color: 'var(--text-3)', fontSize: 11, lineHeight: 1.5, margin: '6px 0 4px' }}>
-                {precision === 'area'
-                    ? 'Area only: we pin the center of your city — your street address stays private.'
-                    : precision === 'off'
-                      ? 'Your shop is hidden from the public map and directory.'
-                      : 'Exact: we pin your street address and show it on your map popup.'}
+
+            <p style={{ color: 'var(--text-3)', fontSize: 11, lineHeight: 1.5, margin: '2px 0 0' }}>
+                Coordinates are resolved automatically on save from the address
+                ({precision === 'area' ? 'city only' : 'full street address'}). A good
+                pin is never overwritten if the lookup fails.
             </p>
 
             {err && (
@@ -230,26 +253,12 @@ export function GeneralSettingsForm({
                 </div>
             )}
 
-            <button
-                type="submit"
-                disabled={pending}
-                className="admin-form-btn"
-            >
-                {pending ? 'SAVING…' : 'SAVE CHANGES'}
+            <button type="submit" disabled={pending} className="admin-form-btn">
+                {pending ? 'SAVING…' : 'SAVE PROFILE'}
             </button>
         </form>
     );
 }
-
-const PRECISIONS: {
-    value: 'exact' | 'area' | 'off';
-    label: string;
-    hint: string;
-}[] = [
-    { value: 'exact', label: 'Exact address', hint: 'Pin your street address — shown on your map popup.' },
-    { value: 'area', label: 'Area only — city-level pin', hint: 'Online-based? Show a city pin, keep your street private.' },
-    { value: 'off', label: 'Not on the map', hint: 'Hide your shop from the public map + directory.' },
-];
 
 function PrecisionSelector({
     value,
@@ -259,7 +268,7 @@ function PrecisionSelector({
     onChange: (v: 'exact' | 'area' | 'off') => void;
 }) {
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, margin: '0 0 6px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             <div className="admin-form-label">MAP PRESENCE</div>
             {PRECISIONS.map((p) => {
                 const on = value === p.value;

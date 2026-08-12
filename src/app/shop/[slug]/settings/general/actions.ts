@@ -2,7 +2,13 @@
 import { revalidatePath } from 'next/cache';
 import { requireShopMember } from '@/lib/auth-guard';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
-import { resolveShopUnmapped } from '@/lib/action-items';
+import { raiseShopUnmapped, resolveShopUnmapped } from '@/lib/action-items';
+import {
+    buildGeocodeQuery,
+    geocode,
+    isLocationPrecision,
+    type LocationPrecision,
+} from '@/lib/geocode';
 
 async function assertOwner(shopId: number) {
     const { profile, role } = await requireShopMember(shopId);
@@ -34,9 +40,6 @@ export async function updateShopGeneral(
     const city = String(formData.get('city') ?? '').trim();
     const state_region = String(formData.get('state_region') ?? '').trim();
     const postal = String(formData.get('postal') ?? '').trim();
-    const latRaw = String(formData.get('lat') ?? '').trim();
-    const lngRaw = String(formData.get('lng') ?? '').trim();
-    const show_on_map = formData.get('show_on_map') != null;
 
     if (!name) throw new Error('Shop name is required.');
     if (primary_color && !HEX_RE.test(primary_color)) {
@@ -46,17 +49,39 @@ export async function updateShopGeneral(
         throw new Error('Secondary color must be a hex code like #ffb733.');
     }
 
-    // Lat/lng: both-or-neither, and within valid ranges.
-    let lat: number | null = null;
-    let lng: number | null = null;
-    if (latRaw || lngRaw) {
-        lat = Number(latRaw);
-        lng = Number(lngRaw);
-        if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
-            throw new Error('Latitude and longitude must both be numbers.');
+    // Map presence: the precision selector is the primary control. 'off' hides
+    // the shop (show_on_map=false, the master switch); 'exact'/'area' put it on
+    // the map and geocode via the shared helper — full street address for
+    // 'exact', city centroid for 'area'.
+    const precisionRaw = String(formData.get('location_precision') ?? '').trim() || 'exact';
+    if (!isLocationPrecision(precisionRaw)) {
+        throw new Error('Invalid location precision.');
+    }
+    const precision: LocationPrecision = precisionRaw;
+    const show_on_map = precision !== 'off';
+
+    // Preserve existing coordinates by default; only overwrite on a geocode hit,
+    // so a transient Nominatim failure never wipes a good pin.
+    const { data: existing } = await admin
+        .from('shops')
+        .select('lat, lng')
+        .eq('id', shopId)
+        .maybeSingle();
+    let lat: number | null = (existing as any)?.lat ?? null;
+    let lng: number | null = (existing as any)?.lng ?? null;
+
+    if (show_on_map) {
+        const query = buildGeocodeQuery(
+            { address_line, city, state_region, postal },
+            precision,
+        );
+        if (query) {
+            const hit = await geocode(query);
+            if (hit) {
+                lat = hit.lat;
+                lng = hit.lng;
+            }
         }
-        if (lat < -90 || lat > 90) throw new Error('Latitude must be between -90 and 90.');
-        if (lng < -180 || lng > 180) throw new Error('Longitude must be between -180 and 180.');
     }
 
     const { error } = await admin
@@ -70,6 +95,7 @@ export async function updateShopGeneral(
             city: city || null,
             state_region: state_region || null,
             postal: postal || null,
+            location_precision: precision,
             lat,
             lng,
             show_on_map,
@@ -77,13 +103,19 @@ export async function updateShopGeneral(
         .eq('id', shopId);
     if (error) throw new Error(error.message);
 
-    // If this save gave the shop real coordinates, clear any open "not on map"
-    // alert for it. Best-effort — never blocks or fails the save.
-    if (lat != null && lng != null) {
+    // Reconcile the "not on map" alert. Best-effort — never blocks the save.
+    if (show_on_map && lat == null) {
+        const addressText =
+            buildGeocodeQuery(
+                { address_line, city, state_region, postal },
+                precision,
+            ) ?? null;
+        await raiseShopUnmapped(admin, shopId, name, addressText);
+    } else {
         await resolveShopUnmapped(admin, shopId);
-        revalidatePath('/admin/overview');
-        revalidatePath('/admin/shops');
     }
+    revalidatePath('/admin/overview');
+    revalidatePath('/admin/shops');
 
     revalidatePath(`/shop/${slug}/settings/general`, 'page');
     revalidatePath(`/u/${slug}`, 'page');

@@ -1,6 +1,7 @@
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { MembershipRow } from './MembershipRow';
 import { AddMembershipForm } from './AddMembershipForm';
+import { ShopProfileForm } from './ShopProfileForm';
 
 export const metadata = { title: 'Shop · Detail' };
 
@@ -122,6 +123,12 @@ export default async function ShopDetailPage({
             </div>
 
             <AddMembershipForm shopId={shopId} />
+
+            <ShopProfileForm
+                shopId={shopId}
+                shop={shop}
+                bio={(page as any)?.bio ?? ''}
+            />
         </>
     );
 }

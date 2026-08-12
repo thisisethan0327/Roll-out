@@ -30,6 +30,7 @@ type ShopRow = {
     primary_color: string | null;
     offers_services: boolean | null;
     sells_products: boolean | null;
+    location_precision: string | null;
 };
 
 type ShopCard = ShopRow & {
@@ -46,7 +47,7 @@ async function loadShops(): Promise<ShopCard[]> {
     const { data: shopsRaw } = await admin
         .from('shops')
         .select(
-            'id, slug, name, region, city, state_region, address_line, primary_color, offers_services, sells_products',
+            'id, slug, name, region, city, state_region, address_line, primary_color, offers_services, sells_products, location_precision',
         )
         // Only verified shops are publicly listed — pending/suspended/rejected
         // applications never surface in the directory (service-role bypasses RLS,
@@ -219,6 +220,7 @@ export default async function ShopsDirectoryPage() {
 /* ── Card ─────────────────────────────────────────────────────────────── */
 function ShopDirectoryCard({ shop: s }: { shop: ShopCard }) {
     const locationText = [s.city, s.state_region].filter(Boolean).join(', ') || s.region || '';
+    const isArea = s.location_precision === 'area';
     const initial = (s.name ?? s.slug ?? '?').trim().charAt(0).toUpperCase();
 
     const inner = (
@@ -256,7 +258,14 @@ function ShopDirectoryCard({ shop: s }: { shop: ShopCard }) {
             </div>
 
             <div className="text-dim" style={{ fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
-                {locationText ? (
+                {isArea ? (
+                    // City-level presence: online-based, show the city (never a
+                    // street), tagged ONLINE so it reads as area not exact.
+                    <>
+                        <span className="shop-chip">ONLINE</span>
+                        {locationText && <span>BASED IN {locationText}</span>}
+                    </>
+                ) : locationText ? (
                     <>
                         {/* Only show the map-pin affordance when we actually have a place. */}
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden style={{ flexShrink: 0 }}>

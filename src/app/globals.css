@@ -1541,6 +1541,37 @@ h4 { font-size: 16px; letter-spacing: var(--track-wide); }
   }
   .rl-beacon-ring-2 { display: none; }
   .rl-pin-event.rl-pin-active .rl-pin-dot { transition: none; }
+  .rl-area-halo { animation: none; }
+}
+
+/* Area shop pin — city-level presence. Deliberately distinct from the beacon:
+   a softer, hollow dot inside a static dashed "region" halo (no pulsing rings),
+   so a city-centroid pin never reads as a precise street address. */
+.rl-pin-shop-area .rl-pin-dot {
+  top: 6px;
+  left: 6px;
+  width: 10px;
+  height: 10px;
+  background: transparent;
+  border: 2px solid var(--gold, #ffb733);
+  box-shadow: 0 0 6px rgba(255, 183, 51, 0.35);
+}
+.rl-area-halo {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 22px;
+  height: 22px;
+  margin: -11px 0 0 -11px;
+  border-radius: 50%;
+  border: 1.5px dashed rgba(255, 183, 51, 0.55);
+  background: rgba(255, 183, 51, 0.06);
+  pointer-events: none;
+  animation: rl-area-breathe 3.2s ease-in-out infinite;
+}
+@keyframes rl-area-breathe {
+  0%, 100% { transform: scale(0.92); opacity: 0.55; }
+  50%      { transform: scale(1.08); opacity: 0.85; }
 }
 
 /* ── Dark branded map popups (override Leaflet chrome) ─────────────────── */

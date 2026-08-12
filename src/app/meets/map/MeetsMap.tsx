@@ -45,6 +45,7 @@ export type MapShop = {
     lng: number;
     city: string | null;
     state_region: string | null;
+    location_precision: 'exact' | 'area';
     primary_color: string | null;
     handle: string | null;
     avatar_url: string | null;
@@ -145,7 +146,14 @@ function buildShopPopup(s: MapShop): string {
     const kicker = s.is_verified
         ? '<span class="rl-pop-verified">✓ VERIFIED</span>'
         : '<span class="rl-pop-tag">SHOP</span>';
-    const locPart = loc ? `<span class="rl-pop-sep">·</span>${esc(loc)}` : '';
+    // Area shops are city-level presence: no street address, an ONLINE ·
+    // BASED IN <city> line instead of a plain place.
+    const locPart =
+        s.location_precision === 'area'
+            ? `<span class="rl-pop-sep">·</span>ONLINE${loc ? ` · BASED IN ${esc((s.city || loc).toUpperCase())}` : ''}`
+            : loc
+              ? `<span class="rl-pop-sep">·</span>${esc(loc)}`
+              : '';
 
     const rating =
         s.rating_count > 0
@@ -272,7 +280,11 @@ export function MeetsMap({
                     bounds.push([e.lat, e.lng]);
                 }
 
-                // Shop markers — beacon (dot + animated rings).
+                // Shop markers — two styles:
+                //   exact → solid gold dot inside animated beacon rings.
+                //   area  → softer, hollow "area" pin (city-level presence), so
+                //           a city-centroid pin reads differently from a precise
+                //           street pin.
                 const shopIcon = L.divIcon({
                     className: '',
                     html:
@@ -285,8 +297,20 @@ export function MeetsMap({
                     iconAnchor: [8, 8],
                     popupAnchor: [0, -9],
                 });
+                const shopAreaIcon = L.divIcon({
+                    className: '',
+                    html:
+                        '<div class="rl-pin rl-pin-shop rl-pin-shop-area">' +
+                        '<span class="rl-area-halo"></span>' +
+                        '<span class="rl-pin-dot"></span>' +
+                        '</div>',
+                    iconSize: [22, 22],
+                    iconAnchor: [11, 11],
+                    popupAnchor: [0, -11],
+                });
                 for (const s of shops) {
-                    const marker = L.marker([s.lat, s.lng], { icon: shopIcon }).addTo(map);
+                    const icon = s.location_precision === 'area' ? shopAreaIcon : shopIcon;
+                    const marker = L.marker([s.lat, s.lng], { icon }).addTo(map);
                     marker.bindPopup(buildShopPopup(s), { className: 'rl-popup', maxWidth: 300, minWidth: 220 });
                     bounds.push([s.lat, s.lng]);
                 }

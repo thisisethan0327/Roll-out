@@ -39,7 +39,7 @@ export async function loadMapData(
     const shopsQ = supabase
         .from('shops')
         .select(
-            'id, slug, name, lat, lng, city, state_region, primary_color, offers_services, sells_products, show_on_map',
+            'id, slug, name, lat, lng, city, state_region, primary_color, offers_services, sells_products, show_on_map, location_precision',
         )
         // Pending/unverified shops are not pinned on the public map.
         .eq('status', 'verified')
@@ -114,6 +114,7 @@ export async function loadMapData(
         lng: Number(s.lng),
         city: s.city ?? null,
         state_region: s.state_region ?? null,
+        location_precision: s.location_precision === 'area' ? 'area' : 'exact',
         primary_color: s.primary_color ?? null,
         handle: pageByShop.get(s.id)?.handle ?? null,
         avatar_url: pageByShop.get(s.id)?.avatar_url ?? null,

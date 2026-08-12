@@ -15,6 +15,7 @@ import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { sendPlatformNotification } from '@/lib/platform-notify';
 import { listKycDocsForShop, type KycDocView } from '@/lib/verification-docs';
 import { raiseShopUnmapped, resolveShopUnmapped } from '@/lib/action-items';
+import { buildGeocodeQuery, geocode } from '@/lib/geocode';
 
 export type CommerceRegistry = {
     sells_products?: boolean;
@@ -70,36 +71,33 @@ export async function decideVerification(input: {
                 .eq('id', shopId)
                 .maybeSingle();
             const shop = shopRow as any;
-            const parts = [shop?.address_line, shop?.city, shop?.state_region, shop?.postal]
-                .map((p) => (p ?? '').toString().trim())
-                .filter(Boolean);
-            const addressText = parts.length > 0 ? parts.join(', ') : null;
+            // A freshly-approved shop is 'exact' by default (city-only 'area'
+            // shops are opted in later via a settings editor), so geocode the
+            // full street address.
+            const addressText = buildGeocodeQuery(
+                {
+                    address_line: shop?.address_line,
+                    city: shop?.city,
+                    state_region: shop?.state_region,
+                    postal: shop?.postal,
+                },
+                'exact',
+            );
 
             if (shop && shop.lat != null) {
                 // Already on the map (e.g. an owner set coords before approval).
                 geocoded = true;
             } else if (shop && addressText) {
-                // Have an address to search — try Nominatim.
-                const res = await fetch(
-                    `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(addressText)}`,
-                    {
-                        headers: {
-                            'User-Agent': 'rollout.club shop directory (info@neferstock.com)',
-                        },
-                        signal: AbortSignal.timeout(5000),
-                    },
-                );
-                if (res.ok) {
-                    const hits = (await res.json()) as Array<{ lat?: string; lon?: string }>;
-                    const hit = Array.isArray(hits) ? hits[0] : undefined;
-                    const lat = hit?.lat != null ? Number(hit.lat) : NaN;
-                    const lng = hit?.lon != null ? Number(hit.lon) : NaN;
-                    if (Number.isFinite(lat) && Number.isFinite(lng)) {
-                        await admin.from('shops').update({ lat, lng }).eq('id', shopId);
-                        geocoded = true;
-                    }
+                // Have an address to search — try Nominatim (shared helper).
+                const hit = await geocode(addressText);
+                if (hit) {
+                    await admin
+                        .from('shops')
+                        .update({ lat: hit.lat, lng: hit.lng })
+                        .eq('id', shopId);
+                    geocoded = true;
                 }
-                // res not ok OR no usable hit → geocoded stays false → alert below.
+                // No usable hit → geocoded stays false → alert below.
             }
             // else: no address on file → geocoded stays false → alert below.
 
