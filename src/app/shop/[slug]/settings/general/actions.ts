@@ -2,6 +2,7 @@
 import { revalidatePath } from 'next/cache';
 import { requireShopMember } from '@/lib/auth-guard';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { resolveShopUnmapped } from '@/lib/action-items';
 
 async function assertOwner(shopId: number) {
     const { profile, role } = await requireShopMember(shopId);
@@ -75,6 +76,14 @@ export async function updateShopGeneral(
         })
         .eq('id', shopId);
     if (error) throw new Error(error.message);
+
+    // If this save gave the shop real coordinates, clear any open "not on map"
+    // alert for it. Best-effort — never blocks or fails the save.
+    if (lat != null && lng != null) {
+        await resolveShopUnmapped(admin, shopId);
+        revalidatePath('/admin/overview');
+        revalidatePath('/admin/shops');
+    }
 
     revalidatePath(`/shop/${slug}/settings/general`, 'page');
     revalidatePath(`/u/${slug}`, 'page');

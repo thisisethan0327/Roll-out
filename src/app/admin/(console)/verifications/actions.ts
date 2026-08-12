@@ -14,6 +14,7 @@ import { getSupabaseServer } from '@/lib/supabase/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { sendPlatformNotification } from '@/lib/platform-notify';
 import { listKycDocsForShop, type KycDocView } from '@/lib/verification-docs';
+import { raiseShopUnmapped, resolveShopUnmapped } from '@/lib/action-items';
 
 export type CommerceRegistry = {
     sells_products?: boolean;
@@ -56,21 +57,31 @@ export async function decideVerification(input: {
     // (Shop id 15 = NeferStock KYC Test, swept separately — never touch it.)
     const decided = reqRow as any;
     if (input.approve && decided && decided.kind === 'shop' && decided.shop_id != null && decided.shop_id !== 15) {
+        // Silent geocode failure is no longer acceptable: any outcome that leaves
+        // the shop without coordinates raises a persistent, resolvable
+        // shop_unmapped action item; a success resolves any open one. All of it
+        // stays failure-tolerant — nothing here blocks the approval.
+        const shopId = decided.shop_id as number;
+        let geocoded = false;
         try {
             const { data: shopRow } = await admin
                 .from('shops')
-                .select('lat, lng, address_line, city, state_region, postal')
-                .eq('id', decided.shop_id)
+                .select('name, lat, lng, address_line, city, state_region, postal')
+                .eq('id', shopId)
                 .maybeSingle();
             const shop = shopRow as any;
             const parts = [shop?.address_line, shop?.city, shop?.state_region, shop?.postal]
                 .map((p) => (p ?? '').toString().trim())
                 .filter(Boolean);
-            // Only geocode when there's no coord yet AND we have something to search.
-            if (shop && shop.lat == null && parts.length > 0) {
-                const q = parts.join(', ');
+            const addressText = parts.length > 0 ? parts.join(', ') : null;
+
+            if (shop && shop.lat != null) {
+                // Already on the map (e.g. an owner set coords before approval).
+                geocoded = true;
+            } else if (shop && addressText) {
+                // Have an address to search — try Nominatim.
                 const res = await fetch(
-                    `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(q)}`,
+                    `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(addressText)}`,
                     {
                         headers: {
                             'User-Agent': 'rollout.club shop directory (info@neferstock.com)',
@@ -84,12 +95,23 @@ export async function decideVerification(input: {
                     const lat = hit?.lat != null ? Number(hit.lat) : NaN;
                     const lng = hit?.lon != null ? Number(hit.lon) : NaN;
                     if (Number.isFinite(lat) && Number.isFinite(lng)) {
-                        await admin.from('shops').update({ lat, lng }).eq('id', decided.shop_id);
+                        await admin.from('shops').update({ lat, lng }).eq('id', shopId);
+                        geocoded = true;
                     }
                 }
+                // res not ok OR no usable hit → geocoded stays false → alert below.
+            }
+            // else: no address on file → geocoded stays false → alert below.
+
+            if (geocoded) {
+                await resolveShopUnmapped(admin, shopId);
+            } else {
+                await raiseShopUnmapped(admin, shopId, shop?.name, addressText);
             }
         } catch (e) {
             console.error('[decideVerification] shop geocode failed (non-fatal):', e);
+            // The geocode threw (network/timeout/etc.) → the shop is not mapped.
+            await raiseShopUnmapped(admin, shopId, undefined, null);
         }
     }
 
@@ -115,6 +137,7 @@ export async function decideVerification(input: {
 
     revalidatePath('/admin/verifications');
     revalidatePath('/admin/shops');
+    revalidatePath('/admin/overview');
     return { ok: true };
 }
 

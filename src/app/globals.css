@@ -769,6 +769,85 @@ h4 { font-size: 16px; letter-spacing: var(--track-wide); }
   color: var(--text-3);
 }
 
+/* ── Needs-attention feed (overview action items) ── */
+.admin-attention-derived {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  margin-bottom: 12px;
+  border: 1px solid var(--gold);
+  background: var(--gold-glow);
+  text-decoration: none;
+  font-family: var(--font-display);
+  font-size: 11px;
+  letter-spacing: var(--track-wide);
+  color: var(--text);
+}
+.admin-attention-derived:hover { color: var(--gold); }
+.admin-attention-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 28px;
+}
+.admin-attention-item {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-left: 2px solid var(--warn);
+  background: var(--bg-1);
+}
+.admin-attention-body { min-width: 0; }
+.admin-attention-title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: var(--track-wide);
+  color: var(--text);
+}
+.admin-attention-title .text-link { color: var(--text); }
+.admin-attention-title .text-link:hover { color: var(--gold); }
+.admin-attention-desc {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--text-2);
+  margin-top: 5px;
+  line-height: 1.4;
+}
+.admin-attention-meta {
+  font-family: var(--font-display);
+  font-size: 9px;
+  letter-spacing: var(--track-wider);
+  color: var(--text-3);
+  margin-top: 7px;
+}
+.admin-attention-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+/* Sidebar attention badge (open items + pending verifications). */
+.admin-sidebar-badge {
+  display: inline-block;
+  min-width: 16px;
+  padding: 1px 6px;
+  margin-left: 8px;
+  text-align: center;
+  border: 1px solid var(--warn);
+  color: var(--warn);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 9px;
+  letter-spacing: var(--track-wide);
+  border-radius: 9px;
+}
+
 .admin-search {
   display: flex;
   gap: 8px;

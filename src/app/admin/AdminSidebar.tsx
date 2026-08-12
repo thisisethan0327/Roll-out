@@ -21,7 +21,13 @@ const NAV: NavItem[] = [
     { href: '/admin/posts',        label: 'POSTS',        section: 'MODERATION' },
 ];
 
-export function AdminSidebar({ adminLabel }: { adminLabel: string }) {
+export function AdminSidebar({
+    adminLabel,
+    attentionCount = 0,
+}: {
+    adminLabel: string;
+    attentionCount?: number;
+}) {
     const pathname = usePathname() || '';
     const router = useRouter();
 
@@ -51,7 +57,12 @@ export function AdminSidebar({ adminLabel }: { adminLabel: string }) {
                                 href={n.href}
                                 className={`admin-sidebar-link ${active ? 'active' : ''}`}
                             >
-                                <span>{n.label}</span>
+                                <span>
+                                    {n.label}
+                                    {n.href === '/admin/overview' && attentionCount > 0 && (
+                                        <span className="admin-sidebar-badge">{attentionCount}</span>
+                                    )}
+                                </span>
                                 {active && <span>›</span>}
                             </Link>
                         );

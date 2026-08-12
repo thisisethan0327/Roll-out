@@ -5,6 +5,9 @@ import { setShopVerified } from './actions';
 export function ShopRow({ shop }: { shop: any }) {
     const [pending, start] = useTransition();
     const verified = shop.page?.is_verified ?? false;
+    // Meant to be on the map but no coordinates yet — mirrors the shop_unmapped
+    // action item raised at approval time.
+    const notOnMap = shop.show_on_map === true && shop.lat == null;
     const handleVerify = () => {
         if (!shop.page?.id) {
             alert('This shop has no shop_page profile. Create one first.');
@@ -27,7 +30,14 @@ export function ShopRow({ shop }: { shop: any }) {
                     {shop.slug}
                 </a>
             </td>
-            <td>{shop.name}</td>
+            <td>
+                {shop.name}
+                {notOnMap && (
+                    <span className="admin-pill warn" style={{ marginLeft: 8 }}>
+                        NOT ON MAP
+                    </span>
+                )}
+            </td>
             <td>
                 {shop.page ? (
                     <span>

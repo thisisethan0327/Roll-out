@@ -7,7 +7,7 @@ async function listShops() {
     const admin = getSupabaseAdmin();
     const { data: shops } = await admin
         .from('shops')
-        .select('id, slug, name, region, created_at')
+        .select('id, slug, name, region, created_at, lat, show_on_map')
         .order('id', { ascending: true });
 
     const shopIds = (shops ?? []).map((s: any) => s.id);
