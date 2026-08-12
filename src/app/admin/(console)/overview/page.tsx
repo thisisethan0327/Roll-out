@@ -6,12 +6,30 @@ export const metadata = { title: 'Overview' };
 
 type ActionItem = {
     id: string;
+    app: string;
     kind: string;
     title: string;
     body: string | null;
     href: string | null;
     created_at: string;
 };
+
+// App → console group. Unknown apps fall under NEFERSTOCK (the commerce domain).
+const APP_GROUPS: { key: string; label: string; apps: string[] }[] = [
+    { key: 'rollout', label: 'ROLLOUT', apps: ['rollout'] },
+    { key: 'emwraps', label: 'EMWRAPS', apps: ['emwraps'] },
+    { key: 'neferstock', label: 'NEFERSTOCK', apps: ['neferstock', 'divine', 'medusa'] },
+];
+
+function groupByApp(items: ActionItem[]): { label: string; items: ActionItem[] }[] {
+    const known = new Set(APP_GROUPS.flatMap((g) => g.apps));
+    return APP_GROUPS.map((g) => ({
+        label: g.label,
+        items: items.filter((it) =>
+            g.key === 'neferstock' ? g.apps.includes(it.app) || !known.has(it.app) : g.apps.includes(it.app),
+        ),
+    })).filter((g) => g.items.length > 0);
+}
 
 async function getStats() {
     const admin = getSupabaseAdmin();
@@ -56,7 +74,7 @@ async function getStats() {
     // Persistent action items (the "needs attention" spine).
     const { data: actionItems } = await admin
         .from('action_items')
-        .select('id, kind, title, body, href, created_at')
+        .select('id, app, kind, title, body, href, created_at')
         .eq('status', 'open')
         .order('created_at', { ascending: false });
 
@@ -138,37 +156,47 @@ export default async function OverviewPage() {
                     ALL CLEAR — NOTHING NEEDS ATTENTION
                 </div>
             ) : (
-                <div className="admin-attention-list">
-                    {s.actionItems.map((item) => (
-                        <div key={item.id} className="admin-attention-item">
-                            <div className="admin-attention-body">
-                                <div className="admin-attention-title">
-                                    {item.href ? (
-                                        <Link href={item.href} className="text-link">
-                                            {item.title}
-                                        </Link>
-                                    ) : (
-                                        item.title
-                                    )}
-                                </div>
-                                {item.body && (
-                                    <div className="admin-attention-desc">{item.body}</div>
-                                )}
-                                <div className="admin-attention-meta">
-                                    {item.kind.toUpperCase().replace(/_/g, ' ')} · {timeAgo(item.created_at)}
-                                </div>
-                            </div>
-                            <div className="admin-attention-actions">
-                                {item.href && (
-                                    <Link href={item.href} className="admin-action-btn">
-                                        OPEN ›
-                                    </Link>
-                                )}
-                                <DismissButton id={item.id} />
-                            </div>
+                groupByApp(s.actionItems).map((group) => (
+                    <div key={group.label} style={{ marginBottom: 8 }}>
+                        <div
+                            className="admin-sidebar-section"
+                            style={{ padding: '4px 0', marginTop: 4 }}
+                        >
+                            {group.label}
                         </div>
-                    ))}
-                </div>
+                        <div className="admin-attention-list">
+                            {group.items.map((item) => (
+                                <div key={item.id} className="admin-attention-item">
+                                    <div className="admin-attention-body">
+                                        <div className="admin-attention-title">
+                                            {item.href ? (
+                                                <Link href={item.href} className="text-link">
+                                                    {item.title}
+                                                </Link>
+                                            ) : (
+                                                item.title
+                                            )}
+                                        </div>
+                                        {item.body && (
+                                            <div className="admin-attention-desc">{item.body}</div>
+                                        )}
+                                        <div className="admin-attention-meta">
+                                            {item.kind.toUpperCase().replace(/_/g, ' ')} · {timeAgo(item.created_at)}
+                                        </div>
+                                    </div>
+                                    <div className="admin-attention-actions">
+                                        {item.href && (
+                                            <Link href={item.href} className="admin-action-btn">
+                                                OPEN ›
+                                            </Link>
+                                        )}
+                                        <DismissButton id={item.id} />
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                ))
             )}
 
             <div className="admin-stat-grid">

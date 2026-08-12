@@ -80,3 +80,90 @@ export async function resolveShopUnmapped(
         console.error('[action-items] resolveShopUnmapped failed (non-fatal):', e);
     }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Generic producer helpers — used by the sweep route (/api/cron/attention-sweep)
+// for the API-based producers (Coolify deploy failures, Medusa order aging) that
+// can't be expressed as a pure DB query. Same contract as above: best-effort,
+// dedupe-safe (partial-unique index on dedupe_key WHERE status='open'), and
+// AUTO-RESOLVING (resolveActionItemsNotIn clears items whose condition cleared).
+// The DB-derivable producers live in SQL (migration 20260812_048).
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type ActionItemInput = {
+    app: string;
+    audience: 'platform_admin' | 'shop_owner';
+    shopId?: number | null;
+    kind: string;
+    title: string;
+    body?: string | null;
+    href?: string | null;
+    dedupeKey: string;
+};
+
+/**
+ * Raise or refresh an open action item keyed by dedupeKey. If an open row for the
+ * key exists its title/body/href are refreshed (so an aggregated count stays
+ * current); otherwise a new open row is inserted. The insert races safely against
+ * the partial-unique index — a concurrent raise collapses to one open row.
+ */
+export async function upsertActionItem(
+    admin: AdminClient,
+    item: ActionItemInput,
+): Promise<void> {
+    try {
+        const { data: existing } = await admin
+            .from('action_items')
+            .select('id')
+            .eq('dedupe_key', item.dedupeKey)
+            .eq('status', 'open')
+            .maybeSingle();
+
+        if (existing) {
+            await admin
+                .from('action_items')
+                .update({ title: item.title, body: item.body ?? null, href: item.href ?? null })
+                .eq('id', existing.id);
+            return;
+        }
+
+        await admin.from('action_items').insert({
+            app: item.app,
+            audience: item.audience,
+            shop_id: item.shopId ?? null,
+            kind: item.kind,
+            title: item.title,
+            body: item.body ?? null,
+            href: item.href ?? null,
+            dedupe_key: item.dedupeKey,
+        });
+    } catch (e) {
+        console.error(`[action-items] upsertActionItem(${item.dedupeKey}) failed (non-fatal):`, e);
+    }
+}
+
+/**
+ * Auto-resolve: resolve every OPEN item of `kind` whose dedupe_key is NOT in
+ * `liveDedupeKeys` — i.e. the underlying condition cleared since it was raised.
+ * Pass the exact set of keys the current sweep still considers active.
+ */
+export async function resolveActionItemsNotIn(
+    admin: AdminClient,
+    kind: string,
+    liveDedupeKeys: string[],
+): Promise<void> {
+    try {
+        let q = admin
+            .from('action_items')
+            .update({ status: 'resolved', resolved_at: new Date().toISOString() })
+            .eq('kind', kind)
+            .eq('status', 'open');
+        if (liveDedupeKeys.length > 0) {
+            // Resolve open items of this kind that are NOT still live.
+            q = q.not('dedupe_key', 'in', `(${liveDedupeKeys.map((k) => `"${k}"`).join(',')})`);
+        }
+        await q;
+    } catch (e) {
+        console.error(`[action-items] resolveActionItemsNotIn(${kind}) failed (non-fatal):`, e);
+    }
+}
