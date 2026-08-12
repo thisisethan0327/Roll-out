@@ -13,14 +13,6 @@ export const APPLY_INITIAL: ApplyState = { ok: false };
 export const SLUG_RE = /^[a-z0-9][a-z0-9-]{2,29}$/;
 export const UBI_RE = /^\d{9}$/;
 
-export const SHOP_CATEGORIES = [
-    'Vinyl Wraps',
-    'Paint Protection Film',
-    'Ceramic Coating',
-    'Window Tint',
-    'Detailing',
-    'Wheels & Tires',
-    'Performance',
-    'Apparel & Merch',
-    'Other',
-] as const;
+// Shop taxonomy is now a shared, platform-defined vocabulary. Re-exported here
+// so existing importers (ApplyForm) keep working unchanged.
+export { SHOP_CATEGORIES, isShopCategory, type ShopCategory } from '@/lib/shop-categories';

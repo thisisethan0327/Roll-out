@@ -9,6 +9,7 @@ import {
     isLocationPrecision,
     type LocationPrecision,
 } from '@/lib/geocode';
+import { isShopCategory } from '@/lib/shop-categories';
 
 export async function setShopVerified(shopPageProfileId: string, verified: boolean) {
     await requirePlatformAdmin();
@@ -83,6 +84,11 @@ export async function updateShopProfile(shopId: number, formData: FormData) {
     const website_url = str('website_url');
 
     if (!name) throw new Error('Shop name is required.');
+    // Category is the platform-defined taxonomy: allow empty (clears it) or a
+    // value from the controlled vocabulary; reject anything else.
+    if (category && !isShopCategory(category)) {
+        throw new Error('Category must be one of the platform shop categories.');
+    }
     if (support_email && !EMAIL_RE.test(support_email)) {
         throw new Error('Support email is not a valid email address.');
     }

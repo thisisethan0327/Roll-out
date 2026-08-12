@@ -15,6 +15,7 @@ import { getSupabaseServer } from '@/lib/supabase/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { sendPlatformNotification } from '@/lib/platform-notify';
 import { SLUG_RE, UBI_RE, type ApplyState } from './types';
+import { isShopCategory } from '@/lib/shop-categories';
 
 function str(fd: FormData, key: string): string {
     return (fd.get(key)?.toString() ?? '').trim();
@@ -62,6 +63,9 @@ export async function submitShopApplication(
     }
     if (!category) {
         return { ok: false, error: 'Pick a category.', field: 'category' };
+    }
+    if (!isShopCategory(category)) {
+        return { ok: false, error: 'Pick a category from the list.', field: 'category' };
     }
 
     const socials: Record<string, string> = {};

@@ -1,6 +1,7 @@
 'use client';
 import { useState, useTransition } from 'react';
 import { updateShopProfile } from '../actions';
+import { SHOP_CATEGORIES } from '@/lib/shop-categories';
 
 type PrecisionOpt = {
     value: 'exact' | 'area' | 'off';
@@ -91,14 +92,17 @@ export function ShopProfileForm({
             <div style={{ display: 'flex', gap: 8 }}>
                 <div style={{ flex: 1 }}>
                     <div className="admin-form-label">CATEGORY</div>
-                    <input
-                        type="text"
+                    <select
                         value={category}
                         onChange={(e) => setCategory(e.target.value)}
                         className="admin-form-input"
-                        placeholder="Wrap shop"
-                        style={{ width: '100%' }}
-                    />
+                        style={{ width: '100%', appearance: 'none', WebkitAppearance: 'none', cursor: 'pointer' }}
+                    >
+                        <option value="">Select…</option>
+                        {SHOP_CATEGORIES.map((c) => (
+                            <option key={c} value={c}>{c}</option>
+                        ))}
+                    </select>
                 </div>
                 <div style={{ flex: 1 }}>
                     <div className="admin-form-label">REGION</div>
