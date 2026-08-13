@@ -32,7 +32,8 @@ async function loadAppointments(status?: string) {
         .order('created_at', { ascending: false })
         .limit(200);
     if (status && status !== 'all') q = q.eq('status', status);
-    const { data } = await q;
+    const { data, error } = await q;
+    if (error) console.error('[admin/appointments] load failed:', error.message);
     return data ?? [];
 }
 

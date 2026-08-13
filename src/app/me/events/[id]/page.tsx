@@ -31,22 +31,24 @@ export default async function HostEventDetail({
     const profile = await requireVerifiedHost('/me/events');
     const admin = getSupabaseAdmin();
 
-    const { data } = await admin
+    const { data, error } = await admin
         .from('events')
         .select('id, shop_id, host_id, code, type, title, description, location_name, location_detail, lat, lng, start_at, capacity, visibility, tags, hero_image_url, cancelled_at')
         .eq('id', id)
         .maybeSingle();
+    if (error) console.error('[me/events/[id]] event load failed:', error.message);
     const event = data as any;
     if (!event || event.host_id !== profile.profileId || event.shop_id != null) notFound();
 
     // Invites already sent (audit) for this event.
-    const { data: sentRows } = await admin
+    const { data: sentRows, error: sentError } = await admin
         .from('email_log')
         .select('recipient_email, status, created_at')
         .eq('linked_event_id', id)
         .eq('template', 'platform_host_invite')
         .order('created_at', { ascending: false })
         .limit(50);
+    if (sentError) console.error('[me/events/[id]] sent-invites load failed:', sentError.message);
     const sent = (sentRows as any[]) ?? [];
 
     const branding: InviteBranding = {

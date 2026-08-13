@@ -103,11 +103,12 @@ export async function saveProfileFields(input: {
     const admin = getSupabaseAdmin();
 
     // Pre-check availability (nice error); the UNIQUE index is the real gate.
-    const { data: clash } = await admin
+    const { data: clash, error: clashError } = await admin
         .from('profiles')
         .select('id')
         .eq('handle', handle)
         .maybeSingle();
+    if (clashError) console.error('[lib/profile-handle] saveProfileFields clash check failed:', clashError.message);
     if (clash && (clash as any).id !== input.profileId) {
         return { ok: false, error: 'That handle is taken. Pick another.' };
     }

@@ -58,12 +58,13 @@ export default async function KioskEventsPage({
         : 'ALL';
 
     const admin = getSupabasePublicAdmin();
-    const { data } = await admin
+    const { data, error } = await admin
         .from('events')
         .select('*')
         .eq('shop_id', shop.shopId)
         .order('starts_at', { ascending: true })
         .limit(200);
+    if (error) console.error('[shop/kiosk-events] load failed:', error.message);
     const all = (data as any[]) ?? [];
 
     const rows =

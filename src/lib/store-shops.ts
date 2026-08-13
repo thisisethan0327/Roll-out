@@ -32,7 +32,7 @@ export async function getSellingShops(): Promise<SellingShop[]> {
     if (cache && Date.now() - cache.at < TTL) return cache.shops;
 
     const admin = getSupabaseAdmin();
-    const { data: shopsRaw } = await admin
+    const { data: shopsRaw, error: shopsError } = await admin
         .from('shops')
         .select('id, slug, name, commerce_tier, medusa_category_handles, primary_color')
         .eq('sells_products', true)
@@ -42,6 +42,7 @@ export async function getSellingShops(): Promise<SellingShop[]> {
         .eq('status', 'verified')
         .in('commerce_status', ['docs_verified', 'verified'])
         .order('commerce_tier', { ascending: true });
+    if (shopsError) console.error('[lib/store-shops] getSellingShops failed:', shopsError.message);
 
     const rows = (shopsRaw as any[]) ?? [];
     if (rows.length === 0) {
@@ -50,11 +51,12 @@ export async function getSellingShops(): Promise<SellingShop[]> {
     }
 
     const ids = rows.map((s) => s.id);
-    const { data: pagesRaw } = await admin
+    const { data: pagesRaw, error: pagesError } = await admin
         .from('profiles')
         .select('shop_id, handle')
         .eq('kind', 'shop_page')
         .in('shop_id', ids);
+    if (pagesError) console.error('[lib/store-shops] getSellingShops pages failed:', pagesError.message);
 
     const handleByShop = new Map<number, string>();
     for (const p of (pagesRaw as any[]) ?? []) handleByShop.set(p.shop_id, p.handle);

@@ -143,11 +143,12 @@ async function loadHandle(rawHandle: string) {
     const handle = stripAt(decodeURIComponent(rawHandle));
     const supabase = getSupabaseAdmin();
 
-    const { data: profile } = await supabase
+    const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('id, handle, display_name, bio, avatar_url, banner_url, location, sector_code, kind, is_verified, shop_id')
         .ilike('handle', handle)
         .maybeSingle();
+    if (profileError) console.error('[u/[handle]] profile load failed:', profileError.message);
 
     if (!profile) return null;
 
@@ -209,6 +210,19 @@ async function loadHandle(rawHandle: string) {
                   .maybeSingle()
             : Promise.resolve({ data: null }),
     ]);
+
+    for (const [label, res] of [
+        ['shop', shopRes],
+        ['profile_cards', cardRes],
+        ['feed_posts', postsRes],
+        ['event_cards', eventsRes],
+        ['vehicles', vehiclesRes],
+        ['shop_review_cards', reviewsRes],
+        ['shop_review_stats', statsRes],
+    ] as const) {
+        const err = (res as any)?.error;
+        if (err) console.error(`[u/[handle]] ${label} load failed:`, err.message);
+    }
 
     // Storefront: if this shop_page belongs to a selling shop, fetch its Medusa
     // catalog (Rollout sales channel) to render a product grid + link to /store.

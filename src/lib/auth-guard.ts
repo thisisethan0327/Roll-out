@@ -156,10 +156,11 @@ export async function listMyShops(profileId: string): Promise<
     { shopId: number; slug: string; name: string; role: string }[]
 > {
     const admin = getSupabaseAdmin();
-    const { data } = await admin
+    const { data, error } = await admin
         .from('shop_memberships')
         .select('shop_id, role, shops!inner(id, slug, name)')
         .eq('profile_id', profileId);
+    if (error) console.error('[lib/auth-guard] listMyShops failed:', error.message);
     return (data ?? []).map((r: any) => ({
         shopId: r.shop_id,
         slug: r.shops?.slug ?? '',
@@ -178,11 +179,12 @@ export async function resolveShopSlug(slug: string): Promise<
 > {
     if (!slug) return null;
     const admin = getSupabaseAdmin();
-    const { data } = await admin
+    const { data, error } = await admin
         .from('shops')
         .select('id, slug, name')
         .eq('slug', slug)
         .maybeSingle();
+    if (error) console.error('[lib/auth-guard] resolveShopSlug failed:', error.message);
     if (!data) return null;
     return {
         shopId: (data as any).id,
@@ -217,11 +219,12 @@ export async function getShopModuleConfigBySlug(
 ): Promise<ShopModuleConfig | null> {
     if (!slug) return null;
     const admin = getSupabaseAdmin();
-    const { data } = await admin
+    const { data, error } = await admin
         .from('shops')
         .select('commerce_tier, module_overrides')
         .eq('slug', slug)
         .maybeSingle();
+    if (error) console.error('[lib/auth-guard] getShopModuleConfigBySlug failed:', error.message);
     if (!data) return null;
     return {
         commerce_tier: (data as any).commerce_tier ?? null,
@@ -249,11 +252,12 @@ export async function isShopModuleEnabledById(
     key: ModuleKey,
 ): Promise<boolean> {
     const admin = getSupabaseAdmin();
-    const { data } = await admin
+    const { data, error } = await admin
         .from('shops')
         .select('commerce_tier, module_overrides')
         .eq('id', shopId)
         .maybeSingle();
+    if (error) console.error('[lib/auth-guard] isShopModuleEnabledById failed:', error.message);
     if (!data) return false;
     return isModuleEnabled(
         (data as any).commerce_tier,

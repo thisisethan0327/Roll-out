@@ -37,12 +37,13 @@ function fmt(iso: string | null): string {
 export default async function MyEventsPage() {
     const profile = await requireVerifiedHost('/me/events');
     const admin = getSupabaseAdmin();
-    const { data } = await admin
+    const { data, error } = await admin
         .from('events')
         .select('id, type, title, start_at, location_name, hero_image_url, visibility, cancelled_at, attending_count')
         .eq('host_id', profile.profileId)
         .is('shop_id', null)
         .order('start_at', { ascending: false });
+    if (error) console.error('[me/events] load failed:', error.message);
     const events = (data as any[]) ?? [];
 
     return (

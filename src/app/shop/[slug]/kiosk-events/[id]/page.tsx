@@ -16,12 +16,13 @@ const STATUS_PILL: Record<string, string> = {
 
 async function loadEvent(eventId: string, shopId: number) {
     const admin = getSupabasePublicAdmin();
-    const { data } = await admin
+    const { data, error } = await admin
         .from('events')
         .select('*')
         .eq('id', eventId)
         .eq('shop_id', shopId)
         .maybeSingle();
+    if (error) console.error('[shop/kiosk-events/[id]] loadEvent failed:', error.message);
     return data as any;
 }
 

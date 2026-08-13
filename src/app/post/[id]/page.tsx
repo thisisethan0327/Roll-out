@@ -72,7 +72,8 @@ const POST_SELECT = `id, type, body, hero_image_url, media_urls, tags, visibilit
 async function loadPost(id: string): Promise<PostRow | null> {
     if (!UUID_RE.test(id)) return null;
     const supabase = getSupabaseAdmin();
-    const { data } = await supabase.from('posts').select(POST_SELECT).eq('id', id).maybeSingle();
+    const { data, error } = await supabase.from('posts').select(POST_SELECT).eq('id', id).maybeSingle();
+    if (error) console.error('[post/[id]] loadPost failed:', error.message);
 
     const post = data as PostRow | null;
     if (!post || post.deleted_at || post.visibility !== 'public') return null;
@@ -89,7 +90,7 @@ async function loadOriginal(
 ): Promise<OriginalPost | typeof UNAVAILABLE | null> {
     if (!repostOf || !UUID_RE.test(repostOf)) return null;
     const supabase = getSupabaseAdmin();
-    const { data } = await supabase
+    const { data, error } = await supabase
         .from('posts')
         .select(
             `id, body, hero_image_url, media_urls, visibility, deleted_at, created_at,
@@ -97,6 +98,7 @@ async function loadOriginal(
         )
         .eq('id', repostOf)
         .maybeSingle();
+    if (error) console.error('[post/[id]] loadOriginal failed:', error.message);
 
     const orig = data as (OriginalPost & { deleted_at: string | null; visibility: string | null }) | null;
     if (!orig) return UNAVAILABLE;
@@ -115,12 +117,13 @@ async function loadOriginal(
  *  come back as { product: null } so the caller can shell them. */
 async function loadProductTags(postId: string): Promise<ProductTag[]> {
     const supabase = getSupabaseAdmin();
-    const { data } = await supabase
+    const { data, error } = await supabase
         .from('post_product_tags')
         .select('medusa_product_id, created_at')
         .eq('post_id', postId)
         .order('created_at', { ascending: true })
         .limit(5);
+    if (error) console.error('[post/[id]] loadProductTags failed:', error.message);
 
     const ids = ((data as any[]) ?? []).map((r) => r.medusa_product_id as string).filter(Boolean);
     if (ids.length === 0) return [];

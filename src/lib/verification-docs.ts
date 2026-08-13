@@ -108,11 +108,12 @@ export async function listKycDocsForShop(
     ttlSeconds = 300,
 ): Promise<KycDocView[]> {
     const admin = getSupabaseAdmin();
-    const { data } = await admin
+    const { data, error } = await admin
         .from('kyc_documents')
         .select('id, doc_type, original_name, mime_type, size_bytes, storage_path, created_at')
         .eq('shop_id', shopId)
         .order('created_at', { ascending: false });
+    if (error) console.error('[lib/verification-docs] listKycDocsForShop failed:', error.message);
     const rows = (data as any[]) ?? [];
     if (rows.length === 0) return [];
 

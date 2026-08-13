@@ -32,12 +32,13 @@ const INSTALLER_ROLES = new Set(['owner', 'admin', 'manager', 'installer']);
 
 async function fetchShopPageProfileId(shopId: number): Promise<string | null> {
     const admin = getSupabaseAdmin();
-    const { data } = await admin
+    const { data, error } = await admin
         .from('profiles')
         .select('id')
         .eq('shop_id', shopId)
         .eq('kind', 'shop_page')
         .maybeSingle();
+    if (error) console.error('[shop/messages/[threadId]] fetchShopPageProfileId failed:', error.message);
     return (data as any)?.id ?? null;
 }
 
@@ -80,11 +81,12 @@ export default async function ShopThreadPage({
     const admin = getSupabaseAdmin();
 
     // Verify thread exists and belongs to this shop.
-    const { data: thread } = await admin
+    const { data: thread, error: threadError } = await admin
         .from('chat_threads')
         .select('id, shop_id, kind, name, customer_profile_id')
         .eq('id', threadId)
         .maybeSingle();
+    if (threadError) console.error('[shop/messages/[threadId]] thread load failed:', threadError.message);
     if (!thread || (thread as any).shop_id !== shop.shopId) {
         notFound();
     }
@@ -110,13 +112,15 @@ export default async function ShopThreadPage({
             handle = (customer as any)?.handle ?? null;
         }
 
-        const { data: messages } = await admin
+        const { data: messages, error: messagesError } = await admin
             .from('chat_messages')
             .select('id, sender_id, body, created_at, sender:profiles(display_name)')
             .eq('thread_id', threadId)
             .is('deleted_at', null)
             .order('created_at', { ascending: false })
             .limit(MESSAGE_LIMIT);
+        if (messagesError)
+            console.error('[shop/messages/[threadId]] messages load failed:', messagesError.message);
 
         bubbles = ((messages as any[]) ?? [])
             .slice()
@@ -156,13 +160,15 @@ export default async function ShopThreadPage({
             handle = other.profiles.handle ?? null;
         }
 
-        const { data: messages } = await admin
+        const { data: messages, error: messagesError } = await admin
             .from('chat_messages')
             .select('id, sender_id, body, created_at, sender:profiles(display_name)')
             .eq('thread_id', threadId)
             .is('deleted_at', null)
             .order('created_at', { ascending: false })
             .limit(MESSAGE_LIMIT);
+        if (messagesError)
+            console.error('[shop/messages/[threadId]] messages load failed:', messagesError.message);
 
         bubbles = ((messages as any[]) ?? [])
             .slice()

@@ -32,7 +32,8 @@ export async function resolveShopRefs(shopIds: number[]): Promise<Map<number, Sh
     const ids = Array.from(new Set(shopIds.filter((n) => n != null)));
     if (ids.length === 0) return map;
     const admin = getSupabaseAdmin(); // rollout schema
-    const { data } = await admin.from('shops').select('id, name, slug').in('id', ids);
+    const { data, error } = await admin.from('shops').select('id, name, slug').in('id', ids);
+    if (error) console.error('[lib/me-data] resolveShopRefs failed:', error.message);
     for (const s of (data ?? []) as any[]) {
         map.set(Number(s.id), { id: Number(s.id), name: s.name, slug: s.slug });
     }
@@ -59,12 +60,13 @@ export type MyTicket = {
 
 export async function loadMyTickets(): Promise<MyTicket[]> {
     const supabase = await getSupabaseServer(); // anon, RLS applies
-    const { data } = await supabase
+    const { data, error } = await supabase
         .from('tickets')
         .select(
             'id, ticket_id, status, customer_name, car_year, car_make, car_model, service_day, end_date, total_price, created_at, shop_id',
         )
         .order('created_at', { ascending: false });
+    if (error) console.error('[lib/me-data] loadMyTickets failed:', error.message);
     const rows = (data ?? []) as any[];
     const shops = await resolveShopRefs(rows.map((r) => Number(r.shop_id)));
     return rows.map((r) => ({
@@ -103,11 +105,12 @@ export async function loadTicketDetail(id: string): Promise<TicketDetail | null>
     const supabase = await getSupabaseServer(); // anon, RLS applies
 
     // RLS silently returns no row for a ticket the caller doesn't own.
-    const { data: ticket } = await supabase
+    const { data: ticket, error: ticketError } = await supabase
         .from('tickets')
         .select('*')
         .eq('id', id)
         .maybeSingle();
+    if (ticketError) console.error('[lib/me-data] loadTicketDetail ticket failed:', ticketError.message);
     if (!ticket) return null;
 
     const [checkinsRes, invoicesRes, activityRes, messagesRes] = await Promise.all([
@@ -136,6 +139,16 @@ export async function loadTicketDetail(id: string): Promise<TicketDetail | null>
             .eq('visibility', 'customer')
             .order('created_at', { ascending: true }),
     ]);
+
+    for (const [label, res] of [
+        ['checkins', checkinsRes],
+        ['invoices', invoicesRes],
+        ['activity', activityRes],
+        ['messages', messagesRes],
+    ] as const) {
+        if (res.error)
+            console.error(`[lib/me-data] loadTicketDetail ${label} failed:`, res.error.message);
+    }
 
     const shopMap = await resolveShopRefs([Number((ticket as any).shop_id)]);
 
@@ -167,11 +180,12 @@ export type MyAppointment = {
 
 export async function loadMyAppointments(profileId: string): Promise<MyAppointment[]> {
     const admin = getSupabaseAdmin(); // rollout schema
-    const { data } = await admin
+    const { data, error } = await admin
         .from('appointment_requests')
         .select('id, shop_id, service_type, preferred_at, status, notes, decline_reason, ticket_id, vehicle_id, created_at')
         .eq('requester_profile_id', profileId)
         .order('created_at', { ascending: false });
+    if (error) console.error('[lib/me-data] loadMyAppointments failed:', error.message);
     const rows = (data ?? []) as any[];
 
     const shops = await resolveShopRefs(rows.map((r) => Number(r.shop_id)));
@@ -180,10 +194,11 @@ export async function loadMyAppointments(profileId: string): Promise<MyAppointme
     const vehIds = Array.from(new Set(rows.map((r) => r.vehicle_id).filter(Boolean)));
     const vehLabel = new Map<string, string>();
     if (vehIds.length > 0) {
-        const { data: vehs } = await admin
+        const { data: vehs, error: vehsError } = await admin
             .from('vehicles')
             .select('id, year, make, model')
             .in('id', vehIds);
+        if (vehsError) console.error('[lib/me-data] loadMyAppointments vehicles failed:', vehsError.message);
         for (const v of (vehs ?? []) as any[]) {
             vehLabel.set(
                 v.id,
@@ -222,22 +237,24 @@ export type MyRsvp = {
 
 export async function loadMyUpcomingRsvps(profileId: string): Promise<MyRsvp[]> {
     const admin = getSupabaseAdmin();
-    const { data: rsvps } = await admin
+    const { data: rsvps, error: rsvpsError } = await admin
         .from('event_rsvps')
         .select('event_id, status')
         .eq('profile_id', profileId);
+    if (rsvpsError) console.error('[lib/me-data] loadMyUpcomingRsvps rsvps failed:', rsvpsError.message);
     const rows = (rsvps ?? []) as any[];
     if (rows.length === 0) return [];
 
     const eventIds = rows.map((r) => r.event_id);
     const nowIso = new Date().toISOString();
-    const { data: events } = await admin
+    const { data: events, error: eventsError } = await admin
         .from('events')
         .select('id, title, start_at, location_name, code, type, hero_image_url, cancelled_at')
         .in('id', eventIds)
         .is('cancelled_at', null)
         .gte('start_at', nowIso)
         .order('start_at', { ascending: true });
+    if (eventsError) console.error('[lib/me-data] loadMyUpcomingRsvps events failed:', eventsError.message);
 
     const statusById = new Map(rows.map((r) => [r.event_id, r.status]));
     return ((events ?? []) as any[]).map((e) => ({
@@ -272,12 +289,13 @@ export type MyVehicle = {
 
 export async function loadMyGarage(profileId: string): Promise<MyVehicle[]> {
     const admin = getSupabaseAdmin();
-    const { data } = await admin
+    const { data, error } = await admin
         .from('vehicles')
         .select('id, garage_number, year, make, model, trim, color, build_stage, hero_image_url, engine, hp, torque, visibility, created_at')
         .eq('owner_id', profileId)
         .is('deleted_at', null)
         .order('created_at', { ascending: false });
+    if (error) console.error('[lib/me-data] loadMyGarage failed:', error.message);
     return (data ?? []) as any[];
 }
 
@@ -294,12 +312,13 @@ export type MyPost = {
 
 export async function loadMyPosts(profileId: string): Promise<MyPost[]> {
     const admin = getSupabaseAdmin();
-    const { data } = await admin
+    const { data, error } = await admin
         .from('posts')
         .select('id, type, body, hero_image_url, visibility, like_count, comment_count, created_at')
         .eq('author_id', profileId)
         .is('deleted_at', null)
         .order('created_at', { ascending: false })
         .limit(50);
+    if (error) console.error('[lib/me-data] loadMyPosts failed:', error.message);
     return (data ?? []) as any[];
 }

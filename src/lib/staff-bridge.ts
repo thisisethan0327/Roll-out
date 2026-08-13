@@ -249,10 +249,11 @@ export async function resolveActingWorkerId(
 ): Promise<string | null> {
     if (!actingEmail) return null;
     const pub = getSupabasePublicAdmin();
-    const { data } = await pub
+    const { data, error } = await pub
         .from('profiles')
         .select('id')
         .ilike('email', actingEmail)
         .maybeSingle();
+    if (error) console.error('[lib/staff-bridge] resolveActingWorkerId failed:', error.message);
     return (data as any)?.id ?? null;
 }

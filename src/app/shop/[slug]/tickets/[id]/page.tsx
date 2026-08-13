@@ -46,12 +46,13 @@ function statusPillVariant(status: string | null): '' | 'gold' | 'neon' | 'warn'
 
 async function loadTicket(shopId: number, id: string) {
     const pub = getSupabasePublicAdmin();
-    const { data } = await pub
+    const { data, error } = await pub
         .from('tickets')
         .select('*')
         .eq('id', id)
         .eq('shop_id', shopId)
         .maybeSingle();
+    if (error) console.error('[shop/tickets/[id]] loadTicket failed:', error.message);
     return data as any;
 }
 

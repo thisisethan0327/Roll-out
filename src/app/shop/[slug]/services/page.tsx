@@ -26,7 +26,8 @@ async function loadServices(shopId: number, q?: string): Promise<ServiceRecord[]
         query = query.or(`name.ilike.%${safe}%,description.ilike.%${safe}%`);
     }
 
-    const { data } = await query;
+    const { data, error } = await query;
+    if (error) console.error('[shop/services] loadServices failed:', error.message);
     return ((data as any[]) ?? []) as ServiceRecord[];
 }
 

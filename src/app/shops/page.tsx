@@ -44,7 +44,7 @@ type ShopCard = ShopRow & {
 async function loadShops(): Promise<ShopCard[]> {
     const admin = getSupabaseAdmin();
 
-    const { data: shopsRaw } = await admin
+    const { data: shopsRaw, error: shopsError } = await admin
         .from('shops')
         .select(
             'id, slug, name, region, city, state_region, address_line, primary_color, offers_services, sells_products, location_precision',
@@ -59,6 +59,7 @@ async function loadShops(): Promise<ShopCard[]> {
         .eq('show_on_map', true)
         .order('name', { ascending: true })
         .limit(200);
+    if (shopsError) console.error('[shops] directory load failed:', shopsError.message);
 
     const shops = (shopsRaw as ShopRow[]) ?? [];
     if (shops.length === 0) return [];
@@ -76,6 +77,9 @@ async function loadShops(): Promise<ShopCard[]> {
             .select('shop_id, rating_avg, rating_count')
             .in('shop_id', ids),
     ]);
+
+    if (pagesRes.error) console.error('[shops] shop pages load failed:', pagesRes.error.message);
+    if (statsRes.error) console.error('[shops] review stats load failed:', statsRes.error.message);
 
     const pageByShop = new Map<number, { handle: string; is_verified: boolean; avatar_url: string | null }>();
     for (const p of (pagesRes.data as any[]) ?? []) {

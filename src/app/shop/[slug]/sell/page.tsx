@@ -38,11 +38,12 @@ export default async function SellPage({ params }: { params: Promise<{ slug: str
     const { shop } = await requireShopMemberBySlug(slug);
 
     const admin = getSupabaseAdmin();
-    const { data } = await admin
+    const { data, error } = await admin
         .from('shops')
         .select('status, commerce_status, origin_app, merchant_feature_enabled')
         .eq('id', shop.shopId)
         .maybeSingle();
+    if (error) console.error('[shop/sell] load shop commerce status failed:', error.message);
     const row = (data ?? {}) as any;
     const commerceStatus: string = row.commerce_status ?? 'none';
     const eligible = row.origin_app === 'neferstock' || row.merchant_feature_enabled === true;

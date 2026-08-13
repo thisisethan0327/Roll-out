@@ -16,7 +16,8 @@ async function listUsers(query?: string) {
     if (query) {
         q = q.or(`handle.ilike.%${query}%,display_name.ilike.%${query}%`);
     }
-    const { data } = await q;
+    const { data, error } = await q;
+    if (error) console.error('[admin/users] load failed:', error.message);
     const profiles = data ?? [];
 
     // Annotate with platform_admin + meet_coordinator membership in one extra

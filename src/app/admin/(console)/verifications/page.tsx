@@ -14,11 +14,12 @@ export const dynamic = 'force-dynamic';
 
 async function loadQueue(): Promise<VReq[]> {
     const admin = getSupabaseAdmin();
-    const { data: reqsRaw } = await admin
+    const { data: reqsRaw, error: reqsError } = await admin
         .from('verification_requests')
         .select('id, kind, created_at, origin_app, payload, shop_id, profile_id, nominated_by')
         .eq('state', 'pending')
         .order('created_at', { ascending: true });
+    if (reqsError) console.error('[admin/verifications] queue load failed:', reqsError.message);
 
     const reqs = (reqsRaw as any[]) ?? [];
     if (reqs.length === 0) return [];

@@ -44,11 +44,12 @@ export async function getConsumerProfile(): Promise<ConsumerProfile | null> {
     const admin = getSupabaseAdmin();
 
     // Fast path: profile already linked.
-    const { data: existing } = await admin
+    const { data: existing, error: existingError } = await admin
         .from('profiles')
         .select('id, handle, display_name, avatar_url, host_status, host_appointed_by_shop_id')
         .eq('auth_user_id', user.id)
         .maybeSingle();
+    if (existingError) console.error('[lib/consumer] profile lookup failed:', existingError.message);
 
     if (existing) {
         return {
@@ -72,11 +73,12 @@ export async function getConsumerProfile(): Promise<ConsumerProfile | null> {
     });
     if (rpcErr || !newId) return null;
 
-    const { data: created } = await admin
+    const { data: created, error: createdError } = await admin
         .from('profiles')
         .select('id, handle, display_name, avatar_url, host_status, host_appointed_by_shop_id')
         .eq('id', newId as string)
         .maybeSingle();
+    if (createdError) console.error('[lib/consumer] created-profile fetch failed:', createdError.message);
     if (!created) return null;
 
     return {

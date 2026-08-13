@@ -39,11 +39,12 @@ async function loadCustomers(shopId: number, q: string | undefined, source: Sour
                 newThisWeek: 0,
             };
         }
-        const { data: apptRows } = await admin
+        const { data: apptRows, error: apptRowsError } = await admin
             .from('appointment_requests')
             .select('requester_profile_id, created_at')
             .eq('shop_id', shopId)
             .limit(5000);
+        if (apptRowsError) console.error('[shop/customers] rollout appts load failed:', apptRowsError.message);
         const allIds = Array.from(
             new Set((apptRows ?? []).map((r: any) => r.requester_profile_id).filter(Boolean)),
         ) as string[];
@@ -65,7 +66,8 @@ async function loadCustomers(shopId: number, q: string | undefined, source: Sour
                 `handle.ilike.%${needle}%,display_name.ilike.%${needle}%`,
             );
         }
-        const { data: profiles } = await profQ.limit(PAGE_LIMIT + 1);
+        const { data: profiles, error: profilesError } = await profQ.limit(PAGE_LIMIT + 1);
+        if (profilesError) console.error('[shop/customers] rollout profiles load failed:', profilesError.message);
         const profRows = (profiles ?? []) as any[];
 
         // Per-profile appointment count at this shop.
@@ -100,12 +102,13 @@ async function loadCustomers(shopId: number, q: string | undefined, source: Sour
             };
         }
         // Distinct customer_ids who have tickets at this shop.
-        const { data: ticketRows } = await pub
+        const { data: ticketRows, error: ticketRowsError } = await pub
             .from('tickets')
             .select('customer_id, created_at')
             .eq('shop_id', shopId)
             .not('customer_id', 'is', null)
             .limit(10_000);
+        if (ticketRowsError) console.error('[shop/customers] legacy tickets load failed:', ticketRowsError.message);
         const allIds = Array.from(
             new Set((ticketRows ?? []).map((r: any) => r.customer_id).filter(Boolean)),
         ) as string[];
@@ -126,7 +129,8 @@ async function loadCustomers(shopId: number, q: string | undefined, source: Sour
                 `name.ilike.%${needle}%,first_name.ilike.%${needle}%,last_name.ilike.%${needle}%,email.ilike.%${needle}%,phone.ilike.%${needle}%`,
             );
         }
-        const { data: customers } = await custQ.limit(PAGE_LIMIT + 1);
+        const { data: customers, error: customersError } = await custQ.limit(PAGE_LIMIT + 1);
+        if (customersError) console.error('[shop/customers] legacy customers load failed:', customersError.message);
         const custRows = (customers ?? []) as any[];
 
         // Tickets per customer at this shop.

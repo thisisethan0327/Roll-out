@@ -5,10 +5,11 @@ export const metadata = { title: 'Shops' };
 
 async function listShops() {
     const admin = getSupabaseAdmin();
-    const { data: shops } = await admin
+    const { data: shops, error } = await admin
         .from('shops')
         .select('id, slug, name, region, created_at, lat, show_on_map')
         .order('id', { ascending: true });
+    if (error) console.error('[admin/shops] load failed:', error.message);
 
     const shopIds = (shops ?? []).map((s: any) => s.id);
 

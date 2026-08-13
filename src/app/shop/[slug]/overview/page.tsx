@@ -126,13 +126,14 @@ async function loadAttention(
     const admin = getSupabaseAdmin();
 
     // ── STORED: open shop_owner alerts for THIS shop (event-type, dismissable) ──
-    const { data: storedRaw } = await admin
+    const { data: storedRaw, error: storedError } = await admin
         .from('action_items')
         .select('id, kind, title, body, href, created_at')
         .eq('audience', 'shop_owner')
         .eq('shop_id', shopId)
         .eq('status', 'open')
         .order('created_at', { ascending: false });
+    if (storedError) console.error('[shop/overview] action_items load failed:', storedError.message);
     const stored = (storedRaw ?? []) as ActionItem[];
 
     // ── DERIVED: paid-but-unfulfilled orders (Medusa-backed selling shops) ──
@@ -199,11 +200,12 @@ export default async function ShopOverviewPage({
 
     // One shop-row read drives the module gate + the paused-catalog handles.
     const admin = getSupabaseAdmin();
-    const { data: shopRow } = await admin
+    const { data: shopRow, error: shopRowError } = await admin
         .from('shops')
         .select('commerce_tier, module_overrides, medusa_category_handles')
         .eq('id', shop.shopId)
         .maybeSingle();
+    if (shopRowError) console.error('[shop/overview] shop row load failed:', shopRowError.message);
     const enabled = enabledModules(
         (shopRow as any)?.commerce_tier,
         ((shopRow as any)?.module_overrides ?? {}) as ModuleOverrides,

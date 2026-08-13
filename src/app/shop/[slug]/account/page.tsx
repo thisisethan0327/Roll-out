@@ -27,11 +27,12 @@ type ProfileRow = {
 
 async function loadProfile(profileId: string): Promise<ProfileRow | null> {
     const admin = getSupabaseAdmin();
-    const { data } = await admin
+    const { data, error } = await admin
         .from('profiles')
         .select('id, handle, display_name, bio, avatar_url, created_at')
         .eq('id', profileId)
         .maybeSingle();
+    if (error) console.error('[shop/account] loadProfile failed:', error.message);
     return (data as ProfileRow) ?? null;
 }
 
@@ -40,12 +41,13 @@ async function loadMemberSince(
     shopId: number,
 ): Promise<string | null> {
     const admin = getSupabaseAdmin();
-    const { data } = await admin
+    const { data, error } = await admin
         .from('shop_memberships')
         .select('created_at')
         .eq('profile_id', profileId)
         .eq('shop_id', shopId)
         .maybeSingle();
+    if (error) console.error('[shop/account] loadMemberSince failed:', error.message);
     return (data as any)?.created_at ?? null;
 }
 

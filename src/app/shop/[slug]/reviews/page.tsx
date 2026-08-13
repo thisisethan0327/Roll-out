@@ -19,13 +19,14 @@ type ReviewRecord = {
 
 async function loadReviews(shopId: number): Promise<ReviewRecord[]> {
     const admin = getSupabaseAdmin();
-    const { data } = await admin
+    const { data, error } = await admin
         .from('shop_review_cards')
         .select(
             'id, shop_id, rating, body, verified_purchase, owner_reply, created_at, reviewer_name, reviewer_handle, reviewer_is_verified',
         )
         .eq('shop_id', shopId)
         .order('created_at', { ascending: false });
+    if (error) console.error('[shop/reviews] loadReviews failed:', error.message);
     return ((data as any[]) ?? []) as ReviewRecord[];
 }
 

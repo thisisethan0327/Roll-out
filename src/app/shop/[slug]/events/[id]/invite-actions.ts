@@ -317,15 +317,19 @@ export async function searchCoHostCandidates(
     const admin = getSupabaseAdmin();
     const q = query.trim();
 
-    const { data: existing } = await admin
+    const { data: existing, error: existingError } = await admin
         .from('event_cohosts')
         .select('shop_id')
         .eq('event_id', eventId);
+    if (existingError)
+        console.error('[shop/events/[id]/invite-actions] existing co-hosts load failed:', existingError.message);
     const excluded = new Set<number>([hostShopId, ...((existing as any[]) ?? []).map((r) => r.shop_id)]);
 
     let sel = admin.from('shops').select('id, name, slug').order('name').limit(8);
     if (q) sel = sel.or(`name.ilike.%${q}%,slug.ilike.%${q}%`);
-    const { data } = await sel;
+    const { data, error } = await sel;
+    if (error)
+        console.error('[shop/events/[id]/invite-actions] candidate search failed:', error.message);
     return ((data as any[]) ?? [])
         .filter((s) => !excluded.has(s.id))
         .map((s) => ({ id: s.id, name: s.name, slug: s.slug }));

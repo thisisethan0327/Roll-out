@@ -157,12 +157,13 @@ export async function loadServiceCatalog(slug: string): Promise<CatalogCategory[
     const admin = getSupabaseAdmin();
 
     if (shopSlug === 'emwraps' || shopId === 1) {
-        const { data } = await pub
+        const { data, error } = await pub
             .from('service_items')
             .select('id, category, subcategory, name, price, price_type, duration, options, sort_order')
             .eq('active', true)
             .order('sort_order')
             .limit(1000);
+        if (error) console.error('[shop/tickets/form-actions] service_items catalog load failed:', error.message);
         const rows = ((data ?? []) as any[]).map((r) => ({
             id: r.id,
             category: r.category,
@@ -183,13 +184,14 @@ export async function loadServiceCatalog(slug: string): Promise<CatalogCategory[
     }
 
     // rollout.shop_services (schema-pinned admin client).
-    const { data } = await admin
+    const { data, error } = await admin
         .from('shop_services')
         .select('id, category, subcategory, name, base_price, duration_hours, sort_order')
         .eq('shop_id', shopId)
         .eq('active', true)
         .order('sort_order')
         .limit(1000);
+    if (error) console.error('[shop/tickets/form-actions] shop_services catalog load failed:', error.message);
     const rows = ((data ?? []) as any[]).map((r) => ({
         id: r.id,
         category: r.category,

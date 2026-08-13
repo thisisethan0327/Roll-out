@@ -100,13 +100,14 @@ async function loadCalendar(shopId: number, weekStart: Date) {
         ticketsRows = [];
     }
 
-    const { data: appts } = await apptsP;
+    const { data: appts, error: apptsError } = await apptsP;
+    if (apptsError) console.error('[shop/calendar] appointments load failed:', apptsError.message);
 
     // Also pre-fetch the upcoming-next-week list
     const nextWeekStart = new Date(weekEnd);
     const nextWeekEnd = new Date(weekEnd);
     nextWeekEnd.setDate(weekEnd.getDate() + 14);
-    const { data: upcomingNext } = await rollout
+    const { data: upcomingNext, error: upcomingNextError } = await rollout
         .from('appointment_requests')
         .select(
             `id, service_type, preferred_at, status,
@@ -119,6 +120,8 @@ async function loadCalendar(shopId: number, weekStart: Date) {
         .lt('preferred_at', nextWeekEnd.toISOString())
         .order('preferred_at', { ascending: true })
         .limit(5);
+    if (upcomingNextError)
+        console.error('[shop/calendar] upcoming-next load failed:', upcomingNextError.message);
 
     return { appts: (appts as any[]) ?? [], tickets: ticketsRows, upcomingNext: (upcomingNext as any[]) ?? [] };
 }

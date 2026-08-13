@@ -28,11 +28,12 @@ export default async function ProductsPage({
     const admin = getSupabaseAdmin();
     const pub = getSupabasePublicAdmin();
 
-    const { data: shopRow } = await admin
+    const { data: shopRow, error: shopRowError } = await admin
         .from('shops')
         .select('sells_products, medusa_category_handles')
         .eq('id', shop.shopId)
         .maybeSingle();
+    if (shopRowError) console.error('[shop/products] shop row load failed:', shopRowError.message);
 
     const handles: string[] = Array.isArray((shopRow as any)?.medusa_category_handles)
         ? (shopRow as any).medusa_category_handles
@@ -41,7 +42,7 @@ export default async function ProductsPage({
 
     // Inventory rows for this shop (used both for the non-Medusa list and the
     // "section visible?" gate).
-    const { data: productRows } = await pub
+    const { data: productRows, error: productRowsError } = await pub
         .from('products')
         .select(
             'id, name, brand, model_sku, item_type, price, cost_per_unit, default_unit, low_stock_threshold, track_by, is_active, notes',
@@ -49,6 +50,7 @@ export default async function ProductsPage({
         .eq('shop_id', shop.shopId)
         .order('name')
         .limit(1000);
+    if (productRowsError) console.error('[shop/products] inventory load failed:', productRowsError.message);
     const inventory = (productRows ?? []) as any[];
 
     // Gate: only shops that sell products, are Medusa-backed, or already have

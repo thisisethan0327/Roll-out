@@ -95,7 +95,8 @@ async function loadInbox(shopId: number, status: StatusTab, query?: string) {
         q = q.or(`service_type.ilike.%${safe}%,notes.ilike.%${safe}%`);
     }
 
-    const { data } = await q;
+    const { data, error } = await q;
+    if (error) console.error('[shop/inbox] loadInbox failed:', error.message);
     let rows = (data as any[]) ?? [];
 
     // Post-filter by requester handle if the OR didn't catch it. Keeps the

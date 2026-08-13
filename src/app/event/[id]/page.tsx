@@ -58,7 +58,7 @@ async function loadEvent(
 ): Promise<{ event: EventRow; attendees: Attendee[]; spotsLeft: number | null } | null> {
     if (!UUID_RE.test(id)) return null;
     const supabase = getSupabaseAdmin();
-    const { data: evRaw } = await supabase
+    const { data: evRaw, error: evError } = await supabase
         .from('events')
         .select(
             `id, shop_id, host_id, code, type, title, description, location_name, location_detail,
@@ -69,17 +69,19 @@ async function loadEvent(
         )
         .eq('id', id)
         .maybeSingle();
+    if (evError) console.error('[event/[id]] event load failed:', evError.message);
 
     const ev = evRaw as EventRow | null;
     if (!ev || ev.visibility !== 'public') return null;
 
-    const { data: rsvpRaw } = await supabase
+    const { data: rsvpRaw, error: rsvpError } = await supabase
         .from('event_rsvps')
         .select('profile_id, rsvped_at, profile:profiles!event_rsvps_profile_id_fkey(handle, display_name, avatar_url)')
         .eq('event_id', id)
         .eq('status', 'going')
         .order('rsvped_at', { ascending: false })
         .limit(12);
+    if (rsvpError) console.error('[event/[id]] attendees load failed:', rsvpError.message);
 
     const attendees: Attendee[] = ((rsvpRaw as any[]) ?? [])
         .map((r) => ({
@@ -101,12 +103,13 @@ async function loadMyRsvp(eventId: string): Promise<{ isLoggedIn: boolean; statu
     const me = await getConsumerProfile();
     if (!me) return { isLoggedIn: false, status: null };
     const supabase = getSupabaseAdmin();
-    const { data } = await supabase
+    const { data, error } = await supabase
         .from('event_rsvps')
         .select('status')
         .eq('event_id', eventId)
         .eq('profile_id', me.profileId)
         .maybeSingle();
+    if (error) console.error('[event/[id]] loadMyRsvp failed:', error.message);
     const s = (data as any)?.status as string | undefined;
     const status: RsvpChoice | null =
         s === 'going' || s === 'maybe' || s === 'declined' ? s : null;
@@ -118,20 +121,22 @@ type HostChip = { name: string; handle: string | null };
 /** Accepted co-host shops for the "hosted by" chips (host + co-hosts). */
 async function loadCoHostChips(eventId: string): Promise<HostChip[]> {
     const supabase = getSupabaseAdmin();
-    const { data } = await supabase
+    const { data, error } = await supabase
         .from('event_cohosts')
         .select('shop_id, invited_at, shop:shops!event_cohosts_shop_id_fkey(name)')
         .eq('event_id', eventId)
         .eq('status', 'accepted')
         .order('invited_at', { ascending: true });
+    if (error) console.error('[event/[id]] loadCoHostChips failed:', error.message);
     const rows = (data as any[]) ?? [];
     if (rows.length === 0) return [];
     const shopIds = rows.map((r) => r.shop_id);
-    const { data: pages } = await supabase
+    const { data: pages, error: pagesError } = await supabase
         .from('profiles')
         .select('shop_id, handle')
         .in('shop_id', shopIds)
         .eq('kind', 'shop_page');
+    if (pagesError) console.error('[event/[id]] loadCoHostChips pages failed:', pagesError.message);
     const handleByShop = new Map<number, string>();
     for (const p of (pages as any[]) ?? []) handleByShop.set(p.shop_id, p.handle);
     return rows.map((r) => ({

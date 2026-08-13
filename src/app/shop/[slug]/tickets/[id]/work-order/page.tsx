@@ -46,6 +46,8 @@ export default async function WorkOrderPage({
             .eq('id', shop.shopId)
             .maybeSingle(),
     ]);
+    if (ticketRes.error) console.error('[shop/tickets/[id]/work-order] ticket load failed:', ticketRes.error.message);
+    if (shopRes.error) console.error('[shop/tickets/[id]/work-order] branding load failed:', shopRes.error.message);
     const t = ticketRes.data as any;
     if (!t) notFound();
     const branding = (shopRes.data ?? {}) as any;
@@ -63,15 +65,24 @@ export default async function WorkOrderPage({
         pub.from('ticket_workers').select('worker_id').eq('ticket_id', id),
     ]);
 
+    for (const [label, res] of [
+        ['checkins', checkinsRes],
+        ['materials', materialsRes],
+        ['workers', workersRes],
+    ] as const) {
+        if (res.error)
+            console.error(`[shop/tickets/[id]/work-order] ${label} load failed:`, res.error.message);
+    }
     const checkins = (checkinsRes.data ?? []) as any[];
     const materials = (materialsRes.data ?? []) as any[];
     const workerIds = ((workersRes.data ?? []) as any[]).map((r) => r.worker_id).filter(Boolean);
     let workerNames: string[] = [];
     if (workerIds.length > 0) {
-        const { data: staff } = await pub
+        const { data: staff, error: staffError } = await pub
             .from('profiles')
             .select('id, first_name, last_name, email')
             .in('id', workerIds);
+        if (staffError) console.error('[shop/tickets/[id]/work-order] worker names load failed:', staffError.message);
         workerNames = (staff ?? []).map(
             (s: any) => `${s.first_name ?? ''} ${s.last_name ?? ''}`.trim() || s.email || 'Staff',
         );

@@ -100,7 +100,8 @@ async function loadTickets(shopId: number, status: StatusKey, q: string) {
         }
     }
 
-    const { data } = await query;
+    const { data, error } = await query;
+    if (error) console.error('[shop/tickets] loadTickets failed:', error.message);
     return (data as any[]) ?? [];
 }
 

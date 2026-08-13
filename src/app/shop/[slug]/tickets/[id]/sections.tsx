@@ -30,10 +30,11 @@ async function resolveNames(pub: any, ids: (string | null | undefined)[]): Promi
     const map = new Map<string, string>();
     const unique = Array.from(new Set(ids.filter(Boolean))) as string[];
     if (unique.length === 0) return map;
-    const { data } = await pub
+    const { data, error } = await pub
         .from('profiles')
         .select('id, first_name, last_name, email')
         .in('id', unique);
+    if (error) console.error('[shop/tickets/[id]] resolveNames failed:', error.message);
     for (const s of (data ?? []) as any[]) {
         map.set(s.id, `${s.first_name ?? ''} ${s.last_name ?? ''}`.trim() || s.email || 'STAFF');
     }
@@ -82,11 +83,12 @@ export async function CheckinsSection({
     callerRole: string;
 }) {
     const pub = getSupabasePublicAdmin();
-    const { data } = await pub
+    const { data, error } = await pub
         .from('ticket_checkins')
         .select('id, type, notes, condition_notes, odometer, fuel_level, media, checked_in_by, created_at')
         .eq('ticket_id', ticketRowId)
         .order('created_at', { ascending: false });
+    if (error) console.error('[shop/tickets/[id]] CheckinsSection failed:', error.message);
     const checkins = (data ?? []) as any[];
     const names = await resolveNames(pub, checkins.map((c) => c.checked_in_by));
     const withNames = checkins.map((c) => ({
@@ -110,13 +112,14 @@ export async function MaterialsSection({
     callerRole: string;
 }) {
     const pub = getSupabasePublicAdmin();
-    const { data } = await pub
+    const { data, error } = await pub
         .from('ticket_materials')
         .select(
             'id, quantity_used, unit, applied_area, notes, serial_number:serial_numbers(serial_number, product:products(name))',
         )
         .eq('ticket_id', ticketRowId)
         .order('created_at', { ascending: false });
+    if (error) console.error('[shop/tickets/[id]] MaterialsSection failed:', error.message);
     const materials = ((data ?? []) as any[]).map((m) => ({
         id: m.id,
         quantity_used: m.quantity_used,
@@ -135,11 +138,12 @@ export async function MaterialsSection({
 
 export async function ChatSection({ slug, ticketRowId }: { slug: string; ticketRowId: string }) {
     const pub = getSupabasePublicAdmin();
-    const { data } = await pub
+    const { data, error } = await pub
         .from('ticket_messages')
         .select('id, sender_type, sender_name, message, visibility, attachments, created_at')
         .eq('ticket_id', ticketRowId)
         .order('created_at', { ascending: true });
+    if (error) console.error('[shop/tickets/[id]] ChatSection failed:', error.message);
     return <TicketChat slug={slug} ticketRowId={ticketRowId} messages={(data ?? []) as any[]} />;
 }
 
@@ -147,13 +151,14 @@ export async function ChatSection({ slug, ticketRowId }: { slug: string; ticketR
 
 export async function ActivitySection({ ticketRowId }: { ticketRowId: string }) {
     const pub = getSupabasePublicAdmin();
-    const { data } = await pub
+    const { data, error } = await pub
         .from('ticket_activity')
         .select('id, type, title, description, created_by, created_at')
         .eq('ticket_id', ticketRowId)
         .neq('type', 'message')
         .order('created_at', { ascending: false })
         .limit(50);
+    if (error) console.error('[shop/tickets/[id]] ActivitySection failed:', error.message);
     const activity = (data ?? []) as any[];
     const names = await resolveNames(pub, activity.map((a) => a.created_by));
 

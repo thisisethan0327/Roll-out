@@ -54,11 +54,12 @@ export async function getNavContext(): Promise<NavContext> {
     if (!user) return { ...SIGNED_OUT, cartCount };
 
     const admin = getSupabaseAdmin();
-    const { data: profile } = await admin
+    const { data: profile, error: profileError } = await admin
         .from('profiles')
         .select('id, display_name, handle')
         .eq('auth_user_id', user.id)
         .maybeSingle();
+    if (profileError) console.error('[lib/nav-context] profile lookup failed:', profileError.message);
 
     if (!profile) {
         // Authenticated but no rollout profile yet — treat as a plain member.
@@ -76,6 +77,8 @@ export async function getNavContext(): Promise<NavContext> {
         admin.from('platform_admins').select('profile_id').eq('profile_id', profileId).maybeSingle(),
         admin.from('shop_memberships').select('shop_id').eq('profile_id', profileId).limit(1),
     ]);
+    if (adminRes.error) console.error('[lib/nav-context] platform_admins check failed:', adminRes.error.message);
+    if (shopRes.error) console.error('[lib/nav-context] shop_memberships check failed:', shopRes.error.message);
 
     return {
         signedIn: true,

@@ -7,13 +7,14 @@ export const metadata = { title: 'Email Settings' };
 
 async function loadShop(shopId: number) {
     const admin = getSupabaseAdmin();
-    const { data } = await admin
+    const { data, error } = await admin
         .from('shops')
         .select(
             'id, name, from_name, support_email, email_logo_url, email_signature',
         )
         .eq('id', shopId)
         .maybeSingle();
+    if (error) console.error('[shop/settings/email] loadShop failed:', error.message);
     return data as any;
 }
 

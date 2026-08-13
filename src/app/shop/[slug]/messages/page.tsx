@@ -47,12 +47,13 @@ type ThreadRow = {
 
 async function fetchShopPageProfileId(shopId: number): Promise<string | null> {
     const admin = getSupabaseAdmin();
-    const { data } = await admin
+    const { data, error } = await admin
         .from('profiles')
         .select('id')
         .eq('shop_id', shopId)
         .eq('kind', 'shop_page')
         .maybeSingle();
+    if (error) console.error('[shop/messages] fetchShopPageProfileId failed:', error.message);
     return (data as any)?.id ?? null;
 }
 
@@ -61,13 +62,15 @@ async function fetchShopPageProfileId(shopId: number): Promise<string | null> {
 async function loadShopPageThreads(shopPageId: string): Promise<ThreadRow[]> {
     const admin = getSupabaseAdmin();
 
-    const { data: memberships } = await admin
+    const { data: memberships, error: membershipsError } = await admin
         .from('chat_thread_members')
         .select(
             `thread_id, last_read_at,
              chat_threads!inner(id, kind, name, created_at)`,
         )
         .eq('profile_id', shopPageId);
+    if (membershipsError)
+        console.error('[shop/messages] loadShopPageThreads failed:', membershipsError.message);
 
     const rows = ((memberships as any[]) ?? []).map((m) => ({
         threadId: m.thread_id as string,

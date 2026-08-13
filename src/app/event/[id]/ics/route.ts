@@ -42,11 +42,12 @@ export async function GET(
     if (!UUID_RE.test(id)) return new NextResponse('Not found', { status: 404 });
 
     const admin = getSupabaseAdmin();
-    const { data } = await admin
+    const { data, error } = await admin
         .from('events')
         .select('id, title, description, location_name, location_detail, start_at, visibility, cancelled_at')
         .eq('id', id)
         .maybeSingle();
+    if (error) console.error('[event/[id]/ics] event load failed:', error.message);
 
     const ev = data as any;
     if (!ev || ev.visibility !== 'public' || ev.cancelled_at || !ev.start_at) {

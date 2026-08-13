@@ -23,12 +23,13 @@ const VIS_PILL: Record<string, string> = {
 
 async function fetchShopPageProfileId(shopId: number): Promise<string | null> {
     const admin = getSupabaseAdmin();
-    const { data } = await admin
+    const { data, error } = await admin
         .from('profiles')
         .select('id')
         .eq('shop_id', shopId)
         .eq('kind', 'shop_page')
         .maybeSingle();
+    if (error) console.error('[shop/posts] fetchShopPageProfileId failed:', error.message);
     return (data as any)?.id ?? null;
 }
 
@@ -92,7 +93,8 @@ async function loadPosts(
         q = q.ilike('body', `%${safe}%`);
     }
 
-    const { data } = await q;
+    const { data, error } = await q;
+    if (error) console.error('[shop/posts] loadPosts failed:', error.message);
 
     return {
         published: publishedC.count ?? 0,

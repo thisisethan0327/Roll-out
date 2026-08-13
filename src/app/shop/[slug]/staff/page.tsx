@@ -16,12 +16,13 @@ const ROLE_RANK: Record<string, number> = {
 
 async function loadStaff(shopId: number) {
     const admin = getSupabaseAdmin();
-    const { data } = await admin
+    const { data, error } = await admin
         .from('shop_memberships')
         .select(
             'profile_id, role, created_at, profiles!inner(id, handle, display_name, kind, host_status)',
         )
         .eq('shop_id', shopId);
+    if (error) console.error('[shop/staff] loadStaff failed:', error.message);
     const rows = (data ?? []) as any[];
     rows.sort(
         (a, b) =>

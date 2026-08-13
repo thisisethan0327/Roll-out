@@ -7,11 +7,12 @@ export const metadata = { title: 'General Settings' };
 
 async function loadShop(shopId: number) {
     const admin = getSupabaseAdmin();
-    const { data } = await admin
+    const { data, error } = await admin
         .from('shops')
         .select('id, slug, name, region, primary_color, secondary_color, address_line, city, state_region, postal, lat, lng, show_on_map, location_precision')
         .eq('id', shopId)
         .maybeSingle();
+    if (error) console.error('[shop/settings/general] loadShop failed:', error.message);
     return data as any;
 }
 

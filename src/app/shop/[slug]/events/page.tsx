@@ -9,7 +9,7 @@ export const metadata = { title: 'Events' };
 /** Events this shop is invited to co-host or is co-hosting (not its own). */
 async function loadCoHostEvents(shopId: number) {
     const admin = getSupabaseAdmin();
-    const { data } = await admin
+    const { data, error } = await admin
         .from('event_cohosts')
         .select(
             `status, invited_at,
@@ -22,6 +22,7 @@ async function loadCoHostEvents(shopId: number) {
         .neq('status', 'declined')
         .order('invited_at', { ascending: false })
         .limit(100);
+    if (error) console.error('[shop/events] loadCoHostEvents failed:', error.message);
     return ((data as any[]) ?? [])
         .filter((r) => r.event)
         .map((r) => ({
@@ -64,12 +65,13 @@ const VIS_PILL: Record<string, string> = {
 
 async function fetchShopPageProfileId(shopId: number): Promise<string | null> {
     const admin = getSupabaseAdmin();
-    const { data } = await admin
+    const { data, error } = await admin
         .from('profiles')
         .select('id')
         .eq('shop_id', shopId)
         .eq('kind', 'shop_page')
         .maybeSingle();
+    if (error) console.error('[shop/events] fetchShopPageProfileId failed:', error.message);
     return (data as any)?.id ?? null;
 }
 
@@ -125,7 +127,8 @@ async function loadEvents(shopId: number, hostId: string, filter: FilterTab) {
         q = q.not('cancelled_at', 'is', null);
     }
 
-    const { data } = await q;
+    const { data, error } = await q;
+    if (error) console.error('[shop/events] loadEvents failed:', error.message);
 
     return {
         upcoming: upcomingC.count ?? 0,

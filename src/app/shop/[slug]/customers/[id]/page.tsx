@@ -76,6 +76,15 @@ async function loadRolloutCustomer(profileId: string, shopId: number) {
             .order('year', { ascending: false }),
     ]);
 
+    for (const [label, res] of [
+        ['profile', profileRes],
+        ['appointments', apptRes],
+        ['vehicles', vehiclesRes],
+    ] as const) {
+        if (res.error)
+            console.error(`[shop/customers/[id]] rollout ${label} load failed:`, res.error.message);
+    }
+
     // Try to surface their legacy tickets too (matched via the link_audit
     // table). Best-effort: missing data is fine.
     let legacyTickets: any[] = [];
@@ -144,6 +153,15 @@ async function loadLegacyCustomer(customerId: string, shopId: number) {
             .eq('customer_id', customerId)
             .order('year', { ascending: false }),
     ]);
+
+    for (const [label, res] of [
+        ['customer', custRes],
+        ['tickets', ticketsRes],
+        ['vehicles', vehiclesRes],
+    ] as const) {
+        if (res.error)
+            console.error(`[shop/customers/[id]] legacy ${label} load failed:`, res.error.message);
+    }
 
     return {
         customer: custRes.data as any,

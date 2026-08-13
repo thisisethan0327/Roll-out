@@ -8,14 +8,18 @@ async function loadPosts(showDeleted: boolean) {
     let q = admin
         .from('posts')
         .select(
+            // shops must be disambiguated: post_product_tags added a second
+            // posts<->shops relationship, which makes a bare `shops(...)` embed
+            // ambiguous (PGRST201) and silently 300s the whole load.
             `id, type, body, created_at, deleted_at, like_count, comment_count, visibility,
              author:profiles!posts_author_id_fkey(id, handle, display_name, kind),
-             shop:shops(id, slug, name)`,
+             shop:shops!posts_shop_id_fkey(id, slug, name)`,
         )
         .order('created_at', { ascending: false })
         .limit(200);
     if (!showDeleted) q = q.is('deleted_at', null);
-    const { data } = await q;
+    const { data, error } = await q;
+    if (error) console.error('[admin/posts] load failed:', error.message);
     return data ?? [];
 }
 

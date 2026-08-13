@@ -74,11 +74,13 @@ async function getStats() {
         .eq('is_verified', true);
 
     // Persistent action items (the "needs attention" spine).
-    const { data: actionItems } = await admin
+    const { data: actionItems, error: actionItemsError } = await admin
         .from('action_items')
         .select('id, app, kind, title, body, href, created_at')
         .eq('status', 'open')
         .order('created_at', { ascending: false });
+    if (actionItemsError)
+        console.error('[admin/overview] action_items load failed:', actionItemsError.message);
 
     // Derived live signal — pending verification requests (not stored as items).
     const { count: pendingVerifications } = await admin

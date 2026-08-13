@@ -7,7 +7,7 @@ export const metadata = { title: 'Shop Page' };
 
 async function loadShopPage(shopId: number) {
     const admin = getSupabaseAdmin();
-    const { data } = await admin
+    const { data, error } = await admin
         .from('profiles')
         .select(
             'id, handle, display_name, bio, location, sector_code, avatar_url, banner_url, is_verified',
@@ -15,6 +15,7 @@ async function loadShopPage(shopId: number) {
         .eq('shop_id', shopId)
         .eq('kind', 'shop_page')
         .maybeSingle();
+    if (error) console.error('[shop/page] loadShopPage failed:', error.message);
     return data as any;
 }
 
