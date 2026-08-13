@@ -5,16 +5,19 @@ export const metadata = { title: 'Events' };
 
 async function loadEvents() {
     const admin = getSupabaseAdmin();
-    const { data } = await admin
+    // shops must be disambiguated: event_cohosts added a second events<->shops
+    // relationship, which makes a bare `shops(...)` embed ambiguous (PGRST201).
+    const { data, error } = await admin
         .from('events')
         .select(
             `id, code, type, title, location_name, start_at, attending_count, capacity,
              is_official, visibility, cancelled_at,
              host:profiles!events_host_id_fkey(id, handle, display_name, kind),
-             shop:shops(id, slug, name)`,
+             shop:shops!events_shop_id_fkey(id, slug, name)`,
         )
         .order('created_at', { ascending: false })
         .limit(200);
+    if (error) console.error('[admin/events] load failed:', error.message);
     return data ?? [];
 }
 
