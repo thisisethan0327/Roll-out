@@ -11,7 +11,7 @@
  */
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { setRsvp, type RsvpChoice, type RsvpState } from './actions';
+import { setRsvp, type RsvpChoice, type RsvpError, type RsvpState } from './actions';
 
 type Props = {
     eventId: string;
@@ -31,11 +31,13 @@ const CHOICES: { key: RsvpChoice; label: string }[] = [
     { key: 'declined', label: "CAN'T GO" },
 ];
 
-const ERROR_COPY: Record<'auth' | 'full' | 'closed' | 'invalid' | 'write', string> = {
+const ERROR_COPY: Record<RsvpError, string> = {
     auth: 'Sign in to RSVP.',
     full: 'This meet is at capacity.',
     closed: 'RSVPs are closed for this meet.',
     invalid: 'Something went wrong. Refresh and try again.',
+    // 'tier' can't occur on a free event's strip, but the union includes it.
+    tier: 'This meet uses tiers — refresh and pick one.',
     write: "Couldn't save your RSVP. Try again.",
 };
 

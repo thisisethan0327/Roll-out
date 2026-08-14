@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { requireShopMemberBySlug } from '@/lib/auth-guard';
 import { createEvent } from '../actions';
 import { EventCoverPicker } from '../EventCoverPicker';
+import { TierRowsEditor } from '../TierRowsEditor';
 
 export const metadata = { title: 'Host Event' };
 
@@ -127,6 +128,9 @@ export default async function NewEventPage({
                     className="admin-form-input"
                     placeholder="50"
                 />
+
+                <SectionHeading>RSVP MODE & TIERS</SectionHeading>
+                <TierRowsEditor />
 
                 <SectionHeading>VISIBILITY</SectionHeading>
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>

@@ -108,3 +108,14 @@ export type AddressInput = {
 export type ActionResult<T = undefined> =
     | { ok: true; data?: T }
     | { ok: false; error: string };
+
+// ── Event-package checkout (E2/E3) ──────────────────────────────────────────
+/**
+ * The event contract stamped on an event-package cart's metadata at creation.
+ * Medusa's completion gate + order.placed subscriber key off these three ids.
+ */
+export type EventCartMeta = {
+    eventId: string;
+    tierId: string;
+    profileId: string;
+};

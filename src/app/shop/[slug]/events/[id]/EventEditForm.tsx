@@ -3,6 +3,7 @@ import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { updateEvent, cancelEvent, uncancelEvent, deleteEvent } from '../actions';
 import { EventCoverPicker } from '../EventCoverPicker';
+import { TierRowsEditor, type TierDraft } from '../TierRowsEditor';
 
 const VISIBILITY: { value: string; label: string }[] = [
     { value: 'public', label: 'PUBLIC' },
@@ -18,11 +19,14 @@ export function EventEditForm({
     shopId,
     slug,
     callerRole,
+    tiers,
 }: {
     event: any;
     shopId: number;
     slug: string;
     callerRole: string;
+    /** Existing active tiers (E2), pre-shaped for the editor. */
+    tiers?: TierDraft[];
 }) {
     const router = useRouter();
     const [pending, start] = useTransition();
@@ -177,6 +181,13 @@ export function EventEditForm({
                 name="capacity"
                 className="admin-form-input"
                 defaultValue={event.capacity ?? ''}
+                disabled={!canManage || pending}
+            />
+
+            <SectionHeading>RSVP MODE & TIERS</SectionHeading>
+            <TierRowsEditor
+                initialMode={event.rsvp_mode === 'tiered' || event.rsvp_mode === 'paid' ? 'tiered' : 'free'}
+                initialTiers={tiers}
                 disabled={!canManage || pending}
             />
 

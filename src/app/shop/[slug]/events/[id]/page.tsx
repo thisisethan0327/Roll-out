@@ -4,6 +4,7 @@ import { requireShopMemberBySlug } from '@/lib/auth-guard';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import type { InviteBranding, InviteEvent } from '@/lib/event-invites';
 import { EventEditForm } from './EventEditForm';
+import type { TierDraft } from '../TierRowsEditor';
 import { InviteSection } from './InviteSection';
 import { CoHostSection, type CoHostRow } from './CoHostSection';
 
@@ -46,11 +47,39 @@ async function loadEvent(eventId: string) {
         .select(
             `id, shop_id, host_id, code, type, title, description, location_name, location_detail,
              lat, lng, sector_code, hero_image_url, start_at, capacity, attending_count,
-             visibility, tags, cancelled_at, is_official, created_at, updated_at`,
+             visibility, tags, cancelled_at, is_official, rsvp_mode, created_at, updated_at`,
         )
         .eq('id', eventId)
         .maybeSingle();
     return data as any;
+}
+
+/**
+ * Active tiers (E2), pre-shaped into the editor's draft rows: cents → dollar
+ * strings, includes[] → comma string. Retired tiers (active=false) stay out of
+ * the editor by design — re-adding one means creating a fresh row.
+ */
+async function loadTierDrafts(eventId: string): Promise<TierDraft[]> {
+    const admin = getSupabaseAdmin();
+    const { data, error } = await admin
+        .from('event_tiers')
+        .select('id, name, price_cents, capacity, reserved_spot, includes, package_mode, package_price_cents, medusa_product_id, sort')
+        .eq('event_id', eventId)
+        .eq('active', true)
+        .order('sort', { ascending: true });
+    if (error) console.error('[shop/events/[id]] tier load failed:', error.message);
+    return ((data as any[]) ?? []).map((t) => ({
+        id: t.id,
+        name: t.name ?? '',
+        price: t.price_cents != null ? (Number(t.price_cents) / 100).toFixed(2) : '',
+        capacity: t.capacity != null ? String(t.capacity) : '',
+        reservedSpot: Boolean(t.reserved_spot),
+        includes: Array.isArray(t.includes) ? t.includes.join(', ') : '',
+        packageMode: (t.package_mode ?? 'none') as TierDraft['packageMode'],
+        packagePrice:
+            t.package_price_cents != null ? (Number(t.package_price_cents) / 100).toFixed(2) : '',
+        medusaProductId: t.medusa_product_id ?? '',
+    }));
 }
 
 async function loadRsvps(eventId: string) {
@@ -143,10 +172,11 @@ export default async function EventDetailPage({
 
     const canInvite = isHost || myStatus === 'accepted';
 
-    const [rsvps, branding, invites] = await Promise.all([
+    const [rsvps, branding, invites, tierDrafts] = await Promise.all([
         loadRsvps(id),
         loadBrandingForShop(shop.shopId),
         loadInvites(id, shop.shopId, isHost),
+        isHost ? loadTierDrafts(id) : Promise.resolve([] as TierDraft[]),
     ]);
 
     // Host shop name for the hosted-by line.
@@ -244,7 +274,13 @@ export default async function EventDetailPage({
             </div>
 
             {isHost ? (
-                <EventEditForm event={event} shopId={shop.shopId} slug={slug} callerRole={role} />
+                <EventEditForm
+                    event={event}
+                    shopId={shop.shopId}
+                    slug={slug}
+                    callerRole={role}
+                    tiers={tierDrafts}
+                />
             ) : (
                 <ReadOnlyEventCard event={event} hostName={hostDisplayName} />
             )}

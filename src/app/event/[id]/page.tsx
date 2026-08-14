@@ -17,6 +17,7 @@ import { resolveCover } from '@/lib/event-covers';
 import { Countdown } from './Countdown';
 import { RsvpControls } from './RsvpControls';
 import { ShareBar } from './ShareBar';
+import { TiersSection, type TierView } from './TiersSection';
 import type { RsvpState } from './actions';
 
 type EventRow = {
@@ -40,6 +41,8 @@ type EventRow = {
     is_official: boolean | null;
     cancelled_at: string | null;
     tags: string[] | null;
+    /** 'free' (default — every pre-E2 event) | 'paid' | 'tiered'. */
+    rsvp_mode: string | null;
     host: { handle: string | null; display_name: string | null; is_verified: boolean | null } | null;
     shop: { slug: string | null } | null;
 };
@@ -63,7 +66,7 @@ async function loadEvent(
         .select(
             `id, shop_id, host_id, code, type, title, description, location_name, location_detail,
              lat, lng, sector_code, hero_image_url, start_at, capacity, attending_count,
-             visibility, is_official, cancelled_at, tags,
+             visibility, is_official, cancelled_at, tags, rsvp_mode,
              host:profiles!events_host_id_fkey(handle, display_name, is_verified),
              shop:shops!events_shop_id_fkey(slug)`,
         )
@@ -98,16 +101,33 @@ async function loadEvent(
     return { event: ev, attendees, spotsLeft };
 }
 
-/** The signed-in member's current RSVP for this event, resolved to E0 state. */
-async function loadMyRsvp(
-    eventId: string,
-): Promise<{ isLoggedIn: boolean; state: RsvpState; spotNo: number | null; waitlistPosition: number | null }> {
+type MyRsvp = {
+    isLoggedIn: boolean;
+    state: RsvpState;
+    spotNo: number | null;
+    waitlistPosition: number | null;
+    /** Tier the member reserved on (tiered/paid events; null on free events). */
+    tierId: string | null;
+    /** Live paid-tier hold deadline (state === 'held' only). */
+    holdExpiresAt: string | null;
+};
+
+const NO_RSVP: Omit<MyRsvp, 'isLoggedIn'> = {
+    state: null,
+    spotNo: null,
+    waitlistPosition: null,
+    tierId: null,
+    holdExpiresAt: null,
+};
+
+/** The signed-in member's current RSVP for this event, resolved to E0/E3 state. */
+async function loadMyRsvp(eventId: string): Promise<MyRsvp> {
     const me = await getConsumerProfile();
-    if (!me) return { isLoggedIn: false, state: null, spotNo: null, waitlistPosition: null };
+    if (!me) return { isLoggedIn: false, ...NO_RSVP };
     const supabase = getSupabaseAdmin();
     const { data, error } = await supabase
         .from('event_rsvps')
-        .select('status, hold_state, spot_no, rsvped_at')
+        .select('status, hold_state, spot_no, rsvped_at, tier_id, hold_expires_at')
         .eq('event_id', eventId)
         .eq('profile_id', me.profileId)
         .maybeSingle();
@@ -115,9 +135,24 @@ async function loadMyRsvp(
 
     const status = (data as any)?.status as string | undefined;
     const hold = (data as any)?.hold_state as string | undefined;
+    const tierId = ((data as any)?.tier_id as string | undefined) ?? null;
+    const holdExpiresAt = ((data as any)?.hold_expires_at as string | undefined) ?? null;
 
-    if (status === 'going' && (hold === 'confirmed' || hold === 'held')) {
-        return { isLoggedIn: true, state: 'confirmed', spotNo: (data as any)?.spot_no ?? null, waitlistPosition: null };
+    if (status === 'going' && hold === 'held') {
+        // E3: a LIVE hold (payment pending) surfaces as 'held' so the tier UI
+        // shows the countdown + complete-payment path. An expired hold renders
+        // as no RSVP (the backend reaper frees it; the member simply retries).
+        // Legacy held rows without a deadline keep the pre-E3 confirmed read.
+        if (holdExpiresAt == null) {
+            return { isLoggedIn: true, state: 'confirmed', spotNo: (data as any)?.spot_no ?? null, waitlistPosition: null, tierId, holdExpiresAt: null };
+        }
+        if (new Date(holdExpiresAt).getTime() > Date.now()) {
+            return { isLoggedIn: true, state: 'held', spotNo: (data as any)?.spot_no ?? null, waitlistPosition: null, tierId, holdExpiresAt };
+        }
+        return { isLoggedIn: true, ...NO_RSVP };
+    }
+    if (status === 'going' && hold === 'confirmed') {
+        return { isLoggedIn: true, state: 'confirmed', spotNo: (data as any)?.spot_no ?? null, waitlistPosition: null, tierId, holdExpiresAt: null };
     }
     if (hold === 'waitlisted') {
         // Position in line = count of waitlisted rows joined at/before this one.
@@ -127,11 +162,67 @@ async function loadMyRsvp(
             .eq('event_id', eventId)
             .eq('hold_state', 'waitlisted')
             .lte('rsvped_at', (data as any)?.rsvped_at);
-        return { isLoggedIn: true, state: 'waitlisted', spotNo: null, waitlistPosition: count ?? null };
+        return { isLoggedIn: true, state: 'waitlisted', spotNo: null, waitlistPosition: count ?? null, tierId, holdExpiresAt: null };
     }
-    if (status === 'maybe') return { isLoggedIn: true, state: 'maybe', spotNo: null, waitlistPosition: null };
-    if (status === 'declined') return { isLoggedIn: true, state: 'declined', spotNo: null, waitlistPosition: null };
-    return { isLoggedIn: true, state: null, spotNo: null, waitlistPosition: null };
+    if (status === 'maybe') return { isLoggedIn: true, ...NO_RSVP, state: 'maybe' };
+    if (status === 'declined') return { isLoggedIn: true, ...NO_RSVP, state: 'declined' };
+    return { isLoggedIn: true, ...NO_RSVP };
+}
+
+/**
+ * Active tiers for a tiered/paid event (public-facing card data), sorted by
+ * the composer's sort order. Sub-cap remaining is computed from live occupancy
+ * (confirmed + held rows count against the cap; waitlisted don't).
+ */
+async function loadTiers(eventId: string): Promise<TierView[]> {
+    const supabase = getSupabaseAdmin();
+    const { data, error } = await supabase
+        .from('event_tiers')
+        .select('id, name, price_cents, currency, capacity, reserved_spot, includes, package_mode, package_price_cents, medusa_product_id, sort')
+        .eq('event_id', eventId)
+        .eq('active', true)
+        .order('sort', { ascending: true });
+    if (error) {
+        console.error('[event/[id]] loadTiers failed:', error.message);
+        return [];
+    }
+    const tiers = (data as any[]) ?? [];
+    if (tiers.length === 0) return [];
+
+    // Per-tier occupancy for sub-capped tiers, in one query.
+    const capped = tiers.filter((t) => t.capacity != null);
+    const usedByTier = new Map<string, number>();
+    if (capped.length > 0) {
+        const { data: occ, error: occError } = await supabase
+            .from('event_rsvps')
+            .select('tier_id, hold_state')
+            .eq('event_id', eventId)
+            .eq('status', 'going')
+            .in('hold_state', ['confirmed', 'held'])
+            .in('tier_id', capped.map((t) => t.id));
+        if (occError) console.error('[event/[id]] tier occupancy load failed:', occError.message);
+        for (const r of (occ as any[]) ?? []) {
+            if (!r.tier_id) continue;
+            usedByTier.set(r.tier_id, (usedByTier.get(r.tier_id) ?? 0) + 1);
+        }
+    }
+
+    return tiers.map((t) => ({
+        id: t.id,
+        name: t.name ?? 'Tier',
+        priceCents: Number(t.price_cents ?? 0),
+        currency: t.currency ?? 'usd',
+        capacity: t.capacity != null ? Number(t.capacity) : null,
+        remaining:
+            t.capacity != null
+                ? Math.max(Number(t.capacity) - (usedByTier.get(t.id) ?? 0), 0)
+                : null,
+        reservedSpot: Boolean(t.reserved_spot),
+        includes: Array.isArray(t.includes) ? t.includes.filter(Boolean) : [],
+        packageMode: (t.package_mode ?? 'none') as TierView['packageMode'],
+        packagePriceCents: t.package_price_cents != null ? Number(t.package_price_cents) : null,
+        purchasable: Boolean(t.medusa_product_id),
+    }));
 }
 
 type HostChip = { name: string; handle: string | null };
@@ -261,8 +352,15 @@ export default async function PublicEventPage({
     const data = await loadEvent(id);
     if (!data) notFound();
     const { event: ev, attendees, spotsLeft } = data;
-    const [{ isLoggedIn, state: myState, spotNo: mySpotNo, waitlistPosition: myWaitPos }, coHostChips] =
-        await Promise.all([loadMyRsvp(id), loadCoHostChips(id)]);
+    // E2/E3: tiered/paid events swap the flat RSVP strip for the tier picker.
+    // Every pre-E2 event is rsvp_mode='free' and renders exactly as before.
+    const isTiered = ev.rsvp_mode === 'tiered' || ev.rsvp_mode === 'paid';
+    const [myRsvp, coHostChips, tiers] = await Promise.all([
+        loadMyRsvp(id),
+        loadCoHostChips(id),
+        isTiered ? loadTiers(id) : Promise.resolve([] as TierView[]),
+    ]);
+    const { isLoggedIn, state: myState, spotNo: mySpotNo, waitlistPosition: myWaitPos } = myRsvp;
     const rsvpReturnPath = inviteToken
         ? `/event/${id}?invite=${encodeURIComponent(inviteToken)}`
         : `/event/${id}`;
@@ -526,7 +624,23 @@ export default async function PublicEventPage({
             {/* RSVP + Calendar + Share */}
             <section className="section" style={{ padding: '48px 0', textAlign: 'center' }}>
                 <div className="container" style={{ display: 'flex', flexDirection: 'column', gap: 26, alignItems: 'center' }}>
-                    {rsvpOpen ? (
+                    {rsvpOpen && isTiered && tiers.length > 0 ? (
+                        <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 20, alignItems: 'center' }}>
+                            <div className="eyebrow eyebrow-gold" style={{ justifyContent: 'center' }}>／ TIERS</div>
+                            <TiersSection
+                                eventId={ev.id}
+                                tiers={tiers}
+                                isLoggedIn={isLoggedIn}
+                                initialState={myState}
+                                initialTierId={myRsvp.tierId}
+                                initialSpotNo={mySpotNo}
+                                initialWaitlistPosition={myWaitPos}
+                                initialHoldExpiresAt={myRsvp.holdExpiresAt}
+                                nextPath={rsvpReturnPath}
+                                inviteToken={inviteToken}
+                            />
+                        </div>
+                    ) : rsvpOpen ? (
                         <RsvpControls
                             eventId={ev.id}
                             isLoggedIn={isLoggedIn}

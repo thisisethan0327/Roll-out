@@ -91,6 +91,157 @@ function parseHeroUrl(raw: FormDataEntryValue | null): string | null {
     return s;
 }
 
+// ── E2: rsvp mode + tier rows (from TierRowsEditor's structured inputs) ─────
+type TierInput = {
+    id?: string;
+    name: string;
+    price_cents: number;
+    capacity: number | null;
+    reserved_spot: boolean;
+    includes: string[];
+    package_mode: 'none' | 'included' | 'addon';
+    package_price_cents: number | null;
+    medusa_product_id: string | null;
+    sort: number;
+};
+
+const PACKAGE_MODES = new Set(['none', 'included', 'addon']);
+const TIER_UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** 'free' | 'tiered' — the composer only offers these two ('paid' is a data
+ *  state reachable via API/mobile; the web composer models it as one paid tier). */
+function parseRsvpMode(raw: FormDataEntryValue | null): 'free' | 'tiered' {
+    const s = String(raw ?? 'free').trim();
+    if (s === 'free' || s === 'tiered') return s;
+    throw new Error('Invalid RSVP mode.');
+}
+
+/**
+ * Validate the tiers_json payload server-side — the client editor is
+ * convenience, THIS is the gate. Throws on anything malformed rather than
+ * persisting a half-valid tier a member could then try to buy.
+ */
+function parseTiers(raw: FormDataEntryValue | null): TierInput[] {
+    let parsed: unknown;
+    try {
+        parsed = JSON.parse(String(raw ?? '[]'));
+    } catch {
+        throw new Error('Invalid tier payload.');
+    }
+    if (!Array.isArray(parsed)) throw new Error('Invalid tier payload.');
+    if (parsed.length > 12) throw new Error('Too many tiers (max 12).');
+
+    return parsed.map((t: any, i: number): TierInput => {
+        const name = String(t?.name ?? '').trim();
+        if (name.length < 2) throw new Error(`Tier ${i + 1}: name must be at least 2 characters.`);
+        if (name.length > 60) throw new Error(`Tier ${i + 1}: name must be 60 chars or fewer.`);
+
+        const price = Number(t?.price_cents);
+        if (!Number.isInteger(price) || price < 0) {
+            throw new Error(`Tier ${i + 1}: invalid ticket price.`);
+        }
+
+        let capacity: number | null = null;
+        if (t?.capacity != null && t.capacity !== '') {
+            capacity = Number(t.capacity);
+            if (!Number.isInteger(capacity) || capacity < 1) {
+                throw new Error(`Tier ${i + 1}: sub-capacity must be a positive whole number.`);
+            }
+        }
+
+        const packageMode = String(t?.package_mode ?? 'none');
+        if (!PACKAGE_MODES.has(packageMode)) throw new Error(`Tier ${i + 1}: invalid package mode.`);
+
+        let packagePrice: number | null = null;
+        if (packageMode === 'addon') {
+            packagePrice = Number(t?.package_price_cents ?? 0);
+            if (!Number.isInteger(packagePrice) || packagePrice < 0) {
+                throw new Error(`Tier ${i + 1}: invalid package price.`);
+            }
+        }
+
+        const includes = Array.isArray(t?.includes)
+            ? t.includes.map((s: any) => String(s).trim()).filter((s: string) => s.length > 0).slice(0, 12)
+            : [];
+
+        const productId = t?.medusa_product_id != null ? String(t.medusa_product_id).trim() : '';
+        if (productId.length > 120) throw new Error(`Tier ${i + 1}: product id is too long.`);
+
+        const id = t?.id != null ? String(t.id) : undefined;
+        if (id && !TIER_UUID_RE.test(id)) throw new Error(`Tier ${i + 1}: invalid tier id.`);
+
+        return {
+            ...(id ? { id } : {}),
+            name,
+            price_cents: price,
+            capacity,
+            reserved_spot: Boolean(t?.reserved_spot),
+            includes,
+            package_mode: packageMode as TierInput['package_mode'],
+            package_price_cents: packagePrice,
+            medusa_product_id: productId || null,
+            sort: i,
+        };
+    });
+}
+
+/**
+ * Persist tier rows for an event. Existing tiers (matched by id) are UPDATED
+ * in place — RSVPs may already reference them, so deletion is never an option;
+ * tiers dropped from the payload are soft-retired (active=false) instead. New
+ * rows insert with active=true. Runs behind the shop guard on the service-role
+ * client, mirroring how the event row itself is saved.
+ */
+async function syncTiers(eventId: string, tiers: TierInput[]): Promise<void> {
+    const admin = getSupabaseAdmin();
+    const { data: existingRaw, error: loadError } = await admin
+        .from('event_tiers')
+        .select('id')
+        .eq('event_id', eventId);
+    if (loadError) throw new Error(loadError.message);
+    const existingIds = new Set(((existingRaw as any[]) ?? []).map((r) => r.id as string));
+
+    const keptIds = new Set<string>();
+    for (const t of tiers) {
+        const row = {
+            name: t.name,
+            price_cents: t.price_cents,
+            capacity: t.capacity,
+            reserved_spot: t.reserved_spot,
+            includes: t.includes,
+            package_mode: t.package_mode,
+            package_price_cents: t.package_price_cents,
+            medusa_product_id: t.medusa_product_id,
+            sort: t.sort,
+            active: true,
+        };
+        if (t.id && existingIds.has(t.id)) {
+            keptIds.add(t.id);
+            const { error } = await admin
+                .from('event_tiers')
+                .update(row)
+                .eq('id', t.id)
+                .eq('event_id', eventId);
+            if (error) throw new Error(error.message);
+        } else {
+            const { error } = await admin
+                .from('event_tiers')
+                .insert({ ...row, event_id: eventId, currency: 'usd' });
+            if (error) throw new Error(error.message);
+        }
+    }
+
+    const retired = [...existingIds].filter((id) => !keptIds.has(id));
+    if (retired.length > 0) {
+        const { error } = await admin
+            .from('event_tiers')
+            .update({ active: false })
+            .in('id', retired)
+            .eq('event_id', eventId);
+        if (error) throw new Error(error.message);
+    }
+}
+
 export async function createEvent(shopId: number, formData: FormData) {
     await requireManager(shopId);
 
@@ -106,6 +257,8 @@ export async function createEvent(shopId: number, formData: FormData) {
     const visibility = String(formData.get('visibility') ?? 'public').trim();
     const tags = parseTags(String(formData.get('tags') ?? ''));
     const hero_image_url = parseHeroUrl(formData.get('hero_image_url'));
+    const rsvp_mode = parseRsvpMode(formData.get('rsvp_mode'));
+    const tiers = rsvp_mode === 'tiered' ? parseTiers(formData.get('tiers_json')) : [];
 
     const allowedTypes = new Set(['NIGHT_RUN', 'CAR_MEET', 'TRACK_DAY', 'CRUISE', 'SHOW']);
     const allowedVis = new Set(['public', 'followers', 'private']);
@@ -116,6 +269,9 @@ export async function createEvent(shopId: number, formData: FormData) {
     if (location_name.length < 2) throw new Error('Location name is required.');
     if (!start_at_raw) throw new Error('Start time is required.');
     if (!allowedVis.has(visibility)) throw new Error('Invalid visibility.');
+    if (rsvp_mode === 'tiered' && tiers.length === 0) {
+        throw new Error('A tiered event needs at least one tier.');
+    }
 
     const start_at = new Date(start_at_raw);
     if (isNaN(start_at.getTime())) throw new Error('Invalid start time.');
@@ -142,6 +298,7 @@ export async function createEvent(shopId: number, formData: FormData) {
             visibility,
             tags,
             hero_image_url,
+            rsvp_mode,
             is_official: true,
             attending_count: 0,
         })
@@ -150,6 +307,7 @@ export async function createEvent(shopId: number, formData: FormData) {
     if (error) throw new Error(error.message);
 
     const newId = (data as any).id as string;
+    if (rsvp_mode === 'tiered') await syncTiers(newId, tiers);
     const slug = await fetchSlug(shopId);
     if (slug) bustPaths(slug, newId);
     redirect(`/shop/${slug}/events/${newId}?just_created=1`);
@@ -173,6 +331,8 @@ export async function updateEvent(
     const visibility = String(formData.get('visibility') ?? 'public').trim();
     const tags = parseTags(String(formData.get('tags') ?? ''));
     const hero_image_url = parseHeroUrl(formData.get('hero_image_url'));
+    const rsvp_mode = parseRsvpMode(formData.get('rsvp_mode'));
+    const tiers = rsvp_mode === 'tiered' ? parseTiers(formData.get('tiers_json')) : [];
 
     const allowedVis = new Set(['public', 'followers', 'private']);
 
@@ -181,11 +341,25 @@ export async function updateEvent(
     if (location_name.length < 2) throw new Error('Location name is required.');
     if (!start_at_raw) throw new Error('Start time is required.');
     if (!allowedVis.has(visibility)) throw new Error('Invalid visibility.');
+    if (rsvp_mode === 'tiered' && tiers.length === 0) {
+        throw new Error('A tiered event needs at least one tier.');
+    }
 
     const start_at = new Date(start_at_raw);
     if (isNaN(start_at.getTime())) throw new Error('Invalid start time.');
 
+    // Ownership gate for the tier writes below: the events UPDATE is scoped by
+    // shop_id (a mismatch silently no-ops), but syncTiers keys on event id
+    // alone — so verify this event actually belongs to the caller's shop.
     const admin = getSupabaseAdmin();
+    const { data: owned } = await admin
+        .from('events')
+        .select('id')
+        .eq('id', eventId)
+        .eq('shop_id', shopId)
+        .maybeSingle();
+    if (!owned) throw new Error('Event not found for this shop.');
+
     const { error } = await admin
         .from('events')
         .update({
@@ -200,11 +374,17 @@ export async function updateEvent(
             visibility,
             tags,
             hero_image_url,
+            rsvp_mode,
             updated_at: new Date().toISOString(),
         })
         .eq('id', eventId)
         .eq('shop_id', shopId);
     if (error) throw new Error(error.message);
+
+    // Tier sync runs even when flipping BACK to free: the payload is [] then,
+    // which soft-retires every tier (active=false) instead of deleting rows
+    // that RSVPs may reference.
+    await syncTiers(eventId, tiers);
 
     const slug = await fetchSlug(shopId);
     if (slug) bustPaths(slug, eventId);

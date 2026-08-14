@@ -27,19 +27,52 @@ function getStripe(key: string): Promise<Stripe | null> {
 
 type Step = 'address' | 'shipping' | 'payment';
 
+/**
+ * The server actions the checkout drives. Defaults to the store cart lane;
+ * the event-package checkout (E3) passes the lib/event-cart.ts equivalents so
+ * the SAME UI runs against the walled Events sales channel + event cart cookie
+ * without forking the component.
+ */
+export type CheckoutActions = {
+    setCheckoutContact: typeof setCheckoutContact;
+    listShippingOptions: typeof listShippingOptions;
+    setShippingMethod: typeof setShippingMethod;
+    initStripePaymentSession: typeof initStripePaymentSession;
+    completeCart: typeof completeCart;
+};
+
+const STORE_ACTIONS: CheckoutActions = {
+    setCheckoutContact,
+    listShippingOptions,
+    setShippingMethod,
+    initStripePaymentSession,
+    completeCart,
+};
+
 export function CheckoutClient({
     initialCart,
     stripeKey,
     signedInEmail,
+    actions,
+    successPathPrefix,
 }: {
     initialCart: Cart;
     stripeKey: string;
     signedInEmail?: string | null;
+    /** Override the cart/checkout server actions (event-package lane). */
+    actions?: CheckoutActions;
+    /** The order id is appended to this on success (default: store order page). */
+    successPathPrefix?: string;
 }) {
     const stripePromise = useMemo(() => getStripe(stripeKey), [stripeKey]);
     return (
         <Elements stripe={stripePromise}>
-            <CheckoutInner initialCart={initialCart} signedInEmail={signedInEmail ?? null} />
+            <CheckoutInner
+                initialCart={initialCart}
+                signedInEmail={signedInEmail ?? null}
+                actions={actions ?? STORE_ACTIONS}
+                successPathPrefix={successPathPrefix ?? '/store/order/'}
+            />
         </Elements>
     );
 }
@@ -47,9 +80,13 @@ export function CheckoutClient({
 function CheckoutInner({
     initialCart,
     signedInEmail,
+    actions,
+    successPathPrefix,
 }: {
     initialCart: Cart;
     signedInEmail: string | null;
+    actions: CheckoutActions;
+    successPathPrefix: string;
 }) {
     const router = useRouter();
     const stripe = useStripe();
@@ -93,10 +130,10 @@ function CheckoutInner({
         e.preventDefault();
         setError(null);
         startTransition(async () => {
-            const res = await setCheckoutContact(form.email, form);
+            const res = await actions.setCheckoutContact(form.email, form);
             if (!res.ok) return setError(res.error);
             if (res.data) setCart(res.data);
-            const opts = await listShippingOptions();
+            const opts = await actions.listShippingOptions();
             setShippingOptions(opts);
             if (opts[0]) setSelectedShipping(opts[0].id);
             setStep('shipping');
@@ -108,7 +145,7 @@ function CheckoutInner({
         if (!selectedShipping) return setError('Select a shipping method.');
         setError(null);
         startTransition(async () => {
-            const res = await setShippingMethod(selectedShipping);
+            const res = await actions.setShippingMethod(selectedShipping);
             if (!res.ok) return setError(res.error);
             if (res.data) setCart(res.data);
             setShippingSet(true);
@@ -126,7 +163,7 @@ function CheckoutInner({
 
         setPlacing(true);
         try {
-            const initRes = await initStripePaymentSession();
+            const initRes = await actions.initStripePaymentSession();
             if (!initRes.ok || !initRes.data) {
                 setPlacing(false);
                 return setError(initRes.ok ? 'Could not start payment.' : initRes.error);
@@ -173,12 +210,12 @@ function CheckoutInner({
                 return setError(stripeErr?.message || 'Card was not authorized.');
             }
 
-            const complete = await completeCart();
+            const complete = await actions.completeCart();
             if (!complete.ok || !complete.data) {
                 setPlacing(false);
                 return setError(complete.ok ? 'Could not place order.' : complete.error);
             }
-            router.push(`/store/order/${complete.data.orderId}`);
+            router.push(`${successPathPrefix}${complete.data.orderId}`);
         } catch (err: any) {
             setPlacing(false);
             setError(err?.message ?? 'Something went wrong placing your order.');
