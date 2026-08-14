@@ -1,20 +1,24 @@
 'use client';
 /**
- * RSVP control strip for /event/[id]. Three states — Going / Maybe / Not Going —
- * with the current choice highlighted. Writes via the setRsvp server action
- * (RLS-enforced). Signed-out users get a sign-in CTA that returns them here.
+ * RSVP control strip for /event/[id]. Three choices — Going / Maybe / Not Going.
  *
- * Styling is inline to match the hand-rolled HUD look of the event page (no CSS
- * framework); the gold accent + bracket chrome mirror the rest of the page.
+ * E0: the Going write goes through rollout.reserve_spot() via the setRsvp server
+ * action, so the result is either CONFIRMED (with a numbered spot) or WAITLISTED
+ * (with a position in line) — never a silent oversell. The strip stays one-tap;
+ * the status line reflects the atomic outcome.
+ *
+ * Styling is inline to match the hand-rolled HUD look of the event page.
  */
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { setRsvp, type RsvpChoice } from './actions';
+import { setRsvp, type RsvpChoice, type RsvpState } from './actions';
 
 type Props = {
     eventId: string;
     isLoggedIn: boolean;
-    initialStatus: RsvpChoice | null;
+    initialState: RsvpState;
+    initialSpotNo?: number | null;
+    initialWaitlistPosition?: number | null;
     /** Full path (with query) to return to after sign-in. */
     nextPath: string;
     /** Per-invite token from ?invite= — stamps invite attribution on RSVP. */
@@ -35,9 +39,24 @@ const ERROR_COPY: Record<'auth' | 'full' | 'closed' | 'invalid' | 'write', strin
     write: "Couldn't save your RSVP. Try again.",
 };
 
-export function RsvpControls({ eventId, isLoggedIn, initialStatus, nextPath, inviteToken }: Props) {
+/** Is this state the "going" choice (either confirmed or on the waitlist)? */
+function isGoingState(s: RsvpState): boolean {
+    return s === 'confirmed' || s === 'waitlisted';
+}
+
+export function RsvpControls({
+    eventId,
+    isLoggedIn,
+    initialState,
+    initialSpotNo,
+    initialWaitlistPosition,
+    nextPath,
+    inviteToken,
+}: Props) {
     const router = useRouter();
-    const [status, setStatus] = useState<RsvpChoice | null>(initialStatus);
+    const [state, setState] = useState<RsvpState>(initialState);
+    const [spotNo, setSpotNo] = useState<number | null>(initialSpotNo ?? null);
+    const [waitPos, setWaitPos] = useState<number | null>(initialWaitlistPosition ?? null);
     const [msg, setMsg] = useState<string | null>(null);
     const [pending, startTransition] = useTransition();
 
@@ -65,20 +84,35 @@ export function RsvpControls({ eventId, isLoggedIn, initialStatus, nextPath, inv
         );
     }
 
+    const activeKey: RsvpChoice | null = isGoingState(state)
+        ? 'going'
+        : state === 'maybe'
+            ? 'maybe'
+            : state === 'declined'
+                ? 'declined'
+                : null;
+
     const choose = (choice: RsvpChoice) => {
         if (pending) return;
         setMsg(null);
         // Toggle off if tapping the active choice → clears the RSVP.
-        const next = status === choice ? null : choice;
-        const prev = status;
-        setStatus(next); // optimistic
+        const next: RsvpChoice | null = activeKey === choice ? null : choice;
+        const prev = { state, spotNo, waitPos };
+        // Optimistic: reflect intent immediately (spot/position land on the response).
+        setState(next === 'going' ? 'confirmed' : next);
+        setSpotNo(null);
+        setWaitPos(null);
         startTransition(async () => {
             const res = await setRsvp(eventId, next, inviteToken ?? null);
             if (res.ok) {
-                setStatus(res.status);
+                setState(res.state);
+                setSpotNo(res.spotNo ?? null);
+                setWaitPos(res.waitlistPosition ?? null);
                 router.refresh();
             } else {
-                setStatus(prev); // rollback
+                setState(prev.state); // rollback
+                setSpotNo(prev.spotNo);
+                setWaitPos(prev.waitPos);
                 if (res.error === 'auth') {
                     router.push(`/login?next=${encodeURIComponent(nextPath)}&error=rsvp`);
                     return;
@@ -88,6 +122,22 @@ export function RsvpControls({ eventId, isLoggedIn, initialStatus, nextPath, inv
         });
     };
 
+    const statusLine = msg
+        ? msg.toUpperCase()
+        : state === 'confirmed'
+            ? spotNo != null
+                ? `YOU'RE IN · SPOT #${String(spotNo).padStart(3, '0')} · TAP GOING TO REMOVE`
+                : "YOU'RE ON THE CONVOY · TAP GOING TO REMOVE"
+            : state === 'waitlisted'
+                ? waitPos != null
+                    ? `WAITLISTED · #${waitPos} IN LINE · TAP GOING TO LEAVE`
+                    : 'WAITLISTED · TAP GOING TO LEAVE'
+                : state === 'maybe'
+                    ? 'MARKED AS MAYBE'
+                    : state === 'declined'
+                        ? "MARKED AS CAN'T GO"
+                        : 'TAP TO RSVP';
+
     return (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
             <div
@@ -96,7 +146,11 @@ export function RsvpControls({ eventId, isLoggedIn, initialStatus, nextPath, inv
                 style={{ display: 'inline-flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}
             >
                 {CHOICES.map((c) => {
-                    const active = status === c.key;
+                    const active = activeKey === c.key;
+                    // The Going button reads "WAITLIST" once the meet is full and
+                    // you're queued, so the label matches your real state.
+                    const label =
+                        c.key === 'going' && state === 'waitlisted' ? 'WAITLISTED' : c.label;
                     return (
                         <button
                             key={c.key}
@@ -119,7 +173,7 @@ export function RsvpControls({ eventId, isLoggedIn, initialStatus, nextPath, inv
                                 transition: 'background 120ms, border-color 120ms, color 120ms',
                             }}
                         >
-                            {c.label}
+                            {label}
                         </button>
                     );
                 })}
@@ -135,15 +189,7 @@ export function RsvpControls({ eventId, isLoggedIn, initialStatus, nextPath, inv
                     color: msg ? 'var(--gold)' : 'var(--text-3)',
                 }}
             >
-                {msg
-                    ? msg.toUpperCase()
-                    : status === 'going'
-                        ? "YOU'RE ON THE CONVOY · TAP AGAIN TO REMOVE"
-                        : status === 'maybe'
-                            ? 'MARKED AS MAYBE'
-                            : status === 'declined'
-                                ? "MARKED AS CAN'T GO"
-                                : 'TAP TO RSVP'}
+                {statusLine}
             </p>
         </div>
     );

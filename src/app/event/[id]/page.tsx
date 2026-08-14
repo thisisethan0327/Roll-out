@@ -17,7 +17,7 @@ import { resolveCover } from '@/lib/event-covers';
 import { Countdown } from './Countdown';
 import { RsvpControls } from './RsvpControls';
 import { ShareBar } from './ShareBar';
-import type { RsvpChoice } from './actions';
+import type { RsvpState } from './actions';
 
 type EventRow = {
     id: string;
@@ -98,22 +98,40 @@ async function loadEvent(
     return { event: ev, attendees, spotsLeft };
 }
 
-/** The signed-in member's current RSVP for this event (or null). */
-async function loadMyRsvp(eventId: string): Promise<{ isLoggedIn: boolean; status: RsvpChoice | null }> {
+/** The signed-in member's current RSVP for this event, resolved to E0 state. */
+async function loadMyRsvp(
+    eventId: string,
+): Promise<{ isLoggedIn: boolean; state: RsvpState; spotNo: number | null; waitlistPosition: number | null }> {
     const me = await getConsumerProfile();
-    if (!me) return { isLoggedIn: false, status: null };
+    if (!me) return { isLoggedIn: false, state: null, spotNo: null, waitlistPosition: null };
     const supabase = getSupabaseAdmin();
     const { data, error } = await supabase
         .from('event_rsvps')
-        .select('status')
+        .select('status, hold_state, spot_no, rsvped_at')
         .eq('event_id', eventId)
         .eq('profile_id', me.profileId)
         .maybeSingle();
     if (error) console.error('[event/[id]] loadMyRsvp failed:', error.message);
-    const s = (data as any)?.status as string | undefined;
-    const status: RsvpChoice | null =
-        s === 'going' || s === 'maybe' || s === 'declined' ? s : null;
-    return { isLoggedIn: true, status };
+
+    const status = (data as any)?.status as string | undefined;
+    const hold = (data as any)?.hold_state as string | undefined;
+
+    if (status === 'going' && (hold === 'confirmed' || hold === 'held')) {
+        return { isLoggedIn: true, state: 'confirmed', spotNo: (data as any)?.spot_no ?? null, waitlistPosition: null };
+    }
+    if (hold === 'waitlisted') {
+        // Position in line = count of waitlisted rows joined at/before this one.
+        const { count } = await supabase
+            .from('event_rsvps')
+            .select('profile_id', { count: 'exact', head: true })
+            .eq('event_id', eventId)
+            .eq('hold_state', 'waitlisted')
+            .lte('rsvped_at', (data as any)?.rsvped_at);
+        return { isLoggedIn: true, state: 'waitlisted', spotNo: null, waitlistPosition: count ?? null };
+    }
+    if (status === 'maybe') return { isLoggedIn: true, state: 'maybe', spotNo: null, waitlistPosition: null };
+    if (status === 'declined') return { isLoggedIn: true, state: 'declined', spotNo: null, waitlistPosition: null };
+    return { isLoggedIn: true, state: null, spotNo: null, waitlistPosition: null };
 }
 
 type HostChip = { name: string; handle: string | null };
@@ -243,10 +261,8 @@ export default async function PublicEventPage({
     const data = await loadEvent(id);
     if (!data) notFound();
     const { event: ev, attendees, spotsLeft } = data;
-    const [{ isLoggedIn, status: myStatus }, coHostChips] = await Promise.all([
-        loadMyRsvp(id),
-        loadCoHostChips(id),
-    ]);
+    const [{ isLoggedIn, state: myState, spotNo: mySpotNo, waitlistPosition: myWaitPos }, coHostChips] =
+        await Promise.all([loadMyRsvp(id), loadCoHostChips(id)]);
     const rsvpReturnPath = inviteToken
         ? `/event/${id}?invite=${encodeURIComponent(inviteToken)}`
         : `/event/${id}`;
@@ -514,7 +530,9 @@ export default async function PublicEventPage({
                         <RsvpControls
                             eventId={ev.id}
                             isLoggedIn={isLoggedIn}
-                            initialStatus={myStatus}
+                            initialState={myState}
+                            initialSpotNo={mySpotNo}
+                            initialWaitlistPosition={myWaitPos}
                             nextPath={rsvpReturnPath}
                             inviteToken={inviteToken}
                         />
