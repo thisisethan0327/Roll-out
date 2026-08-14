@@ -30,12 +30,12 @@ export const MEDUSA_PUBLISHABLE_KEY =
 export const MEDUSA_REGION_ID =
     process.env.NEXT_PUBLIC_MEDUSA_REGION_ID || 'reg_01KYWZ12TVM8AAHFZ52FPZCD0Y';
 
-// Client-safe Stripe TEST publishable key (Elements needs it in the browser).
-// A publishable test key is safe to ship; the secret key stays server-side in
-// Medusa. Prefer the env var; fall back to the known test key from the creds.
-export const STRIPE_PUBLISHABLE_KEY =
-    process.env.NEXT_PUBLIC_STRIPE_KEY ||
-    'pk_test_51U3MFoEXiz5SDbA84AS0Ie4H6DdQD3OrAtwQl88JT9RFjtyq53vEIlFqFOmwUAAySnvWk3ElNeKfG1M22QGSdcft002dK3kREL';
+// Client-safe Stripe publishable key (Elements needs it in the browser). The
+// secret key stays server-side in Medusa. NO in-code fallback: the old
+// hardcoded TEST key meant an unset env var silently ran production checkout
+// in Stripe test mode. Empty here → the checkout page refuses to render the
+// payment form (loud), instead of taking fake payments (silent).
+export const STRIPE_PUBLISHABLE_KEY = process.env.NEXT_PUBLIC_STRIPE_KEY || '';
 
 export function medusaHeaders(): Record<string, string> {
     return {
