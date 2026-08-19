@@ -104,8 +104,15 @@ export function TiersSection({
     const [pending, startTransition] = useTransition();
 
     // 1s tick drives the hold countdown; starts server-safe (no Date.now in render path pre-mount).
+    // `mounted` gates EXPIRY, not the banner: pre-mount `now` equals the expiry
+    // timestamp itself, which made `holdExpired` true during SSR and hid the
+    // SPOT HELD banner on every page load while holding (caught by Part C).
+    // Server + first client render agree (banner shown, countdown '…'), so
+    // there is no hydration mismatch; the real clock takes over on mount.
     const [now, setNow] = useState<number>(() => new Date(initialHoldExpiresAt ?? 0).getTime());
+    const [mounted, setMounted] = useState(false);
     useEffect(() => {
+        setMounted(true);
         setNow(Date.now());
         const t = setInterval(() => setNow(Date.now()), 1000);
         return () => clearInterval(t);
@@ -127,7 +134,8 @@ export function TiersSection({
         );
     }
 
-    const holdExpired = state === 'held' && holdExpiresAt != null && new Date(holdExpiresAt).getTime() - now <= 0;
+    const holdExpired =
+        mounted && state === 'held' && holdExpiresAt != null && new Date(holdExpiresAt).getTime() - now <= 0;
 
     const chooseFree = (tier: TierView) => {
         if (pending) return;
@@ -219,7 +227,7 @@ export function TiersSection({
                     >
                         ● SPOT HELD{spotNo != null ? ` · #${String(spotNo).padStart(3, '0')}` : ''} — COMPLETE PAYMENT IN{' '}
                         <span style={{ color: 'var(--text)', fontWeight: 700 }}>
-                            {holdExpiresAt ? formatRemaining(holdExpiresAt, now) : '—'}
+                            {mounted && holdExpiresAt ? formatRemaining(holdExpiresAt, now) : '…'}
                         </span>
                     </div>
                     <div style={{ display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'center' }}>
