@@ -582,7 +582,7 @@ function ProductTagsSheet({ tags }: { tags: ProductTag[] }) {
                             <div style={{ minWidth: 0, flex: 1 }}>
                                 <div style={{ color: 'var(--text)', fontSize: 14, letterSpacing: 0.3 }}>{p.title}</div>
                                 <div className="text-dim" style={{ fontSize: 12, marginTop: 2 }}>
-                                    {p.paused ? 'COMING SOON' : formatMoney(p.price, p.currency)}
+                                    {p.paused ? 'SOLD OUT' : formatMoney(p.price, p.currency)}
                                 </div>
                             </div>
                             <span className="accent" style={{ fontSize: 16 }}>→</span>

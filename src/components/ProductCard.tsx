@@ -64,7 +64,7 @@ export function ProductCard({ product }: { product: MedusaProduct }) {
                                     color: 'var(--gold)',
                                 }}
                             >
-                                COMING SOON
+                                SOLD OUT
                             </span>
                         </div>
                     ) : null}
@@ -78,7 +78,7 @@ export function ProductCard({ product }: { product: MedusaProduct }) {
                         {paused ? (
                             <>
                                 <span className="sep" />
-                                <span className="text-dim">COMING SOON</span>
+                                <span className="text-dim">SOLD OUT</span>
                             </>
                         ) : null}
                     </div>

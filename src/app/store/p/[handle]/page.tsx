@@ -2,7 +2,7 @@
  * /store/p/[handle] — product detail (PDP).
  *
  * Gallery + option/variant selection + price, with vendor (shop) attribution
- * and a link back to the shop's /u page. Paused products show COMING SOON and
+ * and a link back to the shop's /u page. Paused products show SOLD OUT and
  * expose no purchase control — the pause gate is also re-enforced server-side
  * in the addToCart action.
  */
@@ -114,7 +114,7 @@ export default async function ProductDetailPage({
                             {product.paused ? (
                                 <>
                                     <span className="sep" />
-                                    <span className="text-dim">COMING SOON</span>
+                                    <span className="text-dim">SOLD OUT</span>
                                 </>
                             ) : null}
                         </div>

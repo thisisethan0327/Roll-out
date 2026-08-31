@@ -4,7 +4,7 @@
  * PDP gallery — clickable, keyboard-accessible thumbnails that swap the main
  * image. Renders through next/image so the optimizer serves resized WebP/AVIF
  * instead of the raw multi-MB catalog PNGs. Preserves the corner-wrap framing,
- * paused grayscale + COMING SOON veil, and thumbnail-strip layout of the
+ * paused grayscale + SOLD OUT veil, and thumbnail-strip layout of the
  * original static gallery.
  */
 import { useRef, useState } from 'react';
@@ -78,7 +78,7 @@ export function ProductGallery({ images, title, paused }: Props) {
                                 color: 'var(--gold)',
                             }}
                         >
-                            COMING SOON
+                            SOLD OUT
                         </span>
                     </div>
                 ) : null}

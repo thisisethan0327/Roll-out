@@ -258,7 +258,7 @@ export async function addToCart(
     // vendor. Mixed carts are allowed — no single-vendor rejection.
     const owner = await resolveVariantOwner(variantId);
     if (owner?.paused) {
-        return { ok: false, error: 'This product is coming soon and can’t be purchased yet.' };
+        return { ok: false, error: 'This product is sold out and can’t be purchased right now.' };
     }
 
     // Line-level attribution: the tenant vendor KEY (what vendor dashboards

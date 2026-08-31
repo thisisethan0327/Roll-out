@@ -14,7 +14,7 @@ type Props = {
     currency: string | null;
 };
 
-/** Variant picker + add-to-cart. When paused, renders a disabled COMING SOON
+/** Variant picker + add-to-cart. When paused, renders a disabled SOLD OUT
  * control and no purchase path. */
 export function AddToCartClient({ paused, options, variants, currency }: Props) {
     const router = useRouter();
@@ -46,7 +46,7 @@ export function AddToCartClient({ paused, options, variants, currency }: Props) 
     if (paused) {
         return (
             <button type="button" className="btn btn-lg" disabled style={{ opacity: 0.55, cursor: 'not-allowed', width: '100%' }}>
-                COMING SOON
+                SOLD OUT
             </button>
         );
     }
