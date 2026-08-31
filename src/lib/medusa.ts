@@ -5,6 +5,7 @@
  * Rollout sales channel. It is a PUBLIC key (safe to ship) — the in-code
  * fallback lets the catalog render even before the Coolify env var is set.
  */
+import { optimizedSrc } from './optimized-image';
 import 'server-only';
 import type {
     MedusaProduct,
@@ -95,7 +96,7 @@ function mapProduct(p: any): MedusaProduct {
         id: p.id,
         title: p.title,
         handle: p.handle,
-        thumbnail: p.thumbnail ?? null,
+        thumbnail: optimizedSrc(p.thumbnail) || null,
         description: p.description ?? null,
         price,
         currency,
@@ -245,7 +246,7 @@ export async function fetchProductByHandle(
 
         const base = mapProduct(p);
         const images: string[] = (Array.isArray(p.images) ? p.images : [])
-            .map((i: any) => i?.url)
+            .map((i: any) => optimizedSrc(i?.url))
             .filter(Boolean);
         if (base.thumbnail && !images.includes(base.thumbnail)) images.unshift(base.thumbnail);
 
