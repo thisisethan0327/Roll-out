@@ -120,6 +120,10 @@ export async function getSellingShopBySlug(slug: string): Promise<SellingShop | 
 const VENDOR_CATEGORY_ROOTS: Record<string, string[]> = {
     neferstock: ['nac', 'house', 'tees', 'accessories'],
     divine: ['divine'],
+    // UNITY USA (PPF brand, own tenant + Stripe connected account): consumer goods
+    // (printable + pre-cut kits) are cross-listed in the rollout channel; the
+    // dealer-only film never is. Same root as the backend registry.
+    unityusa: ['unityusa'],
     // emwraps: no Medusa catalog yet → intentionally absent (no vendor key).
 };
 
