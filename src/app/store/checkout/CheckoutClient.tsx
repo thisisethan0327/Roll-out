@@ -15,6 +15,30 @@ import { formatMoney } from '@/lib/medusa-types';
 import type { Cart, ShippingOption, AddressInput } from '@/lib/medusa-types';
 import { Dots, SweepBar } from '../_ui';
 
+type ShippingGroup = { key: string; title: string; note?: string; options: ShippingOption[] };
+
+/**
+ * Group shipping options by profile — one method per profile is what Medusa
+ * needs to complete the cart. Drop-ship groups (provider data id
+ * 'dropship-flat': UNITY film, divine spoilers, flat charge, staff-entered
+ * tracking) come first; headings come from the options themselves.
+ */
+function buildShippingGroups(options: ShippingOption[]): ShippingGroup[] {
+    const byProfile = new Map<string, ShippingOption[]>();
+    for (const o of options) {
+        if (!byProfile.has(o.profileId)) byProfile.set(o.profileId, []);
+        byProfile.get(o.profileId)!.push(o);
+    }
+    const isDrop = (opts: ShippingOption[]) => opts.some((o) => o.dataId === 'dropship-flat');
+    const entries = Array.from(byProfile.entries()).sort((a, b) => (isDrop(a[1]) ? 0 : 1) - (isDrop(b[1]) ? 0 : 1));
+    return entries.map(([key, opts], i) => {
+        if (isDrop(opts)) return { key, title: 'Ships from the factory or partner', note: 'Tracking is added by our staff when it ships.', options: opts };
+        if (opts.every((o) => /pickup/i.test(o.name))) return { key, title: 'Pickup', options: opts };
+        if (entries.length === 1) return { key, title: 'Shipping method', options: opts };
+        return { key, title: `Shipment ${i + 1}`, options: opts };
+    });
+}
+
 // Stripe.js is loaded once per key. Kept at module scope so it isn't re-created
 // on every render.
 let stripePromiseCache: { key: string; promise: Promise<Stripe | null> } | null = null;
@@ -112,7 +136,13 @@ function CheckoutInner({
     });
 
     const [shippingOptions, setShippingOptions] = useState<ShippingOption[]>([]);
-    const [selectedShipping, setSelectedShipping] = useState<string | null>(null);
+    // One shipping method per shipping PROFILE (Medusa keeps one per profile and
+    // completion needs every profile satisfied). A cart mixing a drop-shipped
+    // spoiler (divine) with a shirt shows one group per profile, each with its
+    // own pick. Keyed by profile id → option id.
+    const [selectedShipping, setSelectedShipping] = useState<Record<string, string>>({});
+    const shippingGroups = useMemo(() => buildShippingGroups(shippingOptions), [shippingOptions]);
+    const allShippingChosen = shippingGroups.length > 0 && shippingGroups.every((g) => !!selectedShipping[g.key]);
     // A shipping method chosen THIS session. The cart can carry a stale method
     // from a previous visit (Medusa's Store API has no delete-shipping-method
     // endpoint), so we never trust cart.shipping_total until the shopper has
@@ -135,19 +165,31 @@ function CheckoutInner({
             if (res.data) setCart(res.data);
             const opts = await actions.listShippingOptions();
             setShippingOptions(opts);
-            if (opts[0]) setSelectedShipping(opts[0].id);
+            // Preselect the first selectable option of every profile group.
+            const init: Record<string, string> = {};
+            for (const o of opts) if (!init[o.profileId] && !o.unavailable) init[o.profileId] = o.id;
+            setSelectedShipping(init);
             setStep('shipping');
         });
     };
 
     // Step 2 → 3: set shipping method.
     const submitShipping = () => {
-        if (!selectedShipping) return setError('Select a shipping method.');
+        const ids = shippingGroups.map((g) => selectedShipping[g.key]);
+        if (!ids.length || ids.some((id) => !id)) {
+            return setError(shippingGroups.length > 1 ? 'Select a shipping method for each shipment.' : 'Select a shipping method.');
+        }
         setError(null);
         startTransition(async () => {
-            const res = await actions.setShippingMethod(selectedShipping);
-            if (!res.ok) return setError(res.error);
-            if (res.data) setCart(res.data);
+            // One call per profile; Medusa replaces the method on the same
+            // profile, so nothing needs removing.
+            let last: Cart | undefined;
+            for (const id of ids) {
+                const res = await actions.setShippingMethod(id);
+                if (!res.ok) return setError(res.error);
+                if (res.data) last = res.data;
+            }
+            if (last) setCart(last);
             setShippingSet(true);
             setStep('payment');
         });
@@ -270,39 +312,62 @@ function CheckoutInner({
                             {shippingOptions.length === 0 ? (
                                 <p className="text-dim" style={{ fontSize: 13 }}>No shipping options available for this address.</p>
                             ) : (
-                                shippingOptions.map((o) => (
-                                    <label
-                                        key={o.id}
-                                        style={{
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'space-between',
-                                            padding: '12px 14px',
-                                            border: `1px solid ${selectedShipping === o.id ? 'var(--gold)' : 'var(--line)'}`,
-                                            background: selectedShipping === o.id ? 'var(--gold-dim)' : 'transparent',
-                                            cursor: 'pointer',
-                                        }}
-                                    >
-                                        <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                            <input
-                                                type="radio"
-                                                name="shipping"
-                                                checked={selectedShipping === o.id}
-                                                onChange={() => setSelectedShipping(o.id)}
-                                            />
-                                            <span style={{ color: 'var(--text)', fontSize: 14 }}>{o.name}</span>
-                                        </span>
-                                        <span className="accent">{formatMoney(o.amount, currency)}</span>
-                                    </label>
-                                ))
+                                <>
+                                    {shippingGroups.length > 1 && (
+                                        <p className="text-dim" style={{ fontSize: 13 }}>
+                                            Your order ships as {shippingGroups.length} shipments. Pick a method for each.
+                                        </p>
+                                    )}
+                                    {shippingGroups.map((g) => (
+                                        <div key={g.key} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                                            <div>
+                                                <div style={{ color: 'var(--text)', fontSize: 12, letterSpacing: '0.12em', textTransform: 'uppercase' }}>{g.title}</div>
+                                                {g.note && <div className="text-dim" style={{ fontSize: 12, marginTop: 2 }}>{g.note}</div>}
+                                            </div>
+                                            {g.options.map((o) => {
+                                                const on = selectedShipping[g.key] === o.id;
+                                                return (
+                                                    <label
+                                                        key={o.id}
+                                                        style={{
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'space-between',
+                                                            padding: '12px 14px',
+                                                            border: `1px solid ${on ? 'var(--gold)' : 'var(--line)'}`,
+                                                            background: on ? 'var(--gold-dim)' : 'transparent',
+                                                            cursor: o.unavailable ? 'not-allowed' : 'pointer',
+                                                            opacity: o.unavailable ? 0.5 : 1,
+                                                        }}
+                                                    >
+                                                        <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                                            <input
+                                                                type="radio"
+                                                                name={`shipping-${g.key}`}
+                                                                checked={on}
+                                                                disabled={!!o.unavailable}
+                                                                onChange={() => setSelectedShipping((p) => ({ ...p, [g.key]: o.id }))}
+                                                            />
+                                                            <span style={{ color: 'var(--text)', fontSize: 14 }}>{o.name}</span>
+                                                        </span>
+                                                        <span className="accent">{o.unavailable ? '—' : formatMoney(o.amount, currency)}</span>
+                                                    </label>
+                                                );
+                                            })}
+                                        </div>
+                                    ))}
+                                </>
                             )}
-                            <button type="button" className="btn btn-lg" disabled={pending || !selectedShipping} onClick={submitShipping} style={{ marginTop: 6 }}>
+                            <button type="button" className="btn btn-lg" disabled={pending || !allShippingChosen} onClick={submitShipping} style={{ marginTop: 6 }}>
                                 {pending ? <>SAVING<Dots /></> : 'CONTINUE TO PAYMENT →'}
                             </button>
                         </div>
                     ) : step === 'payment' ? (
                         <div className="text-dim" style={{ fontSize: 13 }}>
-                            {shippingOptions.find((o) => o.id === selectedShipping)?.name ?? 'Selected'}
+                            {shippingGroups
+                                .map((g) => shippingOptions.find((o) => o.id === selectedShipping[g.key])?.name)
+                                .filter(Boolean)
+                                .join(' · ') || 'Selected'}
                         </div>
                     ) : (
                         <div className="text-dim" style={{ fontSize: 13 }}>Enter your address first.</div>

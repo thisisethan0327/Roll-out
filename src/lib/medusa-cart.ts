@@ -365,11 +365,35 @@ export async function listShippingOptions(): Promise<ShippingOption[]> {
             `/store/shipping-options`,
             { method: 'GET', query: { cart_id: cartId } },
         );
-        return (json.shipping_options ?? []).map((o) => ({
-            id: o.id,
-            name: o.name,
-            amount: num(o.amount ?? o.calculated_price?.calculated_amount),
-        }));
+        const options = json.shipping_options ?? [];
+        // Calculated options (Shippo live rates) carry no amount in the list;
+        // quote each one now so the client renders a price or marks it
+        // unavailable. Flat options keep their amount.
+        return Promise.all(
+            options.map(async (o): Promise<ShippingOption> => {
+                const base = {
+                    id: o.id as string,
+                    name: o.name as string,
+                    profileId: (o.shipping_profile_id as string | null) ?? 'default',
+                    priceType: (o.price_type === 'calculated' ? 'calculated' : 'flat') as 'flat' | 'calculated',
+                    dataId: (o.data?.id as string | undefined) ?? null,
+                };
+                if (base.priceType === 'flat') {
+                    return { ...base, amount: num(o.amount ?? o.calculated_price?.calculated_amount) };
+                }
+                try {
+                    const q = await medusaFetch<{ shipping_option: any }>(
+                        `/store/shipping-options/${o.id}/calculate`,
+                        { method: 'POST', body: JSON.stringify({ cart_id: cartId }) },
+                    );
+                    const amount = q.shipping_option?.amount;
+                    if (typeof amount !== 'number') return { ...base, amount: 0, unavailable: true };
+                    return { ...base, amount: num(amount) };
+                } catch {
+                    return { ...base, amount: 0, unavailable: true };
+                }
+            }),
+        );
     } catch {
         return [];
     }

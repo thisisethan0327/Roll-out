@@ -317,10 +317,14 @@ export async function listEventShippingOptions(): Promise<ShippingOption[]> {
             `/store/shipping-options`,
             { method: 'GET', query: { cart_id: cartId } },
         );
+        // Event lane: pickup options only (flat, event-pickup profile).
         return (json.shipping_options ?? []).map((o) => ({
             id: o.id,
             name: o.name,
             amount: num(o.amount ?? o.calculated_price?.calculated_amount),
+            profileId: (o.shipping_profile_id as string | null) ?? 'default',
+            priceType: (o.price_type === 'calculated' ? 'calculated' : 'flat') as 'flat' | 'calculated',
+            dataId: (o.data?.id as string | undefined) ?? null,
         }));
     } catch {
         return [];

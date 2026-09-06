@@ -91,6 +91,14 @@ export type ShippingOption = {
     id: string;
     name: string;
     amount: number;
+    /** Shipping profile the option satisfies — Medusa keeps ONE method per profile. */
+    profileId: string;
+    /** 'flat' or 'calculated' (quoted server-side at list time). */
+    priceType: 'flat' | 'calculated';
+    /** Provider option data id, e.g. 'dropship-flat' — drives the group heading. */
+    dataId: string | null;
+    /** A calculated quote failed: shown but not selectable. */
+    unavailable?: boolean;
 };
 
 export type AddressInput = {
