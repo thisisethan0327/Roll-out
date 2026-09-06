@@ -8,6 +8,7 @@
  */
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { notFound } from 'next/navigation';
 import { MEDUSA_URL, medusaHeaders } from '@/lib/medusa';
 
 export const dynamic = 'force-dynamic';
@@ -42,6 +43,10 @@ export default async function OrderConfirmedPage({
 }) {
     const { id } = await params;
     const { display, email } = await fetchDisplay(id);
+    // The page is public by id: never echo the buyer's email (persona run
+    // 2026-09-06 read a stranger's address off a guessed id) and 404 on an id
+    // the store API does not know instead of rendering a blank shell.
+    if (!display && !email) notFound();
 
     return (
         <section className="section" style={{ padding: '72px 0' }}>
@@ -55,7 +60,7 @@ export default async function OrderConfirmedPage({
                     Your order is in. {display ? `Order ${display}.` : ''}
                 </p>
                 <p style={{ color: 'var(--text-2)', fontSize: 15, lineHeight: 1.6, maxWidth: 460, margin: '0 auto 28px' }}>
-                    We’ve emailed a confirmation{email ? ` to ${email}` : ''} — check your inbox for
+                    We’ve emailed a confirmation to the address on your order — check your inbox for
                     the receipt and shipping updates from the shop.
                 </p>
 

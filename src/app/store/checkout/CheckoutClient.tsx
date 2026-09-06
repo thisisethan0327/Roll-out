@@ -252,7 +252,13 @@ function CheckoutInner({
                 return setError(stripeErr?.message || 'Card was not authorized.');
             }
 
-            const complete = await actions.completeCart();
+            let complete = await actions.completeCart();
+            if (!complete.ok && /payment session/i.test(complete.error ?? '')) {
+                // A declined attempt can leave the cart without a usable session
+                // ("Payment sessions are required"): re-initialise and retry once.
+                const again = await actions.initStripePaymentSession();
+                if (again.ok && again.data) complete = await actions.completeCart();
+            }
             if (!complete.ok || !complete.data) {
                 setPlacing(false);
                 return setError(complete.ok ? 'Could not place order.' : complete.error);
