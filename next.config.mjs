@@ -10,6 +10,23 @@ const nextConfig = {
         // raw multi-MB catalog PNGs.
         remotePatterns: [
             {
+                // UNITY USA product media (cross-listed catalog, plan v3.1): the
+                // Medusa thumbnails point at the UNITY storefront hosts.
+                protocol: 'https',
+                hostname: 'preview.unityusa.co',
+                pathname: '/**',
+            },
+            {
+                protocol: 'https',
+                hostname: 'unityusa.co',
+                pathname: '/**',
+            },
+            {
+                protocol: 'https',
+                hostname: 'www.unityusa.co',
+                pathname: '/**',
+            },
+            {
                 protocol: 'https',
                 hostname: 'gueivbfvqupweogjrpzs.supabase.co',
                 pathname: '/storage/v1/object/public/**',

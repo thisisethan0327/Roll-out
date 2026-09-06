@@ -212,6 +212,9 @@ export default async function ShopsDirectoryPage() {
                             console.
                         </p>
                     </div>
+                    <Link href="/shop/apply" className="btn" style={{ whiteSpace: 'nowrap' }}>
+                        OPEN A SHOP →
+                    </Link>
                     <Link href="/shop/login" className="btn btn-ghost" style={{ whiteSpace: 'nowrap' }}>
                         Shop Console →
                     </Link>

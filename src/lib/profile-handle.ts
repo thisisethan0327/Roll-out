@@ -42,9 +42,16 @@ export function validateHandle(handle: string): HandleCheck {
     if (handle.length < 3) return { ok: false, reason: 'At least 3 characters.' };
     if (handle.length > 20) return { ok: false, reason: 'At most 20 characters.' };
     if (!HANDLE_RE.test(handle)) {
+        // Say what is actually wrong (persona run 2026-09-06: 'personae-test'
+        // was told to start with a letter). Member handles take underscores;
+        // shop handles (/shop/apply) take hyphens — different grammars, one
+        // /u/ namespace.
+        if (!/^[a-z]/.test(handle)) return { ok: false, reason: 'Must start with a letter.' };
+        if (handle.includes('-')) return { ok: false, reason: 'Hyphens are not allowed in member handles — use an underscore.' };
+        const bad = handle.replace(/[a-z0-9_]/g, '');
         return {
             ok: false,
-            reason: 'Letters, numbers, underscores. Must start with a letter.',
+            reason: bad ? `Not allowed: ${[...new Set(bad)].join(' ')}. Use lowercase letters, numbers and underscores.` : 'Letters, numbers, underscores. Must start with a letter.',
         };
     }
     if (RESERVED.has(handle)) return { ok: false, reason: 'That handle is reserved.' };
