@@ -12,7 +12,7 @@ import { sendPlatformNotification } from '@/lib/platform-notify';
 /** Sign the member out (clears the SSR cookie session) and return home. */
 export async function signOutAction(): Promise<void> {
     const supabase = await getSupabaseServer();
-    await supabase.auth.signOut();
+    await supabase.auth.signOut({ scope: 'local' });
     redirect('/');
 }
 

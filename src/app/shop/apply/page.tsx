@@ -24,8 +24,13 @@ export default async function ShopApplyPage({
 }: {
     searchParams: Promise<{ origin?: string; commerce?: string }>;
 }) {
-    await requireConsumer('/shop/apply');
     const sp = await searchParams;
+    // Keep the selling variant through the sign-in round-trip (rerun 2026-09-06:
+    // the login redirect dropped ?commerce=1 and the sell toggle was unreachable).
+    const qs = new URLSearchParams();
+    if (sp.origin) qs.set('origin', sp.origin);
+    if (sp.commerce === '1') qs.set('commerce', '1');
+    await requireConsumer('/shop/apply' + (qs.toString() ? '?' + qs.toString() : ''));
     const withCommerce = sp.commerce === '1';
 
     return (

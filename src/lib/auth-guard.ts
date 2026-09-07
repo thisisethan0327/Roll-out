@@ -52,7 +52,7 @@ export async function requireSession(loginPath: string = '/admin/login'): Promis
         .maybeSingle();
     if (error || !profile) {
         // Auth user exists but no rollout profile — sign them out + redirect.
-        await supabase.auth.signOut();
+        await supabase.auth.signOut({ scope: 'local' });
         redirect(loginPath + '?error=no_profile');
     }
 

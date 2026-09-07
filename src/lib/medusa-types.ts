@@ -78,6 +78,8 @@ export type Cart = {
     taxTotal: number;
     total: number;
     hasShippingAddress: boolean;
+    /** Saved shipping address (prefills checkout after a reload); null until set. */
+    shippingAddress: AddressInput | null;
     shippingOptionId: string | null;
     /** PRIMARY (highest-value) shop — kept for single-vendor display/back-compat. */
     vendor: CartVendor;
@@ -97,6 +99,8 @@ export type ShippingOption = {
     priceType: 'flat' | 'calculated';
     /** Provider option data id, e.g. 'dropship-flat' — drives the group heading. */
     dataId: string | null;
+    /** Vendor slug the provider stamped on the option (data.tenant), for the group heading. */
+    dataTenant: string | null;
     /** A calculated quote failed: shown but not selectable. */
     unavailable?: boolean;
 };

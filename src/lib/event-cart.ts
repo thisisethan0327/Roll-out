@@ -156,6 +156,8 @@ function normalizeEventCart(raw: any): Cart {
         shippingTotal: num(raw.shipping_total),
         taxTotal: num(raw.tax_total),
         total: num(raw.total),
+        // Event carts are pickup-only; no saved address to prefill.
+        shippingAddress: null,
         hasShippingAddress: Boolean(raw.shipping_address?.address_1),
         shippingOptionId: raw.shipping_methods?.[0]?.shipping_option_id ?? null,
         vendor: { shopId: null, slug: null, name: null, handle: null },
@@ -325,6 +327,7 @@ export async function listEventShippingOptions(): Promise<ShippingOption[]> {
             profileId: (o.shipping_profile_id as string | null) ?? 'default',
             priceType: (o.price_type === 'calculated' ? 'calculated' : 'flat') as 'flat' | 'calculated',
             dataId: (o.data?.id as string | undefined) ?? null,
+            dataTenant: (o.data?.tenant as string | undefined) ?? null,
         }));
     } catch {
         return [];

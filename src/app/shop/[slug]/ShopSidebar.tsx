@@ -82,7 +82,7 @@ export function ShopSidebar({
 
     const signOut = async () => {
         const supabase = getSupabaseBrowser();
-        await supabase.auth.signOut();
+        await supabase.auth.signOut({ scope: 'local' });
         // Clear active-shop cookie so next sign-in re-prompts when relevant.
         document.cookie = 'rollout_active_shop=; Path=/; Max-Age=0';
         router.push('/shop/login');

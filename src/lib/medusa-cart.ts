@@ -118,7 +118,9 @@ function normalizeCart(raw: any): Cart {
             thumbnail: it.thumbnail ?? it.product?.thumbnail ?? null,
             quantity: num(it.quantity),
             unitPrice: num(it.unit_price),
-            total: num(it.total ?? it.unit_price * it.quantity),
+            // PRE-TAX line amount: the ledger shows Tax on its own row, so a
+            // tax-inclusive line total made the summary not add up.
+            total: num(it.subtotal ?? it.unit_price * it.quantity),
             vendor: lm.vendor ?? null,
             shopName: lm.shop_name ?? null,
             shopHandle: lm.shop_handle ?? null,
@@ -173,6 +175,19 @@ function normalizeCart(raw: any): Cart {
         taxTotal: num(raw.tax_total),
         total: num(raw.total),
         hasShippingAddress: Boolean(raw.shipping_address?.address_1),
+        shippingAddress: raw.shipping_address?.address_1
+            ? {
+                  firstName: raw.shipping_address.first_name ?? '',
+                  lastName: raw.shipping_address.last_name ?? '',
+                  address1: raw.shipping_address.address_1 ?? '',
+                  address2: raw.shipping_address.address_2 ?? '',
+                  city: raw.shipping_address.city ?? '',
+                  province: raw.shipping_address.province ?? '',
+                  postalCode: raw.shipping_address.postal_code ?? '',
+                  countryCode: raw.shipping_address.country_code ?? 'us',
+                  phone: raw.shipping_address.phone ?? '',
+              }
+            : null,
         shippingOptionId: raw.shipping_methods?.[0]?.shipping_option_id ?? null,
         vendor: primary,
         vendors,
@@ -377,6 +392,7 @@ export async function listShippingOptions(): Promise<ShippingOption[]> {
                     profileId: (o.shipping_profile_id as string | null) ?? 'default',
                     priceType: (o.price_type === 'calculated' ? 'calculated' : 'flat') as 'flat' | 'calculated',
                     dataId: (o.data?.id as string | undefined) ?? null,
+                    dataTenant: (o.data?.tenant as string | undefined) ?? null,
                 };
                 if (base.priceType === 'flat') {
                     return { ...base, amount: num(o.amount ?? o.calculated_price?.calculated_amount) };

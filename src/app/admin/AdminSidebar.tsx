@@ -33,7 +33,7 @@ export function AdminSidebar({
 
     const signOut = async () => {
         const supabase = getSupabaseBrowser();
-        await supabase.auth.signOut();
+        await supabase.auth.signOut({ scope: 'local' });
         router.push('/admin/login');
         router.refresh();
     };

@@ -31,11 +31,14 @@ function buildShippingGroups(options: ShippingOption[]): ShippingGroup[] {
     }
     const isDrop = (opts: ShippingOption[]) => opts.some((o) => o.dataId === 'dropship-flat');
     const entries = Array.from(byProfile.entries()).sort((a, b) => (isDrop(a[1]) ? 0 : 1) - (isDrop(b[1]) ? 0 : 1));
+    const VENDOR_NAMES: Record<string, string> = { unityusa: 'UNITY USA', neferstock: 'NeferStock', divine: 'divine DESIGN WHEELS', emwraps: 'EMWRAPS' };
     return entries.map(([key, opts], i) => {
-        if (isDrop(opts)) return { key, title: 'Ships from the factory or partner', note: 'Tracking is added by our staff when it ships.', options: opts };
-        if (opts.every((o) => /pickup/i.test(o.name))) return { key, title: 'Pickup', options: opts };
-        if (entries.length === 1) return { key, title: 'Shipping method', options: opts };
-        return { key, title: `Shipment ${i + 1}`, options: opts };
+        const tenant = opts.map((o) => o.dataTenant).find(Boolean);
+        const who = tenant ? VENDOR_NAMES[tenant] ?? tenant : null;
+        if (isDrop(opts)) return { key, title: `${who ? who + ' · ' : ''}Ships from the factory or partner`, note: 'Tracking is added by our staff when it ships.', options: opts };
+        if (opts.every((o) => /pickup/i.test(o.name))) return { key, title: `${who ? who + ' · ' : ''}Pickup`, options: opts };
+        if (entries.length === 1) return { key, title: who ? `${who} · Shipping` : 'Shipping method', options: opts };
+        return { key, title: who ? `${who} · Shipment` : `Shipment ${i + 1}`, options: opts };
     });
 }
 
@@ -122,17 +125,19 @@ function CheckoutInner({
     const [pending, startTransition] = useTransition();
     const [placing, setPlacing] = useState(false);
 
+    // Prefill from the cart's saved address so a reload of /store/checkout
+    // does not drop the shopper into a blank form (rerun 2026-09-06).
     const [form, setForm] = useState<AddressInput & { email: string }>({
         email: cart.email ?? signedInEmail ?? '',
-        firstName: '',
-        lastName: '',
-        address1: '',
-        address2: '',
-        city: '',
-        province: '',
-        postalCode: '',
-        countryCode: 'us',
-        phone: '',
+        firstName: cart.shippingAddress?.firstName ?? '',
+        lastName: cart.shippingAddress?.lastName ?? '',
+        address1: cart.shippingAddress?.address1 ?? '',
+        address2: cart.shippingAddress?.address2 ?? '',
+        city: cart.shippingAddress?.city ?? '',
+        province: cart.shippingAddress?.province ?? '',
+        postalCode: cart.shippingAddress?.postalCode ?? '',
+        countryCode: cart.shippingAddress?.countryCode ?? 'us',
+        phone: cart.shippingAddress?.phone ?? '',
     });
 
     const [shippingOptions, setShippingOptions] = useState<ShippingOption[]>([]);
@@ -165,8 +170,11 @@ function CheckoutInner({
             if (res.data) setCart(res.data);
             const opts = await actions.listShippingOptions();
             setShippingOptions(opts);
-            // Preselect the first selectable option of every profile group.
+            // Preselect per profile group: the first selectable SHIPPING option;
+            // pickup only when nothing else exists (rerun 2026-09-06: the UNITY
+            // group defaulted to Local pickup $0).
             const init: Record<string, string> = {};
+            for (const o of opts) if (!init[o.profileId] && !o.unavailable && !/pickup/i.test(o.name)) init[o.profileId] = o.id;
             for (const o of opts) if (!init[o.profileId] && !o.unavailable) init[o.profileId] = o.id;
             setSelectedShipping(init);
             setStep('shipping');

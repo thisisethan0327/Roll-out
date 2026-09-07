@@ -35,7 +35,8 @@ export default async function ShopLoginPage({
                 </p>
                 {error === 'not_member' && (
                     <div className="admin-login-error">
-                        Access denied. You're not a member of any shop yet.
+                        Access denied. You're not a member of any shop yet.{' '}
+                        <a href="/shop/apply?commerce=1" style={{ textDecoration: 'underline' }}>Open a shop →</a>
                     </div>
                 )}
                 {error === 'no_profile' && (
