@@ -599,7 +599,14 @@ async function assertVendorOrder(vendorKey: string, orderId: string): Promise<an
     if (!orderId) return null;
     const fields =
         'id,display_id,status,payment_status,fulfillment_status,metadata,' +
-        'items.id,items.quantity,items.metadata,items.detail.fulfilled_quantity,' +
+        // items.detail.quantity is NOT optional here. On the single-order
+        // RETRIEVE endpoint, asking for items.quantity alone returns it
+        // undefined — the quantity is computed from the order_item detail row,
+        // and without that row requested it silently comes back missing. The
+        // LIST endpoint has no such requirement, which is why this went
+        // unnoticed: every list worked while every fulfil refused with
+        // 'Nothing left to fulfill' (run 9, lane D).
+        'items.id,items.quantity,items.metadata,items.detail.quantity,items.detail.fulfilled_quantity,' +
         'fulfillments.id,fulfillments.canceled_at,fulfillments.shipped_at,fulfillments.delivered_at,' +
         'fulfillments.items.line_item_id,fulfillments.items.quantity,' +
         'payment_collections.payments.id,payment_collections.payments.amount,' +
@@ -667,7 +674,13 @@ export async function createFulfillmentWithTracking(
     const items = vendorLines(o, vendorKey)
         .map((it: any) => ({
             id: it.id,
-            quantity: Number(it?.quantity ?? 0) - Number(it?.detail?.fulfilled_quantity ?? 0),
+            // detail.quantity first: it is the authoritative ordered quantity on
+            // an order line, and the only one the retrieve endpoint reliably
+            // fills. it.quantity stays as the fallback so a shape change in
+            // either direction degrades to a refusal, never to over-fulfilling.
+            quantity:
+                Number(it?.detail?.quantity ?? it?.quantity ?? 0) -
+                Number(it?.detail?.fulfilled_quantity ?? 0),
         }))
         .filter((x: any) => x.quantity > 0);
     if (items.length === 0) return { ok: false, error: 'Nothing left to fulfill for this shop on this order.' };
