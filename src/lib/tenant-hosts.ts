@@ -22,6 +22,13 @@ export type TenantHost = {
     landing: string;
 };
 
+/**
+ * Rollout's own front door. Anything that is deliberately a PLATFORM action
+ * rather than a shop one has to name it absolutely, because on a tenant host a
+ * relative path to it is refused by the middleware.
+ */
+export const ROLLOUT_ORIGIN = 'https://rollout.club';
+
 export const TENANT_ADMIN_HOSTS: Record<string, TenantHost> = {
     'admin.unityusa.co': { slug: 'unityusa', landing: '/shop/unityusa/overview' },
 };
@@ -57,7 +64,7 @@ export function consoleUrlForShop(slug: string, path = ''): string {
     const clean = path && !path.startsWith('/') ? `/${path}` : path;
     const host = HOST_BY_SLUG[slug];
     if (host) return `https://${host}${clean}`;
-    return `https://rollout.club/shop/${slug}${clean}`;
+    return `${ROLLOUT_ORIGIN}/shop/${slug}${clean}`;
 }
 
 /**
@@ -68,5 +75,5 @@ export function consoleUrlForShop(slug: string, path = ''): string {
 export function consoleOrigin(host?: string | null): string {
     const tenant = tenantForHost(host);
     if (tenant && host) return `https://${host.split(':')[0]}`;
-    return 'https://rollout.club';
+    return ROLLOUT_ORIGIN;
 }

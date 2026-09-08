@@ -16,7 +16,7 @@ import {
 } from '@/lib/shop-modules';
 import { ShopSidebar } from './ShopSidebar';
 import { brandForSlug, brandStyle } from '@/lib/tenant-brand';
-import { tenantForHost } from '@/lib/tenant-hosts';
+import { ROLLOUT_ORIGIN, tenantForHost } from '@/lib/tenant-hosts';
 import { AuthHashGuard } from '@/components/auth/AuthHashGuard';
 
 const ACTIVE_SHOP_COOKIE = 'rollout_active_shop';
@@ -188,6 +188,11 @@ export default async function ShopLayout({
     // shop, since for them it still goes somewhere they can reach.
     const onTenantHost = tenantForHost((await headers()).get('host')) !== null;
     const showSwitchShop = !onTenantHost || (await hasMultipleShops(profile.profileId));
+    // Switching shops is a PLATFORM action, so on a tenant host it walks out to
+    // Rollout by absolute URL rather than trying the picker behind the tenant's
+    // own door -- the middleware refuses /shop/picker there, so a relative href
+    // would just bounce back to the console (Ethan's call).
+    const switchShopHref = onTenantHost ? `${ROLLOUT_ORIGIN}/shop/picker` : '/shop/picker';
 
     return (
         <div className="shop-layout" data-theme={shopTheme}>
@@ -207,6 +212,7 @@ export default async function ShopLayout({
                 enabledModules={enabledList}
                 showSellOnNeferstock={!onTenantHost}
                 showSwitchShop={showSwitchShop}
+                switchShopHref={switchShopHref}
             />
             <div className="admin-main">{children}</div>
         </div>

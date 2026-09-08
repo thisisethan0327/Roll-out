@@ -49,6 +49,14 @@ const NAV: SidebarItem[] = [
     { href: 'settings/billing', label: 'BILLING',  section: 'SETTINGS', module: ModuleKey.Settings, minRole: 'owner' },
 ];
 
+const SWITCH_SHOP_STYLE: React.CSSProperties = {
+    color: 'var(--text-2)',
+    fontFamily: 'var(--font-display)',
+    fontSize: 10,
+    letterSpacing: 'var(--track-wider)',
+    textDecoration: 'none',
+};
+
 /** Compact an email for the narrow sidebar footer (keeps the domain visible). */
 function truncEmail(email: string | null): string | null {
     if (!email) return null;
@@ -67,6 +75,7 @@ export function ShopSidebar({
     enabledModules = [],
     showSellOnNeferstock = true,
     showSwitchShop = true,
+    switchShopHref = '/shop/picker',
 }: {
     slug: string;
     shopName: string;
@@ -82,6 +91,10 @@ export function ShopSidebar({
      *  more than one shop. Default true, so rollout.club is unchanged. */
     showSellOnNeferstock?: boolean;
     showSwitchShop?: boolean;
+    /** Where SWITCH SHOP goes. Absolute (rollout.club) on a tenant host, where
+     *  the picker is a platform surface the middleware won't serve; the default
+     *  relative path everywhere else. */
+    switchShopHref?: string;
 }) {
     const pathname = usePathname() || '';
     const router = useRouter();
@@ -172,18 +185,18 @@ export function ShopSidebar({
                 </Link>
                 {showSwitchShop ? (
                     <div style={{ marginTop: 10 }}>
-                        <Link
-                            href="/shop/picker"
-                            style={{
-                                color: 'var(--text-2)',
-                                fontFamily: 'var(--font-display)',
-                                fontSize: 10,
-                                letterSpacing: 'var(--track-wider)',
-                                textDecoration: 'none',
-                            }}
-                        >
-                            ⇄ SWITCH SHOP
-                        </Link>
+                        {/* A cross-origin href is a real navigation off this
+                            host, so it goes out as a plain anchor rather than a
+                            Link the router would try to prefetch. */}
+                        {switchShopHref.startsWith('http') ? (
+                            <a href={switchShopHref} style={SWITCH_SHOP_STYLE}>
+                                ⇄ SWITCH SHOP
+                            </a>
+                        ) : (
+                            <Link href={switchShopHref} style={SWITCH_SHOP_STYLE}>
+                                ⇄ SWITCH SHOP
+                            </Link>
+                        )}
                     </div>
                 ) : null}
                 <ShopThemeToggle />
