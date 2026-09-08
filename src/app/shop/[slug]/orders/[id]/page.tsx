@@ -18,7 +18,14 @@ import { OrderActions } from './OrderActions';
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Order' };
 
-const MANAGER_ROLES = new Set(['owner', 'admin', 'manager']);
+/**
+ * Mirrors the tiers enforced in ../actions.ts. Kept in step by hand rather than
+ * imported, because that module is 'use server' and importing a plain Set from
+ * it would drag the whole action surface into this page's graph. The tiers are
+ * two lines; the enforcement that matters is server-side either way.
+ */
+const MANAGE_ROLES = new Set(['owner', 'admin', 'manager', 'installer', 'staff']);
+const MONEY_ROLES = new Set(['owner', 'admin', 'manager']);
 
 const SECTION: React.CSSProperties = {
     border: '1px solid var(--line)',
@@ -48,7 +55,8 @@ export default async function OrderDetailPage({
     if (!o) notFound();
 
     const cur = o.currency_code;
-    const canManage = MANAGER_ROLES.has(role);
+    const canManage = MANAGE_ROLES.has(role);
+    const canMoney = MONEY_ROLES.has(role);
     const addr = o.shipping_address;
     const addrLines = addr
         ? [
@@ -115,6 +123,8 @@ export default async function OrderDetailPage({
                     fulfillmentStatus={o.fulfillment_status}
                     hasAuthorizedPayment={o.hasAuthorizedPayment}
                     hasUnfulfilledItems={o.hasUnfulfilledItems}
+                    canMoney={canMoney}
+                    role={role}
                 />
             ) : (
                 <div
@@ -126,7 +136,7 @@ export default async function OrderDetailPage({
                         color: 'var(--text-2)',
                     }}
                 >
-                    Viewing only — order actions require a manager role.
+                    Viewing only — your role has no order actions on this shop.
                 </div>
             )}
 

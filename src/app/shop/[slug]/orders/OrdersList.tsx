@@ -53,9 +53,25 @@ export function OrdersList({
     callerRole: string;
 }) {
     const [filter, setFilter] = useState<Filter>('all');
+    /**
+     * Archived orders are hidden by default. Archive is where a closed or
+     * cleaned-up order goes, so on a store with any history behind it the
+     * unfiltered list is mostly things nobody needs to look at again — UNITY's
+     * first view was 99 archived test orders. They are one click away, never
+     * gone (Ethan, 2026-09-08).
+     */
+    const [showArchived, setShowArchived] = useState(false);
+
+    const archivedCount = useMemo(
+        () => orders.filter((o) => String(o.status ?? '').toLowerCase() === 'archived').length,
+        [orders],
+    );
 
     const rows = useMemo(() => {
-        const filtered = orders.filter((o) => matchesFilter(o, filter));
+        const visible = showArchived
+            ? orders
+            : orders.filter((o) => String(o.status ?? '').toLowerCase() !== 'archived');
+        const filtered = visible.filter((o) => matchesFilter(o, filter));
         return [...filtered].sort((a, b) => {
             const r = sortRank(a) - sortRank(b);
             if (r !== 0) return r;
@@ -64,7 +80,7 @@ export function OrdersList({
             const bn = Number(b.display_id ?? 0);
             return bn - an;
         });
-    }, [orders, filter]);
+    }, [orders, filter, showArchived]);
 
     return (
         <div>
@@ -79,10 +95,26 @@ export function OrdersList({
                         {f.label}
                     </button>
                 ))}
+                {archivedCount > 0 && (
+                    <button
+                        type="button"
+                        className={`admin-action-btn ${showArchived ? '' : 'muted'}`}
+                        onClick={() => setShowArchived((v) => !v)}
+                        style={{ marginLeft: 'auto' }}
+                    >
+                        {showArchived
+                            ? `HIDE ARCHIVED (${archivedCount})`
+                            : `SHOW ARCHIVED (${archivedCount})`}
+                    </button>
+                )}
             </div>
 
             {rows.length === 0 ? (
-                <div className="admin-empty">NO ORDERS</div>
+                <div className="admin-empty">
+                    {archivedCount > 0 && !showArchived
+                        ? `NO ORDERS — ${archivedCount} ARCHIVED, HIDDEN`
+                        : 'NO ORDERS'}
+                </div>
             ) : (
                 <div className="admin-table-wrap">
                     <table className="admin-table">

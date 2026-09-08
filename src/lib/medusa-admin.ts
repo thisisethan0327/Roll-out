@@ -726,6 +726,132 @@ export async function captureOrderPayment(
     return { ok: true };
 }
 
+/**
+ * Refund a captured payment on a vendor's order.
+ *
+ * Whole-order, like cancel, and gated the same way: a refund moves money for
+ * the entire payment, so a shop may only refund an order that is entirely its
+ * own. On a mixed basket the platform owner does it, in /app.
+ *
+ * `amountCents` optional — omitted refunds everything still refundable. It is
+ * validated against captured minus already-refunded rather than trusted,
+ * because it arrives from a form field.
+ *
+ * Nothing tax-specific happens here, on purpose: the backend's
+ * refund-order-tax subscriber reverses the Stripe Tax transaction on
+ * payment.refunded, partially per refund and closing out the remainder when
+ * refunds reach the full payment. Touching tax here would double it.
+ */
+export async function refundVendorOrder(
+    vendorKey: string,
+    orderId: string,
+    amountCents?: number | null,
+): Promise<ActionResult> {
+    const o = await assertVendorOrder(vendorKey, orderId);
+    if (!o) return { ok: false, error: 'Order not found for this shop.' };
+
+    const allItems = Array.isArray(o.items) ? o.items : [];
+    const mine = vendorLines(o, vendorKey);
+    if (mine.length !== allItems.length) {
+        return {
+            ok: false,
+            error: 'This order includes other shops — it can only be refunded by the platform owner.',
+        };
+    }
+
+    let payment: any = null;
+    for (const pc of (o.payment_collections ?? []) as any[]) {
+        for (const p of (pc?.payments ?? []) as any[]) {
+            if (p?.captured_at && !p?.canceled_at) {
+                payment = p;
+                break;
+            }
+        }
+        if (payment) break;
+    }
+    if (!payment?.id) return { ok: false, error: 'No captured payment to refund.' };
+
+    // Medusa amounts are decimal currency units, not minor units, so the
+    // console's cents are converted once here rather than at each call site.
+    const captured = Number(payment.amount ?? 0);
+    const alreadyRefunded = Number(payment.refunded_amount ?? 0);
+    const refundable = Math.max(0, captured - alreadyRefunded);
+    if (refundable <= 0) {
+        return { ok: false, error: 'This payment has already been fully refunded.' };
+    }
+
+    let amount = refundable;
+    if (amountCents != null) {
+        if (!Number.isFinite(amountCents) || amountCents <= 0) {
+            return { ok: false, error: 'Enter a refund amount greater than zero.' };
+        }
+        amount = Math.round(amountCents) / 100;
+        // Tolerate a cent of float drift rather than refusing a full refund the
+        // UI computed from these same numbers.
+        if (amount > refundable + 0.005) {
+            return {
+                ok: false,
+                error: `That is more than the ${refundable.toFixed(2)} still refundable on this payment.`,
+            };
+        }
+        if (amount > refundable) amount = refundable;
+    }
+
+    const res = await adminFetch(`/admin/payments/${payment.id}/refund`, {
+        method: 'POST',
+        body: JSON.stringify({ amount }),
+    });
+    if (!res || !res.ok) return { ok: false, error: await errorMessage(res) };
+    return { ok: true };
+}
+
+/**
+ * Complete a vendor's order — the terminal state for goods that are not coming
+ * back. Mirrors the /app widget exactly: only an order still open that has
+ * either been refunded or already shipped, because completing an untouched
+ * pending order would hide work nobody has done. Whole-order, like cancel.
+ */
+export async function completeVendorOrder(
+    vendorKey: string,
+    orderId: string,
+): Promise<ActionResult> {
+    const o = await assertVendorOrder(vendorKey, orderId);
+    if (!o) return { ok: false, error: 'Order not found for this shop.' };
+
+    const status = String(o.status ?? '').toLowerCase();
+    if (status === 'completed') return { ok: false, error: 'This order is already completed.' };
+    if (status === 'canceled') return { ok: false, error: 'A canceled order cannot be completed.' };
+
+    const allItems = Array.isArray(o.items) ? o.items : [];
+    const mine = vendorLines(o, vendorKey);
+    if (mine.length !== allItems.length) {
+        return {
+            ok: false,
+            error: 'This order includes other shops — it can only be completed by the platform owner.',
+        };
+    }
+
+    const pay = String((o as any).payment_status ?? '').toLowerCase();
+    const ful = String((o as any).fulfillment_status ?? '').toLowerCase();
+    const refunded = pay === 'refunded' || pay === 'partially_refunded';
+    const shipped = ['shipped', 'delivered', 'partially_shipped', 'partially_delivered'].includes(
+        ful,
+    );
+    if (!refunded && !shipped) {
+        return {
+            ok: false,
+            error: 'Complete is for orders that have shipped or been refunded. Fulfil it first.',
+        };
+    }
+
+    const res = await adminFetch(`/admin/orders/${encodeURIComponent(orderId)}/complete`, {
+        method: 'POST',
+        body: JSON.stringify({}),
+    });
+    if (!res || !res.ok) return { ok: false, error: await errorMessage(res) };
+    return { ok: true };
+}
+
 // ── console pulse (cross-vendor, cached) ─────────────────────────────────────
 // The god console's PULSE section needs whole-store numbers, not one vendor's
 // slice: total store revenue and the summed paid-but-unfulfilled backlog. This

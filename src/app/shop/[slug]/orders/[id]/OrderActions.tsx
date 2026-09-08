@@ -1,12 +1,19 @@
 'use client';
 /**
- * Staff order actions (manager+). Optimistic feedback via useTransition + the
- * shared feedback primitives. Cancel uses the ecosystem's two-click "armed"
- * pattern (no window.confirm): first click arms for 3s, second confirms.
+ * Order actions, in two tiers.
  *
- * All four actions are server actions that re-derive the vendor from the slug
- * and re-verify the order's vendor before touching Medusa — this component only
- * drives UX.
+ * MANAGE — fulfil with tracking, mark delivered. Any shop member.
+ * MONEY  — capture, cancel, refund, complete. Owner, admin and manager only,
+ *          passed in as `canMoney` and hidden for everyone else. Hidden rather
+ *          than disabled: a button whose only purpose is to refuse you is
+ *          noise. Hiding is NOT the enforcement — every action re-checks the
+ *          caller's role server-side in ../actions.ts, because a server action
+ *          is a public endpoint and hidden is not forbidden.
+ *
+ * Cancel and refund both use the two-click "armed" pattern rather than
+ * window.confirm, which is unreliable here. Every action re-derives the vendor
+ * from the slug and re-verifies the order's vendor before touching Medusa; this
+ * component only drives UX.
  */
 import { useState, useTransition, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -16,6 +23,8 @@ import {
     markDeliveredAction,
     capturePaymentAction,
     cancelOrderAction,
+    refundOrderAction,
+    completeOrderAction,
 } from '../actions';
 
 const CARRIERS = [
@@ -34,6 +43,9 @@ type Props = {
     fulfillmentStatus: string | null;
     hasAuthorizedPayment: boolean;
     hasUnfulfilledItems: boolean;
+    /** Owner/admin/manager: may move money and end the order. */
+    canMoney: boolean;
+    role: string;
 };
 
 export function OrderActions({
@@ -44,6 +56,8 @@ export function OrderActions({
     fulfillmentStatus,
     hasAuthorizedPayment,
     hasUnfulfilledItems,
+    canMoney,
+    role,
 }: Props) {
     const router = useRouter();
     const [pending, start] = useTransition();
@@ -51,6 +65,8 @@ export function OrderActions({
     const [trackingNumber, setTrackingNumber] = useState('');
     const [carrier, setCarrier] = useState('ups');
     const [armed, setArmed] = useState(false);
+    const [refundArmed, setRefundArmed] = useState(false);
+    const [refundAmount, setRefundAmount] = useState('');
 
     // Disarm the cancel confirmation after 3s.
     useEffect(() => {
@@ -63,6 +79,17 @@ export function OrderActions({
     const ful = (fulfillmentStatus ?? '').toLowerCase();
     const isShipped = ['shipped', 'partially_shipped', 'delivered'].includes(ful);
     const isDelivered = ful === 'delivered';
+    const isCompleted = (status ?? '').toLowerCase() === 'completed';
+    const pay = (paymentStatus ?? '').toLowerCase();
+    const refunded = pay === 'refunded' || pay === 'partially_refunded';
+    /** Cents, or null when the box is not a usable number. Blank means "all". */
+    const parsedRefundCents = (() => {
+        const raw = refundAmount.trim();
+        if (!raw) return null;
+        const n = Number(raw.replace(/[^0-9.]/g, ''));
+        if (!Number.isFinite(n) || n <= 0) return null;
+        return Math.round(n * 100);
+    })();
 
     const run = (fn: () => Promise<{ ok: boolean; error?: string }>, okText: string) => {
         setMsg(null);
@@ -180,7 +207,7 @@ export function OrderActions({
             )}
 
             {/* Capture (legacy authorized-only) */}
-            {hasAuthorizedPayment && (
+            {canMoney && hasAuthorizedPayment && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                     <PendingButton
                         type="button"
@@ -197,7 +224,10 @@ export function OrderActions({
                 </div>
             )}
 
-            {/* Cancel — two-click armed */}
+            {/* Money actions — owner/admin/manager only. Hidden rather than
+                disabled: a button that exists to refuse you is just noise. The
+                server refuses regardless (see ../actions.ts). */}
+            {canMoney && (
             <div style={{ borderTop: '1px solid var(--line)', paddingTop: 12 }}>
                 {armed ? (
                     <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -235,7 +265,89 @@ export function OrderActions({
                         CANCEL ORDER
                     </button>
                 )}
+
+                {/* Refund — two-click armed, like cancel. Empty amount refunds
+                    everything still refundable; the server validates the figure
+                    against captured minus already-refunded either way. Tax
+                    reverses itself through the refund-order-tax subscriber. */}
+                <div style={{ marginTop: 12, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <input
+                        className="admin-input"
+                        placeholder="Refund amount (blank = all)"
+                        inputMode="decimal"
+                        value={refundAmount}
+                        onChange={(e) => setRefundAmount(e.target.value)}
+                        style={{ width: 200 }}
+                        disabled={pending}
+                    />
+                    {refundArmed ? (
+                        <>
+                            <PendingButton
+                                type="button"
+                                className="admin-action-btn danger"
+                                pending={pending}
+                                pendingLabel="REFUNDING"
+                                onClick={() => {
+                                    setRefundArmed(false);
+                                    run(() => refundOrderAction(slug, orderId, parsedRefundCents), 'Refund issued.');
+                                }}
+                            >
+                                CONFIRM REFUND
+                            </PendingButton>
+                            <button
+                                type="button"
+                                className="admin-action-btn muted"
+                                onClick={() => setRefundArmed(false)}
+                                disabled={pending}
+                            >
+                                KEEP PAYMENT
+                            </button>
+                        </>
+                    ) : (
+                        <button
+                            type="button"
+                            className="admin-action-btn muted"
+                            onClick={() => {
+                                if (refundAmount.trim() && parsedRefundCents == null) {
+                                    setMsg({ kind: 'err', text: 'Enter a refund amount like 24.99, or leave it blank to refund everything.' });
+                                    return;
+                                }
+                                setRefundArmed(true);
+                            }}
+                            disabled={pending}
+                        >
+                            REFUND
+                        </button>
+                    )}
+                </div>
+
+                {/* Complete — the terminal state for goods that are not coming
+                    back. Only offered once the order has shipped or been
+                    refunded, matching the /app widget and the server check. */}
+                {!canceled && !isCompleted && (refunded || isShipped) && (
+                    <div style={{ marginTop: 12 }}>
+                        <PendingButton
+                            type="button"
+                            className="admin-action-btn"
+                            pending={pending}
+                            pendingLabel="COMPLETING"
+                            onClick={() => run(() => completeOrderAction(slug, orderId), 'Order completed.')}
+                        >
+                            COMPLETE ORDER
+                        </PendingButton>
+                        <div className="admin-handle" style={{ fontSize: 10, marginTop: 4 }}>
+                            Closes the order for good. Custom goods are not returnable — refund, then complete.
+                        </div>
+                    </div>
+                )}
             </div>
+            )}
+
+            {!canMoney && (
+                <div className="admin-handle" style={{ fontSize: 10, borderTop: '1px solid var(--line)', paddingTop: 12 }}>
+                    Capture, cancel, refund and complete need an owner or admin. Your role is {role}.
+                </div>
+            )}
 
             {msg && <Banner msg={msg} />}
         </div>

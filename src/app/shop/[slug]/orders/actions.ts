@@ -1,7 +1,7 @@
 'use server';
 /**
  * Order actions for a shop's Orders section. Every action:
- *   1. Requires the caller be a manager+ member of the shop (role-gated).
+ *   1. Requires a shop member whose ROLE allows that tier of action (below).
  *   2. Resolves the shop's vendor key server-side from the registry.
  *   3. Delegates to medusa-admin.ts, which re-verifies the target order's
  *      metadata.vendor matches before touching Medusa (never trusts the id).
@@ -17,24 +17,71 @@ import {
     markFulfillmentDelivered,
     captureOrderPayment,
     cancelVendorOrder,
+    refundVendorOrder,
+    completeVendorOrder,
     type ActionResult,
 } from '@/lib/medusa-admin';
 
-const MANAGER_ROLES = new Set(['owner', 'admin', 'manager']);
+/**
+ * Two tiers, by Ethan's ruling of 2026-09-08.
+ *
+ * MANAGE — moves the order forward: put a tracking number on it, say it
+ * arrived. Anyone who works here can do it; getting it wrong is embarrassing
+ * and fixable.
+ *
+ * MONEY — capture, cancel, refund, complete. Each either moves money or ends
+ * the order, and none of it can be undone by the person who did it.
+ *
+ * Managers keep MONEY. The brief allowed for admin/manager to differ by member
+ * management, but the console has no member management for a manager to be
+ * excluded from, so that distinction does not exist here yet — when it arrives,
+ * that is the line to draw, not this one.
+ *
+ * Roles come from rollout.shop_memberships.role, whose check constraint allows
+ * owner, admin, manager, installer and staff. Installer and staff are the shop
+ * floor: MANAGE only.
+ */
+const MANAGE_ROLES = new Set(['owner', 'admin', 'manager', 'installer', 'staff']);
+const MONEY_ROLES = new Set(['owner', 'admin', 'manager']);
+
+/** A role refusal, worded so the client can show it as a message, not a crash. */
+const refusal = (role: string, what: string) =>
+    new Error(`Your role (${role}) can't ${what} on this shop. Ask an owner or admin.`);
 
 /**
- * Gate: manager+ member of the shop AND the shop has a vendor key. Returns the
- * vendor key to scope the action. Throws on any failure (surfaced to the client
- * transition as a rejected promise).
+ * Gate: a member whose role allows this tier, AND a shop with a vendor key.
+ * Returns the vendor key to scope the action.
+ *
+ * Enforced HERE, server-side. The UI also hides what a role cannot do, so
+ * nobody is invited to fail — but a server action is a public endpoint, and
+ * hidden is not the same as forbidden.
  */
-async function guard(slug: string): Promise<{ vendorKey: string }> {
+async function guard(
+    slug: string,
+    tier: 'manage' | 'money',
+    what: string,
+): Promise<{ vendorKey: string; role: string }> {
     const shop = await resolveShopSlug(slug);
     if (!shop) throw new Error('Shop not found.');
     const { role } = await requireShopMember(shop.shopId);
-    if (!MANAGER_ROLES.has(role)) throw new Error('Manager role required for order actions.');
+    const allowed = tier === 'money' ? MONEY_ROLES : MANAGE_ROLES;
+    if (!allowed.has(role)) throw refusal(role, what);
     const resolved = await getShopVendorBySlug(slug);
     if (!resolved) throw new Error('This shop has no order vendor.');
-    return { vendorKey: resolved.vendorKey };
+    return { vendorKey: resolved.vendorKey, role };
+}
+
+/**
+ * What the signed-in member may do, so the UI can hide the rest. Never the
+ * enforcement boundary — `guard` above is.
+ */
+export async function orderPermissions(
+    slug: string,
+): Promise<{ role: string; canManage: boolean; canMoney: boolean }> {
+    const shop = await resolveShopSlug(slug);
+    if (!shop) return { role: 'none', canManage: false, canMoney: false };
+    const { role } = await requireShopMember(shop.shopId);
+    return { role, canManage: MANAGE_ROLES.has(role), canMoney: MONEY_ROLES.has(role) };
 }
 
 function revalidate(slug: string, orderId: string) {
@@ -48,7 +95,7 @@ export async function fulfillOrderAction(
     trackingNumber: string,
     carrier: string,
 ): Promise<ActionResult> {
-    const { vendorKey } = await guard(slug);
+    const { vendorKey } = await guard(slug, 'manage', 'fulfil orders');
     if (!trackingNumber || !trackingNumber.trim()) {
         return { ok: false, error: 'A tracking number is required.' };
     }
@@ -66,7 +113,7 @@ export async function markDeliveredAction(
     slug: string,
     orderId: string,
 ): Promise<ActionResult> {
-    const { vendorKey } = await guard(slug);
+    const { vendorKey } = await guard(slug, 'manage', 'mark orders delivered');
     const result = await markFulfillmentDelivered(vendorKey, orderId);
     if (result.ok) revalidate(slug, orderId);
     return result;
@@ -76,7 +123,7 @@ export async function capturePaymentAction(
     slug: string,
     orderId: string,
 ): Promise<ActionResult> {
-    const { vendorKey } = await guard(slug);
+    const { vendorKey } = await guard(slug, 'money', 'capture payments');
     const result = await captureOrderPayment(vendorKey, orderId);
     if (result.ok) revalidate(slug, orderId);
     return result;
@@ -86,8 +133,29 @@ export async function cancelOrderAction(
     slug: string,
     orderId: string,
 ): Promise<ActionResult> {
-    const { vendorKey } = await guard(slug);
+    const { vendorKey } = await guard(slug, 'money', 'cancel orders');
     const result = await cancelVendorOrder(vendorKey, orderId);
+    if (result.ok) revalidate(slug, orderId);
+    return result;
+}
+
+export async function refundOrderAction(
+    slug: string,
+    orderId: string,
+    amountCents?: number | null,
+): Promise<ActionResult> {
+    const { vendorKey } = await guard(slug, 'money', 'refund orders');
+    const result = await refundVendorOrder(vendorKey, orderId, amountCents);
+    if (result.ok) revalidate(slug, orderId);
+    return result;
+}
+
+export async function completeOrderAction(
+    slug: string,
+    orderId: string,
+): Promise<ActionResult> {
+    const { vendorKey } = await guard(slug, 'money', 'complete orders');
+    const result = await completeVendorOrder(vendorKey, orderId);
     if (result.ok) revalidate(slug, orderId);
     return result;
 }
