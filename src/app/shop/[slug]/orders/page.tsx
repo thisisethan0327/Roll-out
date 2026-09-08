@@ -36,6 +36,16 @@ export default async function OrdersPage({
         limit: 200,
     });
 
+    // The list hides archived orders until you ask for them, so a single total
+    // in the header described a table nobody could see: "106 ORDERS" above ten
+    // rows (run 9, lane E). Splitting it makes the header agree with what is on
+    // screen — and keeps a header that DISAGREES meaningful, which is the signal
+    // worth watching if the index and the vendor predicate ever diverge.
+    const archivedCount = orders.filter(
+        (o) => String(o.status ?? '').toLowerCase() === 'archived',
+    ).length;
+    const openCount = orders.length - archivedCount;
+
     return (
         <>
             <div className="admin-page-head">
@@ -45,7 +55,9 @@ export default async function OrdersPage({
                         {shop.name.toUpperCase()} ·{' '}
                         {hasMore
                             ? `NEWEST ${orders.length} OF ${count} ORDERS`
-                            : `${orders.length} ORDER${orders.length === 1 ? '' : 'S'}`}
+                            : archivedCount > 0
+                              ? `${openCount} OPEN · ${archivedCount} ARCHIVED`
+                              : `${orders.length} ORDER${orders.length === 1 ? '' : 'S'}`}
                     </div>
                 </div>
             </div>
