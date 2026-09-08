@@ -65,6 +65,8 @@ export function ShopSidebar({
     callerRole,
     callerEmail = null,
     enabledModules = [],
+    showSellOnNeferstock = true,
+    showSwitchShop = true,
 }: {
     slug: string;
     shopName: string;
@@ -74,6 +76,12 @@ export function ShopSidebar({
     /** Tier-resolved enabled module keys (from the shop layout). Links whose
      *  module isn't in this set are hidden; the matching routes 404. */
     enabledModules?: string[];
+    /** The two links that lead OUT of this console into Rollout. Both are set
+     *  false by the layout on a tenant's own admin host, where the middleware
+     *  makes them dead ends; SWITCH SHOP is kept there for anyone on staff at
+     *  more than one shop. Default true, so rollout.club is unchanged. */
+    showSellOnNeferstock?: boolean;
+    showSwitchShop?: boolean;
 }) {
     const pathname = usePathname() || '';
     const router = useRouter();
@@ -128,7 +136,7 @@ export function ShopSidebar({
                     </div>
                 );
             })}
-            {rank >= RANK.owner ? (() => {
+            {showSellOnNeferstock && rank >= RANK.owner ? (() => {
                 const href = `/shop/${slug}/sell`;
                 const active = pathname === href || pathname.startsWith(href + '/');
                 return (
@@ -162,20 +170,22 @@ export function ShopSidebar({
                     )}
                     <div style={{ marginTop: 6 }}>ROLE: {callerRole.toUpperCase()}</div>
                 </Link>
-                <div style={{ marginTop: 10 }}>
-                    <Link
-                        href="/shop/picker"
-                        style={{
-                            color: 'var(--text-2)',
-                            fontFamily: 'var(--font-display)',
-                            fontSize: 10,
-                            letterSpacing: 'var(--track-wider)',
-                            textDecoration: 'none',
-                        }}
-                    >
-                        ⇄ SWITCH SHOP
-                    </Link>
-                </div>
+                {showSwitchShop ? (
+                    <div style={{ marginTop: 10 }}>
+                        <Link
+                            href="/shop/picker"
+                            style={{
+                                color: 'var(--text-2)',
+                                fontFamily: 'var(--font-display)',
+                                fontSize: 10,
+                                letterSpacing: 'var(--track-wider)',
+                                textDecoration: 'none',
+                            }}
+                        >
+                            ⇄ SWITCH SHOP
+                        </Link>
+                    </div>
+                ) : null}
                 <ShopThemeToggle />
                 <button className="admin-sidebar-signout" onClick={signOut}>
                     SIGN OUT

@@ -170,6 +170,27 @@ export async function listMyShops(profileId: string): Promise<
 }
 
 /**
+ * Is this profile on staff at more than one shop?
+ *
+ * A head-only count: the one caller — the tenant-host sidebar gate — needs the
+ * boolean, not the list, and runs on every console navigation. On a query
+ * error it answers true, because a multi-shop user with no way to switch is a
+ * worse outcome than one extra link.
+ */
+export async function hasMultipleShops(profileId: string): Promise<boolean> {
+    const admin = getSupabaseAdmin();
+    const { count, error } = await admin
+        .from('shop_memberships')
+        .select('shop_id', { count: 'exact', head: true })
+        .eq('profile_id', profileId);
+    if (error) {
+        console.error('[lib/auth-guard] hasMultipleShops failed:', error.message);
+        return true;
+    }
+    return (count ?? 0) > 1;
+}
+
+/**
  * Resolve a shop slug → id (via the admin client, bypassing RLS) so the layout
  * can call `requireShopMember(id, …)`. Returns null when the slug doesn't
  * exist. Used by every `/shop/[slug]/*` route's layout.

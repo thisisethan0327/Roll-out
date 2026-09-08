@@ -5,8 +5,8 @@
  * Also writes the active-shop cookie so subsequent /shop visits land here by
  * default (instead of bouncing through the picker every time).
  */
-import { cookies } from 'next/headers';
-import { requireShopMemberBySlug } from '@/lib/auth-guard';
+import { cookies, headers } from 'next/headers';
+import { hasMultipleShops, requireShopMemberBySlug } from '@/lib/auth-guard';
 import { getSupabaseAdmin, getSupabasePublicAdmin } from '@/lib/supabase/admin';
 import { getShopVendorBySlug } from '@/lib/store-shops';
 import {
@@ -16,6 +16,7 @@ import {
 } from '@/lib/shop-modules';
 import { ShopSidebar } from './ShopSidebar';
 import { brandForSlug, brandStyle } from '@/lib/tenant-brand';
+import { tenantForHost } from '@/lib/tenant-hosts';
 import { AuthHashGuard } from '@/components/auth/AuthHashGuard';
 
 const ACTIVE_SHOP_COOKIE = 'rollout_active_shop';
@@ -179,6 +180,15 @@ export default async function ShopLayout({
     const brand = brandForSlug(shop.slug);
     const brandCss = brandStyle(brand);
 
+    // A tenant's own door (admin.unityusa.co) is the whole product there: the
+    // middleware refuses every other path on that host, so the two sidebar
+    // links that lead out of this console into Rollout are dead ends. Hidden on
+    // the tenant HOST only — rollout.club/shop/<slug> keeps both, tenant accent
+    // or not. SWITCH SHOP survives for anyone actually on staff at a second
+    // shop, since for them it still goes somewhere they can reach.
+    const onTenantHost = tenantForHost((await headers()).get('host')) !== null;
+    const showSwitchShop = !onTenantHost || (await hasMultipleShops(profile.profileId));
+
     return (
         <div className="shop-layout" data-theme={shopTheme}>
             {/* Per-tenant accent. One variable override reskins buttons, active
@@ -195,6 +205,8 @@ export default async function ShopLayout({
                 callerRole={role}
                 callerEmail={profile.email}
                 enabledModules={enabledList}
+                showSellOnNeferstock={!onTenantHost}
+                showSwitchShop={showSwitchShop}
             />
             <div className="admin-main">{children}</div>
         </div>
