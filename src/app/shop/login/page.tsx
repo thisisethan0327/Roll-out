@@ -84,7 +84,13 @@ export default async function ShopLoginPage({
                 )}
                 {error === 'no_profile' && (
                     <div className="admin-login-error">
-                        No profile for that account. Sign up in the app first.
+                        {/* Name the shop. The card header says UNITY USA while
+                            this sentence used to name no shop at all and point
+                            at an "app" a UNITY staffer does not have (run 10,
+                            lane F). */}
+                        {onTenantDoor
+                            ? `That account is not a member of ${brand.label}. Ask the shop owner to add you.`
+                            : 'That account is not a member of any shop yet. Ask a shop owner to add you.'}
                     </div>
                 )}
                 {brokerOrigin && brokerReturn && (

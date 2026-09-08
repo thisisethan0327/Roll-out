@@ -25,6 +25,13 @@ function signInErrorCopy(e: { message?: string; code?: string } | null | undefin
     if (/over_email_send_rate_limit|rate limit/i.test(`${e?.code ?? ''} ${raw}`)) {
         return 'Too many codes requested for now. Wait a few minutes and try again.';
     }
+    // shouldCreateUser is false on the shop and admin gates, so an address with
+    // no account comes back as "Signups not allowed for otp" — Supabase
+    // describing its own configuration, which meant nothing to the person
+    // reading it (run 10, lane C). Access here is by invitation, so say that.
+    if (/signups? not allowed|otp_disabled/i.test(`${e?.code ?? ''} ${raw}`)) {
+        return 'No account for that address. Shop access is by invitation — ask an owner to add you.';
+    }
     if (/invalid|expired|token/i.test(raw)) {
         return 'That code was wrong or has expired. Ask for a new one.';
     }
@@ -83,6 +90,8 @@ export function OtpLoginForm({
     // Guards against a double verify when the auto-submit (6th digit) and a
     // manual button press or Enter land in the same tick.
     const verifyingRef = useRef(false);
+    /** Latches once a code has been accepted; never cleared. See runVerify. */
+    const doneRef = useRef(false);
 
     const startResendCooldown = () => {
         setResendIn(30);
@@ -142,6 +151,18 @@ export function OtpLoginForm({
             });
             if (error) {
                 setErr(signInErrorCopy(error));
+                // A THROTTLE is not a failure to sign in — it usually means a
+                // code was just sent and is sitting in their inbox. Staying on
+                // the email step left them holding a code with nowhere to type
+                // it (run 10, lane C). Move on and let them use it; any other
+                // error keeps them here, where the address can be corrected.
+                const throttled = /after \d+ seconds?|rate limit/i.test(
+                    `${(error as any)?.code ?? ''} ${error.message ?? ''}`,
+                );
+                if (throttled) {
+                    setPhase('otp');
+                    startResendCooldown();
+                }
                 return;
             }
             setPhase('otp');
@@ -153,13 +174,26 @@ export function OtpLoginForm({
         }
     };
 
-    // Verify a 6-digit code. Called both by the auto-submit on the 6th digit
-    // and by the manual VERIFY button / Enter (kept as a fallback). The ref
-    // guard prevents a double call when both fire together.
+    /**
+     * Verify a 6-digit code. Called by the auto-submit on the sixth digit AND
+     * by the VERIFY button / Enter, which is fine while they race — but was not
+     * fine once one had won.
+     *
+     * verifyingRef blocks CONCURRENT calls and resets in finally, so the
+     * sequence that actually happened was: auto-submit verifies, 200, starts
+     * navigating; the ref clears; the manual submit then verifies the SAME
+     * token, which Supabase has already consumed, gets 403, and the error path
+     * wipes the field and drops the person back on a blank email step with no
+     * message and no session — after a sign-in that had already succeeded (run
+     * 10, lane F). Every member using the code door hit this.
+     *
+     * doneRef latches on success and is never cleared: one code, one
+     * verification, whatever fires afterwards.
+     */
     const runVerify = async (code: string) => {
         const token = code.trim();
         if (token.length !== 6) return;
-        if (verifyingRef.current) return;
+        if (doneRef.current || verifyingRef.current) return;
         verifyingRef.current = true;
         setErr(null);
         setBusy(true);
@@ -177,6 +211,9 @@ export function OtpLoginForm({
                 requestAnimationFrame(() => otpInputRef.current?.focus());
                 return;
             }
+            // Latch BEFORE navigating: the second submit can fire while the
+            // push is still in flight.
+            doneRef.current = true;
             router.push(successPath);
             router.refresh();
         } catch (ex: any) {
@@ -185,7 +222,9 @@ export function OtpLoginForm({
             requestAnimationFrame(() => otpInputRef.current?.focus());
         } finally {
             setBusy(false);
-            verifyingRef.current = false;
+            // Stay latched after a success so nothing re-enters; only a failed
+            // attempt reopens the door for a retype.
+            if (!doneRef.current) verifyingRef.current = false;
         }
     };
 

@@ -16,6 +16,7 @@ import {
 } from '@/lib/shop-modules';
 import { ShopSidebar } from './ShopSidebar';
 import { brandForSlug, brandStyle } from '@/lib/tenant-brand';
+import { AuthHashGuard } from '@/components/auth/AuthHashGuard';
 
 const ACTIVE_SHOP_COOKIE = 'rollout_active_shop';
 
@@ -183,6 +184,10 @@ export default async function ShopLayout({
             {/* Per-tenant accent. One variable override reskins buttons, active
                 nav, focus rings and eyebrows together, in both themes. */}
             {brandCss ? <style dangerouslySetInnerHTML={{ __html: brandCss }} /> : null}
+            {/* Strip an auth fragment wherever the broker drops somebody who was
+                already signed in — they never pass the login page, so nothing
+                else would. */}
+            <AuthHashGuard />
             <ShopSidebar
                 slug={shop.slug}
                 shopName={shop.name}
