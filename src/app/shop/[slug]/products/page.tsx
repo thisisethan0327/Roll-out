@@ -2,9 +2,10 @@
  * /shop/[slug]/products — a shop's catalog.
  *
  * Medusa-backed shops (rollout.shops.medusa_category_handles non-empty) get a
- * READ-ONLY catalog fetched from the Medusa Store API (attributed to the
- * Rollout sales channel); editing lives in the Medusa admin. Other shops get
- * their own public.products inventory list (read/create/edit, shop-scoped).
+ * READ-ONLY catalog read through the ADMIN API, scoped to the shop's own
+ * categories — see listVendorProducts for why it is not the Store API, and why
+ * that mattered. Editing still lives in the Medusa admin. Other shops get their
+ * own public.products inventory list (read/create/edit, shop-scoped).
  *
  * The section is only reachable when shop.sells_products OR the shop has
  * public.products rows (enforced here + gated in the sidebar).
@@ -13,6 +14,7 @@ import { notFound } from 'next/navigation';
 import { requireShopMemberBySlug } from '@/lib/auth-guard';
 import { getSupabaseAdmin, getSupabasePublicAdmin } from '@/lib/supabase/admin';
 import { listVendorProducts } from '@/lib/medusa-admin';
+import { fmtMoney } from '../orders/ui';
 import { ProductsManager } from './ProductsManager';
 
 export const metadata = { title: 'Products' };
@@ -142,7 +144,7 @@ async function MedusaCatalog({ handles }: { handles: string[] }) {
                                     }}
                                 >
                                     {p.priceAmount != null
-                                        ? `${p.currency ? p.currency + ' ' : ''}${(p.priceAmount / 100).toFixed(2)}`
+                                        ? fmtMoney(p.priceAmount, p.currency)
                                         : 'NO PRICE SET'}
                                 </div>
                                 {/* The state a shop most needs to see about its

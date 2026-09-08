@@ -1118,7 +1118,12 @@ export type VendorProduct = {
     /** metadata.paused — on the shelf but not purchasable. */
     paused: boolean;
     variantCount: number;
-    /** Cheapest variant price in minor units, or null when none is set. */
+    /**
+     * Cheapest variant price, in MAJOR units — Medusa v2 stores prices as
+     * decimal currency, not cents. 1740 is one thousand seven hundred and
+     * forty dollars, not seventeen forty. Getting this wrong showed EVO film
+     * at $17.40 instead of $1,740 (caught in review, 2026-09-08).
+     */
     priceAmount: number | null;
     currency: string | null;
 };
