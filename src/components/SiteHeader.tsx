@@ -20,6 +20,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { ThemeToggle } from './ThemeToggle';
 
 type NavContext = {
     signedIn: boolean;
@@ -133,6 +134,7 @@ export function SiteHeader() {
                     <span style={{ width: 1, height: 14, background: 'var(--line-mid)' }} />
                     <div className="flex items-center" style={{ gap: 18 }}>
                         <AuthArea ctx={ctx} cartCount={cartCount} />
+                        <ThemeToggle />
                         <Link href="/#download" className="btn" style={{ padding: '10px 18px', fontSize: 11 }}>
                             Get The App
                         </Link>
@@ -157,6 +159,7 @@ export function SiteHeader() {
                     >
                         <span /><span /><span />
                     </button>
+                    <ThemeToggle />
                 </div>
             </div>
 

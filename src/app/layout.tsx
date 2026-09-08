@@ -2,6 +2,8 @@ import './globals.css';
 import type { Metadata } from 'next';
 import { JetBrains_Mono, Inter, Noto_Sans_JP } from 'next/font/google';
 import { MarketingChrome } from '@/components/MarketingChrome';
+import { cookies } from 'next/headers';
+import { THEME_COOKIE, normalizeTheme, themeAttribute } from '@/lib/theme';
 
 const jetbrains = JetBrains_Mono({
     subsets: ['latin'],
@@ -43,10 +45,16 @@ export const metadata: Metadata = {
     icons: { icon: '/favicon.png' },
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+    // An explicit theme choice is stamped here, server-side, so the very first
+    // paint is right — no flash, and no blocking script in <head>. "System"
+    // stamps nothing and a prefers-color-scheme block in globals.css takes over.
+    const choice = normalizeTheme((await cookies()).get(THEME_COOKIE)?.value);
+
     return (
         <html
             lang="en"
+            data-theme={themeAttribute(choice)}
             className={`${jetbrains.variable} ${inter.variable} ${notoJp.variable}`}
         >
             <body>

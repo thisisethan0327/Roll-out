@@ -21,6 +21,15 @@
   --text-4: #3a3a3a;
   --warn: #ff2a2a;
 
+  /* Chrome that cannot be a flat surface — light values live in the light
+     theme block. See the LIGHT THEME section. */
+  --header-bg: rgba(0, 0, 0, 0.70);
+  --scrim: rgba(0, 0, 0, 0.60);
+  --hero-bright: 0.55;
+
+  /* Native controls, scrollbars and autofill follow the theme. */
+  color-scheme: dark;
+
   --gold: #ffb733;
   --gold-dim: rgba(255, 183, 51, 0.18);
   --gold-glow: rgba(255, 183, 51, 0.08);
@@ -410,10 +419,14 @@ h4 { font-size: 16px; letter-spacing: var(--track-wide); }
    data-theme="dark"). Colors are contrast-checked: body text ≥4.5:1, mono/large
    labels ≥3:1 against the surfaces they appear on.
    ══════════════════════════════════════════════════════════════════════════ */
+/* An EXPLICIT light choice: stamped on <html> from the rollout_theme cookie,
+   on .shop-layout from the console's own rollout_shop_theme cookie, or applied
+   to a subtree with .light-scope. */
+:root[data-theme='light'],
 .shop-layout[data-theme='light'],
 .light-scope {
   /* Paper-like surfaces: soft gray page so white panels lift off it. */
-  --bg-0: #eceef1;   /* page base (shop-layout background)            */
+  --bg-0: #eceef1;   /* page base                                     */
   --bg-1: #ffffff;   /* sidebar, cards, tables, forms                 */
   --bg-2: #e7eaee;   /* table heads, input fills, row/link hovers     */
   --bg-3: #dde1e6;   /* deeper hover / nested fills                   */
@@ -443,6 +456,100 @@ h4 { font-size: 16px; letter-spacing: var(--track-wide); }
   --neon: #2e7d32;
   --orange: #b45309;
   --blue: #1d6fa5;
+
+  /* Chrome that cannot be a flat surface: the sticky header, image scrims and
+     the hero brightness pass. Dark values live on :root. */
+  --header-bg: rgba(255, 255, 255, 0.85);
+  --scrim: rgba(255, 255, 255, 0.72);
+  --hero-bright: 0.92;
+
+  /* Native controls, scrollbars and autofill follow the theme. */
+  color-scheme: light;
+}
+
+/* SYSTEM default: no explicit choice anywhere, so follow the OS. Deliberately
+   :not([data-theme]) rather than :not([data-theme='dark']) — an explicit dark
+   choice and no choice at all are different states, and only the second should
+   follow the system.
+
+   These values are GENERATED from the same source as the block above
+   (scratchpad/light-tokens.mjs). If you edit one by hand, edit both: CSS cannot
+   share a token set between a selector and a media query, and two palettes that
+   silently disagree is the worst outcome here. */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) {
+  /* Paper-like surfaces: soft gray page so white panels lift off it. */
+  --bg-0: #eceef1;   /* page base                                     */
+  --bg-1: #ffffff;   /* sidebar, cards, tables, forms                 */
+  --bg-2: #e7eaee;   /* table heads, input fills, row/link hovers     */
+  --bg-3: #dde1e6;   /* deeper hover / nested fills                   */
+  --surface: #f3f5f7;
+  --surface-2: #e7eaee;
+
+  /* Lines become dark-on-light hairlines. */
+  --line: rgba(15, 23, 42, 0.10);
+  --line-mid: rgba(15, 23, 42, 0.20);
+  --line-strong: rgba(15, 23, 42, 0.34);
+
+  /* Ink scale (dark text on light). */
+  --text: #14161a;   /* primary body — ~16:1 on white                */
+  --text-2: #454a54; /* secondary body — ~8.9:1 on white             */
+  --text-3: #616671; /* muted mono labels — ≥4.5:1 on all surfaces   */
+  --text-4: #a2a8b2;
+
+  /* Gold retuned to an accessible dark amber for text/border/accent on light
+     (~5.7:1 on white, ≥4.5:1 on the gray surfaces). */
+  --gold: #8c5d00;
+  --gold-dim: rgba(140, 93, 0, 0.16);
+  --gold-glow: rgba(140, 93, 0, 0.10);
+  --on-gold: #ffffff; /* white ink reads on the darker amber fill     */
+
+  /* Status / badge colors retuned for light contrast. */
+  --warn: #c62828;
+  --neon: #2e7d32;
+  --orange: #b45309;
+  --blue: #1d6fa5;
+
+  /* Chrome that cannot be a flat surface: the sticky header, image scrims and
+     the hero brightness pass. Dark values live on :root. */
+  --header-bg: rgba(255, 255, 255, 0.85);
+  --scrim: rgba(255, 255, 255, 0.72);
+  --hero-bright: 0.92;
+
+  /* Native controls, scrollbars and autofill follow the theme. */
+  color-scheme: light;
+  }
+}
+
+/* A dark console inside a light site. Without this the console would inherit
+   the site's light tokens and quietly ignore its own cookie — the mirror image
+   of the case the block above solves. */
+.shop-layout[data-theme='dark'] {
+  --bg-0: #000000;
+  --bg-1: #050505;
+  --bg-2: #0c0c0c;
+  --bg-3: #141414;
+  --surface: #1a1a1a;
+  --surface-2: #222222;
+  --line: rgba(255, 255, 255, 0.10);
+  --line-mid: rgba(255, 255, 255, 0.22);
+  --line-strong: rgba(255, 255, 255, 0.40);
+  --text: #ffffff;
+  --text-2: #b5b5b5;
+  --text-3: #6a6a6a;
+  --text-4: #3a3a3a;
+  --warn: #ff2a2a;
+  --gold: #ffb733;
+  --gold-dim: rgba(255, 183, 51, 0.18);
+  --gold-glow: rgba(255, 183, 51, 0.08);
+  --on-gold: #1a1a1a;
+  --neon: #84e12e;
+  --orange: #ff8000;
+  --blue: #4aa3df;
+  --header-bg: rgba(0, 0, 0, 0.70);
+  --scrim: rgba(0, 0, 0, 0.60);
+  --hero-bright: 0.55;
+  color-scheme: dark;
 }
 
 /* Gold-filled buttons in the light console: dark-amber fill needs light ink,
@@ -2014,4 +2121,29 @@ h4 { font-size: 16px; letter-spacing: var(--track-wide); }
   color: var(--text-3);
   margin-top: 5px;
   line-height: 1.4;
+}
+
+/* ── theme toggle ──────────────────────────────────────────────────────────
+   Site header sun/moon/system control. Deliberately quiet: it is a preference,
+   not an action, so it reads as chrome until hovered. */
+.site-theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--text-3);
+  cursor: pointer;
+  transition: color 120ms ease, border-color 120ms ease;
+}
+.site-theme-toggle:hover {
+  color: var(--gold);
+  border-color: var(--line-mid);
+}
+.site-theme-toggle:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
 }
