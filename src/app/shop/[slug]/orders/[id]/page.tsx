@@ -239,16 +239,45 @@ export default async function OrderDetailPage({
                         <div className="admin-handle" style={{ fontSize: 12 }}>No payment details available.</div>
                     ) : (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                            {o.payments.map((p) => (
+                            {o.payments.map((p) => {
+                                // A refunded payment must not read as money received.
+                                const refunded = Number(p.refunded_amount ?? 0);
+                                const fully = refunded > 0 && Number(p.amount ?? 0) - refunded <= 0.005;
+                                return (
                                 <div key={p.id} style={{ fontSize: 12 }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                                         <span className="admin-handle">
-                                            {p.captured_at ? 'Captured' : p.canceled_at ? 'Canceled' : 'Authorized'}
+                                            {p.captured_at
+                                                ? fully ? 'Refunded' : refunded > 0 ? 'Partly refunded' : 'Captured'
+                                                : p.canceled_at ? 'Canceled' : 'Authorized'}
                                         </span>
-                                        <span style={{ fontFamily: 'var(--font-mono, monospace)', color: 'var(--text)' }}>
+                                        <span
+                                            style={{
+                                                fontFamily: 'var(--font-mono, monospace)',
+                                                color: 'var(--text)',
+                                                textDecoration: fully ? 'line-through' : undefined,
+                                                opacity: fully ? 0.6 : 1,
+                                            }}
+                                        >
                                             {fmtMoney(p.amount, cur)}
                                         </span>
                                     </div>
+                                    {refunded > 0 ? (
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 2 }}>
+                                            <span className="admin-handle" style={{ fontSize: 11 }}>Refunded</span>
+                                            <span style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: 11 }}>
+                                                - {fmtMoney(refunded, cur)}
+                                            </span>
+                                        </div>
+                                    ) : null}
+                                    {refunded > 0 && !fully ? (
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 2 }}>
+                                            <span className="admin-handle" style={{ fontSize: 11 }}>Net</span>
+                                            <span style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: 11 }}>
+                                                {fmtMoney(p.net_amount, cur)}
+                                            </span>
+                                        </div>
+                                    ) : null}
                                     <div className="admin-handle" style={{ fontSize: 11, marginTop: 2 }}>
                                         {p.captured_at
                                             ? `Charged ${fmtDate(p.captured_at)}`
@@ -257,7 +286,8 @@ export default async function OrderDetailPage({
                                                 : 'Authorized — capture when the order ships'}
                                     </div>
                                 </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     )}
                 </section>

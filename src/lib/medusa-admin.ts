@@ -154,6 +154,15 @@ export type VendorOrderPayment = {
     amount: number | null;
     captured_at: string | null;
     canceled_at: string | null;
+    /**
+     * Sum of this payment's refunds. Medusa has NO `refunded_amount` scalar on
+     * a payment — the figure only exists as a `refunds[]` relation, and reading
+     * a scalar that never existed is what left every refunded payment looking
+     * untouched here.
+     */
+    refunded_amount: number;
+    /** captured - refunded. What the customer is actually still out of pocket. */
+    net_amount: number;
 };
 
 export type VendorOrderDetail = {
@@ -226,7 +235,26 @@ const DETAIL_FIELDS = [
     'payment_collections.payments.amount',
     'payment_collections.payments.captured_at',
     'payment_collections.payments.canceled_at',
+    // Refunds are a RELATION, not a scalar on the payment. Without this the
+    // console shows a fully refunded payment as money still received.
+    'payment_collections.payments.refunds.id',
+    'payment_collections.payments.refunds.amount',
+    'payment_collections.payments.refunds.created_at',
 ].join(',');
+
+/**
+ * How much of a payment has already been refunded.
+ *
+ * Medusa exposes this ONLY as a `refunds[]` relation on the payment; there is
+ * no `refunded_amount` scalar, and asking for one returns undefined however the
+ * fields list is written. Reading that non-existent scalar is what made every
+ * refunded payment look untouched: on production, 153 fully refunded payments
+ * each still offered their entire captured amount as refundable.
+ */
+export function paymentRefundedAmount(payment: any): number {
+    const refunds = Array.isArray(payment?.refunds) ? payment.refunds : [];
+    return refunds.reduce((n: number, r: any) => n + Number(r?.amount ?? 0), 0);
+}
 
 /** Order-level vendor (legacy single-vendor stamp; primary vendor post-P2A). */
 function vendorOf(o: any): string | null {
@@ -378,11 +406,14 @@ function mapDetail(o: any, vendorKey: string): VendorOrderDetail {
     const payments: VendorOrderPayment[] = [];
     for (const pc of (o.payment_collections ?? []) as any[]) {
         for (const p of (pc?.payments ?? []) as any[]) {
+            const refunded = paymentRefundedAmount(p);
             payments.push({
                 id: p.id,
                 amount: p.amount ?? null,
                 captured_at: p.captured_at ?? null,
                 canceled_at: p.canceled_at ?? null,
+                refunded_amount: refunded,
+                net_amount: Number(p.amount ?? 0) - refunded,
             });
         }
     }
@@ -610,7 +641,11 @@ async function assertVendorOrder(vendorKey: string, orderId: string): Promise<an
         'fulfillments.id,fulfillments.canceled_at,fulfillments.shipped_at,fulfillments.delivered_at,' +
         'fulfillments.items.line_item_id,fulfillments.items.quantity,' +
         'payment_collections.payments.id,payment_collections.payments.amount,' +
-        'payment_collections.payments.captured_at,payment_collections.payments.canceled_at';
+        'payment_collections.payments.captured_at,payment_collections.payments.canceled_at,' +
+        // Load-bearing for the refund guard below: without the refunds relation
+        // there is no way to know how much of a payment has already come back,
+        // and refundVendorOrder would offer the full captured amount again.
+        'payment_collections.payments.refunds.amount';
     const res = await adminFetch(
         `/admin/orders/${encodeURIComponent(orderId)}?fields=${encodeURIComponent(fields)}`,
     );
@@ -947,7 +982,11 @@ export async function refundVendorOrder(
     // Medusa amounts are decimal currency units, not minor units, so the
     // console's cents are converted once here rather than at each call site.
     const captured = Number(payment.amount ?? 0);
-    const alreadyRefunded = Number(payment.refunded_amount ?? 0);
+    // From the refunds RELATION. `payment.refunded_amount` does not exist in
+    // Medusa: it read undefined on every fetch, so this was permanently 0 and
+    // the guard below could never fire — a fully refunded payment still offered
+    // its whole captured amount again (153 such payments on production).
+    const alreadyRefunded = paymentRefundedAmount(payment);
     const refundable = Math.max(0, captured - alreadyRefunded);
     if (refundable <= 0) {
         return { ok: false, error: 'This payment has already been fully refunded.' };
