@@ -15,6 +15,7 @@ import {
     type ModuleOverrides,
 } from '@/lib/shop-modules';
 import { ShopSidebar } from './ShopSidebar';
+import { brandForSlug, brandStyle } from '@/lib/tenant-brand';
 
 const ACTIVE_SHOP_COOKIE = 'rollout_active_shop';
 
@@ -111,7 +112,7 @@ function ShopPendingGate({
                     ) : null}
                     <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
                         <a href="/shop/picker" className="btn btn-ghost">Switch shop</a>
-                        <a href="/" className="btn btn-ghost">Back to Rollout</a>
+                        <a href="/" className="btn btn-ghost">Back to the dashboard</a>
                     </div>
                 </div>
             </div>
@@ -174,8 +175,14 @@ export default async function ShopLayout({
     const shopTheme =
         cookieStore.get('rollout_shop_theme')?.value === 'light' ? 'light' : 'dark';
 
+    const brand = brandForSlug(shop.slug);
+    const brandCss = brandStyle(brand);
+
     return (
         <div className="shop-layout" data-theme={shopTheme}>
+            {/* Per-tenant accent. One variable override reskins buttons, active
+                nav, focus rings and eyebrows together, in both themes. */}
+            {brandCss ? <style dangerouslySetInnerHTML={{ __html: brandCss }} /> : null}
             <ShopSidebar
                 slug={shop.slug}
                 shopName={shop.name}

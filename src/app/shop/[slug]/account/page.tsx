@@ -106,7 +106,7 @@ export default async function AccountPage({
                 <div>
                     <div className="admin-page-title">MY ACCOUNT</div>
                     <div className="admin-page-sub">
-                        {shop.name.toUpperCase()} · YOUR ROLLOUT PROFILE
+                        {shop.name.toUpperCase()} · YOUR PROFILE
                     </div>
                 </div>
             </div>
@@ -201,7 +201,7 @@ export default async function AccountPage({
                     You're using an auto-generated handle (
                     <span style={{ color: 'var(--gold)' }}>@{handle}</span>).
                     Claim a real one below — it's how teammates and customers
-                    find you across Rollout.
+                    find you across the network.
                 </div>
             )}
 
