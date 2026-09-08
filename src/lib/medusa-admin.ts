@@ -448,37 +448,89 @@ function mapDetail(o: any, vendorKey: string): VendorOrderDetail {
  * metadata.vendor server-side (Medusa can't filter arbitrary metadata). Bounded
  * by MAX_SCAN so it never runs away as order volume grows.
  */
+/**
+ * One vendor's orders, newest first.
+ *
+ * This used to page the newest 1000 orders PLATFORM-WIDE and filter them here,
+ * which is invisible below 1000 total orders and silently lossy above it: a
+ * tenant's older orders would stop appearing with no error and no empty state,
+ * worst for a low-volume tenant whose orders are spread thinnest through the
+ * platform's history. Visibility must not depend on how busy OTHER shops are.
+ *
+ * Now the backend answers "which orders are this vendor's" (GET
+ * /admin/vendor-orders — Medusa's own order list cannot filter on metadata, and
+ * silently strips such a filter rather than refusing it), and this fetches
+ * exactly those by id. The work is bounded by the vendor's own order count.
+ *
+ * THE JS PREDICATE STAYS, and that is deliberate. orderHasVendorLine still runs
+ * over everything fetched, and anything failing it is dropped. The route
+ * narrows; it does not authorise. If it were ever wrong, or its predicate
+ * drifted from this one, a tenant would see fewer of their own orders — never
+ * somebody else's. The two were proved identical over all production orders
+ * before the switch, and this is the wall that keeps them honest afterwards.
+ */
 export async function listVendorOrders(
     vendorKey: string,
-): Promise<{ orders: VendorOrderListItem[]; error: string | null }> {
-    const PAGE = 100;
-    const MAX_SCAN = 1000;
-    const collected: any[] = [];
+    opts?: { limit?: number; offset?: number },
+): Promise<{
+    orders: VendorOrderListItem[];
+    error: string | null;
+    count: number;
+    hasMore: boolean;
+}> {
+    const limit = Math.min(Math.max(opts?.limit ?? 100, 1), 200);
+    const offset = Math.max(opts?.offset ?? 0, 0);
+
+    let orderIds: string[] = [];
+    let count = 0;
+    let hasMore = false;
     try {
-        let offset = 0;
-        let total = Infinity;
-        while (offset < total && offset < MAX_SCAN) {
-            const res = await adminFetch(
-                `/admin/orders?limit=${PAGE}&offset=${offset}&order=-display_id&fields=${encodeURIComponent(
-                    LIST_FIELDS,
-                )}`,
-            );
-            if (!res) return { orders: [], error: 'Store admin is unavailable right now.' };
-            if (!res.ok) return { orders: [], error: await errorMessage(res) };
-            const json = await res.json();
-            const batch: any[] = json?.orders ?? [];
-            collected.push(...batch);
-            total = Number(json?.count ?? batch.length);
-            if (batch.length < PAGE) break;
-            offset += PAGE;
+        const res = await adminFetch(
+            `/admin/vendor-orders?vendor=${encodeURIComponent(vendorKey)}&limit=${limit}&offset=${offset}`,
+        );
+        if (!res) {
+            return { orders: [], error: 'Store admin is unavailable right now.', count: 0, hasMore: false };
         }
+        if (!res.ok) {
+            return { orders: [], error: await errorMessage(res), count: 0, hasMore: false };
+        }
+        const json = await res.json();
+        orderIds = Array.isArray(json?.order_ids) ? json.order_ids.map(String) : [];
+        count = Number(json?.count ?? orderIds.length);
+        hasMore = Boolean(json?.has_more);
     } catch (e: any) {
-        return { orders: [], error: e?.message ?? 'Order lookup failed.' };
+        return { orders: [], error: e?.message ?? 'Order lookup failed.', count: 0, hasMore: false };
     }
+
+    if (orderIds.length === 0) {
+        return { orders: [], error: null, count, hasMore: false };
+    }
+
+    // Fetch exactly those orders. The admin list accepts an id array, so the
+    // field mapping below stays the only mapping there is.
+    const url = new URL(`${MEDUSA_URL}/admin/orders`);
+    url.searchParams.set('limit', String(orderIds.length));
+    url.searchParams.set('order', '-display_id');
+    url.searchParams.set('fields', LIST_FIELDS);
+    for (const id of orderIds) url.searchParams.append('id[]', id);
+
+    let collected: any[] = [];
+    try {
+        const res = await adminFetch(url.pathname + url.search);
+        if (!res) {
+            return { orders: [], error: 'Store admin is unavailable right now.', count, hasMore };
+        }
+        if (!res.ok) return { orders: [], error: await errorMessage(res), count, hasMore };
+        const json = await res.json();
+        collected = Array.isArray(json?.orders) ? json.orders : [];
+    } catch (e: any) {
+        return { orders: [], error: e?.message ?? 'Order lookup failed.', count, hasMore };
+    }
+
     const mine = collected
         .filter((o) => orderHasVendorLine(o, vendorKey))
         .map((o) => mapListItem(o, vendorKey));
-    return { orders: mine, error: null };
+    return { orders: mine, error: null, count, hasMore };
 }
 
 /**

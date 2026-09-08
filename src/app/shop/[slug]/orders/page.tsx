@@ -28,7 +28,13 @@ export default async function OrdersPage({
     const resolved = await getShopVendorBySlug(slug);
     if (!resolved) notFound();
 
-    const { orders, error } = await listVendorOrders(resolved.vendorKey);
+    // 200 is the route's cap. If a shop ever has more, the header says so
+    // rather than quietly showing a short list — silent truncation is the exact
+    // bug this whole change exists to remove, and reintroducing it one layer up
+    // would be a poor joke.
+    const { orders, error, count, hasMore } = await listVendorOrders(resolved.vendorKey, {
+        limit: 200,
+    });
 
     return (
         <>
@@ -36,8 +42,10 @@ export default async function OrdersPage({
                 <div>
                     <div className="admin-page-title">ORDERS</div>
                     <div className="admin-page-sub">
-                        {shop.name.toUpperCase()} · {orders.length} ORDER
-                        {orders.length === 1 ? '' : 'S'}
+                        {shop.name.toUpperCase()} ·{' '}
+                        {hasMore
+                            ? `NEWEST ${orders.length} OF ${count} ORDERS`
+                            : `${orders.length} ORDER${orders.length === 1 ? '' : 'S'}`}
                     </div>
                 </div>
             </div>
