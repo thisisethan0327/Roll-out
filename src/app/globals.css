@@ -2162,3 +2162,43 @@ h4 { font-size: 16px; letter-spacing: var(--track-wide); }
     font-size: 16px;
   }
 }
+
+/* Touch targets in the console.
+   At 390px the controls were far under the 44px a finger needs: SIGN OUT
+   68x13, SWITCH SHOP 113x13, the theme toggle 85x22, filter chips 27px tall
+   (run 10, lane G2). Small type is the console's register and worth keeping,
+   so the TEXT stays where it is and only the tappable box grows: padding and
+   min-height, not font-size.
+
+   Phone widths only. On a desk a 13px row is fine with a pointer, and
+   inflating the sidebar there would cost the density the console is built on. */
+@media (max-width: 900px) {
+  .admin-action-btn,
+  .admin-sidebar-signout,
+  .admin-sidebar-link,
+  .shop-theme-toggle,
+  .site-theme-toggle {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .admin-sidebar-link,
+  .admin-sidebar-signout {
+    justify-content: flex-start;
+    padding-top: 12px;
+    padding-bottom: 12px;
+  }
+
+  .admin-sidebar-foot a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+
+  .admin-action-btn {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+}
