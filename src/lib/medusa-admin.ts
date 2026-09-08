@@ -1106,3 +1106,115 @@ export async function cancelVendorOrder(
     if (!res || !res.ok) return { ok: false, error: await errorMessage(res) };
     return { ok: true };
 }
+
+// ── catalogue (vendor-scoped, read-only) ─────────────────────────────────────
+
+export type VendorProduct = {
+    id: string;
+    title: string;
+    handle: string | null;
+    thumbnail: string | null;
+    status: string;
+    /** metadata.paused — on the shelf but not purchasable. */
+    paused: boolean;
+    variantCount: number;
+    /** Cheapest variant price in minor units, or null when none is set. */
+    priceAmount: number | null;
+    currency: string | null;
+};
+
+/**
+ * A shop's catalogue, read through the ADMIN API.
+ *
+ * This used to read the STORE API with Rollout's publishable key, and that is
+ * why UNITY's console showed "no published products" for eleven published ones
+ * (2026-09-08). A publishable key is bound to a sales channel, and the Store
+ * API only returns products in that channel — UNITY's catalogue lives in the
+ * UNITY USA Storefront channel, which Rollout's key cannot see. The console
+ * already holds the platform admin credential for orders; the catalogue simply
+ * was not using it.
+ *
+ * Reading as admin also makes the list HONEST, which the store view could not
+ * be: drafts and paused products are invisible to the Store API by design, so a
+ * shop looking at its own catalogue could not see the items it most needed to
+ * find. Both now appear, labelled.
+ *
+ * SCOPING. Products carry no vendor stamp the way orders do, so the boundary is
+ * the shop's own Medusa categories, resolved from the AUTHENTICATED slug and
+ * never from anything the client sends. Every returned product is then checked
+ * to actually sit in one of those categories before it is returned — the query
+ * should guarantee that, and the check is there for the day it does not.
+ */
+export async function listVendorProducts(
+    categoryHandles: string[],
+): Promise<{ products: VendorProduct[]; error: string | null }> {
+    const handles = (categoryHandles ?? []).filter(Boolean);
+    if (handles.length === 0) return { products: [], error: null };
+
+    // 1. Handles → ids. Ask only for this shop's own categories.
+    const catUrl = new URL(`${MEDUSA_URL}/admin/product-categories`);
+    catUrl.searchParams.set('limit', '100');
+    catUrl.searchParams.set('fields', 'id,handle');
+    for (const h of handles) catUrl.searchParams.append('handle[]', h);
+    const catRes = await adminFetch(catUrl.pathname + catUrl.search);
+    if (!catRes) return { products: [], error: 'Store admin is unavailable right now.' };
+    if (!catRes.ok) return { products: [], error: await errorMessage(catRes) };
+    const catJson = await catRes.json();
+    const allowed = new Set<string>(
+        (catJson?.product_categories ?? []).map((c: any) => String(c.id)),
+    );
+    if (allowed.size === 0) return { products: [], error: null };
+
+    // 2. Products in those categories, every status.
+    const url = new URL(`${MEDUSA_URL}/admin/products`);
+    url.searchParams.set('limit', '200');
+    url.searchParams.set(
+        'fields',
+        'id,title,handle,thumbnail,status,metadata,categories.id,categories.handle,variants.id,variants.title,*variants.prices',
+    );
+    for (const id of allowed) url.searchParams.append('category_id[]', id);
+    const res = await adminFetch(url.pathname + url.search);
+    if (!res) return { products: [], error: 'Store admin is unavailable right now.' };
+    if (!res.ok) return { products: [], error: await errorMessage(res) };
+    const json = await res.json();
+
+    const products: VendorProduct[] = [];
+    for (const p of json?.products ?? []) {
+        // Defence in depth: never show a product that is not in one of this
+        // shop's own categories, whatever the query returned.
+        const cats = Array.isArray(p?.categories) ? p.categories : [];
+        if (!cats.some((c: any) => allowed.has(String(c?.id)))) continue;
+
+        const variants = Array.isArray(p?.variants) ? p.variants : [];
+        let priceAmount: number | null = null;
+        let currency: string | null = null;
+        for (const v of variants) {
+            for (const price of (v?.prices ?? []) as any[]) {
+                const amt = Number(price?.amount);
+                if (!Number.isFinite(amt)) continue;
+                if (priceAmount === null || amt < priceAmount) {
+                    priceAmount = amt;
+                    currency = String(price?.currency_code ?? '').toUpperCase() || null;
+                }
+            }
+        }
+
+        const meta = (p?.metadata ?? {}) as Record<string, unknown>;
+        const pausedRaw = meta.paused;
+        products.push({
+            id: String(p.id),
+            title: String(p.title ?? 'Untitled'),
+            handle: p.handle ?? null,
+            thumbnail: p.thumbnail ?? null,
+            status: String(p.status ?? 'unknown'),
+            // Tolerant of however the flag was written, matching the
+            // storefront's own isPaused (UNITY presentation.ts).
+            paused: pausedRaw === true || pausedRaw === 'true' || pausedRaw === 1 || pausedRaw === '1',
+            variantCount: variants.length,
+            priceAmount,
+            currency,
+        });
+    }
+    products.sort((a, b) => a.title.localeCompare(b.title));
+    return { products, error: null };
+}

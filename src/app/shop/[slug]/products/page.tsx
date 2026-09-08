@@ -12,7 +12,7 @@
 import { notFound } from 'next/navigation';
 import { requireShopMemberBySlug } from '@/lib/auth-guard';
 import { getSupabaseAdmin, getSupabasePublicAdmin } from '@/lib/supabase/admin';
-import { fetchCatalogByHandles, formatMedusaPrice } from '@/lib/medusa';
+import { listVendorProducts } from '@/lib/medusa-admin';
 import { ProductsManager } from './ProductsManager';
 
 export const metadata = { title: 'Products' };
@@ -83,7 +83,7 @@ export default async function ProductsPage({
 }
 
 async function MedusaCatalog({ handles }: { handles: string[] }) {
-    const { products, error } = await fetchCatalogByHandles(handles);
+    const { products, error } = await listVendorProducts(handles);
 
     return (
         <>
@@ -98,13 +98,14 @@ async function MedusaCatalog({ handles }: { handles: string[] }) {
                 }}
             >
                 This catalog is managed in the Medusa admin. Product and pricing
-                edits happen there; this view is read-only.
+                edits happen there; this view is read-only. Paused and draft
+                items are shown, so the list matches the catalog.
             </div>
 
             {error ? (
                 <div className="admin-empty">CATALOG UNAVAILABLE — {error.toUpperCase()}</div>
             ) : products.length === 0 ? (
-                <div className="admin-empty">NO PUBLISHED PRODUCTS IN THIS CATALOG YET</div>
+                <div className="admin-empty">NO PRODUCTS IN THIS CATALOG YET</div>
             ) : (
                 <div
                     style={{
@@ -140,7 +141,30 @@ async function MedusaCatalog({ handles }: { handles: string[] }) {
                                         color: 'var(--gold)',
                                     }}
                                 >
-                                    {formatMedusaPrice(p)}
+                                    {p.priceAmount != null
+                                        ? `${p.currency ? p.currency + ' ' : ''}${(p.priceAmount / 100).toFixed(2)}`
+                                        : 'NO PRICE SET'}
+                                </div>
+                                {/* The state a shop most needs to see about its
+                                    own catalogue, and precisely what the old
+                                    store-API read could not show: paused items
+                                    and drafts were invisible to it by design. */}
+                                <div
+                                    style={{
+                                        marginTop: 6,
+                                        display: 'flex',
+                                        gap: 8,
+                                        flexWrap: 'wrap',
+                                        fontSize: 10,
+                                        letterSpacing: '0.06em',
+                                        color: 'var(--text-3)',
+                                    }}
+                                >
+                                    {p.paused && <span style={{ color: 'var(--warn)' }}>PAUSED</span>}
+                                    {p.status !== 'published' && <span>{p.status.toUpperCase()}</span>}
+                                    <span>
+                                        {p.variantCount} VARIANT{p.variantCount === 1 ? '' : 'S'}
+                                    </span>
                                 </div>
                             </div>
                         </div>
