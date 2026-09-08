@@ -56,7 +56,8 @@ export function BrokerSignInButton({
                 {going ? 'TAKING YOU THERE…' : 'CONTINUE WITH YOUR ACCOUNT'}
             </button>
             <p className="admin-handle" style={{ fontSize: 10, marginTop: 6 }}>
-                Already signed in elsewhere in the House? This takes a second and asks for nothing.
+                Signed in on EMWRAPS, NeferStock or Rollout? This takes a second and
+                asks for nothing.
             </p>
         </div>
     );

@@ -22,7 +22,6 @@
  * loaded normally — no hash means this component is inert.
  */
 import { useEffect, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
 
 import { getSupabaseBrowser, isSupabaseConfigured } from '@/lib/supabase/browser';
 
@@ -45,7 +44,6 @@ function readAuthHash(hash: string): {
 }
 
 export function BrokerHashSession({ successPath }: { successPath: string }) {
-    const router = useRouter();
     const [phase, setPhase] = useState<Phase>('idle');
     const [message, setMessage] = useState<string | null>(null);
     const ran = useRef(false);
@@ -98,18 +96,23 @@ export function BrokerHashSession({ successPath }: { successPath: string }) {
                     setMessage(error.message);
                     return;
                 }
-                // The session now lives in cookies the server reads, so a normal
-                // navigation is enough — the shop layout's guard does the rest,
-                // including sending a non-member somewhere sensible.
-                router.replace(successPath);
-                router.refresh();
+                // A HARD navigation, not router.replace. The session now lives
+                // in cookies, and what happens next is a chain of server
+                // redirects — the middleware's host gating, then the shop
+                // layout's membership guard, which sends a non-member back here
+                // with ?error=not_member. Driving that through the client
+                // router swallowed the refusal: a valid account that was not a
+                // member of the shop landed back on a blank email form with
+                // nothing said, and stayed there (run 9, lane F). A document
+                // request lets every redirect and its query survive.
+                window.location.assign(successPath);
             } catch (e: any) {
                 strip();
                 setPhase('error');
                 setMessage(e?.message ?? 'Could not complete that sign-in.');
             }
         })();
-    }, [router, successPath]);
+    }, [successPath]);
 
     if (phase === 'idle') return null;
 

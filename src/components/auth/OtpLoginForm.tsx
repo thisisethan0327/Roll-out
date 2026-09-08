@@ -9,6 +9,27 @@
  * the Rollout branding).
  */
 import { useRef, useState } from 'react';
+
+/**
+ * Supabase's throttle message is written for a developer reading a log, not a
+ * person waiting to sign in: "For security purposes, you can only request this
+ * after 7 seconds." Keep the number — it is the only useful part — and say it
+ * the way the rest of the House does. Anything unrecognised keeps the
+ * provider's text rather than a vaguer guess, because a wrong friendly message
+ * is worse than a blunt accurate one.
+ */
+function signInErrorCopy(e: { message?: string; code?: string } | null | undefined): string {
+    const raw = e?.message ?? '';
+    const wait = raw.match(/after (\d+) seconds?/i);
+    if (wait) return `Give it ${wait[1]} seconds before asking for another code.`;
+    if (/over_email_send_rate_limit|rate limit/i.test(`${e?.code ?? ''} ${raw}`)) {
+        return 'Too many codes requested for now. Wait a few minutes and try again.';
+    }
+    if (/invalid|expired|token/i.test(raw)) {
+        return 'That code was wrong or has expired. Ask for a new one.';
+    }
+    return raw || 'Could not send the code. Try again.';
+}
 import { useRouter } from 'next/navigation';
 import { getSupabaseBrowser, isSupabaseConfigured } from '@/lib/supabase/browser';
 import { PendingButton } from '@/components/feedback';
@@ -120,7 +141,7 @@ export function OtpLoginForm({
                 },
             });
             if (error) {
-                setErr(error.message);
+                setErr(signInErrorCopy(error));
                 return;
             }
             setPhase('otp');
@@ -151,7 +172,7 @@ export function OtpLoginForm({
             });
             if (error) {
                 // Failure: wipe the entry and refocus so a retype starts clean.
-                setErr(error.message);
+                setErr(signInErrorCopy(error));
                 setOtp('');
                 requestAnimationFrame(() => otpInputRef.current?.focus());
                 return;
@@ -211,7 +232,7 @@ export function OtpLoginForm({
                     autoComplete="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="you@rollout.club"
+                    placeholder="you@example.com"
                     className="admin-login-input"
                     required
                 />
