@@ -12,6 +12,8 @@ import { requireShopMemberBySlug } from '@/lib/auth-guard';
 import { getShopVendorBySlug } from '@/lib/store-shops';
 import { listVendorOrders } from '@/lib/medusa-admin';
 import { OrdersList } from './OrdersList';
+import { SHOPS_WITH_OWN_ADMIN } from '@/lib/tenant-hosts';
+import { ManagedElsewhereNotice } from '../ManagedElsewhereNotice';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Orders' };
@@ -46,6 +48,10 @@ export default async function OrdersPage({
     ).length;
     const openCount = orders.length - archivedCount;
 
+    // Read-only for a shop with its own admin — say where, rather than leaving
+    // the actions quietly absent.
+    const managedElsewhere = SHOPS_WITH_OWN_ADMIN[slug] ?? null;
+
     return (
         <>
             <div className="admin-page-head">
@@ -61,6 +67,10 @@ export default async function OrdersPage({
                     </div>
                 </div>
             </div>
+
+            {managedElsewhere ? (
+                <ManagedElsewhereNotice adminUrl={managedElsewhere} what="orders" />
+            ) : null}
 
             {error ? (
                 <div className="admin-empty">ORDERS UNAVAILABLE — {error.toUpperCase()}</div>

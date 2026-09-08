@@ -17,6 +17,7 @@ import { listVendorProducts } from '@/lib/medusa-admin';
 import { fmtMoney } from '../orders/ui';
 import { ProductsManager } from './ProductsManager';
 import { SHOPS_WITH_OWN_ADMIN } from '@/lib/tenant-hosts';
+import { ManagedElsewhereNotice } from '../ManagedElsewhereNotice';
 
 export const metadata = { title: 'Products' };
 
@@ -77,7 +78,7 @@ export default async function ProductsPage({
             </div>
 
             {medusaBacked ? (
-                <MedusaCatalog handles={handles} />
+                <MedusaCatalog handles={handles} adminUrl={SHOPS_WITH_OWN_ADMIN[slug] ?? null} />
             ) : (
                 <ProductsManager
                     slug={slug}
@@ -91,11 +92,22 @@ export default async function ProductsPage({
     );
 }
 
-async function MedusaCatalog({ handles }: { handles: string[] }) {
+async function MedusaCatalog({
+    handles,
+    adminUrl,
+}: {
+    handles: string[];
+    /** The shop's own admin, when it has one — see SHOPS_WITH_OWN_ADMIN. */
+    adminUrl: string | null;
+}) {
     const { products, error } = await listVendorProducts(handles);
 
     return (
         <>
+            {adminUrl ? (
+                <ManagedElsewhereNotice adminUrl={adminUrl} what="its catalogue" />
+            ) : null}
+
             <div
                 style={{
                     border: '1px solid var(--line)',
@@ -106,9 +118,12 @@ async function MedusaCatalog({ handles }: { handles: string[] }) {
                     color: 'var(--text-2)',
                 }}
             >
-                This catalog is managed in the Medusa admin. Product and pricing
-                edits happen there; this view is read-only. Paused and draft
-                items are shown, so the list matches the catalog.
+                {/* Pointing a shop with its own admin at "the Medusa admin" sends
+                    it to the wrong place — that is the platform's console, not
+                    theirs. The notice above already named the right door. */}
+                {adminUrl
+                    ? 'Paused and draft items are shown, so the list matches the catalog.'
+                    : 'This catalog is managed in the Medusa admin. Product and pricing edits happen there; this view is read-only. Paused and draft items are shown, so the list matches the catalog.'}
             </div>
 
             {error ? (

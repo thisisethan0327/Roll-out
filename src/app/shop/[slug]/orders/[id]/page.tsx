@@ -15,6 +15,7 @@ import { getVendorOrder } from '@/lib/medusa-admin';
 import { fmtMoney, fmtDate, maskEmail, StatusChip } from '../ui';
 import { OrderActions } from './OrderActions';
 import { SHOPS_WITH_OWN_ADMIN } from '@/lib/tenant-hosts';
+import { ManagedElsewhereNotice } from '../../ManagedElsewhereNotice';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Order' };
@@ -119,30 +120,7 @@ export default async function OrderDetailPage({
 
             {/* ACTIONS */}
             {managedElsewhere ? (
-                <div
-                    style={{
-                        border: '1px solid var(--line)',
-                        padding: 14,
-                        fontSize: 12,
-                        display: 'flex',
-                        flexWrap: 'wrap',
-                        alignItems: 'center',
-                        gap: 10,
-                        justifyContent: 'space-between',
-                    }}
-                >
-                    <span className="admin-handle">
-                        This shop manages its orders in its own admin.
-                    </span>
-                    <a
-                        href={managedElsewhere}
-                        target="_blank"
-                        rel="noreferrer"
-                        style={{ textDecoration: 'underline', color: 'var(--text)' }}
-                    >
-                        Open the admin
-                    </a>
-                </div>
+                <ManagedElsewhereNotice adminUrl={managedElsewhere} what="orders" />
             ) : canManage ? (
                 <OrderActions
                     slug={slug}
