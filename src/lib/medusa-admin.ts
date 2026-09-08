@@ -179,6 +179,13 @@ export type VendorOrderDetail = {
     shipping_total: number | null;
     tax_total: number | null;
     discount_total: number | null;
+    /**
+     * True when every line on the order is this vendor's, so the order-level
+     * figures above are theirs in full. False on a shared order, where they
+     * are null because none of it is attributably theirs — the distinction a
+     * bare '—' cannot make.
+     */
+    is_whole_order: boolean;
     items: VendorOrderItem[];
     shipping_address: VendorOrderAddress | null;
     shipping_method: { name: string | null; amount: number | null } | null;
@@ -381,12 +388,26 @@ function mapAddress(a: any): VendorOrderAddress | null {
 }
 
 /**
- * Detail projection SCOPED to a vendor. Shows ONLY this vendor's line items and
- * their subtotal (sum of their line totals). Order-level shipping/tax/discount
- * are intentionally omitted (they belong to the whole shared order, not one
- * vendor's slice) and render as '—'; the platform (P2B) owns the whole-order
- * view. Fulfillments are filtered to those covering this vendor's lines, and
- * fulfillment status is derived from this vendor's lines only.
+ * Detail projection SCOPED to a vendor: only this vendor's line items, and
+ * fulfillments filtered to those covering them.
+ *
+ * ORDER-LEVEL MONEY. Shipping, tax and discount are not attributable to one
+ * vendor when an order carries several — that reasoning is sound, and for a
+ * mixed order they stay null and render as '—', with the platform owning the
+ * whole-order view.
+ *
+ * But it was being applied to EVERY order. On production 155 of 179 orders
+ * carry exactly one vendor and exactly 1 is genuinely mixed — so a rule that
+ * exists for one order was suppressing the shipping and tax on the 155 where
+ * the whole order IS that vendor's and every penny of it is theirs ($3,131 of
+ * shipping charged across them). A tenant could not reconcile even a
+ * single-vendor order against what the customer actually paid.
+ *
+ * So: when the order is wholly this vendor's, the real order-level figures are
+ * passed through and `total` is the ORDER total. When it is shared, they stay
+ * null and `total` remains the vendor's line subtotal. `is_whole_order` says
+ * which of the two a caller is looking at, so a UI never has to guess whether a
+ * '—' means zero or means not-attributable.
  */
 function mapDetail(o: any, vendorKey: string): VendorOrderDetail {
     const lines = vendorLines(o, vendorKey);
@@ -402,6 +423,10 @@ function mapDetail(o: any, vendorKey: string): VendorOrderDetail {
     }));
 
     const theirSubtotal = lines.reduce((n: number, it: any) => n + Number(it?.total ?? 0), 0);
+
+    // Wholly this vendor's order? Then order-level money is entirely theirs.
+    const allItems = Array.isArray(o.items) ? o.items : [];
+    const isWholeOrder = allItems.length > 0 && lines.length === allItems.length;
 
     const payments: VendorOrderPayment[] = [];
     for (const pc of (o.payment_collections ?? []) as any[]) {
@@ -455,13 +480,15 @@ function mapDetail(o: any, vendorKey: string): VendorOrderDetail {
         fulfillment_status: deriveVendorFulfillmentStatus(o, lines),
         currency_code: o.currency_code ?? null,
         created_at: o.created_at ?? null,
-        // Per-vendor slice: total == their subtotal; order-level shipping/tax are
-        // not attributable to one vendor here (shown as '—').
-        total: theirSubtotal,
-        item_subtotal: theirSubtotal,
-        shipping_total: null,
-        tax_total: null,
-        discount_total: null,
+        // Whole order theirs: the real totals, so the row reconciles against
+        // what the customer paid. Shared order: their slice only, with the
+        // order-level amounts left null because none of it is attributably theirs.
+        total: isWholeOrder ? Number(o.total ?? theirSubtotal) : theirSubtotal,
+        item_subtotal: isWholeOrder ? Number(o.item_subtotal ?? theirSubtotal) : theirSubtotal,
+        shipping_total: isWholeOrder ? Number(o.shipping_total ?? 0) : null,
+        tax_total: isWholeOrder ? Number(o.tax_total ?? 0) : null,
+        discount_total: isWholeOrder ? Number(o.discount_total ?? 0) : null,
+        is_whole_order: isWholeOrder,
         items,
         shipping_address: mapAddress(o.shipping_address),
         shipping_method: null,
