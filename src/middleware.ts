@@ -34,8 +34,21 @@ function isAlwaysAllowed(pathname: string): boolean {
     );
 }
 
-function gateTenantHost(request: NextRequest, slug: string, landing: string) {
+function gateTenantHost(
+    request: NextRequest,
+    slug: string,
+    landing: string,
+    movedTo?: string,
+) {
     const { pathname, search } = request.nextUrl;
+
+    // The tenant has their own admin now: this host only carries old links
+    // there. 308 rather than 302 so it is cached and the method is preserved,
+    // and EVERY path goes to the admin root — the two consoles do not share a
+    // URL shape, so mapping paths across would invent links that do not exist.
+    // Deliberately ahead of isAlwaysAllowed: once a door is closed, it is
+    // closed for sign-in callbacks too, which now belong to the new admin.
+    if (movedTo) return NextResponse.redirect(movedTo, 308);
 
     if (isAlwaysAllowed(pathname)) return null;
 
@@ -66,7 +79,7 @@ export async function middleware(request: NextRequest) {
     const tenant = tenantForHost(request.headers.get('host'));
 
     if (tenant) {
-        const gated = gateTenantHost(request, tenant.slug, tenant.landing);
+        const gated = gateTenantHost(request, tenant.slug, tenant.landing, tenant.movedTo);
         if (gated) return gated;
     }
 

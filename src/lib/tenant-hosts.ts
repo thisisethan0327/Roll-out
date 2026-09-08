@@ -20,6 +20,13 @@ export type TenantHost = {
     slug: string;
     /** Where "/" lands on this host. */
     landing: string;
+    /**
+     * The tenant's OWN admin, once they have one. Set, and this host stops
+     * serving a console entirely and permanently redirects there instead — the
+     * entry is kept only so the old door still leads somewhere, rather than
+     * being deleted and leaving every bookmark at a dead host.
+     */
+    movedTo?: string;
 };
 
 /**
@@ -30,8 +37,21 @@ export type TenantHost = {
 export const ROLLOUT_ORIGIN = 'https://rollout.club';
 
 export const TENANT_ADMIN_HOSTS: Record<string, TenantHost> = {
-    'admin.unityusa.co': { slug: 'unityusa', landing: '/shop/unityusa/overview' },
+    // UNITY runs its own admin at unityusa.co/admin now. This host exists only
+    // to carry old links there.
+    'admin.unityusa.co': {
+        slug: 'unityusa',
+        landing: '/shop/unityusa/overview',
+        movedTo: 'https://unityusa.co/admin',
+    },
 };
+
+/** Shops that have their own admin elsewhere — see `movedTo`. */
+export const SHOPS_WITH_OWN_ADMIN: Record<string, string> = Object.fromEntries(
+    Object.values(TENANT_ADMIN_HOSTS)
+        .filter((t) => !!t.movedTo)
+        .map((t) => [t.slug, t.movedTo as string]),
+);
 
 /** The tenant this request's host belongs to, or null for Rollout proper. */
 export function tenantForHost(host: string | null | undefined): TenantHost | null {

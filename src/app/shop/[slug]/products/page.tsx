@@ -16,6 +16,7 @@ import { getSupabaseAdmin, getSupabasePublicAdmin } from '@/lib/supabase/admin';
 import { listVendorProducts } from '@/lib/medusa-admin';
 import { fmtMoney } from '../orders/ui';
 import { ProductsManager } from './ProductsManager';
+import { SHOPS_WITH_OWN_ADMIN } from '@/lib/tenant-hosts';
 
 export const metadata = { title: 'Products' };
 
@@ -78,7 +79,13 @@ export default async function ProductsPage({
             {medusaBacked ? (
                 <MedusaCatalog handles={handles} />
             ) : (
-                <ProductsManager slug={slug} products={inventory} callerRole={role} />
+                <ProductsManager
+                    slug={slug}
+                    products={inventory}
+                    // Read-only for a shop with its own admin: the server
+                    // action refuses these too, this only stops offering them.
+                    callerRole={SHOPS_WITH_OWN_ADMIN[slug] ? 'viewer' : role}
+                />
             )}
         </>
     );

@@ -7,10 +7,17 @@
 import { revalidatePath } from 'next/cache';
 import { requireShopMember } from '@/lib/auth-guard';
 import { getSupabaseAdmin, getSupabasePublicAdmin } from '@/lib/supabase/admin';
+import { SHOPS_WITH_OWN_ADMIN } from '@/lib/tenant-hosts';
 
 const MANAGER_ROLES = new Set(['owner', 'admin', 'manager']);
 
 async function guard(slug: string) {
+    // A shop that runs its own admin edits its catalogue there. Scoped to those
+    // shops rather than blanket read-only: this console also serves NeferStock
+    // and divine, who have nowhere else to do it.
+    const movedTo = SHOPS_WITH_OWN_ADMIN[slug];
+    if (movedTo) throw new Error(`This shop manages its catalogue at ${movedTo}.`);
+
     const admin = getSupabaseAdmin();
     const { data } = await admin.from('shops').select('id').eq('slug', slug).maybeSingle();
     const shopId = (data as any)?.id;

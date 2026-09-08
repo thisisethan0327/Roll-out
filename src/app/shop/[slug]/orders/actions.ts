@@ -12,6 +12,7 @@ import { revalidatePath } from 'next/cache';
 import { requireShopMember } from '@/lib/auth-guard';
 import { resolveShopSlug } from '@/lib/auth-guard';
 import { getShopVendorBySlug } from '@/lib/store-shops';
+import { SHOPS_WITH_OWN_ADMIN } from '@/lib/tenant-hosts';
 import {
     createFulfillmentWithTracking,
     markFulfillmentDelivered,
@@ -76,6 +77,26 @@ function denied(g: Guarded): g is { denied: ActionResult } {
 async function guard(slug: string, tier: 'manage' | 'money', what: string): Promise<Guarded> {
     const shop = await resolveShopSlug(slug);
     if (!shop) return { denied: { ok: false, error: 'Shop not found.' } };
+
+    // A shop that runs its own admin does its order management THERE. Two
+    // consoles both able to fulfil, refund and cancel the same order is a way
+    // to have the same thing done twice, and the tenant's own admin is the one
+    // with their staff roster behind it. Read stays open here; writes move.
+    //
+    // Scoped to shops that actually have another admin — deliberately NOT a
+    // blanket read-only on this console, which also serves NeferStock and
+    // divine, who have nowhere else to fulfil an order from.
+    const movedTo = SHOPS_WITH_OWN_ADMIN[slug];
+    if (movedTo) {
+        console.warn(`[console-orders] ${slug}: ${what} refused — shop manages orders at ${movedTo}.`);
+        return {
+            denied: {
+                ok: false,
+                error: `${shop.name} manages orders in its own admin. Open ${movedTo} to ${what}.`,
+            },
+        };
+    }
+
     const { role } = await requireShopMember(shop.shopId);
     const allowed = tier === 'money' ? MONEY_ROLES : MANAGE_ROLES;
     if (!allowed.has(role)) {
@@ -96,11 +117,26 @@ async function guard(slug: string, tier: 'manage' | 'money', what: string): Prom
  */
 export async function orderPermissions(
     slug: string,
-): Promise<{ role: string; canManage: boolean; canMoney: boolean }> {
+): Promise<{ role: string; canManage: boolean; canMoney: boolean; managedElsewhere: string | null }> {
     const shop = await resolveShopSlug(slug);
-    if (!shop) return { role: 'none', canManage: false, canMoney: false };
+    if (!shop) return { role: 'none', canManage: false, canMoney: false, managedElsewhere: null };
+
+    const movedTo = SHOPS_WITH_OWN_ADMIN[slug] ?? null;
+    if (movedTo) {
+        // Nothing is manageable from here, whatever the member's role — so the
+        // UI shows the orders and points at the admin instead of offering
+        // buttons that the guard above would refuse.
+        const { role } = await requireShopMember(shop.shopId);
+        return { role, canManage: false, canMoney: false, managedElsewhere: movedTo };
+    }
+
     const { role } = await requireShopMember(shop.shopId);
-    return { role, canManage: MANAGE_ROLES.has(role), canMoney: MONEY_ROLES.has(role) };
+    return {
+        role,
+        canManage: MANAGE_ROLES.has(role),
+        canMoney: MONEY_ROLES.has(role),
+        managedElsewhere: null,
+    };
 }
 
 function revalidate(slug: string, orderId: string) {

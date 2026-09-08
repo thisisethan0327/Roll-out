@@ -14,6 +14,7 @@ import { getShopVendorBySlug } from '@/lib/store-shops';
 import { getVendorOrder } from '@/lib/medusa-admin';
 import { fmtMoney, fmtDate, maskEmail, StatusChip } from '../ui';
 import { OrderActions } from './OrderActions';
+import { SHOPS_WITH_OWN_ADMIN } from '@/lib/tenant-hosts';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Order' };
@@ -55,8 +56,11 @@ export default async function OrderDetailPage({
     if (!o) notFound();
 
     const cur = o.currency_code;
-    const canManage = MANAGE_ROLES.has(role);
-    const canMoney = MONEY_ROLES.has(role);
+    // A shop with its own admin manages orders there; this stays a read. The
+    // server action refuses these too — hidden is not the same as forbidden.
+    const managedElsewhere = SHOPS_WITH_OWN_ADMIN[slug] ?? null;
+    const canManage = !managedElsewhere && MANAGE_ROLES.has(role);
+    const canMoney = !managedElsewhere && MONEY_ROLES.has(role);
     const addr = o.shipping_address;
     const addrLines = addr
         ? [
@@ -114,7 +118,32 @@ export default async function OrderDetailPage({
             </div>
 
             {/* ACTIONS */}
-            {canManage ? (
+            {managedElsewhere ? (
+                <div
+                    style={{
+                        border: '1px solid var(--line)',
+                        padding: 14,
+                        fontSize: 12,
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        alignItems: 'center',
+                        gap: 10,
+                        justifyContent: 'space-between',
+                    }}
+                >
+                    <span className="admin-handle">
+                        This shop manages its orders in its own admin.
+                    </span>
+                    <a
+                        href={managedElsewhere}
+                        target="_blank"
+                        rel="noreferrer"
+                        style={{ textDecoration: 'underline', color: 'var(--text)' }}
+                    >
+                        Open the admin
+                    </a>
+                </div>
+            ) : canManage ? (
                 <OrderActions
                     slug={slug}
                     orderId={o.id}
