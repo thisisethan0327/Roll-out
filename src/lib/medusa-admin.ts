@@ -707,25 +707,31 @@ export async function createFulfillmentWithTracking(
         /* fall through */
     }
     if (!fulfillmentId) {
-        // Fulfilled, but we couldn't attach tracking automatically.
+        // The POST response did not name the fulfilment it just made. Rather
+        // than give up and tell an operator to open an admin they cannot reach,
+        // ask the order what fulfilments it now has — that answer does not
+        // depend on the create response's field selection.
+        fulfillmentId = await newestUnshippedFulfillmentId(vendorKey, orderId);
+    }
+    if (!fulfillmentId) {
+        console.error(
+            `[console-orders] ${vendorKey} ${orderId}: fulfilment created but could not be identified; tracking not attached.`,
+        );
         return {
             ok: true,
-            error: 'Fulfillment created, but the tracking number could not be attached — add it in the Medusa admin.',
+            error: 'The order was fulfilled, but the tracking number could not be attached. Try Add tracking on this order.',
         };
     }
 
-    const trackingUrl = carrierTrackingUrl(carrier, trackingNumber);
-    const label: any = { tracking_number: trackingNumber.trim() };
-    if (trackingUrl) label.tracking_url = trackingUrl;
-
-    const sRes = await adminFetch(
-        `/admin/orders/${encodeURIComponent(orderId)}/fulfillments/${fulfillmentId}/shipments`,
-        { method: 'POST', body: JSON.stringify({ items, labels: [label] }) },
-    );
+    const sRes = await attachShipment(orderId, fulfillmentId, items, trackingNumber, carrier);
     if (!sRes || !sRes.ok) {
+        const message = await errorMessage(sRes);
+        console.error(
+            `[console-orders] ${vendorKey} ${orderId}: fulfilment ${fulfillmentId} created, shipment failed — ${message}`,
+        );
         return {
             ok: true,
-            error: `Fulfillment created, but marking it shipped with tracking failed: ${await errorMessage(sRes)}`,
+            error: `The order was fulfilled, but attaching the tracking number failed: ${message}. Use Add tracking to retry.`,
         };
     }
     return { ok: true };
@@ -735,6 +741,108 @@ export async function createFulfillmentWithTracking(
  * Mark a shipped fulfillment as delivered. Uses the newest non-canceled
  * fulfillment on the order.
  */
+
+/**
+ * Attach a tracking label to a fulfilment and mark it shipped.
+ *
+ * label_url is REQUIRED by Medusa and was never being sent, so every attempt
+ * came back 400 "Field 'labels, 0, label_url' is required" — and the caller
+ * folded that into a sentence telling the operator to fix it in an admin they
+ * have no access to, while logging nothing. An order would sit PACKED with no
+ * tracking and no trace of why (run 9, lane D).
+ *
+ * There is no real label file to point at: tracking is typed in by hand, not
+ * bought through a carrier here. The tracking URL doubles as the label URL,
+ * which is honest — it is where a human goes to see the parcel — and satisfies
+ * the schema without inventing a fake document.
+ */
+async function attachShipment(
+    orderId: string,
+    fulfillmentId: string,
+    items: { id: string; quantity: number }[],
+    trackingNumber: string,
+    carrier: string,
+): Promise<Response | null> {
+    const tracking = trackingNumber.trim();
+    const trackingUrl = carrierTrackingUrl(carrier, tracking) || undefined;
+    const label: Record<string, string> = { tracking_number: tracking };
+    if (trackingUrl) {
+        label.tracking_url = trackingUrl;
+        label.label_url = trackingUrl;
+    } else {
+        // No carrier URL pattern: still satisfy the schema with the number
+        // itself rather than failing the whole shipment over a link.
+        label.tracking_url = tracking;
+        label.label_url = tracking;
+    }
+    return adminFetch(
+        `/admin/orders/${encodeURIComponent(orderId)}/fulfillments/${fulfillmentId}/shipments`,
+        { method: 'POST', body: JSON.stringify({ items, labels: [label] }) },
+    );
+}
+
+/** The newest fulfilment covering this vendor's lines that has not shipped. */
+async function newestUnshippedFulfillmentId(
+    vendorKey: string,
+    orderId: string,
+): Promise<string | null> {
+    const o = await assertVendorOrder(vendorKey, orderId);
+    if (!o) return null;
+    const theirLineIds = new Set(vendorLines(o, vendorKey).map((it: any) => it.id));
+    const candidates = (Array.isArray(o.fulfillments) ? o.fulfillments : []).filter(
+        (f: any) =>
+            !f?.canceled_at &&
+            !f?.shipped_at &&
+            (Array.isArray(f?.items) ? f.items : []).some((fi: any) =>
+                theirLineIds.has(fi?.line_item_id),
+            ),
+    );
+    return candidates.length ? (candidates[candidates.length - 1]?.id ?? null) : null;
+}
+
+/**
+ * Add tracking to an order already fulfilled but not shipped.
+ *
+ * The retry the console had no way to offer. Before this, a fulfilment whose
+ * label failed left staff with an empty actions panel and an order stuck at
+ * PACKED — the one state they could neither finish nor undo without an admin
+ * login they are not meant to have.
+ */
+export async function shipVendorFulfillment(
+    vendorKey: string,
+    orderId: string,
+    trackingNumber: string,
+    carrier: string,
+): Promise<ActionResult> {
+    if (!trackingNumber || !trackingNumber.trim()) {
+        return { ok: false, error: 'A tracking number is required.' };
+    }
+    const o = await assertVendorOrder(vendorKey, orderId);
+    if (!o) return { ok: false, error: 'Order not found for this shop.' };
+
+    const fulfillmentId = await newestUnshippedFulfillmentId(vendorKey, orderId);
+    if (!fulfillmentId) {
+        return { ok: false, error: 'Nothing on this order is waiting to be shipped.' };
+    }
+
+    const items = vendorLines(o, vendorKey)
+        .map((it: any) => ({
+            id: it.id,
+            quantity: Number(it?.detail?.quantity ?? it?.quantity ?? 0),
+        }))
+        .filter((x: any) => x.quantity > 0);
+
+    const res = await attachShipment(orderId, fulfillmentId, items, trackingNumber, carrier);
+    if (!res || !res.ok) {
+        const message = await errorMessage(res);
+        console.error(
+            `[console-orders] ${vendorKey} ${orderId}: attaching tracking failed — ${message}`,
+        );
+        return { ok: false, error: `Could not attach the tracking number: ${message}` };
+    }
+    return { ok: true };
+}
+
 export async function markFulfillmentDelivered(
     vendorKey: string,
     orderId: string,

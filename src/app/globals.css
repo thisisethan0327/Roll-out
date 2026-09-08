@@ -2147,3 +2147,18 @@ h4 { font-size: 16px; letter-spacing: var(--track-wide); }
   outline: 2px solid var(--gold);
   outline-offset: 2px;
 }
+
+/* ── iOS zoom guard for console inputs ─────────────────────────────────────
+   Safari on iOS zooms the whole page when a focused input's text is under
+   16px, which on the order detail threw the layout around every time somebody
+   tapped the tracking box (run 9, lane B: carrier 14px, tracking 14px, refund
+   13.33px). The storefront already holds this line; the console did not.
+   16px only at phone widths, so the desk layout keeps its denser type. */
+@media (max-width: 900px) {
+  .admin-form-input,
+  .admin-login-input,
+  select.admin-form-input,
+  textarea.admin-form-input {
+    font-size: 16px;
+  }
+}

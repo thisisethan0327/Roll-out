@@ -17,6 +17,7 @@ import {
     markFulfillmentDelivered,
     captureOrderPayment,
     cancelVendorOrder,
+    shipVendorFulfillment,
     refundVendorOrder,
     completeVendorOrder,
     type ActionResult,
@@ -105,6 +106,23 @@ export async function fulfillOrderAction(
         trackingNumber,
         carrier,
     );
+    if (result.ok) revalidate(slug, orderId);
+    return result;
+}
+
+/**
+ * Add tracking to an order that is fulfilled but not shipped — the retry for a
+ * label that failed to attach. MANAGE tier: it moves the order forward and
+ * touches no money.
+ */
+export async function shipOrderAction(
+    slug: string,
+    orderId: string,
+    trackingNumber: string,
+    carrier: string,
+): Promise<ActionResult> {
+    const { vendorKey } = await guard(slug, 'manage', 'add tracking');
+    const result = await shipVendorFulfillment(vendorKey, orderId, trackingNumber, carrier);
     if (result.ok) revalidate(slug, orderId);
     return result;
 }

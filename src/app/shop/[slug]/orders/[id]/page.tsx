@@ -123,6 +123,9 @@ export default async function OrderDetailPage({
                     fulfillmentStatus={o.fulfillment_status}
                     hasAuthorizedPayment={o.hasAuthorizedPayment}
                     hasUnfulfilledItems={o.hasUnfulfilledItems}
+                    hasUnshippedFulfillment={o.fulfillments.some(
+                        (f) => !f.canceled_at && !f.shipped_at,
+                    )}
                     canMoney={canMoney}
                     role={role}
                 />

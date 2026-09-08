@@ -19,6 +19,7 @@ import { useState, useTransition, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { PendingButton } from '@/components/feedback';
 import {
+    shipOrderAction,
     fulfillOrderAction,
     markDeliveredAction,
     capturePaymentAction,
@@ -43,6 +44,8 @@ type Props = {
     fulfillmentStatus: string | null;
     hasAuthorizedPayment: boolean;
     hasUnfulfilledItems: boolean;
+    /** Fulfilled but not shipped — tracking can still be attached. */
+    hasUnshippedFulfillment: boolean;
     /** Owner/admin/manager: may move money and end the order. */
     canMoney: boolean;
     role: string;
@@ -56,6 +59,7 @@ export function OrderActions({
     fulfillmentStatus,
     hasAuthorizedPayment,
     hasUnfulfilledItems,
+    hasUnshippedFulfillment,
     canMoney,
     role,
 }: Props) {
@@ -79,6 +83,15 @@ export function OrderActions({
     const ful = (fulfillmentStatus ?? '').toLowerCase();
     const isShipped = ['shipped', 'partially_shipped', 'delivered'].includes(ful);
     const isDelivered = ful === 'delivered';
+    /**
+     * Deliverable once the goods have left, and "fulfilled" counts. Gating this
+     * on shipped alone meant a fulfilment whose tracking failed to attach could
+     * never be marked delivered — the actions panel was empty but for the role
+     * sentence, and the only way on was an admin login staff are not meant to
+     * have (run 9, lane D).
+     */
+    const canDeliver =
+        !isDelivered && (isShipped || ful === 'fulfilled' || ful === 'partially_fulfilled');
     const isCompleted = (status ?? '').toLowerCase() === 'completed';
     const pay = (paymentStatus ?? '').toLowerCase();
     const refunded = pay === 'refunded' || pay === 'partially_refunded';
@@ -191,8 +204,60 @@ export function OrderActions({
                 </div>
             )}
 
+            {/* Add tracking — a fulfilment exists but never shipped, usually
+                because attaching the label failed. Without this the order sat
+                at PACKED and staff had no way forward at all. */}
+            {!hasUnfulfilledItems && hasUnshippedFulfillment && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <div style={{ fontSize: 12, color: 'var(--text-2)' }}>
+                        Fulfilled but not shipped — add tracking to send it
+                    </div>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                        <select
+                            className="admin-form-input"
+                            value={carrier}
+                            onChange={(e) => setCarrier(e.target.value)}
+                            style={{ width: 120 }}
+                            disabled={pending}
+                        >
+                            {CARRIERS.map((c) => (
+                                <option key={c.value} value={c.value}>
+                                    {c.label}
+                                </option>
+                            ))}
+                        </select>
+                        <input
+                            className="admin-form-input"
+                            placeholder="Tracking number"
+                            value={trackingNumber}
+                            onChange={(e) => setTrackingNumber(e.target.value)}
+                            style={{ flex: 1, minWidth: 180 }}
+                            disabled={pending}
+                        />
+                        <PendingButton
+                            type="button"
+                            className="admin-action-btn"
+                            pending={pending}
+                            pendingLabel="SENDING"
+                            onClick={() => {
+                                if (!trackingNumber.trim()) {
+                                    setMsg({ kind: 'err', text: 'Enter a tracking number first.' });
+                                    return;
+                                }
+                                run(
+                                    () => shipOrderAction(slug, orderId, trackingNumber, carrier),
+                                    'Tracking added and the order marked shipped.',
+                                );
+                            }}
+                        >
+                            ADD TRACKING
+                        </PendingButton>
+                    </div>
+                </div>
+            )}
+
             {/* Mark delivered */}
-            {isShipped && !isDelivered && (
+            {canDeliver && (
                 <div>
                     <PendingButton
                         type="button"
