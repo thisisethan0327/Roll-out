@@ -4,6 +4,7 @@ import { requireShopMember } from '@/lib/auth-guard';
 import { getSupabaseAdmin, getSupabasePublicAdmin } from '@/lib/supabase/admin';
 import { getSupabaseServer } from '@/lib/supabase/server';
 import { sendPlatformNotification } from '@/lib/platform-notify';
+import { consoleUrlForShop } from '@/lib/tenant-hosts';
 
 const OWNER_ROLES = new Set(['owner']);
 const VALID_ROLES = new Set(['owner', 'admin', 'manager', 'installer', 'staff']);
@@ -61,9 +62,14 @@ export async function inviteStaffByEmail(
     const admin = getSupabaseAdmin();
     const publicAdmin = getSupabasePublicAdmin();
     const displayFallback = email.split('@')[0];
+    // Where an invited staff member lands after accepting. A shop with its own
+    // admin door gets that door, not Rollout — being invited to work at UNITY
+    // and arriving on rollout.club is the exact confusion the separate host
+    // exists to prevent. The host must also be in Supabase's redirect allowlist
+    // (admin.unityusa.co/** is).
     const originBase = (process.env.NEXT_PUBLIC_SUPABASE_URL ?? '').includes('localhost')
         ? 'http://localhost:3000'
-        : 'https://rollout.club';
+        : consoleUrlForShop(slug);
 
     // ── 1. Find or create the auth user (always app='rollout') ───────────────
     // NEW users are created via inviteUserByEmail, which — through the

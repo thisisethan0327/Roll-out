@@ -16,6 +16,7 @@
 import { revalidatePath } from 'next/cache';
 import { requireShopMember } from '@/lib/auth-guard';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { consoleUrlForShop } from '@/lib/tenant-hosts';
 import {
     renderInvite,
     renderCoHostInvite,
@@ -368,7 +369,7 @@ export async function inviteCoHost(eventId: string, hostShopId: number, coHostSh
                 hostBranding,
                 coHostName: coBranding.fromName,
                 event: toInviteEvent(ev),
-                manageUrl: `https://rollout.club/shop/${coSlug}/events`,
+                manageUrl: consoleUrlForShop(coSlug, '/events'),
             });
             await admin.functions.invoke('send-shop-notification', {
                 body: {

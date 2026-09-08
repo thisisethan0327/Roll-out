@@ -16,6 +16,7 @@ import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { sendPlatformNotification } from '@/lib/platform-notify';
 import { SLUG_RE, UBI_RE, type ApplyState } from './types';
 import { isShopCategory } from '@/lib/shop-categories';
+import { consoleUrlForShop } from '@/lib/tenant-hosts';
 
 function str(fd: FormData, key: string): string {
     return (fd.get(key)?.toString() ?? '').trim();
@@ -135,7 +136,7 @@ export async function submitShopApplication(
             to: applicant.email,
             toProfileId: applicant.profileId,
             shopId: newShopId,
-            vars: { kind: 'shop', shop_name: name, applicant_name: applicant.displayName || applicant.handle, cta_url: `https://rollout.club/shop/${slug}/overview` },
+            vars: { kind: 'shop', shop_name: name, applicant_name: applicant.displayName || applicant.handle, cta_url: consoleUrlForShop(slug, '/overview') },
         });
         if (withCommerce) {
             await sendPlatformNotification({
