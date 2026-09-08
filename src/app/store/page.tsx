@@ -45,7 +45,7 @@ export default async function StoreIndexPage({
     return (
         <>
             {/* HERO */}
-            <section style={{ background: 'linear-gradient(135deg, var(--gold) 0%, #000 62%)', borderBottom: '1px solid var(--line)' }}>
+            <section className="hero-band">
                 <div className="container" style={{ padding: '56px 0 40px' }}>
                     <div className="eyebrow eyebrow-gold mb-4">／ STORE</div>
                     <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>

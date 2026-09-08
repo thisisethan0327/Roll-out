@@ -130,7 +130,7 @@ export default async function ShopsDirectoryPage() {
     return (
         <>
             {/* HERO */}
-            <section style={{ background: 'linear-gradient(135deg, var(--gold) 0%, #000 60%)', borderBottom: '1px solid var(--line)' }}>
+            <section className="hero-band">
                 <div className="container" style={{ padding: '64px 0 48px' }}>
                     <div className="eyebrow eyebrow-gold mb-4">／ SHOPS</div>
                     <h1 style={{ fontSize: 'clamp(32px, 5vw, 56px)', letterSpacing: 1, margin: 0 }}>

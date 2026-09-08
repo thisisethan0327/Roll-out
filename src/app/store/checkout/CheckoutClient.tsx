@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, useTransition } from 'react';
+import { useEffect, useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { loadStripe, type Stripe } from '@stripe/stripe-js';
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
@@ -16,6 +16,60 @@ import type { Cart, ShippingOption, AddressInput } from '@/lib/medusa-types';
 import { Dots, SweepBar } from '../_ui';
 
 type ShippingGroup = { key: string; title: string; note?: string; options: ShippingOption[] };
+
+/**
+ * Colours for the Stripe card field.
+ *
+ * Stripe renders CardElement inside its own IFRAME, so it cannot see our CSS
+ * custom properties and has to be handed literal colours. Those were hard-coded
+ * to the dark palette (#f0f0f0 text on what is now a light --bg-2), which in
+ * light mode meant near-white digits on near-white paper: the customer could
+ * not read the card number they were typing.
+ *
+ * So the values are READ BACK from the same custom properties the surrounding
+ * panel uses, and the element is remounted when the theme changes — Stripe
+ * reads `style` once at creation, so a changed value alone never reaches the
+ * iframe. Falls back to the dark palette if the properties cannot be read,
+ * which is what the page looked like before this existed.
+ */
+function useCardColors() {
+    const read = () => {
+        if (typeof window === 'undefined') {
+            return { theme: 'dark', text: '#f0f0f0', dim: '#8a8a9a', bad: '#ff6b6b' };
+        }
+        const root = document.documentElement;
+        const cs = getComputedStyle(root);
+        const v = (name: string, fallback: string) => cs.getPropertyValue(name).trim() || fallback;
+        const stamped = root.getAttribute('data-theme');
+        const theme =
+            stamped === 'light' || stamped === 'dark'
+                ? stamped
+                : window.matchMedia?.('(prefers-color-scheme: light)').matches
+                  ? 'light'
+                  : 'dark';
+        return {
+            theme,
+            text: v('--text', '#f0f0f0'),
+            dim: v('--text-3', '#8a8a9a'),
+            bad: v('--warn', '#ff6b6b'),
+        };
+    };
+
+    const [colors, setColors] = useState(read);
+    useEffect(() => {
+        const apply = () => setColors(read());
+        apply(); // the server render could not read any of this
+        const mq = window.matchMedia?.('(prefers-color-scheme: light)');
+        mq?.addEventListener?.('change', apply);
+        const obs = new MutationObserver(apply);
+        obs.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+        return () => {
+            mq?.removeEventListener?.('change', apply);
+            obs.disconnect();
+        };
+    }, []);
+    return colors;
+}
 
 /**
  * Group shipping options by profile — one method per profile is what Medusa
@@ -115,6 +169,7 @@ function CheckoutInner({
     actions: CheckoutActions;
     successPathPrefix: string;
 }) {
+    const cardColors = useCardColors();
     const router = useRouter();
     const stripe = useStripe();
     const elements = useElements();
@@ -395,15 +450,19 @@ function CheckoutInner({
                             <div style={{ padding: '14px 14px', border: '1px solid var(--line)', background: 'var(--bg-2)' }}>
                                 {stripe ? (
                                     <CardElement
+                                        // Remounts on a theme change: Stripe reads `style` once,
+                                        // when the element is created, so a changed value alone
+                                        // would not reach the iframe.
+                                        key={cardColors.theme}
                                         options={{
                                             style: {
                                                 base: {
-                                                    color: '#f0f0f0',
+                                                    color: cardColors.text,
                                                     fontFamily: 'monospace',
                                                     fontSize: '15px',
-                                                    '::placeholder': { color: '#8a8a9a' },
+                                                    '::placeholder': { color: cardColors.dim },
                                                 },
-                                                invalid: { color: '#ff6b6b' },
+                                                invalid: { color: cardColors.bad },
                                             },
                                         }}
                                     />

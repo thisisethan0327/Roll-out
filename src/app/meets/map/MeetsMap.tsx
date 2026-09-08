@@ -84,7 +84,36 @@ const MAPLIBRE_CSS = 'https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css';
 const MAPLIBRE_JS = 'https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js';
 const MAPLIBRE_LEAFLET_JS =
     'https://unpkg.com/@maplibre/maplibre-gl-leaflet@0.0.22/leaflet-maplibre-gl.js';
-const BASEMAP_STYLE = 'https://tiles.openfreemap.org/styles/dark';
+/**
+ * One style per theme. The map was the last thing on rollout.club still dark in
+ * light mode — a black rectangle in the middle of a white page, which reads as
+ * a broken image rather than a design choice.
+ *
+ * Positron is OpenFreeMap's light counterpart to the dark style: same tiles,
+ * same keyless terms, same vector pipeline, so nothing below changes but the
+ * URL. Its background is near-white and sits with the paper surfaces.
+ */
+const BASEMAP_STYLES = {
+    dark: 'https://tiles.openfreemap.org/styles/dark',
+    light: 'https://tiles.openfreemap.org/styles/positron',
+} as const;
+
+/**
+ * The theme actually in force, the same way the CSS decides it: an explicit
+ * `data-theme` on the root wins, and `prefers-color-scheme` answers when there
+ * is none (globals.css scopes the light block to `:root:not([data-theme])`).
+ * Read from the DOM rather than tracked in React state so there is one source
+ * of truth and no chance of the map disagreeing with the page around it.
+ */
+function currentTheme(): 'light' | 'dark' {
+    if (typeof document === 'undefined') return 'dark';
+    const stamped = document.documentElement.getAttribute('data-theme');
+    if (stamped === 'light' || stamped === 'dark') return stamped;
+    return typeof window !== 'undefined' &&
+        window.matchMedia?.('(prefers-color-scheme: light)').matches
+        ? 'light'
+        : 'dark';
+}
 /**
  * The OSM credit is a licence obligation (ODbL) and stays put; only the
  * "Leaflet" prefix is dropped (see `attributionControl: false` + a prefix-less
@@ -275,6 +304,8 @@ export function MeetsMap({
 }) {
     const containerRef = useRef<HTMLDivElement>(null);
     const mapRef = useRef<any>(null);
+    /** Detaches the theme listeners; set once the basemap layer exists. */
+    const themeCleanupRef = useRef<(() => void) | null>(null);
     const eventMarkersRef = useRef<Map<string, any>>(new Map());
     // Keep the latest callback without re-running the init effect.
     const onSelectRef = useRef(onSelectEvent);
@@ -310,10 +341,33 @@ export function MeetsMap({
                 L.control.attribution({ prefix: false, position: 'bottomright' }).addTo(map);
 
                 const tiles = L.maplibreGL({
-                    style: BASEMAP_STYLE,
+                    style: BASEMAP_STYLES[currentTheme()],
                     attribution: BASEMAP_ATTRIBUTION,
                 });
                 tiles.addTo(map);
+
+                // Follow the theme while the page is open: the OS preference can
+                // change under us, and the shop toggle stamps data-theme without
+                // a reload. Markers are Leaflet objects and survive a style swap
+                // untouched — only the basemap is replaced.
+                const applyTheme = () => {
+                    try {
+                        tiles.getMaplibreMap()?.setStyle(BASEMAP_STYLES[currentTheme()]);
+                    } catch {
+                        // A style swap is cosmetic; never let it break the map.
+                    }
+                };
+                const mq = window.matchMedia?.('(prefers-color-scheme: light)');
+                mq?.addEventListener?.('change', applyTheme);
+                const themeObserver = new MutationObserver(applyTheme);
+                themeObserver.observe(document.documentElement, {
+                    attributes: true,
+                    attributeFilter: ['data-theme'],
+                });
+                themeCleanupRef.current = () => {
+                    mq?.removeEventListener?.('change', applyTheme);
+                    themeObserver.disconnect();
+                };
                 // A GL layer has no Leaflet 'load' event; the readiness signal
                 // is the underlying MapLibre map's own 'load'. Wrapped because
                 // getMaplibreMap() is only available once the layer is added,
@@ -411,6 +465,8 @@ export function MeetsMap({
         return () => {
             cancelled = true;
             eventMarkersRef.current.clear();
+            themeCleanupRef.current?.();
+            themeCleanupRef.current = null;
             if (mapRef.current) {
                 mapRef.current.remove();
                 mapRef.current = null;

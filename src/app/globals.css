@@ -49,6 +49,44 @@
   --font-display: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
   --font-jp: 'Noto Sans JP', var(--font-body);
+
+  /* -------------------------------------------------------------------------
+     ALIASES for names the app uses that were never defined here.
+
+     Twelve custom properties are referenced across the app and defined nowhere
+     (measured, not guessed). Two different failures came of that:
+
+       - `var(--text-dim, #8a8a9a)` quietly rendered its FALLBACK. Correct-looking
+         in dark mode, which is why it survived; frozen dark in light mode while
+         everything around it turned to paper. --bg-hover was the loud one: a
+         near-black chip on a white page.
+       - `var(--rule)` and the --bdr / --surf-1 / --surf-2 / --text-1 set on the
+         shop customer page have NO fallback, so the whole declaration is
+         invalid and dropped — those borders and surfaces have never rendered at
+         all, in either theme.
+
+     Aliased rather than rewritten across ~30 files: an alias holds the token
+     stream `var(--real)` and resolves at use, so each one follows the theme for
+     free and there is one place to look. The few values shift slightly in dark
+     mode (--text-dim's #8a8a9a becomes the house --text-3) — that is the
+     correction, not a side effect.
+     ------------------------------------------------------------------------- */
+  --text-dim: var(--text-3);
+  --text-1: var(--text);
+  --bg-hover: var(--bg-3);
+  --surf-1: var(--surface);
+  --surf-2: var(--surface-2);
+  --rule: var(--line);
+  --bdr: var(--line);
+  --danger: var(--warn);
+  --accent: var(--gold);
+  --font-mono: var(--font-display);
+
+  /* The hero band is dark in both themes, so its ink is fixed rather than
+     inherited — see the .hero-band rules. */
+  --hero-band-end: #000000;
+  --hero-band-ink: #ffffff;
+  --hero-band-ink-2: rgba(255, 255, 255, 0.72);
 }
 
 * {
@@ -237,6 +275,36 @@ h4 { font-size: 16px; letter-spacing: var(--track-wide); }
 }
 @media (max-width: 768px) {
   .section { padding: 56px 0; }
+}
+
+/* ── Hero band ─────────────────────────────────────────────────────────────
+   The gold-to-black banner at the top of /store, /meets and /shops.
+
+   It was four copies of the same inline gradient with a literal #000 in each,
+   and the text inside inherited --text. That is fine in dark mode and unreadable
+   in light: --text turns near-black while the band's own right-hand 40% is still
+   pure black, so the headline vanished into it.
+
+   The band stays DARK in both themes — it is brand art, and a gold-to-paper
+   fade is a different design, not a translation of this one. What changes is
+   that its ink is pinned here rather than inherited, so it cannot follow the
+   page to dark-on-dark. Anything placed inside it is light by default.
+   ------------------------------------------------------------------------- */
+.hero-band {
+  background: linear-gradient(135deg, var(--gold) 0%, var(--hero-band-end) 62%);
+  border-bottom: 1px solid var(--line);
+  color: var(--hero-band-ink);
+}
+.hero-band h1,
+.hero-band h2,
+.hero-band h3 {
+  color: var(--hero-band-ink);
+}
+/* --text-2 is the muted body colour and flips with the theme; inside the band
+   it has to stay a muted LIGHT instead. */
+.hero-band p,
+.hero-band .text-dim {
+  color: var(--hero-band-ink-2);
 }
 
 /* ── Mono-data block (used on hero spec strip + footer) ────────────────── */
