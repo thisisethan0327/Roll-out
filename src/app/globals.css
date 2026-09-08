@@ -2156,6 +2156,7 @@ h4 { font-size: 16px; letter-spacing: var(--track-wide); }
    16px only at phone widths, so the desk layout keeps its denser type. */
 @media (max-width: 900px) {
   .admin-form-input,
+  .admin-input,
   .admin-login-input,
   select.admin-form-input,
   textarea.admin-form-input {
@@ -2174,6 +2175,7 @@ h4 { font-size: 16px; letter-spacing: var(--track-wide); }
    inflating the sidebar there would cost the density the console is built on. */
 @media (max-width: 900px) {
   .admin-action-btn,
+  .admin-input,
   .admin-sidebar-signout,
   .admin-sidebar-link,
   .shop-theme-toggle,

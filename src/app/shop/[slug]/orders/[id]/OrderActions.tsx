@@ -15,7 +15,7 @@
  * from the slug and re-verifies the order's vendor before touching Medusa; this
  * component only drives UX.
  */
-import { useState, useTransition, useEffect } from 'react';
+import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { PendingButton } from '@/components/feedback';
 import {
@@ -72,12 +72,22 @@ export function OrderActions({
     const [refundArmed, setRefundArmed] = useState(false);
     const [refundAmount, setRefundAmount] = useState('');
 
-    // Disarm the cancel confirmation after 3s.
-    useEffect(() => {
-        if (!armed) return;
-        const t = setTimeout(() => setArmed(false), 3000);
-        return () => clearTimeout(t);
-    }, [armed]);
+    /**
+     * Cancel's confirmation used to disarm itself after 3 SECONDS, and that is
+     * why CANCEL ORDER "did nothing" on a phone (run 10, lane B): the tap armed
+     * it, three seconds passed while the tester looked at the screen, and by
+     * the time anyone inspected, the button was back to its unarmed state with
+     * no request made and no error logged. Every symptom in that report follows
+     * from it — unchanged HTML, no arm state, no network call — and it explains
+     * why the same action worked at desk width, where the second click lands
+     * within the window, and why REFUND on the same panel was fine: refund has
+     * no timer at all.
+     *
+     * So cancel now behaves like refund. It stays armed until the person acts,
+     * and KEEP ORDER dismisses it explicitly. A destructive confirm that
+     * silently withdraws itself is worse than one that waits: it does not
+     * prevent a mis-tap, it just makes the second tap land somewhere else.
+     */
 
     const canceled = (status ?? '').toLowerCase() === 'canceled';
     const ful = (fulfillmentStatus ?? '').toLowerCase();
