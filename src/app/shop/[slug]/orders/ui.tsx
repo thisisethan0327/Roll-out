@@ -15,12 +15,23 @@ export function fmtDate(iso: string | null | undefined): string {
     if (!iso) return '—';
     const d = new Date(iso);
     if (Number.isNaN(d.getTime())) return '—';
-    return d.toLocaleString(undefined, {
+    // Locale AND time zone are pinned. With neither, the server formats in the
+    // container's locale and UTC while the browser uses the visitor's — two
+    // different strings for the same timestamp, which is React hydration error
+    // #418 on every orders and order-detail navigation (run 10, lane G2).
+    //
+    // Pacific because the shops these consoles serve are, and because the meets
+    // map already pins the same zone. If Rollout ever hosts a shop outside
+    // Pacific this should become a client-rendered local time instead — a
+    // pinned zone is right for one region and merely consistent everywhere
+    // else.
+    return d.toLocaleString('en-US', {
         month: 'short',
         day: 'numeric',
         year: 'numeric',
         hour: 'numeric',
         minute: '2-digit',
+        timeZone: 'America/Los_Angeles',
     });
 }
 

@@ -95,6 +95,7 @@ export function OrderActions({
     const isCompleted = (status ?? '').toLowerCase() === 'completed';
     const pay = (paymentStatus ?? '').toLowerCase();
     const refunded = pay === 'refunded' || pay === 'partially_refunded';
+    const fullyRefunded = pay === 'refunded';
     /** Cents, or null when the box is not a usable number. Blank means "all". */
     const parsedRefundCents = (() => {
         const raw = refundAmount.trim();
@@ -163,8 +164,11 @@ export function OrderActions({
         <div style={wrap}>
             <div style={titleStyle}>ACTIONS</div>
 
-            {/* Fulfill + tracking */}
-            {hasUnfulfilledItems && (
+            {/* Fulfill + tracking. Hidden once the money has gone back: a fully
+                refunded order should not invite anybody to put goods in a box
+                and send them (run 10, lane G2 on #176). A PARTIAL refund still
+                offers it — part of that order may genuinely still ship. */}
+            {hasUnfulfilledItems && !fullyRefunded && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                     <div style={{ fontSize: 12, color: 'var(--text-2)' }}>
                         Create fulfillment with tracking
@@ -207,7 +211,7 @@ export function OrderActions({
             {/* Add tracking — a fulfilment exists but never shipped, usually
                 because attaching the label failed. Without this the order sat
                 at PACKED and staff had no way forward at all. */}
-            {!hasUnfulfilledItems && hasUnshippedFulfillment && (
+            {!hasUnfulfilledItems && hasUnshippedFulfillment && !fullyRefunded && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                     <div style={{ fontSize: 12, color: 'var(--text-2)' }}>
                         Fulfilled but not shipped — add tracking to send it
