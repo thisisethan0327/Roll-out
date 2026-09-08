@@ -1877,6 +1877,105 @@ h4 { font-size: 16px; letter-spacing: var(--track-wide); }
 }
 .rl-pop-btn-ghost:hover { background: var(--gold-glow); filter: none; }
 
+/* -- Map chrome: zoom control + credit strip (Leaflet) ------------------
+   Leaflet's own stylesheet is fetched from the CDN at RUNTIME, so it lands
+   after this file in the cascade and wins every specificity tie. Each rule
+   below therefore carries an extra class (.leaflet-container plus the
+   control's own class) so it outranks the stock white chrome without
+   !important. Colors are tokens only, so both controls follow the light
+   theme and pick up a tenant's accent wherever --gold is overridden. */
+
+/* Zoom buttons, styled like the LIST / MAP toggle in the meets header:
+   square, dark fill, 1px gold border, gold mono glyph, inverted on hover.
+   Leaflet still owns the markup, so keyboard access and ARIA are intact. */
+.leaflet-container .leaflet-control-zoom.leaflet-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.leaflet-container .leaflet-control-zoom.leaflet-bar a.leaflet-control-zoom-in,
+.leaflet-container .leaflet-control-zoom.leaflet-bar a.leaflet-control-zoom-out {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  line-height: 1;
+  border: 1px solid var(--gold);
+  border-radius: 0;
+  background: var(--bg-1);
+  color: var(--gold);
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 500;
+  text-indent: 0;
+  text-decoration: none;
+  box-shadow: none;
+  transition: background-color 0.14s ease, color 0.14s ease;
+}
+.leaflet-container .leaflet-control-zoom.leaflet-bar a.leaflet-control-zoom-in:hover,
+.leaflet-container .leaflet-control-zoom.leaflet-bar a.leaflet-control-zoom-out:hover,
+.leaflet-container .leaflet-control-zoom.leaflet-bar a.leaflet-control-zoom-in:focus-visible,
+.leaflet-container .leaflet-control-zoom.leaflet-bar a.leaflet-control-zoom-out:focus-visible {
+  background: var(--gold);
+  color: var(--on-gold);
+}
+/* After the hover rule on purpose: a disabled button still takes :hover. */
+.leaflet-container .leaflet-control-zoom.leaflet-bar a.leaflet-control-zoom-in.leaflet-disabled,
+.leaflet-container .leaflet-control-zoom.leaflet-bar a.leaflet-control-zoom-out.leaflet-disabled {
+  border-color: var(--line);
+  background: var(--bg-1);
+  color: var(--text-4);
+  cursor: default;
+}
+@media (prefers-reduced-motion: reduce) {
+  .leaflet-container .leaflet-control-zoom.leaflet-bar a.leaflet-control-zoom-in,
+  .leaflet-container .leaflet-control-zoom.leaflet-bar a.leaflet-control-zoom-out {
+    transition: none;
+  }
+}
+
+/* Credit strip. The OpenStreetMap notice is a licence obligation (ODbL) and
+   stays; only the "Leaflet" prefix is dropped, in MeetsMap.tsx. Set in the
+   same register as the legend line under the map (.mono-row): small
+   uppercase mono, muted grey, sitting flush in the bottom-right corner on a
+   near-transparent scrim rather than a white pill. */
+.leaflet-container .leaflet-control-attribution.leaflet-control {
+  margin: 0;
+  padding: 4px 8px;
+  border-top: 1px solid var(--line);
+  border-left: 1px solid var(--line);
+  border-radius: 0;
+  background: var(--scrim);
+  box-shadow: none;
+  color: var(--text-3);
+  font-family: var(--font-display);
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1.5;
+  letter-spacing: var(--track-wider);
+  text-transform: uppercase;
+}
+.leaflet-container .leaflet-control-attribution.leaflet-control a {
+  color: var(--text-3);
+  text-decoration: none;
+}
+.leaflet-container .leaflet-control-attribution.leaflet-control a:hover,
+.leaflet-container .leaflet-control-attribution.leaflet-control a:focus-visible {
+  color: var(--text-3);
+  text-decoration: underline;
+}
+/* Tighter tracking on phones so the credit still fits on one line. */
+@media (max-width: 560px) {
+  .leaflet-container .leaflet-control-attribution.leaflet-control {
+    letter-spacing: var(--track-wide);
+  }
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════
    CONSOLE PHASE C3 — JUMP (universal search) + LAUNCHER (health row).
    Theme-aware via the shared vars; --neon = up, --gold = degraded, --warn = down.

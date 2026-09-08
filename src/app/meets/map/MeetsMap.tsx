@@ -15,6 +15,11 @@
  * via the `rl-popup` className). Shop popups reuse the /shops directory data —
  * logo, verified chip, rating, capability chips, and shop/store links.
  *
+ * The stock zoom box and credit strip are restyled to the house dark/gold
+ * register in globals.css (`.leaflet-control-zoom`, `.leaflet-control-
+ * attribution`) — the controls themselves are Leaflet's, so keyboard access
+ * and ARIA are untouched.
+ *
  * Cross-highlighting: the desktop split (/meets) passes `activeId` (card →
  * pin) and `onSelectEvent` (pin click → card). The standalone /meets/map page
  * omits both and behaves as before.
@@ -80,8 +85,14 @@ const MAPLIBRE_JS = 'https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js';
 const MAPLIBRE_LEAFLET_JS =
     'https://unpkg.com/@maplibre/maplibre-gl-leaflet@0.0.22/leaflet-maplibre-gl.js';
 const BASEMAP_STYLE = 'https://tiles.openfreemap.org/styles/dark';
+/**
+ * The OSM credit is a licence obligation (ODbL) and stays put; only the
+ * "Leaflet" prefix is dropped (see `attributionControl: false` + a prefix-less
+ * control below). Rendered in the legend line's register by the
+ * `.leaflet-control-attribution` rules in globals.css.
+ */
 const BASEMAP_ATTRIBUTION =
-    '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://openfreemap.org/">OpenFreeMap</a>';
+    '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap contributors</a> &middot; <a href="https://openfreemap.org/" target="_blank" rel="noopener noreferrer">OpenFreeMap</a>';
 
 function loadCss(href: string) {
     if (!document.querySelector(`link[href="${href}"]`)) {
@@ -287,8 +298,16 @@ export function MeetsMap({
                 const map = L.map(containerRef.current, {
                     zoomControl: true,
                     scrollWheelZoom: false,
+                    // Suppress the default control so we can re-add one with
+                    // `prefix: false` — that prefix is the only way to drop the
+                    // "Leaflet | " lead-in from the credit strip.
+                    attributionControl: false,
                 });
                 mapRef.current = map;
+                // Order matters: Leaflet registers a layer's attribution into
+                // whatever control is on the map at addLayer() time, so this has
+                // to exist before the tile layer below is added.
+                L.control.attribution({ prefix: false, position: 'bottomright' }).addTo(map);
 
                 const tiles = L.maplibreGL({
                     style: BASEMAP_STYLE,
