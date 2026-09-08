@@ -45,9 +45,18 @@ import {
 const MANAGE_ROLES = new Set(['owner', 'admin', 'manager', 'installer', 'staff']);
 const MONEY_ROLES = new Set(['owner', 'admin', 'manager']);
 
-/** A role refusal, worded so the client can show it as a message, not a crash. */
-const refusal = (role: string, what: string) =>
-    new Error(`Your role (${role}) can't ${what} on this shop. Ask an owner or admin.`);
+/**
+ * A role refusal, RETURNED rather than thrown.
+ *
+ * Throwing out of a Server Action gives the browser an HTTP 500 and a digest,
+ * and the server log a bare unhandled error with no tag on it — a correct
+ * outcome delivered as if something had broken (run 10, lane E). A refusal is
+ * an ordinary answer: the caller renders it as a message like any other.
+ */
+const refusal = (role: string, what: string): ActionResult => ({
+    ok: false,
+    error: `Your role (${role}) can't ${what} on this shop. Ask an owner or admin.`,
+});
 
 /**
  * Gate: a member whose role allows this tier, AND a shop with a vendor key.
@@ -57,18 +66,27 @@ const refusal = (role: string, what: string) =>
  * nobody is invited to fail — but a server action is a public endpoint, and
  * hidden is not the same as forbidden.
  */
-async function guard(
-    slug: string,
-    tier: 'manage' | 'money',
-    what: string,
-): Promise<{ vendorKey: string; role: string }> {
+type Guarded = { vendorKey: string; role: string } | { denied: ActionResult };
+
+/** True when the guard refused; narrows the union for the caller. */
+function denied(g: Guarded): g is { denied: ActionResult } {
+    return 'denied' in g;
+}
+
+async function guard(slug: string, tier: 'manage' | 'money', what: string): Promise<Guarded> {
     const shop = await resolveShopSlug(slug);
-    if (!shop) throw new Error('Shop not found.');
+    if (!shop) return { denied: { ok: false, error: 'Shop not found.' } };
     const { role } = await requireShopMember(shop.shopId);
     const allowed = tier === 'money' ? MONEY_ROLES : MANAGE_ROLES;
-    if (!allowed.has(role)) throw refusal(role, what);
+    if (!allowed.has(role)) {
+        // Logged with the same tag as every other console event, so a refusal
+        // is findable next to the actions around it rather than being an
+        // untagged stack trace.
+        console.warn(`[console-orders] ${slug} ${role}: refused ${what}.`);
+        return { denied: refusal(role, what) };
+    }
     const resolved = await getShopVendorBySlug(slug);
-    if (!resolved) throw new Error('This shop has no order vendor.');
+    if (!resolved) return { denied: { ok: false, error: 'This shop has no order vendor.' } };
     return { vendorKey: resolved.vendorKey, role };
 }
 
@@ -96,7 +114,9 @@ export async function fulfillOrderAction(
     trackingNumber: string,
     carrier: string,
 ): Promise<ActionResult> {
-    const { vendorKey } = await guard(slug, 'manage', 'fulfil orders');
+    const g = await guard(slug, 'manage', 'fulfil orders');
+    if (denied(g)) return g.denied;
+    const { vendorKey } = g;
     if (!trackingNumber || !trackingNumber.trim()) {
         return { ok: false, error: 'A tracking number is required.' };
     }
@@ -121,7 +141,9 @@ export async function shipOrderAction(
     trackingNumber: string,
     carrier: string,
 ): Promise<ActionResult> {
-    const { vendorKey } = await guard(slug, 'manage', 'add tracking');
+    const g = await guard(slug, 'manage', 'add tracking');
+    if (denied(g)) return g.denied;
+    const { vendorKey } = g;
     const result = await shipVendorFulfillment(vendorKey, orderId, trackingNumber, carrier);
     if (result.ok) revalidate(slug, orderId);
     return result;
@@ -131,7 +153,9 @@ export async function markDeliveredAction(
     slug: string,
     orderId: string,
 ): Promise<ActionResult> {
-    const { vendorKey } = await guard(slug, 'manage', 'mark orders delivered');
+    const g = await guard(slug, 'manage', 'mark orders delivered');
+    if (denied(g)) return g.denied;
+    const { vendorKey } = g;
     const result = await markFulfillmentDelivered(vendorKey, orderId);
     if (result.ok) revalidate(slug, orderId);
     return result;
@@ -141,7 +165,9 @@ export async function capturePaymentAction(
     slug: string,
     orderId: string,
 ): Promise<ActionResult> {
-    const { vendorKey } = await guard(slug, 'money', 'capture payments');
+    const g = await guard(slug, 'money', 'capture payments');
+    if (denied(g)) return g.denied;
+    const { vendorKey } = g;
     const result = await captureOrderPayment(vendorKey, orderId);
     if (result.ok) revalidate(slug, orderId);
     return result;
@@ -151,7 +177,9 @@ export async function cancelOrderAction(
     slug: string,
     orderId: string,
 ): Promise<ActionResult> {
-    const { vendorKey } = await guard(slug, 'money', 'cancel orders');
+    const g = await guard(slug, 'money', 'cancel orders');
+    if (denied(g)) return g.denied;
+    const { vendorKey } = g;
     const result = await cancelVendorOrder(vendorKey, orderId);
     if (result.ok) revalidate(slug, orderId);
     return result;
@@ -162,7 +190,9 @@ export async function refundOrderAction(
     orderId: string,
     amountCents?: number | null,
 ): Promise<ActionResult> {
-    const { vendorKey } = await guard(slug, 'money', 'refund orders');
+    const g = await guard(slug, 'money', 'refund orders');
+    if (denied(g)) return g.denied;
+    const { vendorKey } = g;
     const result = await refundVendorOrder(vendorKey, orderId, amountCents);
     if (result.ok) revalidate(slug, orderId);
     return result;
@@ -172,7 +202,9 @@ export async function completeOrderAction(
     slug: string,
     orderId: string,
 ): Promise<ActionResult> {
-    const { vendorKey } = await guard(slug, 'money', 'complete orders');
+    const g = await guard(slug, 'money', 'complete orders');
+    if (denied(g)) return g.denied;
+    const { vendorKey } = g;
     const result = await completeVendorOrder(vendorKey, orderId);
     if (result.ok) revalidate(slug, orderId);
     return result;

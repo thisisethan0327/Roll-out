@@ -21,7 +21,10 @@ import { useRef, useState } from 'react';
 function signInErrorCopy(e: { message?: string; code?: string } | null | undefined): string {
     const raw = e?.message ?? '';
     const wait = raw.match(/after (\d+) seconds?/i);
-    if (wait) return `Give it ${wait[1]} seconds before asking for another code.`;
+    if (wait) {
+        const n = Number(wait[1]);
+        return `Give it ${n} second${n === 1 ? '' : 's'} before asking for another code.`;
+    }
     if (/over_email_send_rate_limit|rate limit/i.test(`${e?.code ?? ''} ${raw}`)) {
         return 'Too many codes requested for now. Wait a few minutes and try again.';
     }

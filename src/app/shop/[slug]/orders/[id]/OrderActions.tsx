@@ -105,8 +105,23 @@ export function OrderActions({
         return Math.round(n * 100);
     })();
 
-    const run = (fn: () => Promise<{ ok: boolean; error?: string }>, okText: string) => {
+    /**
+     * Which action is in flight. useTransition gives ONE boolean for the whole
+     * component, so passing it to every PendingButton made all seven show their
+     * own pending label at once: confirming a cancel relabelled the untouched
+     * buttons to FULFILLING and COMPLETING until the transition settled (run
+     * 10, lane E). Only the button that was pressed should say anything.
+     */
+    const [running, setRunning] = useState<string | null>(null);
+    const busyOn = (key: string) => pending && running === key;
+
+    const run = (
+        fn: () => Promise<{ ok: boolean; error?: string }>,
+        okText: string,
+        key: string,
+    ) => {
         setMsg(null);
+        setRunning(key);
         start(async () => {
             try {
                 const res = await fn();
@@ -118,6 +133,8 @@ export function OrderActions({
                 }
             } catch (e: any) {
                 setMsg({ kind: 'err', text: e?.message ?? 'Action failed.' });
+            } finally {
+                setRunning(null);
             }
         });
     };
@@ -130,6 +147,7 @@ export function OrderActions({
         run(
             () => fulfillOrderAction(slug, orderId, trackingNumber, carrier),
             'Fulfillment created and marked shipped with tracking.',
+            'fulfil',
         );
     };
 
@@ -198,7 +216,7 @@ export function OrderActions({
                         <PendingButton
                             type="button"
                             className="admin-action-btn"
-                            pending={pending}
+                            pending={busyOn('fulfil')}
                             pendingLabel="FULFILLING"
                             onClick={doFulfill}
                         >
@@ -241,7 +259,7 @@ export function OrderActions({
                         <PendingButton
                             type="button"
                             className="admin-action-btn"
-                            pending={pending}
+                            pending={busyOn('ship')}
                             pendingLabel="SENDING"
                             onClick={() => {
                                 if (!trackingNumber.trim()) {
@@ -251,6 +269,7 @@ export function OrderActions({
                                 run(
                                     () => shipOrderAction(slug, orderId, trackingNumber, carrier),
                                     'Tracking added and the order marked shipped.',
+                                    'ship',
                                 );
                             }}
                         >
@@ -266,9 +285,9 @@ export function OrderActions({
                     <PendingButton
                         type="button"
                         className="admin-action-btn muted"
-                        pending={pending}
+                        pending={busyOn('deliver')}
                         pendingLabel="UPDATING"
-                        onClick={() => run(() => markDeliveredAction(slug, orderId), 'Marked delivered.')}
+                        onClick={() => run(() => markDeliveredAction(slug, orderId), 'Marked delivered.', 'deliver')}
                     >
                         MARK DELIVERED
                     </PendingButton>
@@ -281,9 +300,9 @@ export function OrderActions({
                     <PendingButton
                         type="button"
                         className="admin-action-btn"
-                        pending={pending}
+                        pending={busyOn('capture')}
                         pendingLabel="CAPTURING"
-                        onClick={() => run(() => capturePaymentAction(slug, orderId), 'Payment captured.')}
+                        onClick={() => run(() => capturePaymentAction(slug, orderId), 'Payment captured.', 'capture')}
                     >
                         CAPTURE PAYMENT
                     </PendingButton>
@@ -303,11 +322,11 @@ export function OrderActions({
                         <PendingButton
                             type="button"
                             className="admin-action-btn danger"
-                            pending={pending}
+                            pending={busyOn('cancel')}
                             pendingLabel="CANCELING"
                             onClick={() => {
                                 setArmed(false);
-                                run(() => cancelOrderAction(slug, orderId), 'Order canceled.');
+                                run(() => cancelOrderAction(slug, orderId), 'Order canceled.', 'cancel');
                             }}
                         >
                             CONFIRM CANCEL
@@ -354,11 +373,11 @@ export function OrderActions({
                             <PendingButton
                                 type="button"
                                 className="admin-action-btn danger"
-                                pending={pending}
+                                pending={busyOn('refund')}
                                 pendingLabel="REFUNDING"
                                 onClick={() => {
                                     setRefundArmed(false);
-                                    run(() => refundOrderAction(slug, orderId, parsedRefundCents), 'Refund issued.');
+                                    run(() => refundOrderAction(slug, orderId, parsedRefundCents), 'Refund issued.', 'refund');
                                 }}
                             >
                                 CONFIRM REFUND
@@ -398,9 +417,9 @@ export function OrderActions({
                         <PendingButton
                             type="button"
                             className="admin-action-btn"
-                            pending={pending}
+                            pending={busyOn('complete')}
                             pendingLabel="COMPLETING"
-                            onClick={() => run(() => completeOrderAction(slug, orderId), 'Order completed.')}
+                            onClick={() => run(() => completeOrderAction(slug, orderId), 'Order completed.', 'complete')}
                         >
                             COMPLETE ORDER
                         </PendingButton>
