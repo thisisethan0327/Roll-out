@@ -1,8 +1,9 @@
 'use client';
 /**
- * Client-side Leaflet map for the meets surfaces. Leaflet is loaded from the
- * unpkg CDN at runtime (no npm dep, no SSR window issues) and CARTO dark tiles
- * keep it on theme with no API key.
+ * Client-side Leaflet map for the meets surfaces. Leaflet, MapLibre GL and the
+ * plugin that joins them are all loaded from the unpkg CDN at runtime (no npm
+ * dep, no SSR window issues); the basemap is OpenFreeMap's dark vector style,
+ * which needs no API key. See the loader below for why it is not CARTO.
  *
  * Two marker styles:
  *   - Events  — solid gold dot (the visual priority), gentle glow, grows when
@@ -59,34 +60,83 @@ export type MapShop = {
 const LEAFLET_CSS = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
 const LEAFLET_JS = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
 
-function loadLeaflet(): Promise<any> {
+/**
+ * Basemap: OpenFreeMap's dark vector style, drawn through MapLibre GL.
+ *
+ * This used to be CARTO's dark raster tiles, which are keyless no longer.
+ * basemaps.cartocdn.com still answers 200 with a PNG, but every tile now
+ * carries an "API KEY REQUIRED" watermark stamped across it — so the map looked
+ * broken in production while nothing errored and nothing logged (2026-09-08).
+ *
+ * OpenFreeMap is keyless by design and permits commercial use, so there is no
+ * account to hold, no key in the env and nothing to expire. It serves vector
+ * rather than raster, which is the only reason MapLibre is here: the
+ * maplibre-gl-leaflet plugin adds it as an ordinary Leaflet layer, so every
+ * marker, popup, bounds calculation and click handler below is untouched. The
+ * style's own background is rgb(12,12,12), which sits with the house darks.
+ */
+const MAPLIBRE_CSS = 'https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css';
+const MAPLIBRE_JS = 'https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js';
+const MAPLIBRE_LEAFLET_JS =
+    'https://unpkg.com/@maplibre/maplibre-gl-leaflet@0.0.22/leaflet-maplibre-gl.js';
+const BASEMAP_STYLE = 'https://tiles.openfreemap.org/styles/dark';
+const BASEMAP_ATTRIBUTION =
+    '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://openfreemap.org/">OpenFreeMap</a>';
+
+function loadCss(href: string) {
+    if (!document.querySelector(`link[href="${href}"]`)) {
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = href;
+        document.head.appendChild(link);
+    }
+}
+
+/** Load a script once; a second caller waits on the in-flight tag. */
+function loadScript(src: string, marker: string): Promise<void> {
     return new Promise((resolve, reject) => {
-        const w = window as any;
-        if (w.L) return resolve(w.L);
-
-        // CSS (once)
-        if (!document.querySelector(`link[href="${LEAFLET_CSS}"]`)) {
-            const link = document.createElement('link');
-            link.rel = 'stylesheet';
-            link.href = LEAFLET_CSS;
-            document.head.appendChild(link);
-        }
-
-        // JS (once) — reuse an in-flight load if present.
-        const existing = document.querySelector(`script[data-leaflet]`) as HTMLScriptElement | null;
+        const existing = document.querySelector(
+            `script[data-${marker}]`,
+        ) as HTMLScriptElement | null;
         if (existing) {
-            existing.addEventListener('load', () => resolve((window as any).L));
+            if (existing.dataset.loaded === '1') return resolve();
+            existing.addEventListener('load', () => resolve());
             existing.addEventListener('error', reject);
             return;
         }
         const script = document.createElement('script');
-        script.src = LEAFLET_JS;
+        script.src = src;
         script.async = true;
-        script.setAttribute('data-leaflet', '1');
-        script.addEventListener('load', () => resolve((window as any).L));
+        script.setAttribute(`data-${marker}`, '1');
+        script.addEventListener('load', () => {
+            script.dataset.loaded = '1';
+            resolve();
+        });
         script.addEventListener('error', reject);
         document.body.appendChild(script);
     });
+}
+
+/**
+ * Leaflet, then MapLibre, then the plugin that marries them. The order is load
+ * bearing: the plugin reads both globals when it evaluates, so fetching it
+ * alongside either one is a race that fails on a cold cache and works on a warm
+ * one — the worst kind.
+ */
+async function loadLeaflet(): Promise<any> {
+    loadCss(LEAFLET_CSS);
+    loadCss(MAPLIBRE_CSS);
+
+    if (!(window as any).L) {
+        await loadScript(LEAFLET_JS, 'leaflet');
+    }
+    if (!(window as any).maplibregl) {
+        await loadScript(MAPLIBRE_JS, 'maplibre');
+    }
+    if (!(window as any).L?.maplibreGL) {
+        await loadScript(MAPLIBRE_LEAFLET_JS, 'maplibre-leaflet');
+    }
+    return (window as any).L;
 }
 
 function esc(s: string | null | undefined): string {
@@ -220,8 +270,8 @@ export function MeetsMap({
     onSelectRef.current = onSelectEvent;
 
     // Drives the "LOADING MAP" placeholder: true until the first tile layer
-    // reports it has painted (or we fail). Leaflet + CARTO tiles load from a
-    // CDN and can take 1–3s, during which the canvas is otherwise blank.
+    // reports it has painted (or we fail). Leaflet, MapLibre and the basemap all
+    // load from a CDN and can take 1–3s, during which the canvas is blank.
     const [tilesReady, setTilesReady] = useState(false);
     const [failed, setFailed] = useState(false);
 
@@ -240,17 +290,23 @@ export function MeetsMap({
                 });
                 mapRef.current = map;
 
-                const tiles = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-                    attribution:
-                        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
-                    subdomains: 'abcd',
-                    maxZoom: 20,
-                });
-                // Clear the placeholder once tiles have painted (or errored).
-                tiles.on('load', () => {
-                    if (!cancelled) setTilesReady(true);
+                const tiles = L.maplibreGL({
+                    style: BASEMAP_STYLE,
+                    attribution: BASEMAP_ATTRIBUTION,
                 });
                 tiles.addTo(map);
+                // A GL layer has no Leaflet 'load' event; the readiness signal
+                // is the underlying MapLibre map's own 'load'. Wrapped because
+                // getMaplibreMap() is only available once the layer is added,
+                // and the timer below is the backstop either way.
+                try {
+                    tiles.getMaplibreMap()?.on('load', () => {
+                        if (!cancelled) setTilesReady(true);
+                    });
+                } catch {
+                    // Fall through to the timeout — a placeholder that clears
+                    // late is a great deal better than one that never clears.
+                }
                 // Fallback: never leave the placeholder up forever if 'load'
                 // doesn't fire (all tiles cached, sparse viewport, etc.).
                 setTimeout(() => {
