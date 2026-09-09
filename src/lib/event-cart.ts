@@ -25,6 +25,7 @@
  */
 import { cookies } from 'next/headers';
 import { MEDUSA_URL, MEDUSA_REGION_ID } from './medusa';
+import { ensureMedusaCustomerToken } from './medusa-customer';
 import type {
     ActionResult,
     AddressInput,
@@ -58,6 +59,30 @@ function eventMedusaHeaders(): Record<string, string> {
     };
 }
 
+/**
+ * The member's Medusa token, REQUIRED for every event request.
+ *
+ * This is the one place event carts differ from store carts on purpose. In
+ * lib/medusa-cart.ts attaching a customer is best-effort, because a guest
+ * checkout is a valid checkout. An event package is never a guest purchase: it
+ * is tied to an RSVP held by a profile, and the backend's completion gate 0a
+ * refuses a cart whose customer has no account unless the channel is in
+ * GUEST_CHECKOUT_ALLOWED_CHANNELS — which the Events channel is not.
+ *
+ * Run R12 measured what that costs when the cart is anonymous: the member
+ * reached PLACE ORDER, Stripe authorised AND CAPTURED, and only then was the
+ * order refused. Sending the token from the first request means Medusa binds
+ * the cart to the real customer instead of minting a guest, so the gate has
+ * nothing to refuse. It also puts event orders on /me/orders, which they never
+ * reached as guest orders.
+ *
+ * Returns null when there is no session; callers refuse BEFORE taking money.
+ */
+async function eventAuthHeader(): Promise<Record<string, string>> {
+    const token = await ensureMedusaCustomerToken();
+    return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
 // ── low-level fetch (duplicated from medusa-cart.ts — its copy is private) ──
 async function eventMedusaFetch<T = any>(
     path: string,
@@ -70,9 +95,13 @@ async function eventMedusaFetch<T = any>(
             else url.searchParams.set(k, v);
         }
     }
+    // The member's token goes on EVERY event request: once the cart belongs to
+    // a customer, an unauthenticated read of it 404s (measured at R12), so a
+    // half-authenticated flow is worse than none.
+    const auth = await eventAuthHeader();
     const res = await fetch(url.toString(), {
         ...init,
-        headers: { ...eventMedusaHeaders(), ...(init?.headers || {}) },
+        headers: { ...eventMedusaHeaders(), ...auth, ...(init?.headers || {}) },
         cache: 'no-store',
     });
     const text = await res.text();
@@ -217,6 +246,18 @@ export async function createEventPackageCart(input: {
         return { ok: false, error: 'Missing event package details.' };
     }
 
+    // Refuse BEFORE any money moves. Without a Medusa customer the completion
+    // gate rejects the order — and at R12 it did so only after Stripe had
+    // captured. A member who cannot be identified must be turned away at the
+    // door, not at the till.
+    const token = await ensureMedusaCustomerToken();
+    if (!token) {
+        return {
+            ok: false,
+            error: 'Sign in to reserve a paid spot — an event package is tied to your account.',
+        };
+    }
+
     // Retry-friendly: a cart already stamped for this exact event+tier with its
     // package line intact is simply reused (e.g. member bounced off checkout).
     const existingId = await getCartIdCookie();
@@ -264,6 +305,22 @@ export async function createEventPackageCart(input: {
                 },
             }),
         });
+
+        // Bind the customer explicitly rather than trusting the bearer alone,
+        // then CHECK it. Reaching Stripe on a cart Medusa still considers a
+        // guest is the R12 failure exactly: the charge captures and the order
+        // is refused afterwards. Failing here costs the member a retry; failing
+        // later costs them a charge and a refund.
+        await eventMedusaFetch(`/store/carts/${cart.id}/customer`, { method: 'POST' });
+
+        const bound = await fetchRawCart(cart.id);
+        if (!bound?.customer_id) {
+            await clearCartIdCookie();
+            return {
+                ok: false,
+                error: 'Could not tie this package to your account — sign in again and retry. Nothing has been charged.',
+            };
+        }
 
         await eventMedusaFetch(`/store/carts/${cart.id}/line-items`, {
             method: 'POST',
