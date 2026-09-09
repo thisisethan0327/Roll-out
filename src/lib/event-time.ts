@@ -136,3 +136,44 @@ export function browserTimeZone(): string {
 
 /** Name of the hidden form field carrying the zone. One spelling, one place. */
 export const EVENT_TZ_FIELD = 'start_at_tz';
+
+/**
+ * The zone event times are DISPLAYED in on server-rendered surfaces.
+ *
+ * A server component has no browser zone to ask, and the public event page,
+ * /me/events and the .ics filename convention all already print Pacific with
+ * a " PT" label — every event so far is a Seattle meet. This is the one place
+ * that assumption lives; when events get a stored zone of their own, change it
+ * here. Until then a surface that prints a time with NO label (the console
+ * header and /me both did, in UTC) is wrong in a way nobody can see.
+ */
+export const DISPLAY_TIME_ZONE = 'America/Los_Angeles';
+export const DISPLAY_TIME_ZONE_LABEL = 'PT';
+
+/** "Sat, Sep 12, 11:00 AM PT" — the public event page's shape. */
+export function formatEventTime(iso: string | Date | null | undefined): string {
+    if (!iso) return 'Date TBA';
+    const d = iso instanceof Date ? iso : new Date(iso);
+    if (Number.isNaN(d.getTime())) return 'Date TBA';
+    return (
+        d.toLocaleString('en-US', {
+            weekday: 'short',
+            month: 'short',
+            day: 'numeric',
+            hour: 'numeric',
+            minute: '2-digit',
+            timeZone: DISPLAY_TIME_ZONE,
+        }) + ' ' + DISPLAY_TIME_ZONE_LABEL
+    );
+}
+
+/** "2:47 PM PT" — a time of day, for a hold that expires today. */
+export function formatClock(iso: string | Date | null | undefined): string {
+    if (!iso) return '';
+    const d = iso instanceof Date ? iso : new Date(iso);
+    if (Number.isNaN(d.getTime())) return '';
+    return (
+        d.toLocaleString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: DISPLAY_TIME_ZONE }) +
+        ' ' + DISPLAY_TIME_ZONE_LABEL
+    );
+}

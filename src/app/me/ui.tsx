@@ -9,12 +9,15 @@ export function fmtDate(iso: string | null | undefined): string {
     if (!iso) return '—';
     const d = new Date(iso);
     if (Number.isNaN(d.getTime())) return '—';
-    return d.toLocaleString(undefined, {
+    // No timeZone here meant the SERVER's zone (UTC on Coolify) with no label:
+    // "3:00 PM" on /me for an event the event page called 8:00 AM PT (R12).
+    return d.toLocaleString('en-US', {
         month: 'short',
         day: 'numeric',
         year: 'numeric',
         hour: 'numeric',
         minute: '2-digit',
+        timeZone: 'America/Los_Angeles',
     });
 }
 

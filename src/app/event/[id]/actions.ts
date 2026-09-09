@@ -239,14 +239,14 @@ export async function startPackageCheckout(
  */
 export async function getRsvpSnapshot(
     eventId: string,
-): Promise<{ state: RsvpState; spotNo: number | null }> {
+): Promise<{ state: RsvpState; spotNo: number | null; holdExpiresAt?: string | null }> {
     if (!UUID_RE.test(eventId)) return { state: null, spotNo: null };
     const me = await getConsumerProfile();
     if (!me) return { state: null, spotNo: null };
     const admin = getSupabaseAdmin();
     const { data, error } = await admin
         .from('event_rsvps')
-        .select('status, hold_state, spot_no')
+        .select('status, hold_state, spot_no, hold_expires_at')
         .eq('event_id', eventId)
         .eq('profile_id', me.profileId)
         .maybeSingle();
@@ -260,7 +260,11 @@ export async function getRsvpSnapshot(
         return { state: 'confirmed', spotNo: (data as any)?.spot_no ?? null };
     }
     if (status === 'going' && hold === 'held') {
-        return { state: 'held', spotNo: (data as any)?.spot_no ?? null };
+        return {
+            state: 'held',
+            spotNo: (data as any)?.spot_no ?? null,
+            holdExpiresAt: ((data as any)?.hold_expires_at as string | null) ?? null,
+        };
     }
     if (hold === 'waitlisted') return { state: 'waitlisted', spotNo: null };
     return { state: null, spotNo: null };

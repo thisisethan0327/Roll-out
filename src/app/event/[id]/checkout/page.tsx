@@ -26,6 +26,7 @@ import { STRIPE_PUBLISHABLE_KEY } from '@/lib/medusa';
 import { CheckoutClient } from '../../../store/checkout/CheckoutClient';
 import { ConfirmPoll } from './ConfirmPoll';
 import { getRsvpSnapshot } from '../actions';
+import { formatClock } from '@/lib/event-time';
 
 export const dynamic = 'force-dynamic';
 
@@ -107,6 +108,11 @@ export default async function EventCheckoutPage({
         );
     }
 
+    // The hold's expiry is known to the page; it was never shown. A member
+    // paying against a 15-minute clock they cannot see is the R12 complaint.
+    const hold = await getRsvpSnapshot(id);
+    const holdUntil = hold.state === 'held' && hold.holdExpiresAt ? formatClock(hold.holdExpiresAt) : null;
+
     return (
         <section className="section" style={{ padding: '40px 0 72px' }}>
             <div className="container">
@@ -116,7 +122,8 @@ export default async function EventCheckoutPage({
                 </h1>
                 <p className="text-dim" style={{ fontSize: 13, margin: '0 0 28px' }}>
                     Your spot is held while you pay — complete payment before the hold
-                    expires to lock it in.
+                    expires{holdUntil ? <> at <strong style={{ color: 'var(--text)' }}>{holdUntil}</strong></> : null} to
+                    lock it in.
                 </p>
                 <CheckoutClient
                     initialCart={eventCart.cart}

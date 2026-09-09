@@ -37,6 +37,8 @@ export type MedusaOrder = {
     currency_code: string | null;
     created_at: string | null;
     vendor: string | null;
+    /** True for an event package (order.metadata.event_id) — not a store buy. */
+    is_event: boolean;
     items: MedusaOrderItem[];
 };
 
@@ -91,6 +93,17 @@ async function exchangeForMedusaToken(): Promise<string | null> {
     const accessToken = session?.access_token;
     if (!accessToken) return null;
     return authExchange(accessToken);
+}
+
+/**
+ * A vendor worth showing. The backend stamps metadata.vendor = 'unknown' on an
+ * order with no selling shop — an event package, by design — and /me/orders
+ * printed the literal word (R12, lane RV). Absent is the honest value.
+ */
+function vendorLabel(raw: unknown): string | null {
+    const v = typeof raw === 'string' ? raw.trim() : '';
+    if (!v || v.toLowerCase() === 'unknown') return null;
+    return v;
 }
 
 /** Best-effort first/last name from Supabase user metadata (may be empty). */
@@ -228,7 +241,8 @@ export async function loadMyOrders(): Promise<OrdersResult> {
             total: o.total ?? null,
             currency_code: o.currency_code ?? null,
             created_at: o.created_at ?? null,
-            vendor: o?.metadata?.vendor ?? null,
+            vendor: vendorLabel(o?.metadata?.vendor),
+            is_event: !!o?.metadata?.event_id,
             items: (o.items ?? []).map((it: any) => ({
                 id: it.id,
                 title: it.title ?? it.product_title ?? null,
@@ -439,7 +453,8 @@ export async function loadMyOrder(orderId: string): Promise<OrderDetailResult> {
             total: o.total ?? null,
             currency_code: o.currency_code ?? null,
             created_at: o.created_at ?? null,
-            vendor: o?.metadata?.vendor ?? null,
+            vendor: vendorLabel(o?.metadata?.vendor),
+            is_event: !!o?.metadata?.event_id,
             email: o.email ?? null,
             subtotal: o.item_subtotal ?? o.subtotal ?? null,
             shipping_total: o.shipping_total ?? null,

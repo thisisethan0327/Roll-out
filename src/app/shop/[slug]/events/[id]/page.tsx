@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requireShopMemberBySlug } from '@/lib/auth-guard';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { formatEventTime } from '@/lib/event-time';
 import type { InviteBranding, InviteEvent } from '@/lib/event-invites';
 import { EventEditForm } from './EventEditForm';
 import type { TierDraft } from '../TierRowsEditor';
@@ -225,7 +226,7 @@ export default async function EventDetailPage({
                     <div className="admin-page-title">{event.title}</div>
                     <div className="admin-page-sub">
                         {event.code} ·{' '}
-                        {new Date(event.start_at).toISOString().slice(0, 16).replace('T', ' ')}
+                        {formatEventTime(event.start_at)}
                     </div>
                 </div>
                 <Link
@@ -447,7 +448,7 @@ function ReadOnlyEventCard({ event, hostName }: { event: any; hostName: string }
         { label: 'HOSTED BY', value: hostName },
         {
             label: 'STARTS',
-            value: new Date(event.start_at).toISOString().slice(0, 16).replace('T', ' '),
+            value: formatEventTime(event.start_at),
         },
         {
             label: 'LOCATION',

@@ -22,7 +22,7 @@ export default async function OrdersPage() {
                 <div>
                     <div className="admin-page-title">ORDERS</div>
                     <div className="admin-page-sub text-dim">
-                        Your purchases across the Rollout store.
+                        Your purchases — store orders and event packages.
                     </div>
                 </div>
             </div>
@@ -76,7 +76,7 @@ export default async function OrdersPage() {
                                     </div>
                                     <div className="text-dim" style={{ fontSize: 11, marginTop: 2 }}>
                                         {fmtDay(o.created_at)}
-                                        {o.vendor ? ` · ${o.vendor}` : ''}
+                                        {o.is_event ? ' · Event package' : o.vendor ? ` · ${o.vendor}` : ''}
                                     </div>
                                 </div>
                                 <div style={{ textAlign: 'right' }}>
