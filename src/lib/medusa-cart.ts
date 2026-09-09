@@ -27,6 +27,8 @@ import {
     MEDUSA_REGION_ID,
     medusaHeaders,
     isPausedMeta,
+    needsConfiguratorMeta,
+    configuratorUrl,
 } from './medusa';
 import {
     getSellingShops,
@@ -223,6 +225,8 @@ export async function getCartCount(): Promise<number> {
 // ── vendor resolution for a variant ─────────────────────────────────────────
 type VariantOwner = {
     paused: boolean;
+    /** Must be configured on unityusa.co — see needsConfiguratorMeta. */
+    needsConfigurator: boolean;
     categoryHandles: string[];
     productHandle: string | null;
 };
@@ -240,6 +244,7 @@ async function resolveVariantOwner(variantId: string): Promise<VariantOwner | nu
         if (!p) return null;
         return {
             paused: isPausedMeta(p.metadata),
+            needsConfigurator: needsConfiguratorMeta(p.metadata),
             categoryHandles: (p.categories ?? []).map((c: any) => c.handle).filter(Boolean),
             productHandle: p.handle ?? null,
         };
@@ -274,6 +279,14 @@ export async function addToCart(
     const owner = await resolveVariantOwner(variantId);
     if (owner?.paused) {
         return { ok: false, error: 'This product is sold out and can’t be purchased right now.' };
+    }
+    // Enforced HERE as well as in the UI: the page hides the button, and a stale
+    // tab or a hand-made POST still has to come through this.
+    if (owner?.needsConfigurator) {
+        return {
+            ok: false,
+            error: `This kit is configured on unityusa.co — ${configuratorUrl(owner.productHandle)}`,
+        };
     }
 
     // Line-level attribution: the tenant vendor KEY (what vendor dashboards

@@ -9,14 +9,33 @@ import { Dots } from '../../_ui';
 
 type Props = {
     paused: boolean;
+    /** Configured on unityusa.co — no purchase path here. */
+    needsConfigurator: boolean;
+    configuratorUrl: string;
     options: { title: string; values: string[] }[];
     variants: MedusaVariant[];
     currency: string | null;
 };
 
-/** Variant picker + add-to-cart. When paused, renders a disabled COMING SOON
- * control and no purchase path. */
-export function AddToCartClient({ paused, options, variants, currency }: Props) {
+/**
+ * Variant picker + add-to-cart. When paused, renders a disabled COMING SOON
+ * control and no purchase path.
+ *
+ * When the product needs a CONFIGURATOR it renders no purchase path either, and
+ * sends the customer to unityusa.co. A pre-cut kit is plotted per vehicle and
+ * Printable PPF is printed from artwork; both are collected at add-to-cart on
+ * unityusa.co and written onto the line item, which is where the backend reads
+ * them to open a print job. Adding one here would take money for work UNITY
+ * cannot do. The cart action refuses these too — hidden is not forbidden.
+ */
+export function AddToCartClient({
+    paused,
+    needsConfigurator,
+    configuratorUrl,
+    options,
+    variants,
+    currency,
+}: Props) {
     const router = useRouter();
     const [pending, startTransition] = useTransition();
     const [error, setError] = useState<string | null>(null);
@@ -42,6 +61,27 @@ export function AddToCartClient({ paused, options, variants, currency }: Props) 
             ) ?? null
         );
     }, [variants, realOptions, selection]);
+
+    // Checked BEFORE paused: a kit that is both should say where to configure it,
+    // not "coming soon" — the customer can buy it today, just not here.
+    if (needsConfigurator) {
+        return (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <a
+                    href={configuratorUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="btn btn-lg"
+                    style={{ width: '100%', textAlign: 'center' }}
+                >
+                    CONFIGURE ON UNITYUSA.CO
+                </a>
+                <span className="text-dim" style={{ fontSize: 12, lineHeight: 1.5 }}>
+                    This kit is cut to your vehicle, so it is configured on unityusa.co.
+                </span>
+            </div>
+        );
+    }
 
     if (paused) {
         return (

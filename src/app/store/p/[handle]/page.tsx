@@ -13,6 +13,7 @@ import { fetchProductByHandle, formatMoney } from '@/lib/medusa';
 import { getSellingShops, resolveVendorShop } from '@/lib/store-shops';
 import { CartLink } from '../../CartLink';
 import { AddToCartClient } from './AddToCartClient';
+import { configuratorUrl } from '@/lib/medusa';
 import { ProductGallery } from './ProductGallery';
 
 export const dynamic = 'force-dynamic';
@@ -127,6 +128,8 @@ export default async function ProductDetailPage({
 
                         <AddToCartClient
                             paused={product.paused}
+                            needsConfigurator={product.needsConfigurator}
+                            configuratorUrl={configuratorUrl(product.handle)}
                             options={product.options}
                             variants={product.variants}
                             currency={product.currency}

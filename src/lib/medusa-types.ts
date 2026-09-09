@@ -14,6 +14,12 @@ export type MedusaProduct = {
     price: number | null;
     currency: string | null;
     paused: boolean;
+    /**
+     * Must be configured on unityusa.co before it can be bought — a pre-cut kit
+     * is plotted per vehicle, Printable PPF is printed from artwork, and Rollout
+     * collects neither. See needsConfiguratorMeta in lib/medusa.
+     */
+    needsConfigurator: boolean;
     categoryHandles: string[];
 };
 

@@ -50,6 +50,36 @@ export function medusaHeaders(): Record<string, string> {
  * `metadata.paused = "true"` (see Neferstock backend set-paused.mjs). Mirror the
  * storefront's tolerant read so the flag is honoured however it was written.
  */
+/**
+ * A product that cannot be bought here because it must be CONFIGURED first.
+ *
+ * UNITY's pre-cut kits are plotted per vehicle and Printable PPF is printed
+ * from customer artwork; both collect that at add-to-cart on unityusa.co and
+ * write it onto the line item, which is where the order.placed subscriber reads
+ * it to open a print job. Rollout has no such picker, so an add here produces a
+ * job with no vehicle and no artwork — work UNITY cannot plot and a customer
+ * who has paid.
+ *
+ * All five are paused today and the pause gate refuses them, but pause is a
+ * button UNITY's new admin is about to hand its staff: unpausing a kit to sell
+ * it on unityusa.co would unpause it here too. This refusal does not depend on
+ * that, which is the point.
+ *
+ * Remove this only when Rollout actually carries the configurator.
+ */
+export function needsConfiguratorMeta(metadata: unknown): boolean {
+  const m = (metadata ?? {}) as Record<string, unknown>;
+  const on = (v: unknown) => v === true || String(v).toLowerCase() === 'true';
+  return on(m.precut) || on(m.printable);
+}
+
+/** Where such a product IS configurable. */
+export function configuratorUrl(handle: string | null | undefined): string {
+  return handle
+    ? `https://unityusa.co/us/products/${encodeURIComponent(handle)}`
+    : 'https://unityusa.co';
+}
+
 export function isPausedMeta(metadata: unknown): boolean {
     const v = (metadata as Record<string, unknown> | null | undefined)?.paused;
     return v === true || v === 'true' || v === 1 || v === '1';
@@ -101,6 +131,7 @@ function mapProduct(p: any): MedusaProduct {
         price,
         currency,
         paused: isPausedMeta(p.metadata),
+        needsConfigurator: needsConfiguratorMeta(p.metadata),
         categoryHandles: categoryHandlesOf(p),
     };
 }
