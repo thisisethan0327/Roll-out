@@ -9,7 +9,7 @@ import { CartClient } from './CartClient';
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
-    title: 'Cart · Rollout Store',
+    title: 'Cart · Store',
     robots: { index: false },
 };
 

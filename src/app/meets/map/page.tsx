@@ -24,7 +24,7 @@ const TYPE_LABEL: Record<EventType, string> = {
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
-    title: 'Meets Map · Rollout',
+    title: 'Meets Map',
     description:
         'Map of upcoming car meets, night runs, track days, and shops on Rollout — find what is happening near you.',
 };
@@ -45,7 +45,7 @@ export default async function MeetsMapPage({
             <section style={{ background: 'var(--bg-1)', borderBottom: '1px solid var(--line)' }}>
                 <div
                     className="container"
-                    style={{ padding: '18px 0', display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center', justifyContent: 'space-between' }}
+                    style={{ paddingTop: 18, paddingBottom: 18, display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center', justifyContent: 'space-between' }}
                 >
                     <div>
                         <div className="eyebrow eyebrow-gold mb-4">／ MEETS MAP</div>
@@ -92,7 +92,7 @@ export default async function MeetsMapPage({
             <section style={{ background: 'var(--bg-1)', borderTop: '1px solid var(--line)' }}>
                 <div
                     className="container"
-                    style={{ padding: '14px 0', display: 'flex', gap: 20, flexWrap: 'wrap', alignItems: 'center' }}
+                    style={{ paddingTop: 14, paddingBottom: 14, display: 'flex', gap: 20, flexWrap: 'wrap', alignItems: 'center' }}
                 >
                     <span className="mono-row" style={{ fontSize: 11 }}>
                         <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: '50%', background: 'var(--gold)', marginRight: 6 }} />

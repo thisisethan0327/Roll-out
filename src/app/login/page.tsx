@@ -13,7 +13,7 @@
 import Link from 'next/link';
 import { OtpLoginForm } from '@/components/auth/OtpLoginForm';
 
-export const metadata = { title: 'Sign In · Rollout' };
+export const metadata = { title: 'Sign In' };
 
 /** Only allow same-origin absolute paths, never protocol-relative (`//evil`). */
 function safeNext(raw: string | undefined): string {

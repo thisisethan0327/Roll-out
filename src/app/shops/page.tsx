@@ -113,7 +113,7 @@ function stars(rating: number): string {
 }
 
 export const metadata: Metadata = {
-    title: 'Car Wrap, PPF & Detail Shops · Rollout',
+    title: 'Car Wrap, PPF & Detail Shops',
     description:
         'Find vehicle wrap, paint protection film, ceramic coating, and tint shops near you on Rollout — with ratings, locations, and online booking.',
     openGraph: {

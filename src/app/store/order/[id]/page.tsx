@@ -14,7 +14,7 @@ import { MEDUSA_URL, medusaHeaders } from '@/lib/medusa';
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
-    title: 'Order confirmed · Rollout Store',
+    title: 'Order confirmed · Store',
     robots: { index: false },
 };
 

@@ -279,6 +279,11 @@ export function TiersSection({
                             letterSpacing: 'var(--track-wider)',
                             cursor: pending ? 'wait' : 'pointer',
                             textDecoration: 'underline',
+                            // This is the ONLY exit from a tiered RSVP and it
+                            // was 119x13 — under half the 44px minimum. The
+                            // text stays small; the target does not.
+                            minHeight: 44,
+                            padding: '0 16px',
                         }}
                     >
                         CANCEL MY RSVP

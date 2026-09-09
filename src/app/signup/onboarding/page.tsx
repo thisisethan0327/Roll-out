@@ -13,7 +13,7 @@ import { redirect } from 'next/navigation';
 import { getConsumerProfile } from '@/lib/consumer';
 import { OnboardingForm } from './OnboardingForm';
 
-export const metadata = { title: 'Set Up Your Profile · Rollout' };
+export const metadata = { title: 'Set Up Your Profile' };
 export const dynamic = 'force-dynamic';
 
 // Placeholder-handle shapes minted by rollout.handle_new_auth_user (u_<8 hex>)

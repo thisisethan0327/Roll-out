@@ -87,7 +87,9 @@ export function HostPanel({
                                 background: 'var(--bg-2)',
                                 border: '1px solid var(--line)',
                                 color: 'var(--text)',
-                                fontSize: 14,
+                                // 16px or iOS zooms the page on focus. Every
+                                // other input in the app is already 16.
+                                fontSize: 16,
                                 borderRadius: 3,
                                 resize: 'vertical',
                                 boxSizing: 'border-box',

@@ -12,7 +12,7 @@ import { Suspense } from 'react';
 import { AuthCallbackClient } from './AuthCallbackClient';
 import { Dots } from '@/components/feedback';
 
-export const metadata = { title: 'Signing you in · Rollout' };
+export const metadata = { title: 'Signing you in' };
 export const dynamic = 'force-dynamic';
 
 export default function AuthCallbackPage() {

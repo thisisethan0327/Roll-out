@@ -29,7 +29,7 @@ export async function generateMetadata({
     if (!product) return { title: 'Product not found' };
     const desc = (product.description || `Shop ${product.title} on Rollout.`).slice(0, 160);
     return {
-        title: `${product.title} · Rollout Store`,
+        title: `${product.title} · Store`,
         description: desc,
         openGraph: {
             title: product.title,

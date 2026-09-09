@@ -152,7 +152,7 @@ export default async function MeetsDirectoryPage({
             <section style={{ background: 'var(--bg-1)', borderBottom: '1px solid var(--line)', position: 'sticky', top: 0, zIndex: 5 }}>
                 <div
                     className="container"
-                    style={{ padding: '14px 0', display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', justifyContent: 'space-between' }}
+                    style={{ paddingTop: 14, paddingBottom: 14, display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', justifyContent: 'space-between' }}
                 >
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                         <FilterChip href="/meets" label="ALL" active={!type} />

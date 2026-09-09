@@ -7,7 +7,7 @@ export default function MeetsMapLoading() {
         <div>
             <div
                 className="container"
-                style={{ padding: '18px 0', display: 'flex', gap: 12, alignItems: 'center', justifyContent: 'space-between' }}
+                style={{ paddingTop: 18, paddingBottom: 18, display: 'flex', gap: 12, alignItems: 'center', justifyContent: 'space-between' }}
             >
                 <Skeleton width={180} height={20} />
                 <Skeleton width={120} height={20} />

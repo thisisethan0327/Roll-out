@@ -30,7 +30,7 @@ import { getRsvpSnapshot } from '../actions';
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
-    title: 'Event checkout · Rollout',
+    title: 'Event checkout',
     robots: { index: false },
 };
 

@@ -16,7 +16,7 @@ import { CheckoutClient } from './CheckoutClient';
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
-    title: 'Checkout · Rollout Store',
+    title: 'Checkout · Store',
     robots: { index: false },
 };
 
