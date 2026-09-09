@@ -339,7 +339,12 @@ export default async function HandlePage({
     return (
         <>
             {/* ── HERO ─────────────────────────────────────────────────── */}
+            {/* on-dark: the banner is a photo under a black scrim, or a gradient
+                that ends in #000 — dark in BOTH themes by construction, so its
+                ink must not follow the theme. Measured at run R12 (RG): the
+                handle, bio and follower count went near-black on it in light. */}
             <section
+                className="on-dark"
                 style={{
                     position: 'relative',
                     minHeight: 320,

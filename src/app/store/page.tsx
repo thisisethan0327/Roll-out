@@ -46,7 +46,7 @@ export default async function StoreIndexPage({
         <>
             {/* HERO */}
             <section className="hero-band">
-                <div className="container" style={{ padding: '56px 0 40px' }}>
+                <div className="container" style={{ paddingTop: 56, paddingBottom: 40 }}>
                     <div className="eyebrow eyebrow-gold mb-4">／ STORE</div>
                     <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
                         <div>

@@ -37,7 +37,10 @@ export function MeNav({ displayName, isHost = false }: { displayName: string; is
                 zIndex: 50,
                 backdropFilter: 'blur(12px)',
                 WebkitBackdropFilter: 'blur(12px)',
-                background: 'rgba(0,0,0,0.7)',
+                // The token exists for this; hardcoding the dark value here kept
+                // the bar black in light mode while its links went near-black
+                // (1.95:1 / 1.39:1, measured at run R12). Same fix as SiteHeader.
+                background: 'var(--header-bg)',
                 borderBottom: '1px solid var(--line)',
             }}
         >

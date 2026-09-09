@@ -131,7 +131,7 @@ export default async function ShopsDirectoryPage() {
         <>
             {/* HERO */}
             <section className="hero-band">
-                <div className="container" style={{ padding: '64px 0 48px' }}>
+                <div className="container" style={{ paddingTop: 64, paddingBottom: 48 }}>
                     <div className="eyebrow eyebrow-gold mb-4">／ SHOPS</div>
                     <h1 style={{ fontSize: 'clamp(32px, 5vw, 56px)', letterSpacing: 1, margin: 0 }}>
                         SHOPS ON ROLLOUT

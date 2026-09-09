@@ -6,7 +6,7 @@ export default function StoreLoading() {
         <>
             <SkeletonStyle />
             <section className="hero-band">
-                <div className="container" style={{ padding: '56px 0 40px' }}>
+                <div className="container" style={{ paddingTop: 56, paddingBottom: 40 }}>
                     <Skel w={70} h={11} style={{ marginBottom: 16 }} />
                     <Skel w="min(360px, 70%)" h={48} style={{ marginBottom: 14 }} />
                     <Skel w="min(520px, 90%)" h={16} />
