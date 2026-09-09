@@ -5,7 +5,14 @@ export default function HomePage() {
     return (
         <>
             {/* ── HERO ─────────────────────────────────────────────────────── */}
-            <section style={{ position: 'relative', overflow: 'hidden' }}>
+            {/* on-dark: a night photo at 0.55 brightness is dark in BOTH themes.
+                Measured on production (run R12, RG): in light the wordmark was
+                rgb(20,22,26) over rgb(10,17,23) — the tagline and spec strip
+                the same. The gradient's bottom stop is frozen to #000 as well,
+                because it used to end in var(--bg-0): dark ink fixed at the top
+                would have become light ink on a white fade at the bottom. Dark
+                mode is unchanged by construction (--bg-0 was #000 there). */}
+            <section className="on-dark" style={{ position: 'relative', overflow: 'hidden' }}>
                 <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
                     <Image
                         src="/images/hero-harbor-run.jpg"
@@ -19,7 +26,7 @@ export default function HomePage() {
                             position: 'absolute',
                             inset: 0,
                             background:
-                                'linear-gradient(180deg, rgba(0,0,0,0.4) 0%, transparent 35%, var(--bg-0) 100%), linear-gradient(90deg, rgba(0,0,0,0.5) 0%, transparent 60%)',
+                                'linear-gradient(180deg, rgba(0,0,0,0.4) 0%, transparent 35%, #000000 100%), linear-gradient(90deg, rgba(0,0,0,0.5) 0%, transparent 60%)',
                         }}
                     />
                 </div>
