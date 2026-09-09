@@ -20,6 +20,11 @@ export type MedusaProduct = {
      * collects neither. See needsConfiguratorMeta in lib/medusa.
      */
     needsConfigurator: boolean;
+    /**
+     * Purchasable only by a UNITY dealer. The backend enforces it; this drives
+     * the UI so the page does not offer a button that will be refused.
+     */
+    dealerOnly: boolean;
     categoryHandles: string[];
 };
 

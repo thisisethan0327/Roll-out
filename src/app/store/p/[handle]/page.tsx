@@ -14,6 +14,7 @@ import { getSellingShops, resolveVendorShop } from '@/lib/store-shops';
 import { CartLink } from '../../CartLink';
 import { AddToCartClient } from './AddToCartClient';
 import { configuratorUrl } from '@/lib/medusa';
+import { getDealerStatus } from '@/lib/medusa-customer';
 import { ProductGallery } from './ProductGallery';
 
 export const dynamic = 'force-dynamic';
@@ -47,6 +48,13 @@ export default async function ProductDetailPage({
     const { handle } = await params;
     const product = await fetchProductByHandle(handle);
     if (!product) notFound();
+
+    // Dealer standing decides whether a dealer-only product is offered or
+    // explained. Looked up only for the products that need it; the backend
+    // enforces the rule regardless of what this returns.
+    const dealer = product.dealerOnly
+        ? await getDealerStatus()
+        : { signedIn: false, isDealer: false, tier: null };
 
     const shops = await getSellingShops();
     const vendor = resolveVendorShop(product.categoryHandles, shops);
@@ -128,6 +136,10 @@ export default async function ProductDetailPage({
 
                         <AddToCartClient
                             paused={product.paused}
+                            // Dealer-only is shown as closed ONLY to people who
+                            // are not dealers; a dealer buys it here normally.
+                            dealerLocked={product.dealerOnly && !dealer.isDealer}
+                            dealerSignedIn={dealer.signedIn}
                             needsConfigurator={product.needsConfigurator}
                             configuratorUrl={configuratorUrl(product.handle)}
                             options={product.options}

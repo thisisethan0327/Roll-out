@@ -29,13 +29,14 @@ import {
     isPausedMeta,
     needsConfiguratorMeta,
     configuratorUrl,
+    isDealerOnlyMeta,
 } from './medusa';
 import {
     getSellingShops,
     resolveVendorShop,
     resolveShopVendorKey,
 } from './store-shops';
-import { ensureMedusaCustomerToken } from './medusa-customer';
+import { ensureMedusaCustomerToken, getDealerStatus } from './medusa-customer';
 import type {
     ActionResult,
     AddressInput,
@@ -225,6 +226,8 @@ export async function getCartCount(): Promise<number> {
 // ── vendor resolution for a variant ─────────────────────────────────────────
 type VariantOwner = {
     paused: boolean;
+    /** Only a UNITY dealer may buy this. Backend-enforced; mirrored here. */
+    dealerOnly: boolean;
     /** Must be configured on unityusa.co — see needsConfiguratorMeta. */
     needsConfigurator: boolean;
     categoryHandles: string[];
@@ -244,6 +247,7 @@ async function resolveVariantOwner(variantId: string): Promise<VariantOwner | nu
         if (!p) return null;
         return {
             paused: isPausedMeta(p.metadata),
+            dealerOnly: isDealerOnlyMeta(p.metadata),
             needsConfigurator: needsConfiguratorMeta(p.metadata),
             categoryHandles: (p.categories ?? []).map((c: any) => c.handle).filter(Boolean),
             productHandle: p.handle ?? null,
@@ -254,17 +258,65 @@ async function resolveVariantOwner(variantId: string): Promise<VariantOwner | nu
 }
 
 // ── cart mutations ──────────────────────────────────────────────────────────
+
+/**
+ * Put the signed-in member's Medusa customer on the cart, NOW rather than at
+ * checkout.
+ *
+ * This used to run only from completeCart(), after Stripe had confirmed — which
+ * meant the cart was anonymous for the whole of shopping and checkout, and two
+ * things followed that nobody had noticed:
+ *
+ *  - CUSTOMER-GROUP PRICE LISTS NEVER APPLIED. A member in unity-dealer paid
+ *    RETAIL on rollout.club. Invisible so far only because UNITY's dealer
+ *    prices are currently identical to retail on all 96 variants.
+ *  - DEALER-ONLY PRODUCTS WERE REFUSED FOR EVERYONE. The backend gate
+ *    (validate-add-to-cart) requires cart.customer_id, so a real signed-in
+ *    dealer adding a dealer-only film was told to "sign in to your dealer
+ *    account". Every UNITY film is dealer_only, so listing films here would
+ *    have produced products literally nobody could buy.
+ *
+ * Idempotent and best-effort: no session, or a failed exchange, leaves the cart
+ * anonymous exactly as before. It must never block a sale — a guest checkout is
+ * a valid checkout.
+ */
+async function attachCustomerToCart(cartId: string): Promise<void> {
+    try {
+        const token = await ensureMedusaCustomerToken();
+        if (!token) return;
+        await medusaFetch(`/store/carts/${cartId}/customer`, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${token}` },
+        });
+    } catch {
+        // Swallow: attribution is an enhancement, never a checkout gate.
+    }
+}
+
+/** True when this cart already carries a customer, so we can skip the exchange. */
+async function cartHasCustomer(cartId: string): Promise<boolean> {
+    const raw = await fetchRawCart(cartId);
+    return !!raw?.customer_id;
+}
+
 async function ensureCartId(): Promise<string> {
     const existing = await getCartIdCookie();
     if (existing) {
         const raw = await fetchRawCart(existing);
-        if (raw) return existing;
+        if (raw) {
+            // ADOPTION: a cart started while logged out, then signed in. Attach
+            // now so prices and the dealer gate see the customer on the very
+            // next line, not at checkout.
+            if (!raw.customer_id) await attachCustomerToCart(existing);
+            return existing;
+        }
     }
     const { cart } = await medusaFetch<{ cart: any }>(`/store/carts`, {
         method: 'POST',
         body: JSON.stringify({ region_id: MEDUSA_REGION_ID }),
     });
     await setCartIdCookie(cart.id);
+    await attachCustomerToCart(cart.id);
     return cart.id;
 }
 
@@ -287,6 +339,18 @@ export async function addToCart(
             ok: false,
             error: `This kit is configured on unityusa.co — ${configuratorUrl(owner.productHandle)}`,
         };
+    }
+    // Dealer-only: the backend refuses this line anyway (validate-add-to-cart).
+    // Refusing here too turns a raw MedusaError into a sentence that says what
+    // to do about it, and costs one request only for the products that need it.
+    if (owner?.dealerOnly) {
+        const { isDealer } = await getDealerStatus();
+        if (!isDealer) {
+            return {
+                ok: false,
+                error: 'Sold through UNITY dealers — sign in to your dealer account or apply on unityusa.co.',
+            };
+        }
     }
 
     // Line-level attribution: the tenant vendor KEY (what vendor dashboards
@@ -492,18 +556,12 @@ export async function initStripePaymentSession(): Promise<ActionResult<{ clientS
  *   an anonymous order rather than losing the sale.
  */
 async function linkCartToSignedInCustomer(cartId: string): Promise<void> {
-    try {
-        const token = await ensureMedusaCustomerToken();
-        if (!token) return;
-        // POST /store/carts/{id}/customer — transfers the cart to the customer
-        // resolved from the Bearer token (mirrors sdk.store.cart.transferCart).
-        await medusaFetch(`/store/carts/${cartId}/customer`, {
-            method: 'POST',
-            headers: { Authorization: `Bearer ${token}` },
-        });
-    } catch {
-        // Swallow: linkage is a best-effort enhancement, not a checkout gate.
-    }
+    // Kept as a LAST-CHANCE net. The cart is normally adopted at creation or on
+    // the first action after signing in (see attachCustomerToCart); this catches
+    // the case where a member signed in between the last cart action and
+    // checkout. Skips the token exchange when the cart already has a customer.
+    if (await cartHasCustomer(cartId)) return;
+    await attachCustomerToCart(cartId);
 }
 
 /** Complete the cart into an order after Stripe confirms the payment. */

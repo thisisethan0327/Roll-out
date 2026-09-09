@@ -12,6 +12,9 @@ type Props = {
     /** Configured on unityusa.co — no purchase path here. */
     needsConfigurator: boolean;
     configuratorUrl: string;
+    /** Dealer-only AND this visitor is not a dealer — explain, do not offer. */
+    dealerLocked: boolean;
+    dealerSignedIn: boolean;
     options: { title: string; values: string[] }[];
     variants: MedusaVariant[];
     currency: string | null;
@@ -30,6 +33,8 @@ type Props = {
  */
 export function AddToCartClient({
     paused,
+    dealerLocked,
+    dealerSignedIn,
     needsConfigurator,
     configuratorUrl,
     options,
@@ -61,6 +66,39 @@ export function AddToCartClient({
             ) ?? null
         );
     }, [variants, realOptions, selection]);
+
+    // Before paused, for the same reason: a dealer CAN buy this today, just not
+    // as this visitor. "Coming soon" would be false. The cart action refuses it
+    // too, and the backend refuses it whatever either of them says.
+    if (dealerLocked) {
+        return (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div
+                    style={{
+                        border: '1px solid var(--line)',
+                        background: 'var(--bg-2)',
+                        padding: '12px 14px',
+                        fontSize: 13,
+                        lineHeight: 1.5,
+                    }}
+                >
+                    Sold through UNITY dealers.{' '}
+                    {dealerSignedIn
+                        ? 'Your account is not a dealer account yet.'
+                        : 'Sign in to your dealer account,'}{' '}
+                    <a
+                        href="https://unityusa.co/us/dealers"
+                        target="_blank"
+                        rel="noreferrer"
+                        style={{ textDecoration: 'underline', color: 'var(--text)' }}
+                    >
+                        apply on unityusa.co
+                    </a>
+                    .
+                </div>
+            </div>
+        );
+    }
 
     // Checked BEFORE paused: a kit that is both should say where to configure it,
     // not "coming soon" — the customer can buy it today, just not here.

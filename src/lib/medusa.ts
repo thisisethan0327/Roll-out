@@ -67,6 +67,25 @@ export function medusaHeaders(): Record<string, string> {
  *
  * Remove this only when Rollout actually carries the configurator.
  */
+/**
+ * DEALER ONLY — visible with its price, purchasable only by a customer in
+ * UNITY's dealer groups. Set on the backend as `metadata.dealer_only`.
+ *
+ * The BACKEND is the enforcement (validate-add-to-cart refuses the line, and
+ * validate-cart-completion re-checks), and it is storefront-agnostic, so
+ * rollout.club has always been safe from an unauthorised purchase. What it
+ * lacked was this mirror: without it the page offers an Add to cart that then
+ * fails, which reads as a broken shop rather than a closed door.
+ *
+ * All six UNITY films are dealer_only; the pre-cut kits and Printable PPF are
+ * deliberately NOT — those are consumer products (Ethan, 2026-09-09).
+ */
+export function isDealerOnlyMeta(metadata: unknown): boolean {
+  const m = (metadata ?? {}) as Record<string, unknown>;
+  const v = m.dealer_only;
+  return v === true || String(v).toLowerCase() === 'true';
+}
+
 export function needsConfiguratorMeta(metadata: unknown): boolean {
   const m = (metadata ?? {}) as Record<string, unknown>;
   const on = (v: unknown) => v === true || String(v).toLowerCase() === 'true';
@@ -132,6 +151,7 @@ function mapProduct(p: any): MedusaProduct {
         currency,
         paused: isPausedMeta(p.metadata),
         needsConfigurator: needsConfiguratorMeta(p.metadata),
+        dealerOnly: isDealerOnlyMeta(p.metadata),
         categoryHandles: categoryHandlesOf(p),
     };
 }

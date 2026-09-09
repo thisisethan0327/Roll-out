@@ -529,3 +529,51 @@ export function fulfillmentStatusCopy(status: string | null): { label: string; d
             return { label: status ? status.replace(/_/g, ' ') : 'Unknown', detail: '' };
     }
 }
+
+
+/** UNITY's dealer customer groups — membership IS the dealer grant. */
+const DEALER_GROUPS = ['unity-dealer', 'unity-dealer-exclusive'];
+
+export type DealerStatus = { signedIn: boolean; isDealer: boolean; tier: string | null };
+
+/**
+ * Is the signed-in member a UNITY dealer?
+ *
+ * Read from their Medusa customer GROUPS, which is where the dealer grant
+ * actually lives — approving a dealer application adds them to unity-dealer or
+ * unity-dealer-exclusive, and the price lists carry a customer_group_id rule.
+ * There is no separate flag to trust.
+ *
+ * This is a UI mirror only. The backend refuses a dealer-only line whatever
+ * this returns, so a wrong answer here is a cosmetic problem, never a hole.
+ * Never throws: logged out, an expired token or a backend hiccup all resolve to
+ * "not a dealer", which shows the retail view rather than an error page.
+ */
+export async function getDealerStatus(): Promise<DealerStatus> {
+    const none: DealerStatus = { signedIn: false, isDealer: false, tier: null };
+    try {
+        const token = await ensureMedusaCustomerToken();
+        if (!token) return none;
+        const res = await fetch(`${MEDUSA_URL}/store/customers/me?fields=groups.name`, {
+            headers: pkHeaders({ Authorization: `Bearer ${token}` }),
+            cache: 'no-store',
+        });
+        if (!res.ok) return { ...none, signedIn: true };
+        const json = await res.json();
+        const names: string[] = (json?.customer?.groups ?? [])
+            .map((g: any) => String(g?.name ?? ''))
+            .filter(Boolean);
+        const mine = names.filter((n) => DEALER_GROUPS.includes(n));
+        return {
+            signedIn: true,
+            isDealer: mine.length > 0,
+            tier: mine.includes('unity-dealer-exclusive')
+                ? 'exclusive'
+                : mine.includes('unity-dealer')
+                  ? 'dealer'
+                  : null,
+        };
+    } catch {
+        return none;
+    }
+}
