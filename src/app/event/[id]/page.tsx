@@ -840,7 +840,7 @@ export default async function PublicEventPage({
                             <iframe
                                 src={mapEmbedUrl}
                                 title="Event location map"
-                                style={{ width: '100%', height: '100%', border: 0, filter: 'grayscale(0.6) sepia(0.3) saturate(1.4) brightness(0.85)' }}
+                                className="map-embed"
                                 loading="lazy"
                                 referrerPolicy="no-referrer-when-downgrade"
                             />

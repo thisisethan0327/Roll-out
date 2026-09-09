@@ -68,7 +68,9 @@ function FooterColumn({ title, children }: { title: string; children: React.Reac
     return (
         <div>
             <div className="eyebrow" style={{ marginBottom: 16 }}>{title}</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {/* footer-links gives every anchor a 44px target (see globals.css).
+                The visual rhythm comes from the target height now, so no gap. */}
+            <div className="footer-links" style={{ display: 'flex', flexDirection: 'column' }}>
                 {Array.isArray(children) ? children.map((c, i) => (
                     <div key={i} style={{ fontSize: 13 }}>{c}</div>
                 )) : <div style={{ fontSize: 13 }}>{children}</div>}
