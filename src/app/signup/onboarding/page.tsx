@@ -16,10 +16,9 @@ import { OnboardingForm } from './OnboardingForm';
 export const metadata = { title: 'Set Up Your Profile' };
 export const dynamic = 'force-dynamic';
 
-// Placeholder-handle shapes minted by rollout.handle_new_auth_user (u_<8 hex>)
-// and the ensure_rollout_profile fallback (…_<6 hex>). A handle matching these
-// means the member hasn't chosen one yet.
-const PLACEHOLDER_HANDLE = /^u_[0-9a-f]{8}(_[0-9a-f]{6})?$/i;
+// The placeholder rule lives in lib/onboarding.ts — /auth/landing and
+// requireConsumer() bounce on the same regex, so it must not be copied here.
+import { PLACEHOLDER_HANDLE } from '@/lib/onboarding';
 
 function safeNext(raw: string | undefined): string | null {
     if (!raw) return null;

@@ -14,6 +14,7 @@
 import 'server-only';
 import { redirect } from 'next/navigation';
 import { getConsumerProfile, type ConsumerProfile } from './consumer';
+import { isPlaceholderHandle, isOnboardingPath, onboardingUrl } from './onboarding';
 
 /**
  * Ensure the caller is a signed-in member. Redirects to /login with a next=
@@ -24,6 +25,12 @@ export async function requireConsumer(nextPath: string = '/me'): Promise<Consume
     const profile = await getConsumerProfile();
     if (!profile) {
         redirect(`/login?next=${encodeURIComponent(nextPath)}`);
+    }
+    // Still on the minted placeholder handle: finish onboarding first, then
+    // come back here. /auth/landing catches this at sign-in; this catches a
+    // member who signed in another day. Never from onboarding itself.
+    if (isPlaceholderHandle(profile.handle) && !isOnboardingPath(nextPath)) {
+        redirect(onboardingUrl(nextPath));
     }
     return profile;
 }

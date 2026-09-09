@@ -127,7 +127,10 @@ export function AuthCallbackClient() {
             }
 
             // Success — full navigation so middleware + server guards see the cookie.
-            window.location.replace(next);
+            // Through /auth/landing, not straight to next: the server decides
+            // there whether this member still needs onboarding (placeholder
+            // handle) — this client cannot read the profile. next= survives.
+            window.location.replace(`/auth/landing?next=${encodeURIComponent(next)}`);
         };
 
         void run();
