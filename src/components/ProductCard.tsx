@@ -8,9 +8,24 @@ import { formatMoney } from '@/lib/medusa';
  * Paused products stay on the shelf (visible + linkable) but wear a "COMING
  * SOON" veil and never expose a buy affordance — the founder's coming-soon gate
  * mirrored from the NeferStock storefront.
+ *
+ * A DEALER-ONLY product's price is hidden here BY DEFAULT, for every viewer.
+ * The number is wholesale information and a public grid is exactly where it
+ * would be read once and kept. The card has several callers (the store, its
+ * filtered views, shop pages) and none of them looks up dealer standing today,
+ * so defaulting to hidden means a caller that forgets cannot leak it — the
+ * failure mode is a dealer seeing a placeholder, not a competitor seeing a
+ * price. A caller that HAS checked may pass `revealDealerPrice` to show it.
  */
-export function ProductCard({ product }: { product: MedusaProduct }) {
+export function ProductCard({
+    product,
+    revealDealerPrice = false,
+}: {
+    product: MedusaProduct;
+    revealDealerPrice?: boolean;
+}) {
     const { paused } = product;
+    const hidePrice = product.dealerOnly && !revealDealerPrice;
     return (
         <Link
             href={`/store/p/${product.handle}`}
@@ -74,7 +89,9 @@ export function ProductCard({ product }: { product: MedusaProduct }) {
                         {product.title}
                     </h3>
                     <div className="mono-row" style={{ fontSize: 12 }}>
-                        <span className="accent">{formatMoney(product.price, product.currency)}</span>
+                        <span className="accent">
+                            {hidePrice ? 'Dealer pricing' : formatMoney(product.price, product.currency)}
+                        </span>
                         {paused ? (
                             <>
                                 <span className="sep" />

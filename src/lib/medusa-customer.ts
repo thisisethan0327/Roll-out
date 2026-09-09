@@ -552,20 +552,31 @@ export type DealerStatus = { signedIn: boolean; isDealer: boolean; tier: string 
 export async function getDealerStatus(): Promise<DealerStatus> {
     const none: DealerStatus = { signedIn: false, isDealer: false, tier: null };
     try {
+        // SIGNED IN means "has a platform session", NOT "has a Medusa
+        // customer". A brand-new Rollout member has no Medusa customer until
+        // their first cart action, so deriving it from the token exchange told
+        // a signed-in person they were anonymous — which is how the canary saw
+        // a signed-in non-dealer get the logged-out wording (2026-09-09).
+        const supabase = await getSupabaseServer();
+        const {
+            data: { session },
+        } = await supabase.auth.getSession();
+        const signedIn = !!session?.user;
+
         const token = await ensureMedusaCustomerToken();
-        if (!token) return none;
+        if (!token) return { ...none, signedIn };
         const res = await fetch(`${MEDUSA_URL}/store/customers/me?fields=groups.name`, {
             headers: pkHeaders({ Authorization: `Bearer ${token}` }),
             cache: 'no-store',
         });
-        if (!res.ok) return { ...none, signedIn: true };
+        if (!res.ok) return { ...none, signedIn };
         const json = await res.json();
         const names: string[] = (json?.customer?.groups ?? [])
             .map((g: any) => String(g?.name ?? ''))
             .filter(Boolean);
         const mine = names.filter((n) => DEALER_GROUPS.includes(n));
         return {
-            signedIn: true,
+            signedIn,
             isDealer: mine.length > 0,
             tier: mine.includes('unity-dealer-exclusive')
                 ? 'exclusive'

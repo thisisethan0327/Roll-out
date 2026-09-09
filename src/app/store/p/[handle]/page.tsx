@@ -55,6 +55,14 @@ export default async function ProductDetailPage({
     const dealer = product.dealerOnly
         ? await getDealerStatus()
         : { signedIn: false, isDealer: false, tier: null };
+    /**
+     * A dealer-only product's PRICE is dealer information, whether or not the
+     * product is currently sellable — unityusa.co hides the number behind the
+     * same gate, and a wholesale price on a public page is the kind of thing a
+     * competitor reads once and keeps. Independent of `paused`: pausing changes
+     * whether anyone can buy, not who may see the number.
+     */
+    const hidePrice = product.dealerOnly && !dealer.isDealer;
 
     const shops = await getSellingShops();
     const vendor = resolveVendorShop(product.categoryHandles, shops);
@@ -118,7 +126,7 @@ export default async function ProductDetailPage({
                         </h1>
                         <div className="mono-row" style={{ fontSize: 15, marginBottom: 20 }}>
                             <span className="accent" style={{ fontSize: 20 }}>
-                                {formatMoney(product.price, product.currency)}
+                                {hidePrice ? 'Dealer pricing' : formatMoney(product.price, product.currency)}
                             </span>
                             {product.paused ? (
                                 <>
