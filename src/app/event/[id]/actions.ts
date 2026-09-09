@@ -27,6 +27,14 @@ import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { createEventPackageCart } from '@/lib/event-cart';
 
 export type RsvpChoice = 'going' | 'maybe' | 'declined';
+
+/**
+ * What an invite row RECORDS, which is not what a member can PICK. Nobody
+ * chooses the waitlist — reserve_spot puts them there when the event is full —
+ * but it is the outcome the host needs to see, so the recorded set is wider
+ * than RsvpChoice by exactly that one value. It matches rollout.rsvp_status.
+ */
+export type InviteRsvpStatus = RsvpChoice | 'waitlist';
 /** The member's resolved RSVP state after a write (or as loaded for the page). */
 export type RsvpState = 'confirmed' | 'held' | 'waitlisted' | 'maybe' | 'declined' | null;
 export type RsvpError = 'auth' | 'full' | 'closed' | 'invalid' | 'tier' | 'write';
@@ -92,6 +100,7 @@ export async function setRsvp(
     if (status === null) {
         const { error } = await member.rpc('cancel_rsvp', { p_event: eventId });
         if (error) return { ok: false, error: 'write' };
+        await refreshAttributedInvite(admin, eventId, me.profileId, null);
         revalidatePath(`/event/${eventId}`);
         return { ok: true, state: null };
     }
@@ -110,8 +119,12 @@ export async function setRsvp(
             return { ok: false, error: 'tier' };
         }
 
-        // Invite attribution (best-effort) — mirrors the pre-E0 behavior.
-        await attributeInvite(admin, inviteToken, eventId, me.profileId, 'going');
+        // Record the RESOLVED outcome, not the request. reserve_spot may have
+        // waitlisted this member, and an invite row claiming 'going' tells the
+        // host their invitation landed a spot that it did not.
+        const resolved: InviteRsvpStatus = state === 'waitlisted' ? 'waitlist' : 'going';
+        await attributeInvite(admin, inviteToken, eventId, me.profileId, resolved);
+        await refreshAttributedInvite(admin, eventId, me.profileId, resolved);
         revalidatePath(`/event/${eventId}`);
 
         if (state === 'confirmed') {
@@ -143,6 +156,7 @@ export async function setRsvp(
     if (error) return { ok: false, error: 'write' };
 
     await attributeInvite(admin, inviteToken, eventId, me.profileId, status);
+    await refreshAttributedInvite(admin, eventId, me.profileId, status);
     revalidatePath(`/event/${eventId}`);
     return { ok: true, state: status };
 }
@@ -258,12 +272,44 @@ export async function getRsvpSnapshot(
  * token belongs to this event AND was addressed to this member's email, so a
  * shared link can't misattribute. Never fails the RSVP.
  */
+/**
+ * Keep an ALREADY-attributed invite row in step with the member's RSVP.
+ *
+ * attributeInvite only fires when ?invite= is in the URL, which is the first
+ * click and never again — so an invite row froze at whatever the member chose
+ * that once. Run R12 watched one sit at 'going' through three later
+ * transitions. The row is what the host reads to see whether an invitation
+ * worked, so a stale one misreports the answer.
+ *
+ * Matches on (event, profile) rather than the token: by now the row is bound to
+ * this profile, and the member no longer has the link in hand.
+ */
+async function refreshAttributedInvite(
+    admin: ReturnType<typeof getSupabaseAdmin>,
+    eventId: string,
+    profileId: string,
+    status: InviteRsvpStatus | null,
+): Promise<void> {
+    try {
+        await admin
+            .from('event_invites')
+            .update({
+                rsvp_status: status,
+                rsvp_at: status ? new Date().toISOString() : null,
+            })
+            .eq('event_id', eventId)
+            .eq('rsvp_profile_id', profileId);
+    } catch {
+        // Attribution is reporting, never a gate on the RSVP itself.
+    }
+}
+
 async function attributeInvite(
     admin: ReturnType<typeof getSupabaseAdmin>,
     inviteToken: string | null | undefined,
     eventId: string,
     profileId: string,
-    status: RsvpChoice,
+    status: InviteRsvpStatus,
 ): Promise<void> {
     if (!inviteToken || !TOKEN_RE.test(inviteToken)) return;
     try {

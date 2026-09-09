@@ -213,15 +213,15 @@ export async function sendEventInvites(
         if (existing) {
             inviteId = (existing as any).id;
             token = (existing as any).token;
-            await admin
-                .from('event_invites')
-                .update({
-                    shop_id: shopId,
-                    invited_name: invitedName,
-                    personal_note: personalNote,
-                    template_key: style,
-                })
-                .eq('id', inviteId);
+            // MERGE, don't replace. A re-send with an empty greeting box used to
+            // null out the name already stored on the row — the sender was
+            // re-sending, not erasing. Blank means "leave what's there"; there
+            // is no gesture for "clear it", and inventing one silently is worse
+            // than not having one.
+            const patch: Record<string, unknown> = { shop_id: shopId, template_key: style };
+            if (invitedName) patch.invited_name = invitedName;
+            if (personalNote) patch.personal_note = personalNote;
+            await admin.from('event_invites').update(patch).eq('id', inviteId);
         } else {
             const { data: inserted, error: insErr } = await admin
                 .from('event_invites')
