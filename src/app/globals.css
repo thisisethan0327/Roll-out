@@ -620,6 +620,54 @@ h4 { font-size: 16px; letter-spacing: var(--track-wide); }
   color-scheme: dark;
 }
 
+/* A permanently dark PHOTO SURFACE, in any theme.
+
+   Some surfaces are dark because of what is behind them, not because of the
+   theme: a hero photo under a black scrim stays dark on a light page, and the
+   gold chips, sector text and countdown sitting on it are all authored for
+   dark. Under the light theme the ink scale flips to near-black and that text
+   goes dark-on-dark — measured on /event/[id] at run R12: the h1 and the
+   date/location/hosted-by subline computed to rgb(20,22,26) over the hero.
+
+   Re-declares the ink scale to its dark values for the subtree rather than
+   colouring each element, so descendants that read var(--text) / var(--text-2)
+   follow for free — same reasoning as the ALIASES block: hold the token
+   stream, resolve at use, one place to look.
+
+   Use it on the surface itself: <div className="corner-wrap on-dark">.
+   NOT for chrome that should flip with the theme — the site header is white in
+   light mode and reads var(--header-bg) for exactly that reason. */
+.on-dark {
+  /* Backgrounds and surfaces too, not just ink. Anything inside that paints its
+     OWN surface — the countdown box does — would otherwise keep the light
+     theme's pale fill while its text turned white, and vanish. Caught by
+     looking at the page: the digits disappeared in light mode and were fine in
+     dark. Mirrors the .shop-layout[data-theme='dark'] set above for that
+     reason: a frozen surface has to be frozen whole. */
+  --bg-0: #000000;
+  --bg-1: #050505;
+  --bg-2: #0c0c0c;
+  --bg-3: #141414;
+  --surface: #1a1a1a;
+  --surface-2: #222222;
+  --text: #ffffff;
+  --text-2: #b5b5b5;
+  --text-3: #6a6a6a;
+  --text-4: #3a3a3a;
+  --line: rgba(255, 255, 255, 0.10);
+  --line-mid: rgba(255, 255, 255, 0.22);
+  --line-strong: rgba(255, 255, 255, 0.40);
+  --gold: #ffb733;
+  --gold-dim: rgba(255, 183, 51, 0.18);
+  --gold-glow: rgba(255, 183, 51, 0.08);
+  --on-gold: #1a1a1a;
+  --warn: #ff2a2a;
+  --neon: #84e12e;
+  --orange: #ff8000;
+  --blue: #54c3ea;
+  color: var(--text);
+}
+
 /* Gold-filled buttons in the light console: dark-amber fill needs light ink,
    and the hardcoded bright-yellow hovers must darken instead of lightening.
    Scoped so the marketing site's own .btn (on :root gold) is unaffected. */

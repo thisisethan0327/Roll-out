@@ -452,7 +452,7 @@ export default async function PublicEventPage({
 
             {/* HERO */}
             <section
-                className="corner-wrap"
+                className="corner-wrap on-dark"
                 style={{
                     position: 'relative',
                     minHeight: 440,

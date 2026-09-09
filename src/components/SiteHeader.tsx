@@ -97,7 +97,7 @@ export function SiteHeader() {
                 zIndex: 60,
                 backdropFilter: 'blur(12px)',
                 WebkitBackdropFilter: 'blur(12px)',
-                background: 'rgba(0,0,0,0.7)',
+                background: 'var(--header-bg)',
                 borderBottom: '1px solid var(--line)',
             }}
         >
