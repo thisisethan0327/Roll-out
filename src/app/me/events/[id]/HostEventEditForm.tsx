@@ -8,6 +8,7 @@ import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { updateHostEvent, cancelHostEvent } from '../actions';
 import { EventCoverPicker } from '@/app/shop/[slug]/events/EventCoverPicker';
+import { EventStartAtField } from '@/components/EventStartAtField';
 
 const VISIBILITY: { value: string; label: string }[] = [
     { value: 'public', label: 'PUBLIC' },
@@ -20,13 +21,7 @@ export function HostEventEditForm({ event }: { event: any }) {
     const [pending, start] = useTransition();
     const [savedFlash, setSavedFlash] = useState(false);
 
-    const startAtLocal = event.start_at
-        ? (() => {
-              const d = new Date(event.start_at);
-              const pad = (n: number) => n.toString().padStart(2, '0');
-              return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-          })()
-        : '';
+    // Start time and its zone travel together now — see EventStartAtField.
     const tagsString = Array.isArray(event.tags) ? event.tags.join(', ') : '';
 
     const onSubmit = async (formData: FormData) => {
@@ -94,7 +89,7 @@ export function HostEventEditForm({ event }: { event: any }) {
 
             <SectionHeading>WHEN & CAPACITY</SectionHeading>
             <label className="admin-form-label">START AT</label>
-            <input type="datetime-local" name="start_at" className="admin-form-input" required defaultValue={startAtLocal} disabled={pending} />
+            <EventStartAtField valueIso={event.start_at} disabled={pending} />
 
             <label className="admin-form-label">CAPACITY</label>
             <input type="number" min={1} name="capacity" className="admin-form-input" defaultValue={event.capacity ?? ''} disabled={pending} />

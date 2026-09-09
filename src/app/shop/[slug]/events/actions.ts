@@ -1,5 +1,6 @@
 'use server';
 import { revalidatePath } from 'next/cache';
+import { EVENT_TZ_FIELD, resolveFormZone, zonedWallClockToUtc } from '@/lib/event-time';
 import { redirect } from 'next/navigation';
 import { requireShopMember } from '@/lib/auth-guard';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
@@ -273,8 +274,15 @@ export async function createEvent(shopId: number, formData: FormData) {
         throw new Error('A tiered event needs at least one tier.');
     }
 
-    const start_at = new Date(start_at_raw);
-    if (isNaN(start_at.getTime())) throw new Error('Invalid start time.');
+    // The wall clock is meaningless without the zone it was typed in; the form
+    // carries it. Parsing it with `new Date()` used the SERVER's zone (UTC),
+    // which is what moved every meet by the offset. See lib/event-time.ts.
+    const { timeZone, supplied } = resolveFormZone(formData.get(EVENT_TZ_FIELD));
+    if (!supplied) {
+        console.warn('[events] no %s on the form — reading the wall clock as UTC', EVENT_TZ_FIELD);
+    }
+    const start_at = zonedWallClockToUtc(start_at_raw, timeZone);
+    if (!start_at) throw new Error('Invalid start time.');
 
     const hostId = await fetchShopPageProfileId(shopId);
     if (!hostId) throw new Error('Shop page profile not found. Contact support.');
@@ -345,8 +353,15 @@ export async function updateEvent(
         throw new Error('A tiered event needs at least one tier.');
     }
 
-    const start_at = new Date(start_at_raw);
-    if (isNaN(start_at.getTime())) throw new Error('Invalid start time.');
+    // The wall clock is meaningless without the zone it was typed in; the form
+    // carries it. Parsing it with `new Date()` used the SERVER's zone (UTC),
+    // which is what moved every meet by the offset. See lib/event-time.ts.
+    const { timeZone, supplied } = resolveFormZone(formData.get(EVENT_TZ_FIELD));
+    if (!supplied) {
+        console.warn('[events] no %s on the form — reading the wall clock as UTC', EVENT_TZ_FIELD);
+    }
+    const start_at = zonedWallClockToUtc(start_at_raw, timeZone);
+    if (!start_at) throw new Error('Invalid start time.');
 
     // Ownership gate for the tier writes below: the events UPDATE is scoped by
     // shop_id (a mismatch silently no-ops), but syncTiers keys on event id

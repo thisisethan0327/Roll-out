@@ -13,6 +13,7 @@
  * (send-platform-notification), audited in email_log via linked_event_id.
  */
 import { revalidatePath } from 'next/cache';
+import { EVENT_TZ_FIELD, resolveFormZone, zonedWallClockToUtc } from '@/lib/event-time';
 import { redirect } from 'next/navigation';
 import { requireVerifiedHost } from '@/lib/me-guard';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
@@ -103,8 +104,15 @@ export async function createHostEvent(formData: FormData) {
     if (location_name.length < 2) throw new Error('Location name is required.');
     if (!start_at_raw) throw new Error('Start time is required.');
     if (!ALLOWED_VIS.has(visibility)) throw new Error('Invalid visibility.');
-    const start_at = new Date(start_at_raw);
-    if (isNaN(start_at.getTime())) throw new Error('Invalid start time.');
+    // The wall clock is meaningless without the zone it was typed in; the form
+    // carries it. Parsing it with `new Date()` used the SERVER's zone (UTC),
+    // which is what moved every meet by the offset. See lib/event-time.ts.
+    const { timeZone, supplied } = resolveFormZone(formData.get(EVENT_TZ_FIELD));
+    if (!supplied) {
+        console.warn('[events] no %s on the form — reading the wall clock as UTC', EVENT_TZ_FIELD);
+    }
+    const start_at = zonedWallClockToUtc(start_at_raw, timeZone);
+    if (!start_at) throw new Error('Invalid start time.');
 
     const admin = getSupabaseAdmin();
     const { data, error } = await admin
@@ -160,8 +168,15 @@ export async function updateHostEvent(eventId: string, formData: FormData) {
     if (location_name.length < 2) throw new Error('Location name is required.');
     if (!start_at_raw) throw new Error('Start time is required.');
     if (!ALLOWED_VIS.has(visibility)) throw new Error('Invalid visibility.');
-    const start_at = new Date(start_at_raw);
-    if (isNaN(start_at.getTime())) throw new Error('Invalid start time.');
+    // The wall clock is meaningless without the zone it was typed in; the form
+    // carries it. Parsing it with `new Date()` used the SERVER's zone (UTC),
+    // which is what moved every meet by the offset. See lib/event-time.ts.
+    const { timeZone, supplied } = resolveFormZone(formData.get(EVENT_TZ_FIELD));
+    if (!supplied) {
+        console.warn('[events] no %s on the form — reading the wall clock as UTC', EVENT_TZ_FIELD);
+    }
+    const start_at = zonedWallClockToUtc(start_at_raw, timeZone);
+    if (!start_at) throw new Error('Invalid start time.');
 
     const admin = getSupabaseAdmin();
     const { error } = await admin

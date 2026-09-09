@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { requireVerifiedHost } from '@/lib/me-guard';
 import { EventCoverPicker } from '@/app/shop/[slug]/events/EventCoverPicker';
 import { createHostEvent } from '../actions';
+import { EventStartAtField } from '@/components/EventStartAtField';
 
 export const metadata = { title: 'Host Event' };
 
@@ -63,7 +64,7 @@ export default async function NewHostEventPage() {
 
                 <SectionHeading>WHEN & CAPACITY</SectionHeading>
                 <label className="admin-form-label">START AT</label>
-                <input type="datetime-local" name="start_at" className="admin-form-input" required />
+                <EventStartAtField />
 
                 <label className="admin-form-label">CAPACITY (OPTIONAL)</label>
                 <input type="number" min={1} name="capacity" className="admin-form-input" placeholder="30" />

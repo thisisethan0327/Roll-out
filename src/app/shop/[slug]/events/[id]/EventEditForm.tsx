@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { updateEvent, cancelEvent, uncancelEvent, deleteEvent } from '../actions';
 import { EventCoverPicker } from '../EventCoverPicker';
 import { TierRowsEditor, type TierDraft } from '../TierRowsEditor';
+import { EventStartAtField } from '@/components/EventStartAtField';
 
 const VISIBILITY: { value: string; label: string }[] = [
     { value: 'public', label: 'PUBLIC' },
@@ -35,16 +36,9 @@ export function EventEditForm({
     const canManage = MANAGER_ROLES.has(callerRole);
     const canDelete = OWNER_ROLES.has(callerRole);
 
-    // datetime-local needs `YYYY-MM-DDTHH:MM` (no Z, no seconds)
-    const startAtLocal = event.start_at
-        ? (() => {
-              const d = new Date(event.start_at);
-              const pad = (n: number) => n.toString().padStart(2, '0');
-              return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(
-                  d.getHours(),
-              )}:${pad(d.getMinutes())}`;
-          })()
-        : '';
+    // Start time and its zone travel together now — see EventStartAtField.
+    // The old pre-fill rendered the instant in the BROWSER's zone while the
+    // server parsed the reply in its own, so every save moved the meet.
 
     const tagsString = Array.isArray(event.tags) ? event.tags.join(', ') : '';
 
@@ -165,14 +159,7 @@ export function EventEditForm({
 
             <SectionHeading>WHEN & CAPACITY</SectionHeading>
             <label className="admin-form-label">START AT</label>
-            <input
-                type="datetime-local"
-                name="start_at"
-                className="admin-form-input"
-                required
-                defaultValue={startAtLocal}
-                disabled={!canManage || pending}
-            />
+            <EventStartAtField valueIso={event.start_at} disabled={!canManage || pending} />
 
             <label className="admin-form-label">CAPACITY</label>
             <input

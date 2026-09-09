@@ -4,6 +4,7 @@ import { requireShopMemberBySlug } from '@/lib/auth-guard';
 import { createEvent } from '../actions';
 import { EventCoverPicker } from '../EventCoverPicker';
 import { TierRowsEditor } from '../TierRowsEditor';
+import { EventStartAtField } from '@/components/EventStartAtField';
 
 export const metadata = { title: 'Host Event' };
 
@@ -113,12 +114,7 @@ export default async function NewEventPage({
 
                 <SectionHeading>WHEN & CAPACITY</SectionHeading>
                 <label className="admin-form-label">START AT</label>
-                <input
-                    type="datetime-local"
-                    name="start_at"
-                    className="admin-form-input"
-                    required
-                />
+                <EventStartAtField />
 
                 <label className="admin-form-label">CAPACITY (OPTIONAL)</label>
                 <input
