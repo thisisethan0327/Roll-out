@@ -201,14 +201,18 @@ export async function generateMetadata({
     if (!post) return { title: 'Post not found' };
 
     const author = post.author?.display_name || post.author?.handle || 'Rollout member';
-    const title = `${truncate(post.body, 60) || `${post.type ?? 'Post'} by ${author}`} · Rollout`;
+    // The root layout's title template appends ' · Rollout'; appending it here too
+    // gave the tab "… · Rollout · Rollout". openGraph/twitter do not pass through
+    // the template, so they carry the suffix explicitly.
+    const title = `${truncate(post.body, 60) || `${post.type ?? 'Post'} by ${author}`}`;
+    const socialTitle = `${title} · Rollout`;
     const desc = truncate(post.body, 160) || `A ${(post.type ?? 'post').toLowerCase()} on Rollout.`;
     const images = post.hero_image_url ? [post.hero_image_url] : ['/images/og-rollout.jpg'];
     return {
         title,
         description: desc,
-        openGraph: { title, description: desc, images, type: 'article' },
-        twitter: { card: 'summary_large_image', title, description: desc, images },
+        openGraph: { title: socialTitle, description: desc, images, type: 'article' },
+        twitter: { card: 'summary_large_image', title: socialTitle, description: desc, images },
     };
 }
 
