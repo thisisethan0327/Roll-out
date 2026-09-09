@@ -10,11 +10,23 @@
  * arriving through /event/<id>?invite=<token> still lands on that event, with
  * the token, after choosing a handle. Everyone else goes straight to next.
  */
-import { NextResponse } from 'next/server';
 import { getConsumerProfile } from '@/lib/consumer';
 import { isPlaceholderHandle, onboardingUrl, safeNextPath } from '@/lib/onboarding';
 
 export const dynamic = 'force-dynamic';
+
+/**
+ * A RELATIVE redirect, on purpose. Every target here is a same-origin path,
+ * and building an absolute URL from req.url is wrong behind a proxy: inside
+ * the Coolify container req.url's origin is the bind address, and the first
+ * deploy of this route sent every sign-in on production to
+ * https://0.0.0.0:3000/… (measured, 0/6, minutes after it went live). A dev
+ * server cannot catch that — localhost IS its origin. HTTP allows a relative
+ * Location and browsers resolve it against the page they are on.
+ */
+function redirectTo(path: string): Response {
+    return new Response(null, { status: 307, headers: { Location: path } });
+}
 
 export async function GET(req: Request) {
     const url = new URL(req.url);
@@ -23,7 +35,7 @@ export async function GET(req: Request) {
     // Staff/tenant doors have their own guards and never use placeholder
     // profiles for anything a member sees — pass them straight through.
     if (next.startsWith('/shop') || next.startsWith('/admin')) {
-        return NextResponse.redirect(new URL(next, url.origin));
+        return redirectTo(next);
     }
 
     let profile: { handle: string } | null = null;
@@ -34,5 +46,5 @@ export async function GET(req: Request) {
     }
 
     const target = profile && isPlaceholderHandle(profile.handle) ? onboardingUrl(next) : next;
-    return NextResponse.redirect(new URL(target, url.origin));
+    return redirectTo(target);
 }
