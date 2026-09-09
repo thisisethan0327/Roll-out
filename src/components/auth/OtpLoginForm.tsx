@@ -217,7 +217,12 @@ export function OtpLoginForm({
             // Latch BEFORE navigating: the second submit can fire while the
             // push is still in flight.
             doneRef.current = true;
-            router.push(successPath);
+            // Through /auth/landing, not straight to next: the server decides there
+                // whether this member still needs onboarding. The magic-link door already
+                // went via /auth/callback → /auth/landing; this — the primary door, the
+                // six-digit code — pushed straight to next and skipped the gate (run R12,
+                // lane RB: fresh user landed on the event as "NEW USER"). Same hop for both.
+                router.push(`/auth/landing?next=${encodeURIComponent(successPath)}`);
             router.refresh();
         } catch (ex: any) {
             setErr(ex?.message ?? 'Unexpected error verifying code.');
