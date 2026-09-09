@@ -79,6 +79,11 @@ export function EventStartAtField({
                 defaultValue={valueIso ? utcToZonedWallClock(valueIso, zone) : ''}
             />
             <input type="hidden" name={EVENT_TZ_FIELD} value={zone} readOnly />
+            {/* The host was never told which zone their wall clock is read in
+                (run R12, lane RC). One line, from the same state the field uses. */}
+            <div className="text-dim" style={{ fontSize: 11, marginTop: 6, letterSpacing: 0.3 }}>
+                Time is read in {zone === 'UTC' ? 'UTC' : zone.replace(/_/g, ' ')}
+            </div>
         </>
     );
 }

@@ -18,7 +18,7 @@ export function fmtDate(iso: string | null | undefined): string {
         hour: 'numeric',
         minute: '2-digit',
         timeZone: 'America/Los_Angeles',
-    });
+    }) + ' PT';
 }
 
 export function fmtDay(iso: string | null | undefined): string {
