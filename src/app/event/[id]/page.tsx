@@ -121,6 +121,34 @@ const NO_RSVP: Omit<MyRsvp, 'isLoggedIn'> = {
 };
 
 /** The signed-in member's current RSVP for this event, resolved to E0/E3 state. */
+/**
+ * May THIS viewer manage the event's shop? The manage link used to render for
+ * everyone with only its destination gated, so a signed-out visitor was invited
+ * into a console they cannot open — and told a shop console lives at that path.
+ * Non-redirecting on purpose: this is a public page.
+ */
+const EVENT_MANAGER_ROLES = new Set(['owner', 'admin', 'manager']);
+
+async function viewerCanManageShop(shopId: number | null | undefined): Promise<boolean> {
+    if (!shopId) return false;
+    const me = await getConsumerProfile();
+    if (!me) return false;
+    const admin = getSupabaseAdmin();
+    const { data: padmin } = await admin
+        .from('platform_admins')
+        .select('profile_id')
+        .eq('profile_id', me.profileId)
+        .maybeSingle();
+    if (padmin) return true;
+    const { data: m } = await admin
+        .from('shop_memberships')
+        .select('role')
+        .eq('profile_id', me.profileId)
+        .eq('shop_id', shopId)
+        .maybeSingle();
+    return EVENT_MANAGER_ROLES.has(String((m as any)?.role ?? ''));
+}
+
 async function loadMyRsvp(eventId: string): Promise<MyRsvp> {
     const me = await getConsumerProfile();
     if (!me) return { isLoggedIn: false, ...NO_RSVP };
@@ -325,7 +353,12 @@ export async function generateMetadata({
     const { event: ev } = data;
 
     const cancelledPrefix = ev.cancelled_at ? '[Cancelled] ' : '';
-    const title = `${cancelledPrefix}${ev.title ?? 'Car meet'} · Rollout`;
+    // The root layout's title template already appends ' · Rollout'. Appending
+    // it here too produced "… · Rollout · Rollout" in the tab and in shares.
+    // openGraph/twitter titles do NOT go through the template, so they carry
+    // the suffix explicitly.
+    const title = `${cancelledPrefix}${ev.title ?? 'Car meet'}`;
+    const socialTitle = `${title} · Rollout`;
     const desc = ev.description
         ? truncate(ev.description, 160)
         : `${ev.type ?? 'Meet'} at ${ev.location_name ?? 'TBA'} — ${formatDate(ev.start_at)}. RSVP on Rollout.`;
@@ -334,8 +367,8 @@ export async function generateMetadata({
     return {
         title,
         description: desc,
-        openGraph: { title, description: desc, images, type: 'website' },
-        twitter: { card: 'summary_large_image', title, description: desc, images },
+        openGraph: { title: socialTitle, description: desc, images, type: 'website' },
+        twitter: { card: 'summary_large_image', title: socialTitle, description: desc, images },
     };
 }
 
@@ -373,6 +406,7 @@ export default async function PublicEventPage({
     const hostName = ev.host?.display_name ?? '';
     const hostVerified = !!ev.host?.is_verified;
     const shopSlug = ev.shop?.slug ?? null;
+    const canManageThisEvent = await viewerCanManageShop(ev.shop_id);
 
     const coverUrl = resolveCover(ev.hero_image_url, ev.type, ev.id);
     const heroBg = `linear-gradient(180deg, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.92) 100%), url(${coverUrl}) center/cover no-repeat`;
@@ -684,7 +718,7 @@ export default async function PublicEventPage({
 
                     <ShareBar url={shareUrl} title={shareTitle} />
 
-                    {shopSlug ? (
+                    {shopSlug && canManageThisEvent ? (
                         <Link
                             href={`/shop/${shopSlug}/events/${ev.id}`}
                             className="text-link"

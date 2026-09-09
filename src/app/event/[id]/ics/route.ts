@@ -81,7 +81,14 @@ export async function GET(
     ].filter(Boolean);
 
     const body = lines.join('\r\n');
-    const filename = `rollout-${(ev.title ?? 'event').replace(/[^a-z0-9]+/gi, '-').toLowerCase()}.ics`;
+    // Trim the hyphens the slug leaves at the ends — a title ending in ')' or
+    // any other punctuation produced "…-r2-edited-.ics".
+    const slug =
+        (ev.title ?? 'event')
+            .replace(/[^a-z0-9]+/gi, '-')
+            .replace(/^-+|-+$/g, '')
+            .toLowerCase() || 'event';
+    const filename = `rollout-${slug}.ics`;
 
     return new NextResponse(body, {
         status: 200,
