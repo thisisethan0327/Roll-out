@@ -312,6 +312,10 @@ h4 { font-size: 16px; letter-spacing: var(--track-wide); }
 .mono-row {
   display: inline-flex;
   align-items: center;
+  /* Wrap, don't squeeze. Without this the row keeps every item on ONE line and
+     lets each shrink instead, so at 390px a date became a five-line column and
+     the handle beside it ran off the screen (measured, run R12). */
+  flex-wrap: wrap;
   gap: 14px;
   font-family: var(--font-display);
   font-size: 11px;
@@ -325,6 +329,32 @@ h4 { font-size: 16px; letter-spacing: var(--track-wide); }
   width: 1px;
   height: 10px;
   background: var(--line-mid);
+}
+
+/* The event hero's two corner chips.
+
+   They used to be two absolutely-positioned siblings, one pinned left and one
+   right, which is fine until the viewport is narrower than their combined
+   width: at 390px they overlapped by 122px and rendered as interleaved
+   nonsense ("4CRUISEN /· 0001.330OFFICIAL"). One flex bar between the same two
+   edges wraps instead of colliding, and the positioning lives here where a
+   media query can reach it rather than in an inline style where it cannot. */
+.event-hero-chips {
+  position: absolute;
+  top: 18px;
+  left: 18px;
+  right: 18px;
+  z-index: 2;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  pointer-events: none;
+}
+.event-hero-chips > * {
+  pointer-events: auto;
+  max-width: 100%;
 }
 
 /* ── Feature card ──────────────────────────────────────────────────────── */

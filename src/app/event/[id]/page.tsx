@@ -498,12 +498,9 @@ export default async function PublicEventPage({
                 <span className="corner-bottom-left" />
                 <span className="corner-bottom-right" />
 
+                <div className="event-hero-chips">
                 <div
                     style={{
-                        position: 'absolute',
-                        top: 18,
-                        left: 18,
-                        zIndex: 2,
                         padding: '8px 12px',
                         border: '1px solid var(--line-mid)',
                         background: 'rgba(0,0,0,0.6)',
@@ -531,10 +528,6 @@ export default async function PublicEventPage({
 
                 <div
                     style={{
-                        position: 'absolute',
-                        top: 18,
-                        right: 18,
-                        zIndex: 2,
                         padding: '8px 12px',
                         border: '1px solid var(--line-mid)',
                         background: 'rgba(0,0,0,0.6)',
@@ -550,6 +543,7 @@ export default async function PublicEventPage({
                     <span className="accent">{ev.code ?? ev.type ?? 'MEET'}</span>
                     <span style={{ color: 'var(--text-3)' }}>·</span>
                     <span className="accent">{ev.is_official ? 'OFFICIAL' : 'COMMUNITY MEET'}</span>
+                </div>
                 </div>
 
                 <div
