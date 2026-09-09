@@ -15,7 +15,7 @@ export default function SignInOnPhonePage() {
                 <div className="meta">CONTINUE THE SIGN-IN ON YOUR ROLLOUT APP</div>
 
                 <p style={{ fontSize: 17 }}>
-                    You opened a Rollout sign-in link on desktop. Magic links route to the mobile app via the{' '}
+                    You opened a Rollout sign-in link in a web browser. Magic links route to the mobile app via the{' '}
                     <code style={{ color: 'var(--gold)', fontFamily: 'var(--font-display)' }}>mobile://</code>{' '}
                     scheme, so the click won&apos;t do anything useful in a browser.
                 </p>
