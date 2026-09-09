@@ -67,9 +67,29 @@ export function AddToCartClient({
         );
     }, [variants, realOptions, selection]);
 
-    // Before paused, for the same reason: a dealer CAN buy this today, just not
-    // as this visitor. "Coming soon" would be false. The cart action refuses it
-    // too, and the backend refuses it whatever either of them says.
+    // PAUSED WINS, and it is checked first.
+    //
+    // I had the dealer and configurator branches ahead of it, reasoning that a
+    // dealer can buy the product today so "coming soon" would be false. That
+    // was wrong: `paused` is a PRODUCT-level flag and the cart refuses a paused
+    // line for everyone, dealer or not, on every storefront. So while a product
+    // is paused, "sold through UNITY dealers" invites a dealer to try something
+    // that cannot work, and "configure on unityusa.co" sends a buyer somewhere
+    // it is equally unbuyable. The canary caught this rendering both messages
+    // at once (2026-09-09): a gold COMING SOON badge beside "Sold through UNITY
+    // dealers", which are two different reasons and cannot both be the answer.
+    //
+    // The other two are the reasons you CANNOT buy something that is otherwise
+    // on sale, so they matter only once the product is live.
+    if (paused) {
+        return (
+            <button type="button" className="btn btn-lg" disabled style={{ opacity: 0.55, cursor: 'not-allowed', width: '100%' }}>
+                COMING SOON
+            </button>
+        );
+    }
+
+    // Not paused, but not for this visitor: a dealer buys this normally.
     if (dealerLocked) {
         return (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -100,8 +120,7 @@ export function AddToCartClient({
         );
     }
 
-    // Checked BEFORE paused: a kit that is both should say where to configure it,
-    // not "coming soon" — the customer can buy it today, just not here.
+    // Not paused: the customer can buy this today, just not here.
     if (needsConfigurator) {
         return (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -118,14 +137,6 @@ export function AddToCartClient({
                     This kit is cut to your vehicle, so it is configured on unityusa.co.
                 </span>
             </div>
-        );
-    }
-
-    if (paused) {
-        return (
-            <button type="button" className="btn btn-lg" disabled style={{ opacity: 0.55, cursor: 'not-allowed', width: '100%' }}>
-                COMING SOON
-            </button>
         );
     }
 
