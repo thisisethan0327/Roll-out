@@ -11,7 +11,7 @@ import Link from 'next/link';
 import { getSellingShops } from '@/lib/store-shops';
 import { fetchCatalogByHandles, type MedusaProduct } from '@/lib/medusa';
 import { ProductCard } from '@/components/ProductCard';
-import { CartLink } from './CartLink';
+import { CartLink } from '../CartLink';
 
 export const dynamic = 'force-dynamic';
 

@@ -1,5 +1,5 @@
 /** Streaming skeleton for /store — hero band + one shop block of product cards. */
-import { SkeletonStyle, Skel } from './_skeleton';
+import { SkeletonStyle, Skel } from '../_skeleton';
 
 export default function StoreLoading() {
     return (
