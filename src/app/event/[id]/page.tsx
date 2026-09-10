@@ -493,13 +493,14 @@ export default async function PublicEventPage({
                     position: 'relative',
                     minHeight: 440,
                     overflow: 'hidden',
+                    background: 'var(--ink-photo)', /* solid ground under the photo layer */
                     borderBottom: '1px solid var(--line)',
                     filter: isCancelled ? 'grayscale(0.5)' : undefined,
                 }}
             >
                 {/* The photo is its own layer so it can drift under the copy (6F
                     parallax); oversized at the bottom so the drift shows no ground. */}
-                <div data-parallax style={{ position: 'absolute', inset: '0 0 -12% 0', zIndex: 0, background: heroBg }} />
+                <div data-parallax style={{ position: 'absolute', zIndex: 0, background: heroBg }} />
                 <span className="corner-bottom-left" />
                 <span className="corner-bottom-right" />
 

@@ -514,10 +514,13 @@ h4 { font-size: 16px; letter-spacing: var(--track-wide); }
 .rv:nth-child(4n + 4) { transition-delay: 0.21s; }
 /* Word spans made by splitWords() — the wipe needs a box to clip. */
 .w { display: inline-block; will-change: clip-path; }
-[data-parallax] { will-change: transform; }
+/* The event hero's photo layer is oversized 12% at the bottom ONLY when it
+   will drift (HeroParallax); under reduced motion it is the plain cover. */
+[data-parallax] { inset: 0 0 -12% 0; will-change: transform; }
 @media (prefers-reduced-motion: reduce) {
   .rv { opacity: 1; transform: none; transition: none; }
   .w { will-change: auto; }
+  [data-parallax] { inset: 0; will-change: auto; }
 }
 
 /* ── Copper Map imagery (Phase 4) ───────────────────────────────────────── */
