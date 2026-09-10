@@ -214,13 +214,13 @@ export function OnboardingForm({
                 <div style={{ fontSize: 12, color: 'var(--text-2)', lineHeight: 1.5, marginBottom: 12 }}>
                     Used when you shop on Rollout — you can skip this and add it at checkout.
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 10 }}>
                     <input type="text" placeholder="First name" autoComplete="given-name" {...field('firstName')} />
                     <input type="text" placeholder="Last name" autoComplete="family-name" {...field('lastName')} />
                 </div>
                 <input type="text" placeholder="Street address" autoComplete="address-line1" style={{ marginTop: 10, width: '100%' }} {...field('address1')} />
                 <input type="text" placeholder="Apt, suite, unit (optional)" autoComplete="address-line2" style={{ marginTop: 10, width: '100%' }} {...field('address2')} />
-                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 10, marginTop: 10 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr)', gap: 10, marginTop: 10 }}>
                     <input type="text" placeholder="City" autoComplete="address-level2" {...field('city')} />
                     <select aria-label="State" autoComplete="address-level1" {...field('province')}>
                         <option value="">State</option>
@@ -232,7 +232,7 @@ export function OnboardingForm({
                     </select>
                     <input type="text" placeholder="ZIP" inputMode="numeric" autoComplete="postal-code" {...field('postalCode')} />
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 10 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 10, marginTop: 10 }}>
                     <select aria-label="Country" autoComplete="country" {...field('countryCode')}>
                         <option value="us">United States</option>
                         <option value="ca">Canada</option>
