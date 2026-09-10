@@ -128,8 +128,11 @@ const LIGHT = {
     '--text-3': '#67645c',
     '--text-4': '#9d998e',
     '--warn': '#c0392b',
-    // accent on light: --gold must survive as TEXT (4.9:1) and as a fill under white ink (5.5:1)
-    '--gold': COPPER.lightStroke,
+    // accent on light: --gold is consumed as TEXT far more than as a fill (run
+    // R13 1a audit: 205 findings at 3.80–4.28:1 with the stroke value #a2601f),
+    // so it resolves to the INK copper #8f4f16 (5.48:1 on #efeeea, 7.0:1 on
+    // white). Fills use --ember (#b87231) directly — every .btn already does.
+    '--gold': COPPER.emberInk,
     '--gold-dim': 'rgba(143, 79, 22, 0.10)', // 6F light --accent-soft
     '--gold-glow': 'rgba(143, 79, 22, 0.08)',
     '--on-gold': '#ffffff',

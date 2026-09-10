@@ -1,6 +1,8 @@
 import './globals.css';
 import type { Metadata } from 'next';
 import { JetBrains_Mono, Manrope, Noto_Sans_JP } from 'next/font/google';
+import { SmoothScroll } from '@/components/motion/SmoothScroll';
+import { RevealController } from '@/components/motion/RevealController';
 import { MarketingChrome } from '@/components/MarketingChrome';
 import { cookies } from 'next/headers';
 import { THEME_COOKIE, normalizeTheme, themeAttribute } from '@/lib/theme';
@@ -67,6 +69,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             className={`${jetbrains.variable} ${inter.variable} ${notoJp.variable}`}
         >
             <body>
+                {/* Motion providers (6F): Lenis smooth scroll driving ScrollTrigger,
+                    and the .rv reveal observer. Both no-ops under reduced motion. */}
+                <SmoothScroll />
+                <RevealController />
                 <MarketingChrome tenantHost={onTenantHost}>{children}</MarketingChrome>
             </body>
         </html>

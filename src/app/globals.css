@@ -112,7 +112,7 @@
   --text-3: #67645c;
   --text-4: #9d998e;
   --warn: #c0392b;
-  --gold: #a2601f;
+  --gold: #8f4f16;
   --gold-dim: rgba(143, 79, 22, 0.10);
   --gold-glow: rgba(143, 79, 22, 0.08);
   --on-gold: #ffffff;
@@ -165,7 +165,7 @@
     --text-3: #67645c;
     --text-4: #9d998e;
     --warn: #c0392b;
-    --gold: #a2601f;
+    --gold: #8f4f16;
     --gold-dim: rgba(143, 79, 22, 0.10);
     --gold-glow: rgba(143, 79, 22, 0.08);
     --on-gold: #ffffff;
@@ -501,6 +501,27 @@ h4 { font-size: 16px; letter-spacing: var(--track-wide); }
   vertical-align: middle;
 }
 
+/* ── Motion (6F, ported from UNITY) ─────────────────────────────────────── */
+/* .rv → .in is the cheap reveal layer: RevealController adds .in once 12% of
+   the element is on screen. Stagger comes from nth-child so a row of cards
+   cascades without per-card JS. */
+.rv {
+  opacity: 0;
+  transform: translateY(22px);
+  transition: opacity 0.7s cubic-bezier(0.2, 0.7, 0.2, 1), transform 0.7s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.rv.in { opacity: 1; transform: none; }
+.rv:nth-child(4n + 2) { transition-delay: 0.07s; }
+.rv:nth-child(4n + 3) { transition-delay: 0.14s; }
+.rv:nth-child(4n + 4) { transition-delay: 0.21s; }
+/* Word spans made by splitWords() — the wipe needs a box to clip. */
+.w { display: inline-block; will-change: clip-path; }
+[data-parallax] { will-change: transform; }
+@media (prefers-reduced-motion: reduce) {
+  .rv { opacity: 1; transform: none; transition: none; }
+  .w { will-change: auto; }
+}
+
 /* ── Copper Map primitives (6F) ─────────────────────────────────────────── */
 .chip {
   display: inline-flex;
@@ -520,6 +541,9 @@ h4 { font-size: 16px; letter-spacing: var(--track-wide); }
   color: var(--text-2);
 }
 .chip-ember { color: var(--accent-ink); }
+/* Data, not labels: coordinates, ids, money. Labels are Manrope (6F); data is
+   JetBrains Mono (the plan) so digits keep a stable width. */
+.mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; letter-spacing: 0.02em; }
 .chip-nav { height: 40px; padding: 0 14px; text-decoration: none; }
 .chip-nav:hover { color: var(--text); }
 .chip-on {

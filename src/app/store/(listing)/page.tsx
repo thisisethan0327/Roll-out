@@ -8,6 +8,7 @@
  */
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { BandReveal } from '@/components/motion/BandReveal';
 import { FilterChip } from '@/components/FilterChip';
 import { getSellingShops } from '@/lib/store-shops';
 import { fetchCatalogByHandles, type MedusaProduct } from '@/lib/medusa';
@@ -46,15 +47,16 @@ export default async function StoreIndexPage({
     return (
         <>
             {/* HERO */}
+            <BandReveal>
             <section className="hero-band">
                 <div className="container" style={{ paddingTop: 56, paddingBottom: 40 }}>
                     <div className="eyebrow eyebrow-gold mb-4">／ STORE</div>
                     <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
                         <div>
-                            <h1 style={{ fontSize: 'clamp(32px, 5vw, 56px)', letterSpacing: 1, margin: 0 }}>
+                            <h1 data-band-title style={{ fontSize: 'clamp(32px, 5vw, 56px)', letterSpacing: 1, margin: 0 }}>
                                 THE STORE
                             </h1>
-                            <p style={{ color: 'var(--text-2)', fontSize: 16, marginTop: 12, maxWidth: 560 }}>
+                            <p data-band-copy style={{ color: 'var(--text-2)', fontSize: 16, marginTop: 12, maxWidth: 560 }}>
                                 Gear from the brands on Rollout. One checkout — each order ships from
                                 the shop that made it.
                             </p>
@@ -76,6 +78,7 @@ export default async function StoreIndexPage({
                     </div>
                 </div>
             </section>
+            </BandReveal>
 
             {/* CATALOGS */}
             <section className="section" style={{ padding: '40px 0 64px' }}>

@@ -7,6 +7,7 @@
  */
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { BandReveal } from '@/components/motion/BandReveal';
 import { FilterChip } from '@/components/FilterChip';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { resolveCover } from '@/lib/event-covers';
@@ -137,17 +138,19 @@ export default async function MeetsDirectoryPage({
     return (
         <>
             {/* HERO */}
+            <BandReveal>
             <section className="hero-band">
                 <div className="container" style={{ paddingTop: 64, paddingBottom: 48 }}>
                     <div className="eyebrow eyebrow-gold mb-4">／ MEETS</div>
-                    <h1 style={{ fontSize: 'clamp(32px, 5vw, 56px)', letterSpacing: 1, margin: 0 }}>
+                    <h1 data-band-title style={{ fontSize: 'clamp(32px, 5vw, 56px)', letterSpacing: 1, margin: 0 }}>
                         UPCOMING CAR MEETS
                     </h1>
-                    <p style={{ color: 'var(--text-2)', fontSize: 16, marginTop: 14, maxWidth: 600 }}>
+                    <p data-band-copy style={{ color: 'var(--text-2)', fontSize: 16, marginTop: 14, maxWidth: 600 }}>
                         Night runs, car meets, track days, cruises, and shows from shops and the community across the platform.
                     </p>
                 </div>
             </section>
+            </BandReveal>
 
             {/* FILTER STRIP + VIEW TOGGLE */}
             <section style={{ background: 'var(--bg-1)', borderBottom: '1px solid var(--line)', position: 'sticky', top: 0, zIndex: 5 }}>

@@ -12,6 +12,7 @@
  */
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { BandReveal } from '@/components/motion/BandReveal';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 
 // Render at request time, not build time: this page reads via the service-role
@@ -130,13 +131,14 @@ export default async function ShopsDirectoryPage() {
     return (
         <>
             {/* HERO */}
+            <BandReveal>
             <section className="hero-band">
                 <div className="container" style={{ paddingTop: 64, paddingBottom: 48 }}>
                     <div className="eyebrow eyebrow-gold mb-4">／ SHOPS</div>
-                    <h1 style={{ fontSize: 'clamp(32px, 5vw, 56px)', letterSpacing: 1, margin: 0 }}>
+                    <h1 data-band-title style={{ fontSize: 'clamp(32px, 5vw, 56px)', letterSpacing: 1, margin: 0 }}>
                         SHOPS ON ROLLOUT
                     </h1>
-                    <p style={{ color: 'var(--text-2)', fontSize: 16, marginTop: 14, maxWidth: 620 }}>
+                    <p data-band-copy style={{ color: 'var(--text-2)', fontSize: 16, marginTop: 14, maxWidth: 620 }}>
                         Vehicle wraps, paint protection film, ceramic coating, tint, and more —
                         find a shop near you, check the reviews, and book in the app.
                     </p>
@@ -150,6 +152,7 @@ export default async function ShopsDirectoryPage() {
                     )}
                 </div>
             </section>
+            </BandReveal>
 
             {/* LIST */}
             <section className="section" style={{ padding: '48px 0' }}>

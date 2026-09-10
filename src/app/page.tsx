@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import Image from 'next/image';
+import { HomeMotion } from '@/components/motion/HomeMotion';
 
 export default function HomePage() {
     return (
@@ -12,8 +13,9 @@ export default function HomePage() {
                 because it used to end in var(--bg-0): dark ink fixed at the top
                 would have become light ink on a white fade at the bottom. Dark
                 mode is unchanged by construction (--bg-0 was #000 there). */}
-            <section className="on-dark" style={{ position: 'relative', overflow: 'hidden' }}>
-                <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
+            <HomeMotion>
+            <section className="on-dark" data-hero style={{ position: 'relative', overflow: 'hidden' }}>
+                <div data-hero-img style={{ position: 'absolute', inset: 0, zIndex: 0, transformOrigin: '50% 40%' }}>
                     <Image
                         src="/images/hero-harbor-run.jpg"
                         alt="Night port — Skyline GT-R parked under sodium lights"
@@ -36,7 +38,7 @@ export default function HomePage() {
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 80 }}>
                         <div className="mono-row" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 4 }}>
                             <span className="accent">SECTOR 06</span>
-                            <span style={{ fontSize: 9 }}>47.6280°N · 122.3321°W</span>
+                            <span className="mono" style={{ fontSize: 9 }}>47.6280°N · 122.3321°W</span>
                         </div>
                         <div className="mono-row" style={{ flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
                             <span className="accent">NIGHT_RUN ／ 0042</span>
@@ -50,20 +52,20 @@ export default function HomePage() {
                         <span className="accent">NOW BOARDING</span>
                     </div>
 
-                    <h1 style={{ marginBottom: 12 }}>ROLLOUT</h1>
+                    <h1 data-hero-word style={{ marginBottom: 12 }}>ROLLOUT</h1>
                     <div className="text-jp" style={{ fontSize: 14, letterSpacing: 3, marginBottom: 28 }}>
                         ロールアウト
                     </div>
 
                     <div className="hairline" style={{ width: 60, background: 'var(--gold)', marginBottom: 28 }} />
 
-                    <p style={{ fontSize: 'clamp(16px, 2vw, 19px)', maxWidth: 580, color: 'var(--text-2)', lineHeight: 1.5 }}>
+                    <p data-hero-copy style={{ fontSize: 'clamp(16px, 2vw, 19px)', maxWidth: 580, color: 'var(--text-2)', lineHeight: 1.5 }}>
                         A private network for the cars you actually build.{' '}
                         <span className="text-gold">Shops · Meets · Builds.</span>
                     </p>
 
                     {/* Spec strip */}
-                    <div className="mono-row" style={{ marginTop: 40, flexWrap: 'wrap', gap: 20 }}>
+                    <div data-hero-copy className="mono-row" style={{ marginTop: 40, flexWrap: 'wrap', gap: 20 }}>
                         <span><span className="accent">◉</span> RSVP CONVOY RUNS</span>
                         <span className="sep" />
                         <span><span className="accent">◐</span> TRACK BUILD LOGS</span>
@@ -72,7 +74,7 @@ export default function HomePage() {
                     </div>
 
                     {/* CTAs */}
-                    <div id="download" style={{ display: 'flex', gap: 12, marginTop: 56, flexWrap: 'wrap' }}>
+                    <div id="download" data-hero-copy style={{ display: 'flex', gap: 12, marginTop: 56, flexWrap: 'wrap' }}>
                         <a className="btn btn-lg" href="https://apps.apple.com/" rel="noopener" target="_blank">
                             Download iOS
                         </a>
@@ -123,15 +125,16 @@ export default function HomePage() {
                         </div>
                         <div className="stat-cell">
                             <div className="lbl">Live meets</div>
-                            <div className="val">14</div>
+                            <div className="val" data-count="14">14</div>
                         </div>
                         <div className="stat-cell">
                             <div className="lbl">Build count</div>
-                            <div className="val">0042</div>
+                            <div className="val" data-count="42" data-pad="4">0042</div>
                         </div>
                     </div>
                 </div>
             </section>
+            </HomeMotion>
 
             {/* ── HOW IT WORKS ─────────────────────────────────────────────── */}
             <section className="section">

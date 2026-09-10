@@ -12,6 +12,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { HeroParallax } from '@/components/motion/HeroParallax';
 import { getConsumerProfile } from '@/lib/consumer';
 import { resolveCover } from '@/lib/event-covers';
 import { Countdown } from './Countdown';
@@ -485,16 +486,20 @@ export default async function PublicEventPage({
             ) : null}
 
             {/* HERO */}
+            <HeroParallax>
             <section
                 className="corner-wrap on-dark"
                 style={{
                     position: 'relative',
                     minHeight: 440,
-                    background: heroBg,
+                    overflow: 'hidden',
                     borderBottom: '1px solid var(--line)',
                     filter: isCancelled ? 'grayscale(0.5)' : undefined,
                 }}
             >
+                {/* The photo is its own layer so it can drift under the copy (6F
+                    parallax); oversized at the bottom so the drift shows no ground. */}
+                <div data-parallax style={{ position: 'absolute', inset: '0 0 -12% 0', zIndex: 0, background: heroBg }} />
                 <span className="corner-bottom-left" />
                 <span className="corner-bottom-right" />
 
@@ -518,7 +523,7 @@ export default async function PublicEventPage({
                     {ev.lat != null && ev.lng != null ? (
                         <>
                             <span style={{ color: 'var(--text-3)' }}>·</span>
-                            <span style={{ color: 'var(--text-2)' }}>
+                            <span className="mono" style={{ color: 'var(--text-2)' }}>
                                 {Math.abs(ev.lat).toFixed(3)}°{ev.lat >= 0 ? 'N' : 'S'} ·{' '}
                                 {Math.abs(ev.lng).toFixed(3)}°{ev.lng >= 0 ? 'E' : 'W'}
                             </span>
@@ -628,6 +633,7 @@ export default async function PublicEventPage({
                     ) : null}
                 </div>
             </section>
+            </HeroParallax>
 
             {/* STAT BAR */}
             <section style={{ background: 'var(--bg-1)', borderBottom: '1px solid var(--line)' }}>
