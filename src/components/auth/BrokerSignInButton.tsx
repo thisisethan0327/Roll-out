@@ -37,9 +37,11 @@ export function BrokerSignInButton({
                 disabled={going}
                 onClick={() => {
                     setGoing(true);
-                    // The broker may only return to an allowlisted path and
-                    // drops the query string, so a pending destination waits
-                    // here, on this origin, and the console picks it up.
+                    // The broker returns only to an allowlisted landing. Since
+                    // storefront 343a53a it passes ONE sanitised ?next= through on
+                    // such a landing (the unityusa.co configurator hand-off in
+                    // lib/sso-handoff.ts relies on it); the console door keeps its
+                    // own destination here, on this origin, and picks it up after.
                     try {
                         if (next && next.startsWith('/') && !next.startsWith('//')) {
                             window.sessionStorage.setItem('rollout:after-signin', next);
