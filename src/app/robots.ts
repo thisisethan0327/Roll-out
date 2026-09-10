@@ -13,7 +13,7 @@ export default function robots(): MetadataRoute.Robots {
             {
                 userAgent: '*',
                 allow: ['/', '/shop/apply', '/shop/login'],
-                disallow: ['/admin', '/me', '/shop/', '/auth/', '/api/', '/store/cart', '/store/checkout', '/store/order/'],
+                disallow: ['/admin', '/me', '/shop/', '/auth/', '/api/', '/book/', '/store/cart', '/store/checkout', '/store/order/'],
             },
         ],
         sitemap: 'https://rollout.club/sitemap.xml',

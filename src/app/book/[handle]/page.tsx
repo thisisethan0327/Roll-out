@@ -13,11 +13,16 @@ export async function generateMetadata({ params }: { params: Promise<{ handle: s
     return { title: `Book ${handle}`, robots: { index: false } };
 }
 
-/** /u/<shop>/book — request an appointment with a shop, on the web. */
+/**
+ * /book/<shop> — request an appointment with a shop, on the web. Lives OUTSIDE
+ * /u/[handle] on purpose: that segment has a loading.tsx, and a redirect below a
+ * Suspense boundary streams inside a 200 (run 12) — here the sign-in redirect is
+ * a real 307. The page looks the shop up itself and 404s a non-shop handle.
+ */
 export default async function BookPage({ params }: { params: Promise<{ handle: string }> }) {
     const { handle: raw } = await params;
     const handle = raw.replace(/^@+/, '').toLowerCase();
-    const me = await requireConsumer(`/u/${handle}/book`);
+    const me = await requireConsumer(`/book/${handle}`);
 
     const admin = getSupabaseAdmin();
     const { data: profile } = await admin

@@ -541,7 +541,7 @@ export default async function HandlePage({
                 <div className="container">
                     {isShop ? (
                         <>
-                            <Link className="btn btn-lg" href={`/u/${cleanHandle}/book`}>
+                            <Link className="btn btn-lg" href={`/book/${cleanHandle}`}>
                                 Book online
                             </Link>
                             <p className="text-muted" style={{ fontSize: 11, marginTop: 14, fontFamily: 'var(--font-display)', letterSpacing: 'var(--track-wider)' }}>
