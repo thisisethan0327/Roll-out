@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Image from 'next/image';
 import { FollowButton } from './FollowButton';
 import { getConsumerProfile } from '@/lib/consumer';
 import { formatEventStamp } from '@/lib/event-time';
@@ -659,15 +660,18 @@ export default async function HandlePage({
                                         <span className="corner-bottom-left" />
                                         <span className="corner-bottom-right" />
                                         {post.hero_image_url ? (
-                                            <div
-                                                aria-hidden
-                                                style={{
-                                                    aspectRatio: '16 / 9',
-                                                    marginBottom: 14,
-                                                    background: `url(${post.hero_image_url}) center/cover no-repeat`,
-                                                    border: '1px solid var(--line)',
-                                                }}
-                                            />
+                                            <div style={{ position: 'relative', aspectRatio: '16 / 9', marginBottom: 14, border: '1px solid var(--line)', overflow: 'hidden' }}>
+                                                {/* unoptimized: the bucket host is not in next.config remotePatterns; still a real <img> with alt + lazy */}
+                                                <Image
+                                                    src={post.hero_image_url}
+                                                    alt={truncate(post.body, 80) || 'Post image'}
+                                                    fill
+                                                    unoptimized
+                                                    loading="lazy"
+                                                    sizes="(max-width: 600px) 100vw, 400px"
+                                                    style={{ objectFit: 'cover' }}
+                                                />
+                                            </div>
                                         ) : null}
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
                                             <span
@@ -901,15 +905,17 @@ export default async function HandlePage({
                         </p>
                     )}
 
-                    <div className="stat-band" style={{ gridTemplateColumns: 'repeat(2, 1fr)' }}>
+                    <div className="stat-band" style={{ gridTemplateColumns: profile.sector_code ? 'repeat(2, 1fr)' : '1fr' }}>
                         <div className="stat-cell">
                             <div className="lbl">Location</div>
                             <div className="val" style={{ fontSize: 14 }}>{profile.location || '—'}</div>
                         </div>
-                        <div className="stat-cell">
-                            <div className="lbl">Sector</div>
-                            <div className="val accent" style={{ fontSize: 14 }}>{profile.sector_code || '—'}</div>
-                        </div>
+                        {profile.sector_code ? (
+                            <div className="stat-cell">
+                                <div className="lbl">Sector</div>
+                                <div className="val accent" style={{ fontSize: 14 }}>{profile.sector_code}</div>
+                            </div>
+                        ) : null}
                     </div>
                 </div>
             </section>

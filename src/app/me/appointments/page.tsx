@@ -21,12 +21,20 @@ function stageIndex(status: string | null): number {
     return -1; // declined / cancelled → off the happy path
 }
 
-export default async function AppointmentsPage() {
+export default async function AppointmentsPage({ searchParams }: { searchParams: Promise<{ requested?: string }> }) {
     const profile = await requireConsumer('/me/appointments');
+    // ?requested=<shop handle> — straight from /book/<shop>: say it landed.
+    const { requested } = await searchParams;
+    const requestedHandle = requested ? requested.replace(/[^a-z0-9_-]/gi, '').slice(0, 40) : '';
     const appts = await loadMyAppointments(profile.profileId);
 
     return (
         <div>
+            {requestedHandle ? (
+                <div className="admin-login-error" role="status" style={{ marginBottom: 16, borderColor: 'var(--gold)', background: 'rgba(255, 183, 51, 0.08)', color: 'var(--text)' }}>
+                    Request sent to @{requestedHandle} — they&apos;ll confirm a time from their console.
+                </div>
+            ) : null}
             <div className="admin-page-head">
                 <div>
                     <div className="admin-page-title">APPOINTMENTS</div>
