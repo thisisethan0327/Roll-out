@@ -86,6 +86,9 @@ export async function middleware(request: NextRequest) {
     // Cookie refresh only for the auth-gated trees. On a tenant host "/" is the
     // console, so it needs a session too.
     const { pathname } = request.nextUrl;
+    // The /me layout gates the whole tree and needs the leaf path for its
+    // sign-in bounce (?next=); a layout cannot read the pathname itself.
+    request.headers.set('x-pathname', pathname);
     const needsSession =
         (tenant && pathname === '/') ||
         pathname.startsWith('/admin/') ||

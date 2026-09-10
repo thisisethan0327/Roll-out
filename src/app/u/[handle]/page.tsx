@@ -480,7 +480,7 @@ export default async function HandlePage({
 
                     <div className="mono-row" style={{ marginTop: 8 }}>
                         <span className="accent">●</span>
-                        <span>{card.followers_count ?? 0} FOLLOWERS</span>
+                        <span>{card.followers_count ?? 0} {(card.followers_count ?? 0) === 1 ? 'FOLLOWER' : 'FOLLOWERS'}</span>
                     </div>
                 </div>
             </section>
@@ -538,6 +538,7 @@ export default async function HandlePage({
             </section>
 
             {/* ── PRIMARY CTA ──────────────────────────────────────────── */}
+            {isShop || viewer !== 'self' ? (
             <section className="section" style={{ padding: '56px 0', textAlign: 'center' }}>
                 <div className="container">
                     {isShop ? (
@@ -560,6 +561,7 @@ export default async function HandlePage({
                     )}
                 </div>
             </section>
+            ) : null}
 
             {/* ── SHOP PRODUCTS (selling shops) ────────────────────────── */}
             {isShop && products.length > 0 ? (

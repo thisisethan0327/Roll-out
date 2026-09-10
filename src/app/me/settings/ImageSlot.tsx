@@ -12,7 +12,19 @@ export function ImageSlot({ kind, current, label, hint }: { kind: 'avatar' | 'ba
 
     return (
         <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', flexWrap: 'wrap', marginBottom: 20 }}>
-            <div style={{ ...box, border: '1px solid var(--line-mid)', background: src ? `url(${src}) center/cover no-repeat` : 'var(--bg-2)', flexShrink: 0 }} aria-label={label} role="img" />
+            {src ? (
+                <div
+                    style={{ ...box, border: '1px solid var(--line-mid)', borderRadius: kind === 'avatar' ? '50%' : 0, background: `url(${src}) center/cover no-repeat`, flexShrink: 0 }}
+                    role="img"
+                    aria-label={`Current ${label.toLowerCase()}`}
+                />
+            ) : (
+                <div
+                    style={{ ...box, border: '1px dashed var(--line-mid)', borderRadius: kind === 'avatar' ? '50%' : 0, background: 'var(--bg-2)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-display)', fontSize: 9, letterSpacing: 'var(--track-wider)', color: 'var(--text-3)', textAlign: 'center', padding: 8 }}
+                >
+                    NO IMAGE YET
+                </div>
+            )}
             <div style={{ flex: 1, minWidth: 220 }}>
                 <div className="admin-form-label">{label}</div>
                 <div style={{ fontSize: 12, color: 'var(--text-2)', marginBottom: 10 }}>{hint}</div>

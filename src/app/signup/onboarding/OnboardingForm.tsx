@@ -154,7 +154,8 @@ export function OnboardingForm({
 
     const canSubmit = !pending && handleState.kind === 'ok' && displayName.trim().length > 0 && (!addressStarted || addressComplete);
 
-    const field = (key: keyof OnboardingAddress) => ({
+    const field = (key: keyof OnboardingAddress, label: string) => ({
+        'aria-label': label,
         value: (address[key] ?? '') as string,
         onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setAddress((a) => ({ ...a, [key]: e.target.value })),
         className: 'admin-login-input',
@@ -215,14 +216,14 @@ export function OnboardingForm({
                     Used when you shop on Rollout — you can skip this and add it at checkout.
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 10 }}>
-                    <input type="text" placeholder="First name" autoComplete="given-name" {...field('firstName')} />
-                    <input type="text" placeholder="Last name" autoComplete="family-name" {...field('lastName')} />
+                    <input type="text" placeholder="First name" autoComplete="given-name" {...field('firstName', 'First name')} />
+                    <input type="text" placeholder="Last name" autoComplete="family-name" {...field('lastName', 'Last name')} />
                 </div>
-                <input type="text" placeholder="Street address" autoComplete="address-line1" style={{ marginTop: 10, width: '100%' }} {...field('address1')} />
-                <input type="text" placeholder="Apt, suite, unit (optional)" autoComplete="address-line2" style={{ marginTop: 10, width: '100%' }} {...field('address2')} />
+                <input type="text" placeholder="Street address" autoComplete="address-line1" style={{ marginTop: 10, width: '100%' }} {...field('address1', 'Street address')} />
+                <input type="text" placeholder="Apt, suite, unit (optional)" autoComplete="address-line2" style={{ marginTop: 10, width: '100%' }} {...field('address2', 'Apt, suite, unit')} />
                 <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr)', gap: 10, marginTop: 10 }}>
-                    <input type="text" placeholder="City" autoComplete="address-level2" {...field('city')} />
-                    <select aria-label="State" autoComplete="address-level1" {...field('province')}>
+                    <input type="text" placeholder="City" autoComplete="address-level2" {...field('city', 'City')} />
+                    <select autoComplete="address-level1" {...field('province', 'State')}>
                         <option value="">State</option>
                         {US_STATES.map((s) => (
                             <option key={s} value={s}>
@@ -230,14 +231,14 @@ export function OnboardingForm({
                             </option>
                         ))}
                     </select>
-                    <input type="text" placeholder="ZIP" inputMode="numeric" autoComplete="postal-code" {...field('postalCode')} />
+                    <input type="text" placeholder="ZIP" inputMode="numeric" autoComplete="postal-code" {...field('postalCode', 'ZIP')} />
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 10, marginTop: 10 }}>
-                    <select aria-label="Country" autoComplete="country" {...field('countryCode')}>
+                    <select autoComplete="country" {...field('countryCode', 'Country')}>
                         <option value="us">United States</option>
                         <option value="ca">Canada</option>
                     </select>
-                    <input type="tel" placeholder="Phone (optional)" autoComplete="tel" {...field('phone')} />
+                    <input type="tel" placeholder="Phone (optional)" autoComplete="tel" {...field('phone', 'Phone')} />
                 </div>
             </div>
 

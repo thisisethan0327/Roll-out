@@ -38,8 +38,10 @@ export default async function SettingsPage() {
             </div>
 
             <Panel title="PROFILE">
-                <ImageSlot kind="avatar" current={p?.avatar_url ?? null} label="AVATAR" hint="Square, up to 5 MB — JPG, PNG or WebP. Resized to 512 px." />
-                <ImageSlot kind="banner" current={p?.banner_url ?? null} label="BANNER" hint="Wide, up to 5 MB — shown 21:9 at the top of your page. Resized to 1600 px." />
+                <div className="admin-form" style={{ marginBottom: 14 }}>
+                    <ImageSlot kind="avatar" current={p?.avatar_url ?? null} label="AVATAR" hint="Square, up to 5 MB — JPG, PNG or WebP. Resized to 512 px." />
+                    <ImageSlot kind="banner" current={p?.banner_url ?? null} label="BANNER" hint="Wide, up to 5 MB — shown 21:9 at the top of your page. Resized to 1600 px." />
+                </div>
                 <ProfileForm initial={{ displayName: p?.display_name ?? me.displayName, handle, bio: p?.bio ?? '', location: p?.location ?? '' }} />
             </Panel>
 

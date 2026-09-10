@@ -13,7 +13,8 @@ export function AddressBook({ initial, connected }: { initial: CustomerAddress[]
     const [draft, setDraft] = useState<Draft | null>(null);
     const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
     const [pending, start] = useTransition();
-    const f = (k: keyof Draft) => ({
+    const f = (k: keyof Draft, label: string) => ({
+        'aria-label': label,
         value: String(draft?.[k] ?? ''),
         onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setDraft((d) => (d ? { ...d, [k]: e.target.value } : d)),
         className: 'admin-form-input',
@@ -74,27 +75,27 @@ export function AddressBook({ initial, connected }: { initial: CustomerAddress[]
                     }}
                 >
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 10 }}>
-                        <input type="text" placeholder="First name" autoComplete="given-name" required {...f('firstName')} />
-                        <input type="text" placeholder="Last name" autoComplete="family-name" required {...f('lastName')} />
+                        <input type="text" placeholder="First name" autoComplete="given-name" required {...f('firstName', 'First name')} />
+                        <input type="text" placeholder="Last name" autoComplete="family-name" required {...f('lastName', 'Last name')} />
                     </div>
-                    <input type="text" placeholder="Street address" autoComplete="address-line1" required style={{ marginTop: 10, width: '100%' }} {...f('address1')} />
-                    <input type="text" placeholder="Apt, suite, unit (optional)" autoComplete="address-line2" style={{ marginTop: 10, width: '100%' }} {...f('address2')} />
+                    <input type="text" placeholder="Street address" autoComplete="address-line1" required style={{ marginTop: 10, width: '100%' }} {...f('address1', 'Street address')} />
+                    <input type="text" placeholder="Apt, suite, unit (optional)" autoComplete="address-line2" style={{ marginTop: 10, width: '100%' }} {...f('address2', 'Apt, suite, unit')} />
                     <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr)', gap: 10, marginTop: 10 }}>
-                        <input type="text" placeholder="City" autoComplete="address-level2" required {...f('city')} />
-                        <select aria-label="State" required {...f('province')}>
+                        <input type="text" placeholder="City" autoComplete="address-level2" required {...f('city', 'City')} />
+                        <select required {...f('province', 'State')}>
                             <option value="">State</option>
                             {US_STATES.map((s) => (
                                 <option key={s} value={s}>{s}</option>
                             ))}
                         </select>
-                        <input type="text" placeholder="ZIP" inputMode="numeric" autoComplete="postal-code" required {...f('postalCode')} />
+                        <input type="text" placeholder="ZIP" inputMode="numeric" autoComplete="postal-code" required {...f('postalCode', 'ZIP')} />
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 10, marginTop: 10 }}>
-                        <select aria-label="Country" {...f('countryCode')}>
+                        <select {...f('countryCode', 'Country')}>
                             <option value="us">United States</option>
                             <option value="ca">Canada</option>
                         </select>
-                        <input type="tel" placeholder="Phone (optional)" autoComplete="tel" {...f('phone')} />
+                        <input type="tel" placeholder="Phone (optional)" autoComplete="tel" {...f('phone', 'Phone')} />
                     </div>
                     <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, fontSize: 12 }}>
                         <input type="checkbox" checked={draft.isDefault} onChange={(e) => setDraft((d) => (d ? { ...d, isDefault: e.target.checked } : d))} />

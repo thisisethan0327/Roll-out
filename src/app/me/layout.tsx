@@ -7,13 +7,18 @@
  * suppressed on /me by MarketingChrome, so this is the only chrome here.
  */
 import { requireConsumer } from '@/lib/me-guard';
+import { headers } from 'next/headers';
 import { MeNav } from './MeNav';
 
 export const metadata = { title: 'My Rollout' };
 export const dynamic = 'force-dynamic';
 
 export default async function MeLayout({ children }: { children: React.ReactNode }) {
-    const profile = await requireConsumer('/me');
+    // The leaf path (middleware stamps x-pathname) so a signed-out visitor to
+    // /me/settings comes back to /me/settings, not /me.
+    const stamped = (await headers()).get('x-pathname') ?? '';
+    const nextPath = stamped.startsWith('/me') && !stamped.startsWith('//') ? stamped : '/me';
+    const profile = await requireConsumer(nextPath);
     return (
         <>
             <MeNav
