@@ -1,4 +1,6 @@
 import type { Metadata } from 'next';
+import { FollowButton } from './FollowButton';
+import { getConsumerProfile } from '@/lib/consumer';
 import { formatEventStamp } from '@/lib/event-time';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
@@ -50,6 +52,7 @@ type FeedPost = {
     type: string | null;
     body: string | null;
     author_handle: string | null;
+    hero_image_url: string | null;
     like_count: number | null;
     comment_count: number | null;
     created_at: string | null;
@@ -166,7 +169,7 @@ async function loadHandle(rawHandle: string) {
             .maybeSingle(),
         supabase
             .from('feed_posts')
-            .select('id, type, body, author_handle, like_count, comment_count, created_at')
+            .select('id, type, body, hero_image_url, author_handle, like_count, comment_count, created_at')
             .eq('author_id', p.id)
             .order('created_at', { ascending: false })
             .limit(10),
@@ -321,6 +324,21 @@ export default async function HandlePage({
     if (!data) notFound();
 
     const { profile, shop, card, posts, events, eventsCount, vehicles, reviews, reviewStats, products, storeSlug } = data;
+
+    // Who is looking: anonymous, the page's own member, or another member (and
+    // whether they already follow this profile) — for the web Follow button.
+    const me = await getConsumerProfile();
+    const viewer: 'anon' | 'self' | 'other' = !me ? 'anon' : me.profileId === profile.id ? 'self' : 'other';
+    let initialFollowing = false;
+    if (viewer === 'other' && me) {
+        const { data: f } = await getSupabaseAdmin()
+            .from('follows')
+            .select('follower_id')
+            .eq('follower_id', me.profileId)
+            .eq('followee_id', profile.id)
+            .maybeSingle();
+        initialFollowing = !!f;
+    }
     const cleanHandle = stripAt(profile.handle);
     const displayName = profile.display_name || cleanHandle;
     const isShop = profile.kind === 'shop_page';
@@ -523,25 +541,21 @@ export default async function HandlePage({
                 <div className="container">
                     {isShop ? (
                         <>
-                            <a
-                                className="btn btn-lg"
-                                href={`https://rollout.club/sign-in-on-phone?next=/u/${cleanHandle}`}
-                            >
-                                Book Appointment
-                            </a>
+                            <Link className="btn btn-lg" href={`/u/${cleanHandle}/book`}>
+                                Book online
+                            </Link>
                             <p className="text-muted" style={{ fontSize: 11, marginTop: 14, fontFamily: 'var(--font-display)', letterSpacing: 'var(--track-wider)' }}>
-                                DOWNLOAD THE ROLLOUT APP TO BOOK
+                                REQUEST A TIME · THE SHOP CONFIRMS
                             </p>
                         </>
                     ) : (
-                        <>
-                            <a className="btn btn-lg" href={`mobile://u/${cleanHandle}`}>
-                                View in App
-                            </a>
-                            <p className="text-muted" style={{ fontSize: 11, marginTop: 14, fontFamily: 'var(--font-display)', letterSpacing: 'var(--track-wider)' }}>
-                                OPEN IN THE ROLLOUT APP TO FOLLOW + DM
-                            </p>
-                        </>
+                        <FollowButton
+                            targetProfileId={profile.id}
+                            handle={cleanHandle}
+                            viewer={viewer}
+                            initialFollowing={initialFollowing}
+                            initialCount={card.followers_count ?? 0}
+                        />
                     )}
                 </div>
             </section>
@@ -644,6 +658,17 @@ export default async function HandlePage({
                                     <div className="feature-card corner-wrap" style={{ height: '100%' }}>
                                         <span className="corner-bottom-left" />
                                         <span className="corner-bottom-right" />
+                                        {post.hero_image_url ? (
+                                            <div
+                                                aria-hidden
+                                                style={{
+                                                    aspectRatio: '16 / 9',
+                                                    marginBottom: 14,
+                                                    background: `url(${post.hero_image_url}) center/cover no-repeat`,
+                                                    border: '1px solid var(--line)',
+                                                }}
+                                            />
+                                        ) : null}
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
                                             <span
                                                 style={{

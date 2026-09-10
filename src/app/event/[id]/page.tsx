@@ -851,7 +851,7 @@ export default async function PublicEventPage({
                     ) : null}
 
                     {hasDrawnRoute(ev) ? (
-                        <div className="map-stage corner-wrap" style={{ marginTop: 20, aspectRatio: '1000 / 425' }}>
+                        <div className="map-stage map-stage-loc corner-wrap" style={{ marginTop: 20 }}>
                             <span className="corner-bottom-left" />
                             <span className="corner-bottom-right" />
                             <StylisedMap crop="loc" route pins={[{ x: 940, y: 462, hi: true }]} className="map-stage-desktop" />

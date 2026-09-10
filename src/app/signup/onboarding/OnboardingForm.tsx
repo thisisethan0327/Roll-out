@@ -241,6 +241,11 @@ export function OnboardingForm({
                 </div>
             </div>
 
+            {addressStarted && !addressComplete && !formErr ? (
+                <div style={{ fontSize: 10, color: '#e5484d', fontFamily: 'var(--font-display)', letterSpacing: 'var(--track-wider)' }} role="status">
+                    FINISH THE SHIPPING ADDRESS — NAME, STREET, CITY, STATE, ZIP — OR CLEAR IT
+                </div>
+            ) : null}
             {formErr && <div className="admin-login-error">{formErr}</div>}
 
             <PendingButton type="submit" pending={pending} pendingLabel="SETTING UP" disabled={!canSubmit} className="admin-login-btn">

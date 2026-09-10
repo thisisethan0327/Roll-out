@@ -139,7 +139,8 @@ export async function NextRunBand() {
                 <div className="map-stage corner-wrap rv">
                     <span className="corner-bottom-left" />
                     <span className="corner-bottom-right" />
-                    <StylisedMap crop="hero" route={route} pins={pins} shops={shopPins} className="map-stage-desktop" />
+                    {/* The popover above the Seattle-cluster pin covers the Everett and Redmond labels on desktop. */}
+                    <StylisedMap crop="hero" route={route} pins={pins} shops={shopPins} hideLabels={site.key === 'seattle' || site.key === 'harbor' ? ['everett', 'redmond'] : []} className="map-stage-desktop" />
                     <StylisedMap crop="phone" route={route} pins={pins} shops={shopPins} className="map-stage-phone" />
                     <div className="map-scrim" />
 

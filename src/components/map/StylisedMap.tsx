@@ -40,14 +40,18 @@ export function StylisedMap({
     route = false,
     pins = [],
     shops = [],
+    hideLabels = [],
     className,
 }: {
     crop?: MapCrop;
     route?: boolean;
     pins?: MapPin[];
     shops?: MapPin[];
+    /** City labels to skip — the ones a popover would sit on. */
+    hideLabels?: ('everett' | 'mukilteo' | 'clinton' | 'whidbey' | 'tacoma' | 'bainbridge' | 'redmond')[];
     className?: string;
 }) {
+    const hide = new Set<string>(hideLabels);
     const uid = useId().replace(/[^a-zA-Z0-9]/g, '');
     const id = (n: string) => `${n}-${uid}`;
     const ref = useRef<SVGSVGElement>(null);
@@ -219,13 +223,13 @@ export function StylisedMap({
             ))}
 
             <text className="pin-lab pin-lab-hi" x="958" y="466">{loc ? 'The Shop Club' : 'Seattle'}</text>
-            <text className="pin-lab" x="904" y="260">Everett</text>
-            <text className="pin-lab" x="788" y="282" textAnchor="end">Mukilteo</text>
-            <text className="pin-lab" x="684" y="322" textAnchor="end">Clinton</text>
-            <text className="pin-lab pin-lab-hi" x="612" y="158">Whidbey Island</text>
-            <text className="pin-lab pin-lab-edge" x="978" y="608">Tacoma</text>
-            <text className="pin-lab pin-lab-edge" x="660" y="452">Bainbridge</text>
-            <text className="pin-lab pin-lab-edge" x="1064" y="396" textAnchor="end">Redmond</text>
+            {!hide.has('everett') ? <text className="pin-lab" x="904" y="260">Everett</text> : null}
+            {!hide.has('mukilteo') ? <text className="pin-lab" x="788" y="282" textAnchor="end">Mukilteo</text> : null}
+            {!hide.has('clinton') ? <text className="pin-lab" x="684" y="322" textAnchor="end">Clinton</text> : null}
+            {!hide.has('whidbey') ? <text className="pin-lab pin-lab-hi" x="612" y="158">Whidbey Island</text> : null}
+            {!hide.has('tacoma') ? <text className="pin-lab pin-lab-edge" x="978" y="608">Tacoma</text> : null}
+            {!hide.has('bainbridge') ? <text className="pin-lab pin-lab-edge" x="660" y="452">Bainbridge</text> : null}
+            {!hide.has('redmond') ? <text className="pin-lab pin-lab-edge" x="1064" y="396" textAnchor="end">Redmond</text> : null}
         </svg>
     );
 }

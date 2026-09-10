@@ -83,7 +83,13 @@ export function AddToCartClient({
     // on sale, so they matter only once the product is live.
     if (paused) {
         return (
-            <button type="button" className="btn btn-lg" disabled style={{ opacity: 0.55, cursor: 'not-allowed', width: '100%' }}>
+            <button
+                type="button"
+                className="btn btn-lg"
+                disabled
+                /* a real disabled surface, not the gold pill at 55% opacity (2.2:1 in light) */
+                style={{ cursor: 'not-allowed', width: '100%', background: 'var(--bg-2)', color: 'var(--text-2)', border: '1px solid var(--line-mid)' }}
+            >
                 COMING SOON
             </button>
         );

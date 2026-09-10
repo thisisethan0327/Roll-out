@@ -494,6 +494,14 @@ h4 { font-size: 16px; letter-spacing: var(--track-wide); }
   .map-key { display: none; }
 }
 
+/* The event page's location crop: 'loc' on desktop, 'loc-p' on phones — each
+   with the box it was authored for. Declared after the stage's phone rule so
+   the corridor ratio does not apply here. */
+.map-stage-loc { aspect-ratio: 1000 / 425; }
+@media (max-width: 700px) {
+  .map-stage-loc { aspect-ratio: 560 / 364; }
+}
+
 /* ── Motion (UI polish §7) ──────────────────────────────────────────────── */
 /* .rv → .in is the cheap reveal layer: RevealController adds .in once 12% of
    the element is on screen; stagger comes from nth-child. */
@@ -524,6 +532,7 @@ h4 { font-size: 16px; letter-spacing: var(--track-wide); }
   display: inline-flex;
   align-items: center;
   min-height: 44px;
+  min-width: 44px;
 }
 
 /* The event page's OSM embed. The filter was inline and dark-tuned for both
@@ -2345,9 +2354,11 @@ h4 { font-size: 16px; letter-spacing: var(--track-wide); }
   border-top: 1px solid var(--line);
   border-left: 1px solid var(--line);
   border-radius: 0;
-  background: var(--scrim);
+  /* The tiles are dark in both themes now; the bar follows them, not the page. */
+  background: rgba(5, 5, 5, 0.84);
+  border-color: rgba(255, 255, 255, 0.14);
   box-shadow: none;
-  color: var(--text-3);
+  color: #b5b5b5;
   font-family: var(--font-display);
   font-size: 10px;
   font-weight: 500;
@@ -2356,12 +2367,12 @@ h4 { font-size: 16px; letter-spacing: var(--track-wide); }
   text-transform: uppercase;
 }
 .leaflet-container .leaflet-control-attribution.leaflet-control a {
-  color: var(--text-3);
+  color: #b5b5b5;
   text-decoration: none;
 }
 .leaflet-container .leaflet-control-attribution.leaflet-control a:hover,
 .leaflet-container .leaflet-control-attribution.leaflet-control a:focus-visible {
-  color: var(--text-3);
+  color: #ffb733;
   text-decoration: underline;
 }
 /* Tighter tracking on phones so the credit still fits on one line. */
