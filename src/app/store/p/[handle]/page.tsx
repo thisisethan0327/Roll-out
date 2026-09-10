@@ -7,6 +7,8 @@
  * in the addToCart action.
  */
 import type { Metadata } from 'next';
+import { unityConfiguratorHandoffUrl } from '@/lib/sso-handoff';
+import { getSupabaseServer } from '@/lib/supabase/server';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { fetchProductByHandle, formatMoney } from '@/lib/medusa';
@@ -55,6 +57,19 @@ export default async function ProductDetailPage({
     const dealer = product.dealerOnly
         ? await getDealerStatus()
         : { signedIn: false, isDealer: false, tier: null };
+
+    // A kit / Printable PPF is configured on unityusa.co. With a Rollout session
+    // the door goes through the ecosystem broker so the visitor arrives signed
+    // in and ready to add to cart (Ethan); signed out, the plain link.
+    let configureHref = configuratorUrl(product.handle);
+    if (product.needsConfigurator) {
+        const supabase = await getSupabaseServer();
+        const {
+            data: { user },
+        } = await supabase.auth.getUser();
+        const viaBroker = user ? unityConfiguratorHandoffUrl(product.handle ?? '', process.env.NEXT_PUBLIC_SSO_BROKER_ORIGIN) : null;
+        if (viaBroker) configureHref = viaBroker;
+    }
     /**
      * A dealer-only product's PRICE is dealer information, whether or not the
      * product is currently sellable — unityusa.co hides the number behind the
@@ -149,7 +164,7 @@ export default async function ProductDetailPage({
                             dealerLocked={product.dealerOnly && !dealer.isDealer}
                             dealerSignedIn={dealer.signedIn}
                             needsConfigurator={product.needsConfigurator}
-                            configuratorUrl={configuratorUrl(product.handle)}
+                            configuratorUrl={configureHref}
                             options={product.options}
                             variants={product.variants}
                             currency={product.currency}

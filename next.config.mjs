@@ -2,6 +2,9 @@
 const nextConfig = {
     output: 'standalone',          // Coolify-friendly: single self-contained build
     reactStrictMode: true,
+    // No floating "N" dev badge: Ethan tests the polish on localhost and it
+    // reads as part of the page. Dev-only either way.
+    devIndicators: false,
     images: {
         formats: ['image/avif', 'image/webp'],
         // Product mockups live in the Neferstock/Medusa Supabase storage bucket.
