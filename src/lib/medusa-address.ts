@@ -46,6 +46,79 @@ export async function saveDefaultShippingAddress(a: AddressInput): Promise<{ ok:
     }
 }
 
+export type CustomerAddress = AddressInput & { id: string; isDefault: boolean };
+
+function fromMedusa(a: any): CustomerAddress {
+    return {
+        id: String(a.id),
+        isDefault: !!a.is_default_shipping,
+        firstName: a.first_name ?? '',
+        lastName: a.last_name ?? '',
+        address1: a.address_1 ?? '',
+        address2: a.address_2 ?? '',
+        city: a.city ?? '',
+        province: a.province ?? '',
+        postalCode: a.postal_code ?? '',
+        countryCode: (a.country_code ?? 'us').toLowerCase(),
+        phone: a.phone ?? '',
+    };
+}
+
+function toMedusa(a: AddressInput, isDefault: boolean) {
+    return {
+        first_name: a.firstName,
+        last_name: a.lastName,
+        address_1: a.address1,
+        address_2: a.address2 || undefined,
+        city: a.city,
+        province: a.province,
+        postal_code: a.postalCode,
+        country_code: a.countryCode.toLowerCase(),
+        phone: a.phone || undefined,
+        is_default_shipping: isDefault,
+        address_name: 'Shipping',
+    };
+}
+
+/** All of the customer's addresses (empty when none / not linked / store down). */
+export async function listShippingAddresses(): Promise<CustomerAddress[]> {
+    const token = await ensureMedusaCustomerToken();
+    if (!token) return [];
+    try {
+        const res = await fetch(`${MEDUSA_URL}/store/customers/me?fields=*addresses`, { headers: auth(token), cache: 'no-store' });
+        if (!res.ok) return [];
+        const json = await res.json();
+        return ((json?.customer?.addresses ?? []) as any[]).map(fromMedusa);
+    } catch {
+        return [];
+    }
+}
+
+export async function upsertShippingAddress(a: AddressInput, opts: { id?: string | null; isDefault: boolean }): Promise<{ ok: true } | { ok: false; error: string }> {
+    const token = await ensureMedusaCustomerToken();
+    if (!token) return { ok: false, error: 'Store account not connected.' };
+    try {
+        const url = opts.id ? `${MEDUSA_URL}/store/customers/me/addresses/${opts.id}` : `${MEDUSA_URL}/store/customers/me/addresses`;
+        const res = await fetch(url, { method: 'POST', headers: auth(token), body: JSON.stringify(toMedusa(a, opts.isDefault)), cache: 'no-store' });
+        if (!res.ok) return { ok: false, error: `Store refused the address (${res.status}).` };
+        return { ok: true };
+    } catch {
+        return { ok: false, error: 'Store unreachable.' };
+    }
+}
+
+export async function deleteShippingAddress(id: string): Promise<{ ok: true } | { ok: false; error: string }> {
+    const token = await ensureMedusaCustomerToken();
+    if (!token) return { ok: false, error: 'Store account not connected.' };
+    try {
+        const res = await fetch(`${MEDUSA_URL}/store/customers/me/addresses/${id}`, { method: 'DELETE', headers: auth(token), cache: 'no-store' });
+        if (!res.ok) return { ok: false, error: `Store refused (${res.status}).` };
+        return { ok: true };
+    } catch {
+        return { ok: false, error: 'Store unreachable.' };
+    }
+}
+
 /** The customer's default shipping address (or the first one), as checkout's AddressInput. Null when none / not linked. */
 export async function loadDefaultShippingAddress(): Promise<AddressInput | null> {
     const token = await ensureMedusaCustomerToken();

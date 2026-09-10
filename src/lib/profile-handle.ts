@@ -98,6 +98,8 @@ export async function saveProfileFields(input: {
     handle: string;
     displayName: string;
     bio?: string;
+    /** Optional; `undefined` leaves the column alone, '' clears it. */
+    location?: string;
 }): Promise<SaveProfileResult> {
     const handle = normalizeHandle(input.handle);
     const v = validateHandle(handle);
@@ -106,6 +108,7 @@ export async function saveProfileFields(input: {
     const displayName = input.displayName.trim().slice(0, 60);
     if (!displayName) return { ok: false, error: 'Enter a display name.' };
     const bio = (input.bio ?? '').trim().slice(0, 280) || null;
+    const location = input.location === undefined ? undefined : input.location.trim().slice(0, 80) || null;
 
     const admin = getSupabaseAdmin();
 
@@ -126,6 +129,7 @@ export async function saveProfileFields(input: {
             handle,
             display_name: displayName,
             bio,
+            ...(location === undefined ? {} : { location }),
             updated_at: new Date().toISOString(),
         })
         .eq('id', input.profileId);

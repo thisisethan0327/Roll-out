@@ -88,13 +88,16 @@ export default async function MeOverview({ searchParams }: { searchParams: Promi
                         </div>
                     )}
                 </div>
-                <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+                <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                     <Link
                         href={`/u/${profile.handle}`}
                         className="admin-action-btn muted"
                         style={{ textDecoration: 'none' }}
                     >
                         PUBLIC PROFILE
+                    </Link>
+                    <Link href="/me/settings" className="admin-action-btn" style={{ textDecoration: 'none' }}>
+                        SETTINGS
                     </Link>
                 </div>
             </section>

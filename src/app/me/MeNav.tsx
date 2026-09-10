@@ -15,6 +15,7 @@ const BASE_LINKS: { href: string; label: string }[] = [
     { href: '/me/tickets', label: 'Tickets' },
     { href: '/me/orders', label: 'Orders' },
     { href: '/me/garage', label: 'Garage' },
+    { href: '/me/settings', label: 'Settings' },
 ];
 
 function isActive(pathname: string, href: string): boolean {
