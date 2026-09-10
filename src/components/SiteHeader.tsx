@@ -103,7 +103,7 @@ export function SiteHeader() {
                 className="container"
                 style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 64, gap: 16 }}
             >
-                <Link href="/" style={{ display: 'flex', flexDirection: 'column', textDecoration: 'none', flexShrink: 0 }}>
+                <Link href="/" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: 44, textDecoration: 'none', flexShrink: 0 }}>
                     <span className="font-display" style={{ fontWeight: 700, letterSpacing: 4, color: 'var(--text)', fontSize: 18 }}>
                         ROLLOUT
                     </span>

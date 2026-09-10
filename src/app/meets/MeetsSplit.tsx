@@ -14,6 +14,7 @@
  * 1024px in CSS as a belt-and-braces guard.
  */
 import Link from 'next/link';
+import { Icon } from '@/components/Icon';
 import { useEffect, useRef, useState } from 'react';
 import { resolveCover } from '@/lib/event-covers';
 import { MeetsMap, type MapEvent, type MapShop } from './map/MeetsMap';
@@ -122,7 +123,7 @@ export function MeetsSplit({
                                 {plottable.has(m.id) ? (
                                     <>
                                         <span className="sep" />
-                                        <span className="meets-split-pin" aria-label="On the map">◉ MAP</span>
+                                        <span className="meets-split-pin" aria-label="On the map"><Icon name="map-pin" size={13} /> MAP</span>
                                     </>
                                 ) : null}
                             </div>

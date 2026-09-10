@@ -161,7 +161,7 @@ function SectionHeading({ children, noRule = false }: { children: React.ReactNod
                 paddingTop: noRule ? 0 : 12,
             }}
         >
-            ／ {children}
+            {children}
         </div>
     );
 }

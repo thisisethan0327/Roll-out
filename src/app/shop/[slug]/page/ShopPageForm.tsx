@@ -106,13 +106,13 @@ export function ShopPageForm({
                     placeholder="Seattle, WA"
                 />
 
-                <div className="admin-form-label">SECTOR CODE</div>
+                <div className="admin-form-label">AREA TAG</div>
                 <input
                     type="text"
                     value={sectorCode}
                     onChange={(e) => setSectorCode(e.target.value)}
                     className="admin-form-input"
-                    placeholder="SECTOR 06"
+                    placeholder="Capitol Hill"
                 />
 
                 <div className="admin-form-label">AVATAR URL</div>

@@ -78,18 +78,18 @@ function ShopPendingGate({
     const copy =
         status === 'rejected'
             ? {
-                  eyebrow: '／ APPLICATION NOT APPROVED',
+                  eyebrow: 'APPLICATION NOT APPROVED',
                   title: 'This shop was not approved',
                   body: 'Your Rollout listing application was declined. If you think this is a mistake, reply to the email we sent or reach out to support.',
               }
             : status === 'suspended'
               ? {
-                    eyebrow: '／ SHOP SUSPENDED',
+                    eyebrow: 'SHOP SUSPENDED',
                     title: 'This shop is suspended',
                     body: 'Your shop is currently suspended and hidden from Rollout. Contact support to resolve it.',
                 }
               : {
-                    eyebrow: '／ UNDER REVIEW',
+                    eyebrow: 'UNDER REVIEW',
                     title: 'Your shop is pending verification',
                     body: 'Thanks for applying. A Rollout admin is reviewing your shop. Once verified it goes live on the directory and map, and your console unlocks. We’ll email you the moment it’s approved.',
                 };

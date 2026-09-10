@@ -46,24 +46,9 @@ export default function HomePage() {
                     />
                 </div>
 
-                <div className="container" style={{ position: 'relative', zIndex: 1, paddingTop: 96, paddingBottom: 120, minHeight: '88vh' }}>
-                    {/* Corner stamps */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 80 }}>
-                        <div className="mono-row" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 4 }}>
-                            <span className="accent">SECTOR 06</span>
-                            <span className="mono" style={{ fontSize: 9 }}>47.6280°N · 122.3321°W</span>
-                        </div>
-                        <div className="mono-row" style={{ flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-                            <span className="accent">NIGHT_RUN ／ 0042</span>
-                            <span style={{ fontSize: 9 }}>BUILD 2026.05 · PNW</span>
-                        </div>
-                    </div>
-
-                    {/* Pulse + eyebrow */}
-                    <div className="mono-row" style={{ marginBottom: 18 }}>
-                        <span style={{ width: 8, height: 8, background: 'var(--gold)', display: 'inline-block', animation: 'pulse 1.6s ease-in-out infinite' }} />
-                        <span className="accent">NOW BOARDING</span>
-                    </div>
+                <div className="container" style={{ position: 'relative', zIndex: 1, paddingTop: 128, paddingBottom: 120, minHeight: '88vh' }}>
+                    {/* Eyebrow (6F: place, not a HUD state) */}
+                    <div className="eyebrow eyebrow-gold" style={{ marginBottom: 18 }}>Seattle · Pacific Northwest</div>
 
                     <h1 data-hero-word style={{ marginBottom: 12 }}>ROLLOUT</h1>
                     <div className="text-jp" style={{ fontSize: 14, letterSpacing: 3, marginBottom: 28 }}>
@@ -79,11 +64,11 @@ export default function HomePage() {
 
                     {/* Spec strip */}
                     <div data-hero-copy className="mono-row" style={{ marginTop: 40, flexWrap: 'wrap', gap: 20 }}>
-                        <span><span className="accent">◉</span> RSVP CONVOY RUNS</span>
+                        <span><Icon name="going" size={16} className="accent" /> RSVP TO MEETS</span>
                         <span className="sep" />
-                        <span><span className="accent">◐</span> TRACK BUILD LOGS</span>
+                        <span><Icon name="settings" size={16} className="accent" /> LOG YOUR BUILD</span>
                         <span className="sep" />
-                        <span><span className="accent">✎</span> DIRECT LINE TO SHOPS</span>
+                        <span><Icon name="shop" size={16} className="accent" /> MESSAGE YOUR SHOP</span>
                     </div>
 
                     {/* CTAs */}
@@ -104,7 +89,7 @@ export default function HomePage() {
             {/* ── FEATURES ─────────────────────────────────────────────────── */}
             <section className="section" id="features">
                 <div className="container">
-                    <div className="eyebrow eyebrow-gold mb-4">／ FEATURES</div>
+                    <div className="eyebrow eyebrow-gold mb-4">FEATURES</div>
                     <h2 style={{ marginBottom: 14 }}>BUILT FOR THE PEOPLE WHO BUILD</h2>
                     <p className="text-dim" style={{ maxWidth: 680, fontSize: 17, lineHeight: 1.55, marginBottom: 56 }}>
                         Stop chasing convoy details in three different DMs. Stop losing build photos in a camera roll.
@@ -118,11 +103,11 @@ export default function HomePage() {
                             gap: 16,
                         }}
                     >
-                        <FeatureCard icon="meet" title="Convoy RSVPs" body="Know who's actually rolling. Live spot count, capacity gates, lat-long meet points." />
+                        <FeatureCard icon="meet" title="Meet RSVPs" body="Know who's actually rolling. Live spot count, capacity gates, lat-long meet points." />
                         <FeatureCard icon="settings" title="Build log" body="Track mods, miles, milestones. Up to 5 photos per build. Tagged feed for parts you ran." />
                         <FeatureCard icon="shop" title="Shop direct line" body="Talk to the shop that wrapped your car, not their public DMs. Quotes, status, follow-ups." />
                         <FeatureCard icon="meet-solo" title="Garage that belongs to you" body="Your photos, your specs, your history. Delete anytime — fully — from inside the app." />
-                        <FeatureCard icon="map-pin" title="Sector-aware" body="Meets, posts, and shops surfaced for your sector first. Opt out and go global." />
+                        <FeatureCard icon="map-pin" title="Near you first" body="Meets, posts, and shops surfaced for your area first. Opt out and go global." />
                         <FeatureCard icon="verified" title="Private by default" body="Posts default to followers-only. Ghost mode hides location. Block + report on every surface." />
                     </div>
                 </div>
@@ -133,8 +118,8 @@ export default function HomePage() {
                 <div className="container">
                     <div className="stat-band" style={{ border: 'none' }}>
                         <div className="stat-cell">
-                            <div className="lbl">Sector</div>
-                            <div className="val accent">PNW 06</div>
+                            <div className="lbl">Region</div>
+                            <div className="val accent">PNW</div>
                         </div>
                         <div className="stat-cell">
                             <div className="lbl">Live meets</div>
@@ -152,13 +137,13 @@ export default function HomePage() {
             {/* ── HOW IT WORKS ─────────────────────────────────────────────── */}
             <section className="section">
                 <div className="container">
-                    <div className="eyebrow eyebrow-gold mb-4">／ HOW IT WORKS</div>
+                    <div className="eyebrow eyebrow-gold mb-4">HOW IT WORKS</div>
                     <h2 style={{ marginBottom: 56 }}>THREE STEPS TO LAUNCH</h2>
 
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
                         <StepCard num="01" title="Download Rollout" body="Free for users, forever. iOS first — Android beta this quarter." />
                         <StepCard num="02" title="Add your build" body="Year, make, model. Up to 5 photos. Auto-compressed so your data plan doesn't suffer." />
-                        <StepCard num="03" title="Join your sector" body="RSVP a meet near you, follow your shops, post when something rolls out of the garage." />
+                        <StepCard num="03" title="Join a meet" body="RSVP a meet near you, follow your shops, post when something rolls out of the garage." />
                     </div>
                 </div>
             </section>
@@ -166,10 +151,10 @@ export default function HomePage() {
             {/* ── CTA ───────────────────────────────────────────────────────── */}
             <section className="section" style={{ background: 'var(--bg-1)', borderTop: '1px solid var(--line)' }}>
                 <div className="container" style={{ maxWidth: 760, textAlign: 'center' }}>
-                    <div className="eyebrow eyebrow-gold mb-4">／ JOIN THE RUN</div>
+                    <div className="eyebrow eyebrow-gold mb-4">JOIN THE RUN</div>
                     <h2 style={{ marginBottom: 16 }}>YOUR GARAGE.<br />YOUR PEOPLE.<br />YOUR PLATFORM.</h2>
                     <p className="text-dim" style={{ maxWidth: 540, margin: '0 auto 32px', fontSize: 16 }}>
-                        We&apos;re onboarding shops + builders by invite during beta. Drop your email and we&apos;ll send a TestFlight link when your sector opens.
+                        We&apos;re onboarding shops + builders by invite during beta. Drop your email and we&apos;ll send a TestFlight link when your area opens.
                     </p>
                     <a className="btn btn-lg" href="mailto:beta@rollout.club?subject=TestFlight%20invite%20request">
                         Request TestFlight

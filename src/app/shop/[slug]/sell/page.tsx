@@ -60,7 +60,7 @@ export default async function SellPage({ params }: { params: Promise<{ slug: str
 
             {!eligible ? (
                 <Card
-                    eyebrow="／ MERCHANT FEATURE REQUIRED"
+                    eyebrow="MERCHANT FEATURE REQUIRED"
                     title="Unlock selling on NeferStock"
                     body="Your shop is verified on Rollout. Selling on NeferStock is a paid merchant add-on — once it’s enabled for your shop, the commerce application (business license, reseller certificate, UBI, and payouts) unlocks here. The merchant feature is rolling out soon."
                 >
@@ -70,13 +70,13 @@ export default async function SellPage({ params }: { params: Promise<{ slug: str
                 </Card>
             ) : commerceStatus === 'pending' ? (
                 <Card
-                    eyebrow="／ UNDER REVIEW"
+                    eyebrow="UNDER REVIEW"
                     title="Your seller application is being reviewed"
                     body="Thanks — we’ve got your documents. A Rollout admin is reviewing your commerce KYC. We’ll email you the moment it’s approved, and your catalog tools unlock."
                 />
             ) : commerceStatus === 'docs_verified' || commerceStatus === 'verified' ? (
                 <Card
-                    eyebrow="／ APPROVED"
+                    eyebrow="APPROVED"
                     title="You’re cleared to sell"
                     body="Your commerce KYC is approved. You can list products and sell on NeferStock. Payouts move to Stripe Connect once the payouts platform is live; until then, approved sellers settle through Rollout’s interim process."
                 >

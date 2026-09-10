@@ -49,7 +49,7 @@ export default function HelpPage() {
     return (
         <div className="legal">
             <div className="container container-narrow">
-                <div className="eyebrow eyebrow-gold mb-4">／ HELP CENTER</div>
+                <div className="eyebrow eyebrow-gold mb-4">HELP CENTER</div>
                 <h1>FAQ</h1>
                 <div className="meta">COMMON QUESTIONS · UPDATED 2026-05-27</div>
 

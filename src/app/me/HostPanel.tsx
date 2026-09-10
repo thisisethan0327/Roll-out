@@ -45,7 +45,7 @@ export function HostPanel({
                         color: 'var(--gold)',
                     }}
                 >
-                    ／ BECOME A HOST
+                    BECOME A HOST
                 </div>
                 <StatusBadge status={hostStatus} />
             </div>

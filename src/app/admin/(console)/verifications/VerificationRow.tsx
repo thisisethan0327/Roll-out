@@ -166,7 +166,7 @@ export function VerificationRow({ req }: { req: VReq }) {
                         padding: 14,
                     }}
                 >
-                    <div className="eyebrow eyebrow-gold" style={{ fontSize: 10 }}>／ REGISTRY WIRING (on approve)</div>
+                    <div className="eyebrow eyebrow-gold" style={{ fontSize: 10 }}>REGISTRY WIRING (on approve)</div>
                     <Field label="COMMERCE TIER">
                         <select className="admin-form-input" value={tier} onChange={(e) => setTier(e.target.value)}>
                             <option value="1">1 — storefront</option>

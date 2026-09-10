@@ -119,7 +119,7 @@ export default async function ProductDetailPage({
                     {/* INFO + BUY */}
                     <div>
                         <div className="eyebrow eyebrow-gold mb-4">
-                            {vendor ? `／ ${vendor.name}` : '／ PRODUCT'}
+                            {vendor ? `${vendor.name}` : 'PRODUCT'}
                         </div>
                         <h1 style={{ fontSize: 'clamp(24px, 3vw, 36px)', letterSpacing: 0.5, margin: '0 0 12px' }}>
                             {product.title}

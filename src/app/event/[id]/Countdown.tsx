@@ -39,7 +39,7 @@ export function Countdown({ startAt }: { startAt: string }) {
             { value: String(m).padStart(2, '0'), label: 'MIN' },
             { value: String(s).padStart(2, '0'), label: 'SEC' },
         ];
-        label = 'T-MINUS';
+        label = 'STARTS IN';
     }
 
     if (cells.length === 0) {

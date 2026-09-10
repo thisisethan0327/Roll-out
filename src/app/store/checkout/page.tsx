@@ -30,7 +30,7 @@ export default async function CheckoutPage() {
         return (
             <section className="section" style={{ padding: '40px 0 72px' }}>
                 <div className="container">
-                    <div className="eyebrow eyebrow-gold mb-4">／ CHECKOUT</div>
+                    <div className="eyebrow eyebrow-gold mb-4">CHECKOUT</div>
                     <h1 style={{ letterSpacing: 1, margin: '0 0 28px' }}>CHECKOUT</h1>
                     <p>
                         Checkout is temporarily unavailable — payments are not
@@ -53,7 +53,7 @@ export default async function CheckoutPage() {
     return (
         <section className="section" style={{ padding: '40px 0 72px' }}>
             <div className="container">
-                <div className="eyebrow eyebrow-gold mb-4">／ CHECKOUT</div>
+                <div className="eyebrow eyebrow-gold mb-4">CHECKOUT</div>
                 <h1 style={{ letterSpacing: 1, margin: '0 0 28px' }}>CHECKOUT</h1>
                 <CheckoutClient
                     initialCart={cart!}

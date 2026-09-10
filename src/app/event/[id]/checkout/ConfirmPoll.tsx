@@ -53,7 +53,7 @@ export function ConfirmPoll({
             <>
                 <div style={{ fontSize: 44, color: 'var(--gold)', marginBottom: 12 }}>✓</div>
                 <h1 style={{ letterSpacing: 1, margin: '0 0 14px' }}>
-                    YOU&apos;RE IN{spotNo != null ? ` — NO. ${String(spotNo).padStart(3, '0')}` : ''}
+                    YOU&apos;RE IN{spotNo != null ? ` · SPOT ${spotNo}` : ''}
                 </h1>
                 <p style={{ color: 'var(--text-2)', fontSize: 16, lineHeight: 1.6, maxWidth: 460, margin: '0 auto 8px' }}>
                     Payment received — your spot is locked in. See you there.

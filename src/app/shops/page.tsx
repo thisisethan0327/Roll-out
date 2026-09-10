@@ -134,7 +134,7 @@ export default async function ShopsDirectoryPage() {
             <BandReveal>
             <section className="hero-band">
                 <div className="container" style={{ paddingTop: 64, paddingBottom: 48 }}>
-                    <div className="eyebrow eyebrow-gold mb-4">／ SHOPS</div>
+                    <div className="eyebrow eyebrow-gold mb-4">SHOPS</div>
                     <h1 data-band-title style={{ fontSize: 'clamp(32px, 5vw, 56px)', letterSpacing: 1, margin: 0 }}>
                         SHOPS ON ROLLOUT
                     </h1>
@@ -176,7 +176,7 @@ export default async function ShopsDirectoryPage() {
                     style={{ padding: '56px 0' }}
                 >
                     <div style={{ flex: 1, minWidth: 260 }}>
-                        <div className="eyebrow eyebrow-gold mb-4">／ MAP</div>
+                        <div className="eyebrow eyebrow-gold mb-4">MAP</div>
                         <h2 style={{ fontSize: 'clamp(24px, 3.5vw, 36px)', margin: 0 }}>
                             SEE EVERY SHOP ON THE MAP
                         </h2>
@@ -206,7 +206,7 @@ export default async function ShopsDirectoryPage() {
                     style={{ padding: '48px 0' }}
                 >
                     <div>
-                        <div className="eyebrow mb-4">／ FOR SHOPS</div>
+                        <div className="eyebrow mb-4">FOR SHOPS</div>
                         <h3 style={{ fontSize: 'clamp(20px, 2.6vw, 28px)', margin: 0 }}>
                             RUN A SHOP?
                         </h3>

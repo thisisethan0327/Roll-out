@@ -117,7 +117,7 @@ export function EventCoverPicker({
                 onClick={() => setShowAll((s) => !s)}
                 style={{ marginBottom: showAll ? 12 : 0 }}
             >
-                {showAll ? '▾ HIDE ALL COVERS' : '▸ ALL COVERS'}
+                {showAll ? 'HIDE ALL COVERS' : 'SHOW ALL COVERS'}
             </button>
 
             {showAll ? (

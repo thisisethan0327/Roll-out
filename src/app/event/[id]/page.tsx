@@ -519,7 +519,7 @@ export default async function PublicEventPage({
                     }}
                 >
                     <span style={{ width: 5, height: 5, background: 'var(--gold)', display: 'inline-block' }} />
-                    {ev.sector_code ?? 'SECTOR 06'}
+                    {ev.sector_code ?? 'MEET POINT'}
                     {ev.lat != null && ev.lng != null ? (
                         <>
                             <span style={{ color: 'var(--text-3)' }}>·</span>
@@ -660,7 +660,7 @@ export default async function PublicEventPage({
                 <div className="container" style={{ display: 'flex', flexDirection: 'column', gap: 26, alignItems: 'center' }}>
                     {rsvpOpen && isTiered && tiers.length > 0 ? (
                         <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 20, alignItems: 'center' }}>
-                            <div className="eyebrow eyebrow-gold" style={{ justifyContent: 'center' }}>／ TIERS</div>
+                            <div className="eyebrow eyebrow-gold" style={{ justifyContent: 'center' }}>TIERS</div>
                             <TiersSection
                                 eventId={ev.id}
                                 tiers={tiers}
@@ -730,11 +730,11 @@ export default async function PublicEventPage({
                 </div>
             </section>
 
-            {/* CONVOY — attendee preview */}
+            {/* GOING — attendee preview */}
             {attendees.length > 0 || (ev.attending_count ?? 0) > 0 ? (
                 <section className="section" style={{ padding: '40px 0', borderTop: '1px solid var(--line)', background: 'var(--bg-1)' }}>
                     <div className="container">
-                        <div className="eyebrow eyebrow-gold mb-4">／ CONVOY</div>
+                        <div className="eyebrow eyebrow-gold mb-4">GOING</div>
                         <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap', marginBottom: 24 }}>
                             <h2 style={{ margin: 0 }}>WHO&apos;S GOING</h2>
                             <span className="mono-row" style={{ fontSize: 11 }}>
@@ -801,14 +801,14 @@ export default async function PublicEventPage({
                     <div className="container container-narrow">
                         {ev.description ? (
                             <>
-                                <div className="eyebrow eyebrow-gold mb-4">／ BRIEF</div>
+                                <div className="eyebrow eyebrow-gold mb-4">BRIEF</div>
                                 <p className="text-dim" style={{ fontSize: 16, lineHeight: 1.7, marginBottom: 32 }}>{ev.description}</p>
                             </>
                         ) : null}
 
                         {hostName ? (
                             <>
-                                <div className="eyebrow eyebrow-gold mb-4">／ HOSTED BY</div>
+                                <div className="eyebrow eyebrow-gold mb-4">HOSTED BY</div>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                                     <div
                                         style={{ width: 48, height: 48, borderRadius: '50%', background: 'var(--bg-3)', border: '1px solid var(--gold)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-display)', fontWeight: 700, color: 'var(--gold)', fontSize: 14 }}
@@ -835,7 +835,7 @@ export default async function PublicEventPage({
             {/* LOCATION */}
             <section className="section" style={{ padding: '48px 0', borderTop: '1px solid var(--line)', background: 'var(--bg-1)' }}>
                 <div className="container">
-                    <div className="eyebrow eyebrow-gold mb-4">／ LOCATION</div>
+                    <div className="eyebrow eyebrow-gold mb-4">LOCATION</div>
                     <h2 style={{ margin: '0 0 8px' }}>{(ev.location_name ?? 'TBA').toUpperCase()}</h2>
                     {ev.location_detail ? <p className="text-dim" style={{ fontSize: 14, margin: '0 0 18px' }}>{ev.location_detail}</p> : null}
 

@@ -28,7 +28,7 @@ export default function LicensesPage() {
     return (
         <div className="legal">
             <div className="container container-narrow">
-                <div className="eyebrow eyebrow-gold mb-4">／ ATTRIBUTION</div>
+                <div className="eyebrow eyebrow-gold mb-4">ATTRIBUTION</div>
                 <h1>OPEN-SOURCE LICENSES</h1>
                 <div className="meta">LIBRARIES THAT MAKE ROLLOUT POSSIBLE</div>
 

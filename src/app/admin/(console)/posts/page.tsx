@@ -108,7 +108,7 @@ export default async function PostsPage({
                                         </div>
                                     </td>
                                     <td>
-                                        ♥ {p.like_count} · ◉ {p.comment_count}
+                                        ♥ {p.like_count} · {p.comment_count} comments
                                     </td>
                                     <td>
                                         {p.deleted_at && <span className="admin-pill warn">DELETED</span>}

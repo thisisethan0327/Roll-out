@@ -85,17 +85,16 @@ const MAPLIBRE_JS = 'https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js';
 const MAPLIBRE_LEAFLET_JS =
     'https://unpkg.com/@maplibre/maplibre-gl-leaflet@0.0.22/leaflet-maplibre-gl.js';
 /**
- * One style per theme. The map was the last thing on rollout.club still dark in
- * light mode — a black rectangle in the middle of a white page, which reads as
- * a broken image rather than a design choice.
- *
- * Positron is OpenFreeMap's light counterpart to the dark style: same tiles,
- * same keyless terms, same vector pipeline, so nothing below changes but the
- * URL. Its background is near-white and sits with the paper surfaces.
+ * The map is a FIXED DARK BLOCK in both themes (6F "Copper Map"): `.on-map`
+ * pins the copper + hairline stops on the furniture, and the basemap stays the
+ * dark style under it. Positron (the light counterpart) was used for light mode
+ * until 2026-09-10; over the graphite ground it left the attribution at 2.18:1
+ * (run 13, phase 2) and broke the "one dark map" rule. Both keys resolve to the
+ * same style so the theme plumbing below stays inert rather than removed.
  */
 const BASEMAP_STYLES = {
     dark: 'https://tiles.openfreemap.org/styles/dark',
-    light: 'https://tiles.openfreemap.org/styles/positron',
+    light: 'https://tiles.openfreemap.org/styles/dark',
 } as const;
 
 /**

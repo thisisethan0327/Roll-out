@@ -10,7 +10,7 @@ export default function SignInOnPhonePage() {
     return (
         <div className="legal">
             <div className="container container-narrow">
-                <div className="eyebrow eyebrow-gold mb-4">／ SIGN-IN HELP</div>
+                <div className="eyebrow eyebrow-gold mb-4">SIGN-IN HELP</div>
                 <h1 style={{ marginBottom: 8 }}>OPEN ON YOUR PHONE</h1>
                 <div className="meta">CONTINUE THE SIGN-IN ON YOUR ROLLOUT APP</div>
 

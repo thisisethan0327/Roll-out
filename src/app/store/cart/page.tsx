@@ -18,7 +18,7 @@ export default async function CartPage() {
     return (
         <section className="section" style={{ padding: '40px 0 72px' }}>
             <div className="container">
-                <div className="eyebrow eyebrow-gold mb-4">／ CART</div>
+                <div className="eyebrow eyebrow-gold mb-4">CART</div>
                 <h1 style={{ letterSpacing: 1, margin: '0 0 28px' }}>YOUR BAG</h1>
                 <CartClient initialCart={cart} />
             </div>

@@ -225,7 +225,7 @@ export function TiersSection({
                             color: 'var(--gold)',
                         }}
                     >
-                        ● SPOT HELD{spotNo != null ? ` · #${String(spotNo).padStart(3, '0')}` : ''} — COMPLETE PAYMENT IN{' '}
+                        SPOT HELD{spotNo != null ? ` · SPOT ${spotNo}` : ''} — COMPLETE PAYMENT IN{' '}
                         <span style={{ color: 'var(--text)', fontWeight: 700 }}>
                             {mounted && holdExpiresAt ? formatRemaining(holdExpiresAt, now) : '…'}
                         </span>
@@ -263,7 +263,7 @@ export function TiersSection({
                             color: 'var(--gold)',
                         }}
                     >
-                        ✓ YOU&apos;RE IN{spotNo != null ? ` · SPOT #${String(spotNo).padStart(3, '0')}` : ''}
+                        ✓ YOU&apos;RE IN{spotNo != null ? ` · SPOT ${spotNo}` : ''}
                         {myTierName ? ` · ${myTierName.toUpperCase()}` : ''}
                     </div>
                     <button

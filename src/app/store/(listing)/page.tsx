@@ -50,7 +50,7 @@ export default async function StoreIndexPage({
             <BandReveal>
             <section className="hero-band">
                 <div className="container" style={{ paddingTop: 56, paddingBottom: 40 }}>
-                    <div className="eyebrow eyebrow-gold mb-4">／ STORE</div>
+                    <div className="eyebrow eyebrow-gold mb-4">STORE</div>
                     <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
                         <div>
                             <h1 data-band-title style={{ fontSize: 'clamp(32px, 5vw, 56px)', letterSpacing: 1, margin: 0 }}>

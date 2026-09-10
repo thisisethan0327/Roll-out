@@ -48,7 +48,7 @@ export default async function MeetsMapPage({
                     style={{ paddingTop: 18, paddingBottom: 18, display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center', justifyContent: 'space-between' }}
                 >
                     <div>
-                        <div className="eyebrow eyebrow-gold mb-4">／ MEETS MAP</div>
+                        <div className="eyebrow eyebrow-gold mb-4">MEETS MAP</div>
                         <h1 style={{ fontSize: 'clamp(22px, 3vw, 34px)', letterSpacing: 1, margin: 0 }}>
                             {type ? `${TYPE_LABEL[type].toUpperCase()} · MAP` : "WHAT'S NEARBY"}
                         </h1>

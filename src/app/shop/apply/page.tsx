@@ -41,7 +41,7 @@ export default async function ShopApplyPage({
         <div className="light-scope" style={{ background: 'var(--bg-0)', minHeight: '100vh' }}>
             <section className="section" style={{ padding: '48px 0' }}>
                 <div className="container" style={{ maxWidth: 680 }}>
-                    <div className="eyebrow eyebrow-gold mb-4">／ APPLY</div>
+                    <div className="eyebrow eyebrow-gold mb-4">APPLY</div>
                     <h1 style={{ fontSize: 'clamp(28px, 4vw, 42px)', letterSpacing: 0.5, margin: '0 0 10px' }}>
                         {withCommerce ? 'SELL & LIST ON ROLLOUT' : 'PUT YOUR SHOP ON ROLLOUT'}
                     </h1>

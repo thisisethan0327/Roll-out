@@ -67,7 +67,7 @@ export default async function EventCheckoutPage({
             <section className="section" style={{ padding: '72px 0' }}>
                 <div className="container container-narrow" style={{ textAlign: 'center' }}>
                     <div className="eyebrow eyebrow-gold mb-4" style={{ justifyContent: 'center' }}>
-                        ／ SPOT SECURED
+                        SPOT SECURED
                     </div>
                     <ConfirmPoll eventId={id} initialState={snap.state} initialSpotNo={snap.spotNo} />
                     <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap', marginTop: 32 }}>
@@ -97,7 +97,7 @@ export default async function EventCheckoutPage({
         return (
             <section className="section" style={{ padding: '40px 0 72px' }}>
                 <div className="container">
-                    <div className="eyebrow eyebrow-gold mb-4">／ EVENT CHECKOUT</div>
+                    <div className="eyebrow eyebrow-gold mb-4">EVENT CHECKOUT</div>
                     <h1 style={{ letterSpacing: 1, margin: '0 0 28px' }}>CHECKOUT</h1>
                     <p>
                         Checkout is temporarily unavailable — payments are not
@@ -116,7 +116,7 @@ export default async function EventCheckoutPage({
     return (
         <section className="section" style={{ padding: '40px 0 72px' }}>
             <div className="container">
-                <div className="eyebrow eyebrow-gold mb-4">／ EVENT CHECKOUT</div>
+                <div className="eyebrow eyebrow-gold mb-4">EVENT CHECKOUT</div>
                 <h1 style={{ letterSpacing: 1, margin: '0 0 10px' }}>
                     {((ev as any).title ?? 'EVENT PACKAGE').toUpperCase()}
                 </h1>

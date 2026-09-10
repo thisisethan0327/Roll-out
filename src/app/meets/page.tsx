@@ -141,7 +141,7 @@ export default async function MeetsDirectoryPage({
             <BandReveal>
             <section className="hero-band">
                 <div className="container" style={{ paddingTop: 64, paddingBottom: 48 }}>
-                    <div className="eyebrow eyebrow-gold mb-4">／ MEETS</div>
+                    <div className="eyebrow eyebrow-gold mb-4">MEETS</div>
                     <h1 data-band-title style={{ fontSize: 'clamp(32px, 5vw, 56px)', letterSpacing: 1, margin: 0 }}>
                         UPCOMING CAR MEETS
                     </h1>
@@ -172,7 +172,7 @@ export default async function MeetsDirectoryPage({
                     {/* View toggle — mobile/tablet only; desktop shows the split. */}
                     <div className="meets-view-toggle" style={{ display: 'flex', gap: 8 }}>
                         <span className="chip chip-nav chip-on" aria-current="page">LIST</span>
-                        <FilterChip href={mapHref} label="MAP ▸" active={false} />
+                        <FilterChip href={mapHref} label="MAP" active={false} />
                     </div>
                 </div>
             </section>
@@ -180,7 +180,7 @@ export default async function MeetsDirectoryPage({
             {/* UPCOMING */}
             <section className="section" style={{ padding: '48px 0' }}>
                 <div className="container">
-                    <div className="eyebrow eyebrow-gold mb-4">／ UPCOMING</div>
+                    <div className="eyebrow eyebrow-gold mb-4">UPCOMING</div>
                     {upcoming.length === 0 ? (
                         <div className="admin-empty">
                             No upcoming {type ? TYPE_LABEL[type].toLowerCase() + ' ' : ''}meets right now. Check back soon.
@@ -206,7 +206,7 @@ export default async function MeetsDirectoryPage({
             {past.length > 0 ? (
                 <section className="section" style={{ padding: '0 0 56px' }}>
                     <div className="container">
-                        <div className="eyebrow mb-4" style={{ color: 'var(--text-3)' }}>／ PAST MEETS</div>
+                        <div className="eyebrow mb-4" style={{ color: 'var(--text-3)' }}>PAST MEETS</div>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 16, opacity: 0.72 }}>
                             {past.map((m) => (
                                 <MeetTile key={m.id} m={m} past />

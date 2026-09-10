@@ -52,7 +52,7 @@ export default async function OrderConfirmedPage({
         <section className="section" style={{ padding: '72px 0' }}>
             <div className="container container-narrow" style={{ textAlign: 'center' }}>
                 <div className="eyebrow eyebrow-gold mb-4" style={{ justifyContent: 'center' }}>
-                    ／ ORDER CONFIRMED
+                    ORDER CONFIRMED
                 </div>
                 <div style={{ fontSize: 44, color: 'var(--gold)', marginBottom: 12 }}>✓</div>
                 <h1 style={{ letterSpacing: 1, margin: '0 0 14px' }}>THANK YOU</h1>

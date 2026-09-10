@@ -128,8 +128,8 @@ export function RsvpControls({
         ? msg.toUpperCase()
         : state === 'confirmed'
             ? spotNo != null
-                ? `YOU'RE IN · SPOT #${String(spotNo).padStart(3, '0')} · TAP GOING TO REMOVE`
-                : "YOU'RE ON THE CONVOY · TAP GOING TO REMOVE"
+                ? `YOU'RE IN · SPOT ${spotNo} · TAP GOING TO REMOVE`
+                : "YOU'RE GOING · TAP GOING TO REMOVE"
             : state === 'waitlisted'
                 ? waitPos != null
                     ? `WAITLISTED · #${waitPos} IN LINE · TAP GOING TO LEAVE`

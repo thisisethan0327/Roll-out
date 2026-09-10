@@ -389,9 +389,9 @@ export default async function PostPage({
                     <div className="mono-row" style={{ fontSize: 11, marginTop: 28 }}>
                         <span><span className="accent">♥</span> {post.like_count ?? 0}</span>
                         <span className="sep" />
-                        <span><span className="accent">✎</span> {post.comment_count ?? 0}</span>
+                        <span>{post.comment_count ?? 0} comments</span>
                         <span className="sep" />
-                        <span><span className="accent">↻</span> {post.repost_count ?? 0}</span>
+                        <span>{post.repost_count ?? 0} reposts</span>
                     </div>
                 </div>
             </section>
@@ -400,7 +400,7 @@ export default async function PostPage({
             {eventLive ? (
                 <section className="section" style={{ padding: '0 0 56px' }}>
                     <div className="container container-narrow">
-                        <div className="eyebrow eyebrow-gold mb-4">／ LINKED MEET</div>
+                        <div className="eyebrow eyebrow-gold mb-4">LINKED MEET</div>
                         <Link href={`/event/${ev!.id}`} style={{ textDecoration: 'none' }}>
                             <div
                                 style={{

@@ -255,7 +255,7 @@ export default async function ShopPostsPage({
                                     </td>
                                     <td>
                                         <span className="admin-handle">
-                                            ♥ {p.like_count ?? 0} · ◉ {p.comment_count ?? 0}
+                                            ♥ {p.like_count ?? 0} · {p.comment_count ?? 0} comments
                                         </span>
                                     </td>
                                     <td>

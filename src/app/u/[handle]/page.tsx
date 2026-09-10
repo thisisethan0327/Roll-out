@@ -536,7 +536,7 @@ export default async function HandlePage({
                     <div className="container">
                         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, marginBottom: 32, flexWrap: 'wrap' }}>
                             <div>
-                                <div className="eyebrow eyebrow-gold mb-4">／ SHOP</div>
+                                <div className="eyebrow eyebrow-gold mb-4">SHOP</div>
                                 <h2 style={{ margin: 0 }}>PRODUCTS</h2>
                             </div>
                             <Link
@@ -566,7 +566,7 @@ export default async function HandlePage({
             {!isShop && vehicles.length > 0 ? (
                 <section className="section" style={{ padding: '56px 0', borderTop: '1px solid var(--line)' }}>
                     <div className="container">
-                        <div className="eyebrow eyebrow-gold mb-4">／ RECENT BUILDS</div>
+                        <div className="eyebrow eyebrow-gold mb-4">RECENT BUILDS</div>
                         <h2 style={{ marginBottom: 32 }}>GARAGE</h2>
                         <div
                             style={{
@@ -606,7 +606,7 @@ export default async function HandlePage({
             {/* ── RECENT POSTS ─────────────────────────────────────────── */}
             <section className="section" style={{ padding: '56px 0', borderTop: '1px solid var(--line)' }}>
                 <div className="container">
-                    <div className="eyebrow eyebrow-gold mb-4">／ RECENT POSTS</div>
+                    <div className="eyebrow eyebrow-gold mb-4">RECENT POSTS</div>
                     <h2 style={{ marginBottom: 32 }}>FEED</h2>
 
                     {posts.length === 0 ? (
@@ -651,7 +651,7 @@ export default async function HandlePage({
                                             <span className="sep" />
                                             <span><span className="accent">♥</span> {post.like_count ?? 0}</span>
                                             <span className="sep" />
-                                            <span><span className="accent">✎</span> {post.comment_count ?? 0}</span>
+                                            <span>{post.comment_count ?? 0} comments</span>
                                         </div>
                                     </div>
                                 </Link>
@@ -665,7 +665,7 @@ export default async function HandlePage({
             {isShop ? (
                 <section className="section" style={{ padding: '56px 0', borderTop: '1px solid var(--line)' }}>
                     <div className="container">
-                        <div className="eyebrow eyebrow-gold mb-4">／ UPCOMING</div>
+                        <div className="eyebrow eyebrow-gold mb-4">UPCOMING</div>
                         <h2 style={{ marginBottom: 32 }}>EVENTS</h2>
 
                         {events.length === 0 ? (
@@ -730,7 +730,7 @@ export default async function HandlePage({
             {isShop ? (
                 <section className="section" style={{ padding: '56px 0', borderTop: '1px solid var(--line)' }}>
                     <div className="container">
-                        <div className="eyebrow eyebrow-gold mb-4">／ REVIEWS</div>
+                        <div className="eyebrow eyebrow-gold mb-4">REVIEWS</div>
                         <div style={{ display: 'flex', alignItems: 'baseline', gap: 16, marginBottom: 32, flexWrap: 'wrap' }}>
                             <h2 style={{ margin: 0 }}>RATINGS</h2>
                             {ratingCount > 0 ? (
@@ -797,7 +797,7 @@ export default async function HandlePage({
             {isShop && shop?.lat != null && shop?.lng != null && shop?.show_on_map !== false ? (
                 <section className="section" style={{ padding: '56px 0', borderTop: '1px solid var(--line)' }}>
                     <div className="container">
-                        <div className="eyebrow eyebrow-gold mb-4">／ LOCATION</div>
+                        <div className="eyebrow eyebrow-gold mb-4">LOCATION</div>
                         <h2 style={{ marginBottom: 8 }}>FIND US</h2>
                         <p className="text-dim" style={{ fontSize: 15, margin: '0 0 18px' }}>
                             {[shop.address_line, shop.city, shop.state_region, shop.postal].filter(Boolean).join(', ') || 'Tap through for directions.'}
@@ -847,7 +847,7 @@ export default async function HandlePage({
             {/* ── ABOUT ────────────────────────────────────────────────── */}
             <section className="section" style={{ padding: '56px 0', borderTop: '1px solid var(--line)', background: 'var(--bg-1)' }}>
                 <div className="container container-narrow">
-                    <div className="eyebrow eyebrow-gold mb-4">／ ABOUT</div>
+                    <div className="eyebrow eyebrow-gold mb-4">ABOUT</div>
                     <h2 style={{ marginBottom: 24 }}>{displayName.toUpperCase()}</h2>
 
                     {profile.bio ? (
