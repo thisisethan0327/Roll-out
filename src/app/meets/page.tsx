@@ -107,7 +107,10 @@ export async function generateMetadata({
     const { type: raw } = await searchParams;
     const type = isValidType(raw) ? raw : null;
     const scope = type ? TYPE_LABEL[type] : 'Car Meets';
-    const title = type ? `${scope} on Rollout` : 'Car Meets & Events · Rollout';
+    // The root layout's template appends ' · Rollout' to the page title; the
+    // openGraph/twitter titles do not go through it, so they carry it themselves.
+    const title = type ? `${scope} on Rollout` : 'Car Meets & Events';
+    const socialTitle = `${title} · Rollout`;
     const desc = type
         ? `Browse upcoming ${TYPE_LABEL[type].toLowerCase()} events near you on Rollout — hosted by local shops and the community.`
         : 'Browse upcoming car meets, night runs, track days, and shows on Rollout — hosted by local shops and the community.';
@@ -116,8 +119,8 @@ export async function generateMetadata({
         description: desc,
         // One canonical for every filter: the filtered lists are views of it.
         alternates: { canonical: '/meets' },
-        openGraph: { title, description: desc, type: 'website', url: '/meets' },
-        twitter: { card: 'summary_large_image', title, description: desc },
+        openGraph: { title: socialTitle, description: desc, type: 'website', url: '/meets' },
+        twitter: { card: 'summary_large_image', title: socialTitle, description: desc },
     };
 }
 

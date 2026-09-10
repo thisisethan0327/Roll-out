@@ -283,9 +283,11 @@ export async function generateMetadata({
     const displayName = profile.display_name || cleanHandle;
     const isShop = profile.kind === 'shop_page';
 
+    // The root layout's template appends ' · Rollout'; social titles carry it themselves.
     const title = isShop
         ? `${displayName} on Rollout — bookings & shop drops`
-        : `${displayName} (@${cleanHandle}) · Rollout`;
+        : `${displayName} (@${cleanHandle})`;
+    const socialTitle = isShop ? title : `${title} · Rollout`;
 
     const desc = profile.bio
         ? truncate(profile.bio, 160)
@@ -299,14 +301,14 @@ export async function generateMetadata({
         title,
         description: desc,
         openGraph: {
-            title,
+            title: socialTitle,
             description: desc,
             images,
             type: 'profile',
         },
         twitter: {
             card: 'summary_large_image',
-            title,
+            title: socialTitle,
             description: desc,
             images,
         },

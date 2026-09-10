@@ -5,6 +5,23 @@ const nextConfig = {
     // No floating "N" dev badge: Ethan tests the polish on localhost and it
     // reads as part of the page. Dev-only either way.
     devIndicators: false,
+    // Standard hardening headers on every response. No CSP yet: the map loads
+    // Leaflet/MapLibre from unpkg and tiles from openfreemap, media from
+    // Supabase, payments from Stripe — an allowlist needs a tested pass first.
+    async headers() {
+        return [
+            {
+                source: '/:path*',
+                headers: [
+                    { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains' },
+                    { key: 'X-Content-Type-Options', value: 'nosniff' },
+                    { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
+                    { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+                    { key: 'Permissions-Policy', value: 'geolocation=(self), camera=(), microphone=(), payment=(self "https://js.stripe.com")' },
+                ],
+            },
+        ];
+    },
     images: {
         formats: ['image/avif', 'image/webp'],
         // Product mockups live in the Neferstock/Medusa Supabase storage bucket.
