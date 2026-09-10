@@ -299,6 +299,8 @@ export function OtpLoginForm({
     return (
         <form onSubmit={verify} className="admin-login-form">
             {noticeBanner}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/empty/illo-code-sent.svg" alt="" width={140} height={105} style={{ display: 'block', margin: '0 auto 4px', opacity: 0.92 }} />
             <label className="admin-login-label">CODE FROM EMAIL</label>
             <input
                 ref={otpInputRef}

@@ -12,6 +12,7 @@
  */
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { EmptyRow } from '@/app/me/ui';
 import { BandReveal } from '@/components/motion/BandReveal';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 
@@ -158,7 +159,7 @@ export default async function ShopsDirectoryPage() {
             <section className="section" style={{ padding: '48px 0' }}>
                 <div className="container">
                     {shops.length === 0 ? (
-                        <div className="admin-empty">No shops on the map yet. Check back soon.</div>
+                        <EmptyRow text="No shops on the map yet. Check back soon." art="no-shops-nearby" />
                     ) : (
                         <div className="shop-grid">
                             {shops.map((s) => (

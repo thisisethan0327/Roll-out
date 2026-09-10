@@ -52,9 +52,13 @@ export function HostPanel({
 
             {hostStatus === 'verified' ? (
                 <>
-                    <p style={{ color: 'var(--text-2)', fontSize: 14, lineHeight: 1.6, margin: 0 }}>
-                        You’re a verified host. Create your own meets, runs, and shows — they appear on the public Meets directory and map, and you can invite people by email.
-                    </p>
+                    <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src="/empty/illo-verified-host.svg" alt="" width={112} height={84} style={{ flexShrink: 0, opacity: 0.92 }} />
+                        <p style={{ color: 'var(--text-2)', fontSize: 14, lineHeight: 1.6, margin: 0 }}>
+                            You’re a verified host. Create your own meets, runs, and shows — they appear on the public Meets directory and map, and you can invite people by email.
+                        </p>
+                    </div>
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                         <Link href="/me/events/new" className="admin-action-btn" style={{ textDecoration: 'none' }}>
                             HOST AN EVENT ›
