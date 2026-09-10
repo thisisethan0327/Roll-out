@@ -251,10 +251,11 @@ function ShopDirectoryCard({ shop: s }: { shop: ShopCard }) {
                         ) : (
                             <span>SHOP</span>
                         )}
-                        {s.region ? (
+                        {/* The city, not the broad region code ("PNW"): a card is local, the site is not. */}
+                        {s.city ? (
                             <>
                                 <span className="sep" />
-                                <span>{s.region}</span>
+                                <span>{s.city.toUpperCase()}</span>
                             </>
                         ) : null}
                     </div>
