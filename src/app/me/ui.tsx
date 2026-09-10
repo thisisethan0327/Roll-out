@@ -98,8 +98,18 @@ export function Panel({
     );
 }
 
-export function EmptyRow({ text }: { text: string }) {
-    return <div className="admin-empty">{text}</div>;
+export type EmptyArt = 'empty-meets' | 'empty-orders' | 'empty-garage' | 'empty-shops' | 'code-sent' | '404';
+
+/** An empty row, optionally with one of the gold-line illustrations above the text. */
+export function EmptyRow({ text, art }: { text: string; art?: EmptyArt }) {
+    if (!art) return <div className="admin-empty">{text}</div>;
+    return (
+        <div className="admin-empty empty-art">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={`/illo/${art}.svg`} alt="" width={160} height={120} loading="lazy" />
+            <div>{text}</div>
+        </div>
+    );
 }
 
 export function KV({ label, value, mono }: { label: string; value: React.ReactNode; mono?: boolean }) {

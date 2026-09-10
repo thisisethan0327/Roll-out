@@ -11,8 +11,28 @@
  * a specific cover store that URL in `hero_image_url` and are unaffected.
  */
 
-const BUCKET_BASE =
-    'https://sbbxsqvoxrzcgtslspbo.supabase.co/storage/v1/object/public/event-covers';
+/**
+ * Default covers ship WITH the site (public/covers, two ratios) instead of the
+ * event-covers bucket: re-shot in the gold register (UI polish §3), and a 4:5
+ * variant for the portrait thumbs. Auto (unpinned) events resolve at render
+ * time, so this re-brands every unpinned event at once. Events that pinned a
+ * bucket URL keep it — the bucket is untouched.
+ */
+export const COVER_BASE = '/covers';
+export type CoverRatio = '16x9' | '4x5';
+/** A picked default is PINNED as an absolute URL, so the phone app can load it too. */
+export const COVER_PUBLIC_ORIGIN = 'https://rollout.club';
+export function publicCoverUrl(path: string): string {
+    return path.startsWith('/') ? COVER_PUBLIC_ORIGIN + path : path;
+}
+function cover(type: string, n: 1 | 2, ratio: CoverRatio = '16x9'): string {
+    return `${COVER_BASE}/${type}-${n}-${ratio}.webp`;
+}
+/** Swap the ratio of one of OUR default paths/urls; anything else is returned as-is. */
+export function coverAtRatio(url: string, ratio: CoverRatio): string {
+    const m = url.match(/^(https?:\/\/rollout\.club)?\/covers\/([A-Z_]+-[12])-(16x9|4x5)\.webp$/);
+    return m ? `${m[1] ?? ''}${COVER_BASE}/${m[2]}-${ratio}.webp` : url;
+}
 
 export const EVENT_COVER_TYPES = [
     'CAR_MEET',
@@ -26,11 +46,11 @@ export type EventCoverType = (typeof EVENT_COVER_TYPES)[number];
 
 /** type → [variant1, variant2] public URLs. */
 export const DEFAULT_EVENT_COVERS: Record<EventCoverType, [string, string]> = {
-    NIGHT_RUN: [`${BUCKET_BASE}/NIGHT_RUN-1.webp`, `${BUCKET_BASE}/NIGHT_RUN-2.webp`],
-    CAR_MEET: [`${BUCKET_BASE}/CAR_MEET-1.webp`, `${BUCKET_BASE}/CAR_MEET-2.webp`],
-    TRACK_DAY: [`${BUCKET_BASE}/TRACK_DAY-1.webp`, `${BUCKET_BASE}/TRACK_DAY-2.webp`],
-    CRUISE: [`${BUCKET_BASE}/CRUISE-1.webp`, `${BUCKET_BASE}/CRUISE-2.webp`],
-    SHOW: [`${BUCKET_BASE}/SHOW-1.webp`, `${BUCKET_BASE}/SHOW-2.webp`],
+    NIGHT_RUN: [cover('NIGHT_RUN', 1), cover('NIGHT_RUN', 2)],
+    CAR_MEET: [cover('CAR_MEET', 1), cover('CAR_MEET', 2)],
+    TRACK_DAY: [cover('TRACK_DAY', 1), cover('TRACK_DAY', 2)],
+    CRUISE: [cover('CRUISE', 1), cover('CRUISE', 2)],
+    SHOW: [cover('SHOW', 1), cover('SHOW', 2)],
 };
 
 /** Human labels for the picker UI. */
@@ -98,8 +118,9 @@ export function resolveCover(
     heroImageUrl: string | null | undefined,
     type: string | null | undefined,
     seed: string | null | undefined,
+    ratio: CoverRatio = '16x9',
 ): string {
-    return heroImageUrl && heroImageUrl.trim().length > 0
-        ? heroImageUrl
-        : defaultCoverFor(type, seed);
+    const pinned = heroImageUrl && heroImageUrl.trim().length > 0 ? heroImageUrl.trim() : null;
+    // A pinned default of ours follows the ratio too; a custom or bucket URL is used as-is.
+    return pinned ? coverAtRatio(pinned, ratio) : coverAtRatio(defaultCoverFor(type, seed), ratio);
 }

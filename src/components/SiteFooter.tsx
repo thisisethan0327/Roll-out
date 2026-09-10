@@ -38,7 +38,7 @@ export function SiteFooter() {
                         <Link href="/meets">Meets</Link>
                         <Link href="/shops">Shops</Link>
                         <Link href="/#features">Features</Link>
-                        <Link href="/#download">Download</Link>
+                        <Link href="/signup">Create your account</Link>
                         <Link href="/sign-in-on-phone">Sign-in help</Link>
                     </FooterColumn>
 

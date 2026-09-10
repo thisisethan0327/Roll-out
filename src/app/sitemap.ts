@@ -15,7 +15,7 @@ const BASE = 'https://rollout.club';
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const now = new Date();
     const out: MetadataRoute.Sitemap = [
-        { url: `${BASE}/`, lastModified: now, changeFrequency: 'daily', priority: 1 },
+        { url: BASE, lastModified: now, changeFrequency: 'daily', priority: 1 },
         { url: `${BASE}/meets`, lastModified: now, changeFrequency: 'hourly', priority: 0.9 },
         { url: `${BASE}/meets/map`, lastModified: now, changeFrequency: 'hourly', priority: 0.6 },
         { url: `${BASE}/shops`, lastModified: now, changeFrequency: 'daily', priority: 0.9 },

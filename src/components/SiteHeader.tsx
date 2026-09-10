@@ -44,8 +44,7 @@ const linkStyle: React.CSSProperties = {
     fontFamily: 'var(--font-display)',
     fontSize: 11,
     letterSpacing: 'var(--track-wider)',
-    textTransform: 'uppercase',
-};
+    textTransform: 'uppercase', minHeight: 44, minWidth: 44, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0 2px' };
 
 export function SiteHeader() {
     const pathname = usePathname();
@@ -105,7 +104,7 @@ export function SiteHeader() {
                 className="container"
                 style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 64, gap: 16 }}
             >
-                <Link href="/" style={{ display: 'flex', flexDirection: 'column', textDecoration: 'none', flexShrink: 0 }}>
+                <Link href="/" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: 44, textDecoration: 'none', flexShrink: 0 }}>
                     <span className="font-display" style={{ fontWeight: 700, letterSpacing: 4, color: 'var(--text)', fontSize: 18 }}>
                         ROLLOUT
                     </span>
@@ -135,8 +134,8 @@ export function SiteHeader() {
                     <div className="flex items-center" style={{ gap: 18 }}>
                         <AuthArea ctx={ctx} cartCount={cartCount} />
                         <ThemeToggle />
-                        <Link href="/#download" className="btn" style={{ padding: '10px 18px', fontSize: 11 }}>
-                            Get The App
+                        <Link href="/signup" className="btn" style={{ padding: '10px 18px', fontSize: 11 }}>
+                            Sign Up
                         </Link>
                     </div>
                 </nav>
@@ -204,8 +203,8 @@ export function SiteHeader() {
                             <MobileAuthLinks ctx={ctx} cartCount={cartCount} />
                         </nav>
 
-                        <Link href="/#download" className="btn" style={{ width: '100%', marginTop: 8 }}>
-                            Get The App
+                        <Link href="/signup" className="btn" style={{ width: '100%', marginTop: 8 }}>
+                            Sign Up
                         </Link>
                     </div>
                 </div>

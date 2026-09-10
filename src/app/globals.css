@@ -17,7 +17,7 @@
 
   --text: #ffffff;
   --text-2: #b5b5b5;
-  --text-3: #6a6a6a;
+  --text-3: #8a8a8a; /* was #6a6a6a: 3.6–3.9:1 on black at micro sizes (run 12 RG #5) */
   --text-4: #3a3a3a;
   --warn: #ff2a2a;
 
@@ -220,6 +220,7 @@ h4 { font-size: 16px; letter-spacing: var(--track-wide); }
   align-items: center;
   justify-content: center;
   gap: 8px;
+  min-height: 44px; /* CART was 39px tall on every route (run 13 baseline) */
   padding: 14px 28px;
   font-family: var(--font-display);
   font-size: 12px;
@@ -302,8 +303,18 @@ h4 { font-size: 16px; letter-spacing: var(--track-wide); }
     linear-gradient(90deg, rgba(5, 5, 5, 0.86) 0%, rgba(5, 5, 5, 0.66) 40%, rgba(5, 5, 5, 0.18) 72%, rgba(5, 5, 5, 0.42) 100%);
   background-size: cover, cover;
   background-position: left center, center;
-  border-bottom: 1px solid var(--gold);
+  border-bottom: 1px solid #ffb733;
   color: var(--hero-band-ink);
+  /* The plate is dark in BOTH themes, so every token a child may use inline is
+     pinned here: light's --gold (#8c5d00) and --text-2 (#454a54) read 1.5–3:1
+     on it (run 13, slice 1). Same construction as .on-dark. */
+  --gold: #ffb733;
+  --text: var(--hero-band-ink);
+  --text-2: var(--hero-band-ink-2);
+  --text-3: rgba(255, 255, 255, 0.62);
+  --bg-0: #050505;
+  --line: rgba(255, 255, 255, 0.14);
+  --line-mid: rgba(255, 255, 255, 0.24);
 }
 .hero-band[data-band='meets'] {
   background-image:
@@ -345,6 +356,156 @@ h4 { font-size: 16px; letter-spacing: var(--track-wide); }
 .hero-band p,
 .hero-band .text-dim {
   color: var(--hero-band-ink-2);
+}
+
+/* The home hero scrim: light on desktop (plate A's left third is near-black
+   already), a stronger top ramp on phones where the corner stamps sit over the
+   plate's brighter sky (stamp 1.22:1 at 390 — run 13, slice 1). */
+.home-hero-scrim {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(0, 0, 0, 0.28) 0%, transparent 30%, #000000 100%),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.62) 0%, rgba(0, 0, 0, 0.3) 38%, transparent 58%);
+}
+@media (max-width: 900px) {
+  .home-hero-scrim {
+    background:
+      linear-gradient(180deg, rgba(0, 0, 0, 0.78) 0%, rgba(0, 0, 0, 0.45) 22%, transparent 42%, #000000 100%),
+      linear-gradient(90deg, rgba(0, 0, 0, 0.5) 0%, transparent 70%);
+  }
+}
+
+/* ── Round-2 assets (UI polish §3) ──────────────────────────────────────── */
+/* A product with no photo sits on one of the store grounds, chosen by id. */
+[data-ground] {
+  background-image: linear-gradient(180deg, rgba(5, 5, 5, 0.25), rgba(5, 5, 5, 0.75)), url('/images/polish/ground-ppf-4x5.webp');
+  background-size: cover;
+  background-position: center;
+}
+[data-ground='fender'] {
+  background-image: linear-gradient(180deg, rgba(5, 5, 5, 0.25), rgba(5, 5, 5, 0.75)), url('/images/polish/ground-fender-4x5.webp');
+}
+/* Feature-card plates: a 4:3 photograph above the icon. */
+.feature-plate {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  margin-bottom: 18px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: #050505;
+}
+/* Empty states with a gold-line illustration. */
+.empty-art {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+.empty-art img { width: 160px; height: auto; opacity: 0.92; }
+.step-illo { display: block; width: 120px; height: auto; margin-bottom: 14px; }
+
+/* ── The drawn map (UI polish §6) — gold on black, fixed dark in both themes ── */
+.map-stage {
+  position: relative;
+  aspect-ratio: 1440 / 660;
+  background: #050505;
+  overflow: hidden;
+  isolation: isolate;
+  --map-land: #141414;
+  --map-land-line: #2a2a2a;
+  --map-grid: rgba(255, 255, 255, 0.04);
+  --map-gold: #ffb733;
+  --map-shop: #e6e3dc;
+}
+.map-stage-phone { display: none; }
+@media (max-width: 700px) {
+  .map-stage { aspect-ratio: 390 / 560; }
+  .map-stage-desktop { display: none; }
+  .map-stage-phone { display: block; }
+}
+.stylised-map { position: absolute; inset: 0; width: 100%; height: 100%; display: block; z-index: 0; }
+/* legibility scrims — plain gradients, never a blur over the map */
+.map-scrim {
+  position: absolute; inset: 0; z-index: 1; pointer-events: none;
+  background:
+    linear-gradient(90deg, rgba(5, 5, 5, 0.55) 0%, rgba(5, 5, 5, 0) 40%),
+    linear-gradient(0deg, rgba(5, 5, 5, 0.6) 0%, rgba(5, 5, 5, 0) 30%);
+}
+.map-tag { position: absolute; left: 20px; top: 18px; z-index: 6; font-size: 10px; }
+.map-key {
+  position: absolute; right: 18px; bottom: 16px; z-index: 6; gap: 18px;
+  padding: 10px 14px; background: rgba(5, 5, 5, 0.86); border: 1px solid var(--line-mid); font-size: 10px;
+}
+.map-key i { display: inline-flex; align-items: center; gap: 8px; font-style: normal; letter-spacing: var(--track-wider); }
+.map-key i u { width: 8px; height: 8px; background: var(--map-gold); text-decoration: none; box-shadow: 0 0 0 3px rgba(255, 183, 51, 0.22); }
+.map-key i.k-shop u { background: var(--map-shop); box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.14); }
+.map-key i.k-rt u { width: 22px; height: 2px; box-shadow: none; }
+/* svg parts */
+.stylised-map .map-grid { stroke: var(--map-grid); stroke-width: 1; }
+.stylised-map .land { fill: var(--map-land); stroke: var(--map-land-line); stroke-width: 1.25; }
+.stylised-map .ribbon { fill: none; stroke: var(--map-land); stroke-linecap: round; stroke-linejoin: round; }
+.stylised-map .ribbon-e path { fill: none; stroke: var(--map-land-line); stroke-linecap: round; stroke-linejoin: round; }
+.stylised-map .route-halo { fill: none; stroke: rgba(255, 183, 51, 0.2); stroke-width: 10; stroke-linecap: round; }
+.stylised-map .route { fill: none; stroke-width: 3; stroke-linecap: round; }
+.stylised-map .route-dot { fill: #fff; }
+.stylised-map .route-dot-h { fill: rgba(255, 183, 51, 0.46); }
+.stylised-map .pin { transform-box: fill-box; transform-origin: 50% 50%; }
+.stylised-map .pin-ring { fill: none; stroke: rgba(255, 183, 51, 0.66); stroke-width: 1.4; }
+.stylised-map .pin-core { fill: var(--map-gold); }
+.stylised-map .pin-bloom { fill: none; stroke: rgba(255, 183, 51, 0.6); stroke-width: 1.4; opacity: 0; }
+.stylised-map .pin-shop .pin-core { fill: var(--map-shop); }
+.stylised-map .pin-shop .pin-ring { stroke: rgba(255, 255, 255, 0.45); }
+.stylised-map .pin-lab { fill: #9a9a9a; font-family: var(--font-display); font-size: 12px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; }
+.stylised-map .pin-lab-hi { fill: #f0f0f0; }
+.stylised-map .ferry-lab { fill: #8a8a8a; font-family: var(--font-display); font-size: 10.5px; letter-spacing: 0.12em; text-transform: uppercase; }
+/* the featured pin's SOLID popover — square corners, house lines */
+.mappin { position: absolute; width: 0; height: 0; z-index: 5; }
+.pop {
+  position: absolute; width: 290px; padding: 16px 18px 17px;
+  background: #0c0c0c; border: 1px solid var(--line-mid);
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.5), 0 34px 70px -34px rgba(0, 0, 0, 1);
+}
+.pop-up { left: 50%; margin-left: -145px; bottom: 20px; }
+.pop-up::after {
+  content: ''; position: absolute; left: 50%; margin-left: -6px; bottom: -7px; width: 12px; height: 12px;
+  transform: rotate(45deg); background: #0c0c0c; border-right: 1px solid var(--line-mid); border-bottom: 1px solid var(--line-mid);
+}
+.pop h4 { font-size: 16px; margin: 11px 0 0; letter-spacing: 0.5px; color: var(--text); }
+.pop-when { margin-top: 7px; font-family: var(--font-display); font-size: 11px; letter-spacing: var(--track-wider); color: var(--gold); }
+.pop-where { margin-top: 5px; font-size: 12.5px; color: var(--text-2); }
+.pop-spots { margin-top: 13px; display: flex; align-items: center; gap: 11px; }
+.pop-spots b { font-family: var(--font-display); font-size: 10px; letter-spacing: var(--track-wider); color: var(--gold); white-space: nowrap; }
+.bar-track { flex: 1; height: 3px; background: rgba(255, 255, 255, 0.12); }
+.bar-fill { height: 100%; background: var(--gold); }
+@media (max-width: 700px) {
+  .mappin { left: 50% !important; top: auto !important; bottom: 62px; }
+  .pop-up { bottom: 0; }
+  .pop { width: min(290px, calc(100vw - 72px)); margin-left: calc(min(290px, calc(100vw - 72px)) / -2); }
+  .map-key { display: none; }
+}
+
+/* ── Motion (UI polish §7) ──────────────────────────────────────────────── */
+/* .rv → .in is the cheap reveal layer: RevealController adds .in once 12% of
+   the element is on screen; stagger comes from nth-child. */
+.rv {
+  opacity: 0;
+  transform: translateY(22px);
+  transition: opacity 0.7s cubic-bezier(0.2, 0.7, 0.2, 1), transform 0.7s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.rv.in { opacity: 1; transform: none; }
+.rv:nth-child(4n + 2) { transition-delay: 0.07s; }
+.rv:nth-child(4n + 3) { transition-delay: 0.14s; }
+.rv:nth-child(4n + 4) { transition-delay: 0.21s; }
+/* Word spans made by splitWords() — the wipe needs a box to clip. */
+.w { display: inline-block; will-change: clip-path; }
+/* The event hero's photo layer is oversized 12% at the bottom ONLY when it
+   will drift (HeroParallax); under reduced motion it is the plain cover. */
+[data-parallax] { inset: 0 0 -12% 0; will-change: transform; }
+@media (prefers-reduced-motion: reduce) {
+  .rv { opacity: 1; transform: none; transition: none; }
+  .w { will-change: auto; }
+  [data-parallax] { inset: 0; will-change: auto; }
 }
 
 /* Footer link columns: 44px targets. Every footer anchor was 16px tall at
@@ -703,7 +864,7 @@ h4 { font-size: 16px; letter-spacing: var(--track-wide); }
   --line-strong: rgba(255, 255, 255, 0.40);
   --text: #ffffff;
   --text-2: #b5b5b5;
-  --text-3: #6a6a6a;
+  --text-3: #8a8a8a; /* was #6a6a6a: 3.6–3.9:1 on black at micro sizes (run 12 RG #5) */
   --text-4: #3a3a3a;
   --warn: #ff2a2a;
   --gold: #ffb733;
@@ -737,6 +898,7 @@ h4 { font-size: 16px; letter-spacing: var(--track-wide); }
    NOT for chrome that should flip with the theme — the site header is white in
    light mode and reads var(--header-bg) for exactly that reason. */
 .on-dark {
+  color: var(--text); /* an h1 has no colour rule of its own; without this the light page's computed ink survives onto the dark plate */
   /* Backgrounds and surfaces too, not just ink. Anything inside that paints its
      OWN surface — the countdown box does — would otherwise keep the light
      theme's pale fill while its text turned white, and vanish. Caught by
@@ -751,7 +913,7 @@ h4 { font-size: 16px; letter-spacing: var(--track-wide); }
   --surface-2: #222222;
   --text: #ffffff;
   --text-2: #b5b5b5;
-  --text-3: #6a6a6a;
+  --text-3: #8a8a8a; /* was #6a6a6a: 3.6–3.9:1 on black at micro sizes (run 12 RG #5) */
   --text-4: #3a3a3a;
   --line: rgba(255, 255, 255, 0.10);
   --line-mid: rgba(255, 255, 255, 0.22);
@@ -1592,9 +1754,9 @@ h4 { font-size: 16px; letter-spacing: var(--track-wide); }
   flex-direction: column;
   justify-content: center;
   gap: 4px;
-  width: 40px;
-  height: 40px;
-  padding: 0 9px;
+  width: 44px;
+  height: 44px;
+  padding: 0 11px;
   background: transparent;
   border: 1px solid var(--line-mid);
   cursor: pointer;
@@ -2125,8 +2287,8 @@ h4 { font-size: 16px; letter-spacing: var(--track-wide); }
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 44px;
+  height: 44px;
   line-height: 1;
   border: 1px solid var(--gold);
   border-radius: 0;
@@ -2452,8 +2614,8 @@ h4 { font-size: 16px; letter-spacing: var(--track-wide); }
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 30px;
-  height: 30px;
+  width: 44px;
+  height: 44px;
   padding: 0;
   border: 1px solid var(--line);
   background: transparent;

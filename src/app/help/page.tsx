@@ -43,7 +43,7 @@ const FAQS: Array<{ q: string; a: string }> = [
     },
     {
         q: 'How do I block or report someone?',
-        a: 'In the app: tap the ⋯ menu on a post, profile or chat. Block hides you from each other both ways; Report sends the content to our moderation team, reviewed within 24 hours. On the web, email support@rollout.club with the link.',
+        a: 'On the web, email support@rollout.club with the link to the post, profile or conversation — every report is reviewed within 24 hours. In the app you can do it in place: tap the ⋯ menu on a post, profile or chat; Block hides you from each other both ways, Report sends the content to our moderation team.',
     },
     {
         q: 'How do I delete my account?',

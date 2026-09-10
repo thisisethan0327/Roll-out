@@ -26,6 +26,9 @@ export function ProductCard({
 }) {
     const { paused } = product;
     const hidePrice = product.dealerOnly && !revealDealerPrice;
+    // A photo-less product sits on one of two store grounds, chosen by id so
+    // the grid alternates whatever wraps the cards.
+    const ground = Array.from(String(product.id ?? product.handle)).reduce((a, c) => a + c.charCodeAt(0), 0) % 2 ? 'fender' : 'ppf';
     return (
         <Link
             href={`/store/p/${product.handle}`}
@@ -59,6 +62,8 @@ export function ProductCard({
                     ) : null}
                     {paused ? (
                         <div
+                            className="on-dark"
+                            data-ground={ground}
                             style={{
                                 position: 'absolute',
                                 inset: 0,

@@ -4,6 +4,8 @@ export default function NotFound() {
     return (
         <div className="legal">
             <div className="container container-narrow" style={{ textAlign: 'center', paddingTop: 80 }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/illo/404.svg" alt="" width={200} height={150} style={{ display: 'block', margin: '0 auto 24px', opacity: 0.92 }} />
                 <div className="eyebrow eyebrow-gold mb-4">／ SIGNAL LOST</div>
                 <h1 style={{ marginBottom: 12 }}>404</h1>
                 <p className="text-dim" style={{ fontSize: 17, marginBottom: 40 }}>

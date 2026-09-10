@@ -3,6 +3,7 @@
  * Gated by requireVerifiedHost (non-hosts bounce to /me host onboarding).
  */
 import Link from 'next/link';
+import { EmptyRow } from '../ui';
 import { formatEventTime } from '@/lib/event-time';
 import { requireVerifiedHost } from '@/lib/me-guard';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
@@ -58,7 +59,7 @@ export default async function MyEventsPage() {
             </div>
 
             {events.length === 0 ? (
-                <div className="admin-empty">You haven’t hosted any events yet. Create your first one.</div>
+                <EmptyRow text="You haven’t hosted any events yet. Create your first one." art="empty-meets" />
             ) : (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 14 }}>
                     {events.map((e) => (

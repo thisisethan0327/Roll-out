@@ -13,22 +13,17 @@
  *   - a default tile / custom URL → that exact URL is pinned into the row.
  */
 import { useMemo, useState } from 'react';
-import {
-    DEFAULT_EVENT_COVERS,
-    EVENT_COVER_TYPES,
-    EVENT_COVER_TYPE_LABELS,
-    defaultsForType,
-    isEventCoverType,
-    type EventCoverType,
-} from '@/lib/event-covers';
+import { DEFAULT_EVENT_COVERS, EVENT_COVER_TYPES, EVENT_COVER_TYPE_LABELS, defaultsForType, isEventCoverType, type EventCoverType, publicCoverUrl } from '@/lib/event-covers';
 
 const TYPE_OPTIONS: { value: EventCoverType; label: string }[] = EVENT_COVER_TYPES.map((v) => ({
     value: v,
     label: EVENT_COVER_TYPE_LABELS[v].toUpperCase(),
 }));
 
+// Defaults are known in both forms: the site-relative path the tiles show and
+// the absolute URL that gets pinned (so the phone app can load it).
 const ALL_URLS = new Set(
-    EVENT_COVER_TYPES.flatMap((t) => DEFAULT_EVENT_COVERS[t]),
+    EVENT_COVER_TYPES.flatMap((t) => DEFAULT_EVENT_COVERS[t]).flatMap((u) => [u, publicCoverUrl(u)]),
 );
 
 export function EventCoverPicker({
@@ -103,9 +98,9 @@ export function EventCoverPicker({
                         key={url}
                         url={url}
                         label={`${EVENT_COVER_TYPE_LABELS[type].toUpperCase()} ${i + 1}`}
-                        active={selected === url}
+                        active={selected === publicCoverUrl(url)}
                         disabled={disabled}
-                        onClick={() => setSelected(url)}
+                        onClick={() => setSelected(publicCoverUrl(url))}
                     />
                 ))}
             </div>
@@ -128,9 +123,9 @@ export function EventCoverPicker({
                                 key={url}
                                 url={url}
                                 label={`${EVENT_COVER_TYPE_LABELS[t].toUpperCase()} ${i + 1}`}
-                                active={selected === url}
+                                active={selected === publicCoverUrl(url)}
                                 disabled={disabled}
-                                onClick={() => setSelected(url)}
+                                onClick={() => setSelected(publicCoverUrl(url))}
                             />
                         )),
                     )}

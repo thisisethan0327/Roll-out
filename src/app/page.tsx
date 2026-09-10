@@ -1,7 +1,10 @@
 import Link from 'next/link';
+import { HeroLoop } from '@/components/HeroLoop';
+import { NextRunBand } from './NextRunBand';
+import { HomeMotion } from '@/components/motion/HomeMotion';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { AppStoreBadges } from '@/components/AppStoreBadges';
-import Image from 'next/image';
+import Image, { getImageProps } from 'next/image';
 
 /**
  * The stat band shows REAL platform counts (it was hardcoded 14 / 0042 with a
@@ -29,6 +32,16 @@ async function platformCounts(): Promise<{ meets: string; shops: string; members
 
 export default async function HomePage() {
     const counts = await platformCounts();
+    // The hero pair as plain <img> props so a <picture> can art-direct them:
+    // 21:9 on desktop, 9:16 on phones, exactly one plate requested per width.
+    const { props: desktopPlate } = getImageProps({
+        alt: 'Wet rooftop at night, city lights below, a car under gold rim light',
+        src: '/images/polish/hero-night-21x9.webp',
+        fill: true,
+        priority: true,
+        sizes: '100vw',
+    });
+    const { props: portraitPlate } = getImageProps({ alt: '', src: '/images/polish/hero-night-9x16.webp', fill: true, sizes: '100vw' });
     return (
         <>
             {/* ── HERO ─────────────────────────────────────────────────────── */}
@@ -39,28 +52,24 @@ export default async function HomePage() {
                 because it used to end in var(--bg-0): dark ink fixed at the top
                 would have become light ink on a white fade at the bottom. Dark
                 mode is unchanged by construction (--bg-0 was #000 there). */}
-            <section className="on-dark" style={{ position: 'relative', overflow: 'hidden' }}>
-                <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
+            <HomeMotion>
+            <section className="on-dark" data-hero style={{ position: 'relative', overflow: 'hidden' }}>
+                <div data-hero-img style={{ position: 'absolute', inset: 0, zIndex: 0, transformOrigin: '50% 40%' }}>
                     {/* Polish plate A (Ethan's pick): wet rooftop at night, city bokeh
                         below, gold rim light, the car on the right third and a
                         near-black left third for the wordmark — so the old 0.55
                         brightness filter goes and the scrim only guards the copy. */}
-                    <Image
-                        src="/images/polish/hero-night-21x9.webp"
-                        alt="Wet rooftop at night, city lights below, a car under gold rim light"
-                        fill
-                        priority
-                        sizes="100vw"
-                        style={{ objectFit: 'cover', objectPosition: '62% 50%' }}
-                    />
-                    <div
-                        style={{
-                            position: 'absolute',
-                            inset: 0,
-                            background:
-                                'linear-gradient(180deg, rgba(0,0,0,0.28) 0%, transparent 30%, #000000 100%), linear-gradient(90deg, rgba(0,0,0,0.62) 0%, rgba(0,0,0,0.3) 38%, transparent 58%)',
-                        }}
-                    />
+                    <picture>
+                        <source media="(max-width: 900px)" srcSet={portraitPlate.srcSet} sizes={portraitPlate.sizes} />
+                        {/* eslint-disable-next-line @next/next/no-img-element, jsx-a11y/alt-text */}
+                        <img
+                            {...desktopPlate}
+                            fetchPriority="high"
+                            style={{ ...desktopPlate.style, objectFit: 'cover', objectPosition: '62% 50%' }}
+                        />
+                    </picture>
+                    <HeroLoop />
+                    <div className="home-hero-scrim" />
                 </div>
 
                 <div className="container" style={{ position: 'relative', zIndex: 1, paddingTop: 96, paddingBottom: 120, minHeight: '88vh' }}>
@@ -82,20 +91,20 @@ export default async function HomePage() {
                         <span className="accent">NOW BOARDING</span>
                     </div>
 
-                    <h1 style={{ marginBottom: 12 }}>ROLLOUT</h1>
+                    <h1 data-hero-word style={{ marginBottom: 12 }}>ROLLOUT</h1>
                     <div className="text-jp" style={{ fontSize: 14, letterSpacing: 3, marginBottom: 28 }}>
                         ロールアウト
                     </div>
 
                     <div className="hairline" style={{ width: 60, background: 'var(--gold)', marginBottom: 28 }} />
 
-                    <p style={{ fontSize: 'clamp(16px, 2vw, 19px)', maxWidth: 580, color: 'var(--text-2)', lineHeight: 1.5 }}>
+                    <p data-hero-copy style={{ fontSize: 'clamp(16px, 2vw, 19px)', maxWidth: 580, color: 'var(--text-2)', lineHeight: 1.5 }}>
                         A private network for the cars you actually build.{' '}
                         <span className="text-gold">Shops · Meets · Builds.</span>
                     </p>
 
                     {/* Spec strip */}
-                    <div className="mono-row" style={{ marginTop: 40, flexWrap: 'wrap', gap: 20 }}>
+                    <div data-hero-copy className="mono-row" style={{ marginTop: 40, flexWrap: 'wrap', gap: 20 }}>
                         <span><span className="accent">◉</span> RSVP CONVOY RUNS</span>
                         <span className="sep" />
                         <span><span className="accent">◐</span> TRACK BUILD LOGS</span>
@@ -104,7 +113,7 @@ export default async function HomePage() {
                     </div>
 
                     {/* CTAs */}
-                    <div id="download" style={{ display: 'flex', gap: 12, marginTop: 56, flexWrap: 'wrap' }}>
+                    <div id="download" data-hero-copy style={{ display: 'flex', gap: 12, marginTop: 56, flexWrap: 'wrap' }}>
                         <Link className="btn btn-lg" href="/meets">
                             Find a meet
                         </Link>
@@ -136,12 +145,12 @@ export default async function HomePage() {
                             gap: 16,
                         }}
                     >
-                        <FeatureCard glyph="◉" title="Convoy RSVPs" body="Know who's actually rolling. Live spot count, capacity gates, lat-long meet points." />
-                        <FeatureCard glyph="◐" title="Build log" body="Track mods, miles, milestones. Up to 5 photos per build. Tagged feed for parts you ran." />
-                        <FeatureCard glyph="✎" title="Shop direct line" body="Talk to the shop that wrapped your car, not their public DMs. Quotes, status, follow-ups." />
-                        <FeatureCard glyph="◈" title="Garage that belongs to you" body="Your photos, your specs, your history. Delete anytime — fully." />
-                        <FeatureCard glyph="✦" title="Host your own meets" body="Verified hosts set the capacity, run the waitlist, sell packages and invite by email." />
-                        <FeatureCard glyph="∿" title="The store" body="Film, parts and merch from the shops on Rollout. One checkout, shipped by the shop that sells it." />
+                        <FeatureCard plate="rsvps" glyph="◉" title="Convoy RSVPs" body="Know who's actually rolling. Live spot count, capacity gates, lat-long meet points." />
+                        <FeatureCard plate="buildlog" glyph="◐" title="Build log" body="Track mods, miles, milestones. Up to 5 photos per build. Tagged feed for parts you ran." />
+                        <FeatureCard plate="shopline" glyph="✎" title="Shop direct line" body="Talk to the shop that wrapped your car, not their public DMs. Quotes, status, follow-ups." />
+                        <FeatureCard plate="garage" glyph="◈" title="Garage that belongs to you" body="Your photos, your specs, your history. Delete anytime — fully." />
+                        <FeatureCard plate="nearyou" glyph="✦" title="Host your own meets" body="Verified hosts set the capacity, run the waitlist, sell packages and invite by email." />
+                        <FeatureCard plate="private" glyph="∿" title="The store" body="Film, parts and merch from the shops on Rollout. One checkout, shipped by the shop that sells it." />
                     </div>
                 </div>
             </section>
@@ -152,19 +161,23 @@ export default async function HomePage() {
                     <div className="stat-band" style={{ border: 'none' }}>
                         <div className="stat-cell">
                             <div className="lbl">Live meets</div>
-                            <div className="val accent" data-count={counts.meets}>{counts.meets}</div>
+                            <div className="val accent" data-count={counts.meets} data-pad="2">{counts.meets}</div>
                         </div>
                         <div className="stat-cell">
                             <div className="lbl">Shops listed</div>
-                            <div className="val" data-count={counts.shops}>{counts.shops}</div>
+                            <div className="val" data-count={counts.shops} data-pad="2">{counts.shops}</div>
                         </div>
                         <div className="stat-cell">
                             <div className="lbl">Members</div>
-                            <div className="val" data-count={counts.members}>{counts.members}</div>
+                            <div className="val" data-count={counts.members} data-pad="2">{counts.members}</div>
                         </div>
                     </div>
                 </div>
             </section>
+            </HomeMotion>
+
+            {/* ── NEXT RUN — the map band (UI polish §6) ─────────────────── */}
+            <NextRunBand />
 
             {/* ── HOW IT WORKS ─────────────────────────────────────────────── */}
             <section className="section">
@@ -173,9 +186,9 @@ export default async function HomePage() {
                     <h2 style={{ marginBottom: 56 }}>THREE STEPS TO LAUNCH</h2>
 
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
-                        <StepCard num="01" title="Download Rollout" body="Free for users, forever. iOS first — Android beta this quarter." />
-                        <StepCard num="02" title="Add your build" body="Year, make, model. Up to 5 photos. Auto-compressed so your data plan doesn't suffer." />
-                        <StepCard num="03" title="Join your sector" body="RSVP a meet near you, follow your shops, post when something rolls out of the garage." />
+                        <StepCard num="01" illo="how-1" title="Download Rollout" body="Free for users, forever. iOS first — Android beta this quarter." />
+                        <StepCard num="02" illo="how-2" title="Add your build" body="Year, make, model. Up to 5 photos. Auto-compressed so your data plan doesn't suffer." />
+                        <StepCard num="03" illo="how-3" title="Join your sector" body="RSVP a meet near you, follow your shops, post when something rolls out of the garage." />
                     </div>
                 </div>
             </section>
@@ -209,11 +222,14 @@ export default async function HomePage() {
     );
 }
 
-function FeatureCard({ glyph, title, body }: { glyph: string; title: string; body: string }) {
+function FeatureCard({ plate, glyph, title, body }: { plate: string; glyph: string; title: string; body: string }) {
     return (
-        <div className="feature-card corner-wrap">
+        <div className="feature-card corner-wrap rv">
             <span className="corner-bottom-left" />
             <span className="corner-bottom-right" />
+            <div className="feature-plate">
+                <Image src={`/images/polish/feat-${plate}-4x3.webp`} alt="" fill sizes="(max-width: 600px) 100vw, (max-width: 1024px) 50vw, 380px" style={{ objectFit: 'cover' }} />
+            </div>
             <div className="icon">{glyph}</div>
             <h3>{title}</h3>
             <p>{body}</p>
@@ -221,11 +237,13 @@ function FeatureCard({ glyph, title, body }: { glyph: string; title: string; bod
     );
 }
 
-function StepCard({ num, title, body }: { num: string; title: string; body: string }) {
+function StepCard({ num, illo, title, body }: { num: string; illo: string; title: string; body: string }) {
     return (
-        <div className="feature-card corner-wrap" style={{ minHeight: 200 }}>
+        <div className="feature-card corner-wrap rv" style={{ minHeight: 200 }}>
             <span className="corner-bottom-left" />
             <span className="corner-bottom-right" />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img className="step-illo" src={`/illo/${illo}.svg`} alt="" width={120} height={90} loading="lazy" />
             <div className="eyebrow eyebrow-gold" style={{ marginBottom: 14 }}>STEP {num}</div>
             <h3 style={{ marginBottom: 10 }}>{title}</h3>
             <p>{body}</p>

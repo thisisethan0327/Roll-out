@@ -336,17 +336,25 @@ export default async function HandlePage({
               url: `https://rollout.club/u/${cleanHandle}`,
               ...(profile.avatar_url ? { image: profile.avatar_url } : {}),
               ...(profile.bio ? { description: profile.bio } : {}),
-              ...(profile.location ? { address: { '@type': 'PostalAddress', addressLocality: profile.location } } : {}),
+              ...(profile.location
+                  ? (() => {
+                        // "Seattle · WA" / "Seattle, WA" → locality + region
+                        const [locality, region] = profile.location.split(/\s*[·,]\s*/).map((x: string) => x.trim());
+                        return { address: { '@type': 'PostalAddress', addressLocality: locality, ...(region ? { addressRegion: region } : {}) } };
+                    })()
+                  : {}),
               ...(ratingCount > 0
                   ? { aggregateRating: { '@type': 'AggregateRating', ratingValue: ratingAvg.toFixed(1), reviewCount: ratingCount, bestRating: 5 } }
                   : {}),
           }
         : null;
 
-    const primary = shop?.primary_color || 'var(--gold)';
-    const heroBg = profile.banner_url
-        ? `linear-gradient(180deg, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.85) 100%), url(${profile.banner_url}) center/cover no-repeat`
-        : `linear-gradient(135deg, ${primary} 0%, #000000 100%)`;
+    // No banner → one of three default plates (garage / detailing / workshop),
+    // chosen by profile id so it is stable, under the same scrim as a real one.
+    const defaultBanner = ['garage', 'detailing', 'workshop'][
+        Array.from(String(profile.id ?? cleanHandle)).reduce((a, c) => a + c.charCodeAt(0), 0) % 3
+    ];
+    const heroBg = `linear-gradient(180deg, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.85) 100%), url(${profile.banner_url || `/images/polish/banner-${defaultBanner}-21x9.webp`}) center/cover no-repeat`;
 
     return (
         <>

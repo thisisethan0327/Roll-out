@@ -9,6 +9,9 @@
  * JSON-LD Event structured data keeps meets indexable + rich-previewable.
  */
 import type { Metadata } from 'next';
+import { StylisedMap } from '@/components/map/StylisedMap';
+import { hasDrawnRoute } from '@/lib/map-sites';
+import { HeroParallax } from '@/components/motion/HeroParallax';
 import { formatEventTime } from '@/lib/event-time';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
@@ -479,16 +482,21 @@ export default async function PublicEventPage({
             ) : null}
 
             {/* HERO */}
+            <HeroParallax>
             <section
                 className="corner-wrap on-dark"
                 style={{
                     position: 'relative',
                     minHeight: 440,
-                    background: heroBg,
+                    overflow: 'hidden',
+                    background: '#050505', /* solid ground under the photo layer */
                     borderBottom: '1px solid var(--line)',
                     filter: isCancelled ? 'grayscale(0.5)' : undefined,
                 }}
             >
+                {/* The photo is its own layer so it can drift under the copy; the
+                    12% oversize lives in CSS and is reset under reduced motion. */}
+                <div data-parallax style={{ position: 'absolute', zIndex: 0, background: heroBg }} />
                 <span className="corner-bottom-left" />
                 <span className="corner-bottom-right" />
 
@@ -622,6 +630,7 @@ export default async function PublicEventPage({
                     ) : null}
                 </div>
             </section>
+            </HeroParallax>
 
             {/* STAT BAR */}
             <section style={{ background: 'var(--bg-1)', borderBottom: '1px solid var(--line)' }}>
@@ -838,6 +847,25 @@ export default async function PublicEventPage({
                                 loading="lazy"
                                 referrerPolicy="no-referrer-when-downgrade"
                             />
+                        </div>
+                    ) : null}
+
+                    {hasDrawnRoute(ev) ? (
+                        <div className="map-stage corner-wrap" style={{ marginTop: 20, aspectRatio: '1000 / 425' }}>
+                            <span className="corner-bottom-left" />
+                            <span className="corner-bottom-right" />
+                            <StylisedMap crop="loc" route pins={[{ x: 940, y: 462, hi: true }]} className="map-stage-desktop" />
+                            <StylisedMap crop="loc-p" route pins={[{ x: 940, y: 462, hi: true }]} className="map-stage-phone" />
+                            <div className="map-key mono-row">
+                                <i>
+                                    <u />
+                                    MEET POINT
+                                </i>
+                                <i className="k-rt">
+                                    <u />
+                                    ROUTE
+                                </i>
+                            </div>
                         </div>
                     ) : null}
 

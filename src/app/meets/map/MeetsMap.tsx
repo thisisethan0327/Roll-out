@@ -447,7 +447,8 @@ export function MeetsMap({
                     // No pins at all: the national view, then the visitor's own area
                     // if the browser will say. Never a city the visitor may not be in.
                     map.setView([39.5, -98.35], 4);
-                    map.locate({ setView: true, maxZoom: 10 });
+                    // Geolocation only on a gesture (the USE MY LOCATION control below) —
+                    // a prompt on load with no gesture is a nag, not a feature.
                 }
 
                 // Re-enable wheel zoom only after a click so the page still scrolls.
@@ -514,6 +515,16 @@ export function MeetsMap({
                     </div>
                 </div>
             )}
+            {events.length === 0 && shops.length === 0 && !failed ? (
+                <button
+                    type="button"
+                    className="btn btn-ghost"
+                    style={{ position: 'absolute', left: 12, bottom: 12, zIndex: 3, fontSize: 11, padding: '10px 14px' }}
+                    onClick={() => mapRef.current?.locate({ setView: true, maxZoom: 10 })}
+                >
+                    USE MY LOCATION
+                </button>
+            ) : null}
             {/* Fallback shown until Leaflet paints over it (or if the CDN is blocked). */}
             <noscript>
                 <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', color: 'var(--text-2)' }}>

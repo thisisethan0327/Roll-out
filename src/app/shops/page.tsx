@@ -11,7 +11,9 @@
  * + individual /u/[handle] pages.
  */
 import type { Metadata } from 'next';
+import { EmptyRow } from '@/app/me/ui';
 import Link from 'next/link';
+import { BandReveal } from '@/components/motion/BandReveal';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 
 // Render at request time, not build time: this page reads via the service-role
@@ -132,13 +134,14 @@ export default async function ShopsDirectoryPage() {
     return (
         <>
             {/* HERO */}
+            <BandReveal>
             <section className="hero-band" data-band="shops">
                 <div className="container" style={{ paddingTop: 64, paddingBottom: 48 }}>
                     <div className="eyebrow eyebrow-gold mb-4">／ SHOPS</div>
-                    <h1 style={{ fontSize: 'clamp(32px, 5vw, 56px)', letterSpacing: 1, margin: 0 }}>
+                    <h1 data-band-title style={{ fontSize: 'clamp(32px, 5vw, 56px)', letterSpacing: 1, margin: 0 }}>
                         SHOPS ON ROLLOUT
                     </h1>
-                    <p style={{ color: 'var(--text-2)', fontSize: 16, marginTop: 14, maxWidth: 620 }}>
+                    <p data-band-copy style={{ fontSize: 16, marginTop: 14, maxWidth: 620 }}>
                         Vehicle wraps, paint protection film, ceramic coating, tint, and more —
                         find a shop near you, check the reviews, and book online.
                     </p>
@@ -150,12 +153,13 @@ export default async function ShopsDirectoryPage() {
                     )}
                 </div>
             </section>
+            </BandReveal>
 
             {/* LIST */}
             <section className="section" style={{ padding: '48px 0' }}>
                 <div className="container">
                     {shops.length === 0 ? (
-                        <div className="admin-empty">No shops on the map yet. Check back soon.</div>
+                        <EmptyRow text="No shops on the map yet. Check back soon." art="empty-shops" />
                     ) : (
                         <div className="shop-grid">
                             {shops.map((s) => (
@@ -188,10 +192,8 @@ export default async function ShopsDirectoryPage() {
                     <div className="shop-map-glyph corner-wrap" aria-hidden>
                         <span className="corner-bottom-left" />
                         <span className="corner-bottom-right" />
-                        <svg width="72" height="72" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth="1.2">
-                            <path d="M12 21s-6-5.3-6-10a6 6 0 0 1 12 0c0 4.7-6 10-6 10z" />
-                            <circle cx="12" cy="11" r="2.2" />
-                        </svg>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src="/illo/map-teaser.svg" alt="" width={138} height={138} style={{ display: 'block', width: '100%', height: '100%', objectFit: 'cover' }} />
                     </div>
                 </div>
             </section>

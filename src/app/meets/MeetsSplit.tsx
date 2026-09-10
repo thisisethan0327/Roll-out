@@ -96,7 +96,7 @@ export function MeetsSplit({
                     >
                         <div
                             className="meets-split-thumb"
-                            style={{ backgroundImage: `url(${resolveCover(m.hero_image_url, m.type, m.id)})` }}
+                            style={{ backgroundImage: `url(${resolveCover(m.hero_image_url, m.type, m.id, '4x5')})` }}
                         />
                         <div className="meets-split-body">
                             <div className="mono-row" style={{ fontSize: 10 }}>
