@@ -8,6 +8,7 @@
  */
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { FilterChip } from '@/components/FilterChip';
 import { getSellingShops } from '@/lib/store-shops';
 import { fetchCatalogByHandles, type MedusaProduct } from '@/lib/medusa';
 import { ProductCard } from '@/components/ProductCard';
@@ -95,27 +96,6 @@ export default async function StoreIndexPage({
                 </div>
             </section>
         </>
-    );
-}
-
-function FilterChip({ label, href, active }: { label: string; href: string; active: boolean }) {
-    return (
-        <Link
-            href={href}
-            className="font-display"
-            style={{
-                fontSize: 11,
-                letterSpacing: 'var(--track-wider)',
-                textTransform: 'uppercase',
-                padding: '8px 14px',
-                border: `1px solid ${active ? 'var(--gold)' : 'var(--line)'}`,
-                background: active ? 'var(--gold-dim)' : 'transparent',
-                color: active ? 'var(--gold)' : 'var(--text-2)',
-                textDecoration: 'none',
-            }}
-        >
-            {label}
-        </Link>
     );
 }
 

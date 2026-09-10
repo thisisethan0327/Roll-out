@@ -40,12 +40,10 @@ const SECONDARY = [
     { href: '/help', label: 'Help' },
 ];
 
-const linkStyle: React.CSSProperties = {
-    fontFamily: 'var(--font-display)',
-    fontSize: 11,
-    letterSpacing: 'var(--track-wider)',
-    textTransform: 'uppercase',
-};
+// Copper Map (6F): links are 44px pills; the visual lives in .nav-link
+// (globals.css) so hover and the current page can be styled. Kept as an
+// object so the call sites below still spread it.
+const linkStyle: React.CSSProperties = {};
 
 export function SiteHeader() {
     const pathname = usePathname();
@@ -118,7 +116,7 @@ export function SiteHeader() {
                 <nav className="site-nav-desktop" style={{ alignItems: 'center', gap: 24 }}>
                     <div className="flex items-center" style={{ gap: 22 }}>
                         {PRIMARY.map((l) => (
-                            <Link key={l.href} href={l.href} className="text-dim" style={linkStyle}>
+                            <Link key={l.href} href={l.href} className="nav-link" aria-current={pathname === l.href ? 'page' : undefined} style={linkStyle}>
                                 {l.label}
                             </Link>
                         ))}
@@ -126,7 +124,7 @@ export function SiteHeader() {
                     <span style={{ width: 1, height: 14, background: 'var(--line-mid)' }} />
                     <div className="flex items-center" style={{ gap: 18 }}>
                         {SECONDARY.map((l) => (
-                            <Link key={l.href} href={l.href} className="text-muted" style={{ ...linkStyle, fontSize: 10 }}>
+                            <Link key={l.href} href={l.href} className="nav-link" aria-current={pathname === l.href ? 'page' : undefined} style={{ ...linkStyle, fontSize: 10 }}>
                                 {l.label}
                             </Link>
                         ))}
@@ -232,12 +230,12 @@ function AuthArea({ ctx, cartCount }: { ctx: NavContext | null; cartCount: numbe
             {ctx.signedIn ? (
                 <>
                     {ctx.hasShops && (
-                        <Link href="/shop" className="text-dim" style={linkStyle}>
+                        <Link href="/shop" className="nav-link" style={linkStyle}>
                             Shop Console
                         </Link>
                     )}
                     {ctx.isAdmin && (
-                        <Link href="/admin" className="text-dim" style={linkStyle}>
+                        <Link href="/admin" className="nav-link" style={linkStyle}>
                             Admin
                         </Link>
                     )}
@@ -246,7 +244,7 @@ function AuthArea({ ctx, cartCount }: { ctx: NavContext | null; cartCount: numbe
                     </Link>
                 </>
             ) : (
-                <Link href="/login" className="text-dim" style={linkStyle}>
+                <Link href="/login" className="nav-link" style={linkStyle}>
                     Sign In
                 </Link>
             )}

@@ -496,7 +496,7 @@ export function MeetsMap({
                 background: 'var(--bg-2)',
             }}
         >
-            <div ref={containerRef} style={{ position: 'absolute', inset: 0, zIndex: 1 }} />
+            <div ref={containerRef} className="on-map" style={{ position: 'absolute', inset: 0, zIndex: 1 }} />
             {/* Animated placeholder while Leaflet + tiles load; Leaflet paints
                 over it on success (zIndex:1 > 0). Cleared once tiles report load. */}
             {!tilesReady && !failed && (

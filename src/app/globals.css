@@ -419,21 +419,24 @@ a:hover {
 .font-jp      { font-family: var(--font-jp); }
 
 .eyebrow {
-  font-family: var(--font-display);
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: var(--track-wider);
+  font-family: var(--font-body);
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--text-3);
+  color: var(--accent-ink);
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
 }
-.eyebrow-gold { color: var(--gold); }
+.eyebrow-gold { color: var(--accent-ink); }
 
 h1, h2, h3, h4 {
   font-family: var(--font-display);
-  font-weight: 700;
-  color: var(--text);
-  letter-spacing: var(--track-tight);
-  line-height: 1.1;
+  font-weight: 800;
+  letter-spacing: var(--track-display);
+  line-height: 1.04;
+  margin: 0;
 }
 
 h1 { font-size: clamp(40px, 7vw, 84px); letter-spacing: 4px; }
@@ -443,48 +446,46 @@ h4 { font-size: 16px; letter-spacing: var(--track-wide); }
 
 /* ── HUD primitives ────────────────────────────────────────────────────── */
 
-.corner-wrap {
+/* Was the HUD bracket chrome (four gold corners). Copper Map (6F) has one
+   surface: a soft-radius panel with a brushed hairline RING — a 1 px masked
+   gradient on ::before that follows border-radius and survives overflow:hidden.
+   The four corner elements still exist in ~16 call sites; they render nothing. */
+.corner-wrap,
+.surface {
   position: relative;
+  border: 1px solid transparent;
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  box-shadow: var(--inner-glow), var(--shadow);
 }
+.surface-16 { border-radius: 16px; }
 .corner-wrap::before,
-.corner-wrap::after {
+.surface::before,
+.btn::before,
+.btn-ghost::before,
+.chip::before,
+.icobtn::before,
+.site-theme-toggle::before,
+.meets-split-card::before,
+.ring::before {
   content: '';
   position: absolute;
-  width: 14px;
-  height: 14px;
-  border-color: var(--gold);
-  border-style: solid;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  border-radius: inherit;
+  padding: 1px;
+  background: var(--hair);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
 }
-.corner-wrap::before {
-  top: -1px;
-  left: -1px;
-  border-width: 1px 0 0 1px;
-}
-.corner-wrap::after {
-  top: -1px;
-  right: -1px;
-  border-width: 1px 1px 0 0;
-}
+.corner-wrap::after { content: none; }
 .corner-wrap > .corner-bottom-left,
-.corner-wrap > .corner-bottom-right {
-  content: '';
-  position: absolute;
-  width: 14px;
-  height: 14px;
-  border-color: var(--gold);
-  border-style: solid;
-}
-.corner-wrap > .corner-bottom-left {
-  bottom: -1px;
-  left: -1px;
-  border-width: 0 0 1px 1px;
-}
-.corner-wrap > .corner-bottom-right {
-  bottom: -1px;
-  right: -1px;
-  border-width: 0 1px 1px 0;
-}
-
+.corner-wrap > .corner-bottom-right { display: none; }
+.corner-wrap::before,
+.corner-wrap > .corner-bottom-left,
 .hairline {
   width: 100%;
   height: 1px;
@@ -500,37 +501,114 @@ h4 { font-size: 16px; letter-spacing: var(--track-wide); }
   vertical-align: middle;
 }
 
+/* ── Copper Map primitives (6F) ─────────────────────────────────────────── */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 28px;
+  padding: 0 12px;
+  position: relative;
+  border: 1px solid transparent;
+  border-radius: var(--radius-pill);
+  background: var(--glass-2, rgba(255, 255, 255, 0.105));
+  font-family: var(--font-body);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--text-2);
+}
+.chip-ember { color: var(--accent-ink); }
+.chip-nav { height: 40px; padding: 0 14px; text-decoration: none; }
+.chip-nav:hover { color: var(--text); }
+.chip-on {
+  background: linear-gradient(180deg, var(--ember-lift), var(--ember));
+  color: var(--ember-on);
+  box-shadow: 0 0 0 1px rgba(216, 137, 74, 0.38);
+}
+.icobtn {
+  width: 44px;
+  height: 44px;
+  position: relative;
+  border: 1px solid transparent;
+  border-radius: var(--radius-pill);
+  background: var(--glass, rgba(255, 255, 255, 0.062));
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-2);
+  transition: 0.25s;
+}
+/* Header nav: 44px pills, 6F. The current page carries aria-current="page". */
+.nav-link {
+  display: inline-flex;
+  align-items: center;
+  height: 44px;
+  padding: 0 14px;
+  border-radius: var(--radius-pill);
+  font-family: var(--font-body);
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-2);
+  text-decoration: none;
+  transition: color 0.25s, background 0.25s;
+}
+.nav-link:hover,
+.nav-link[aria-current='page'] {
+  color: var(--text);
+  background: var(--glass-2, rgba(255, 255, 255, 0.105));
+  text-decoration: none;
+}
+.nav-link[aria-current='page'] { box-shadow: inset 0 0 0 1px var(--line-mid); }
+/* The map frame is graphite from first paint. Leaflet's own stylesheet loads
+   AFTER this one (unpkg, at runtime) and sets #ddd on .leaflet-container, so
+   a bare selector loses on source order; the container carries .on-map too,
+   and two classes beat one. Measured: rgb(221,221,221) before, run R13. */
+.on-map.leaflet-container,
+.leaflet-container.on-map { background: var(--map); }
+
 /* ── Buttons ───────────────────────────────────────────────────────────── */
 
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  padding: 14px 28px;
-  font-family: var(--font-display);
-  font-size: 12px;
+  gap: 9px;
+  min-height: 48px;
+  min-width: 44px;
+  padding: 0 24px;
+  position: relative;
+  border: 1px solid transparent;
+  border-radius: var(--radius-pill);
+  font-family: var(--font-body);
+  font-size: 13.5px;
   font-weight: 700;
-  letter-spacing: var(--track-widest);
-  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  text-transform: none;
   text-decoration: none;
   cursor: pointer;
-  border: 1px solid var(--gold);
-  background: var(--gold);
-  color: var(--bg-0);
-  transition: transform 0.12s ease, background 0.12s ease;
+  background: linear-gradient(180deg, var(--ember-lift), var(--ember));
+  color: var(--ember-on);
+  box-shadow: 0 0 0 1px rgba(216, 137, 74, 0.38), 0 16px 40px -18px rgba(216, 137, 74, 0.60), inset 0 1px 0 rgba(255, 255, 255, 0.34);
+  transition: transform 0.25s, box-shadow 0.25s, background 0.25s;
   user-select: none;
 }
 .btn:hover {
-  background: var(--ember-lift);
+  transform: translateY(-1px);
+  box-shadow: 0 0 0 1px rgba(216, 137, 74, 0.55), 0 22px 48px -18px rgba(216, 137, 74, 0.78), inset 0 1px 0 rgba(255, 255, 255, 0.40);
   text-decoration: none;
 }
 .btn:active { transform: translateY(1px); }
 
 .btn-ghost {
-  background: transparent;
+  background: var(--glass, rgba(255, 255, 255, 0.062));
   color: var(--text);
-  border-color: var(--line-mid);
+  box-shadow: var(--inner-glow);
+  backdrop-filter: blur(20px) saturate(1.15);
+  -webkit-backdrop-filter: blur(20px) saturate(1.15);
 }
 .btn-ghost:hover {
   background: rgba(255, 255, 255, 0.04);
@@ -538,8 +616,9 @@ h4 { font-size: 16px; letter-spacing: var(--track-wide); }
 }
 
 .btn-lg {
-  padding: 16px 36px;
-  font-size: 13px;
+  min-height: 52px;
+  padding: 0 30px;
+  font-size: 14.5px;
 }
 
 /* ── Layout ────────────────────────────────────────────────────────────── */
@@ -578,9 +657,18 @@ h4 { font-size: 16px; letter-spacing: var(--track-wide); }
    page to dark-on-dark. Anything placed inside it is light by default.
    ------------------------------------------------------------------------- */
 .hero-band {
-  background: linear-gradient(135deg, var(--gold) 0%, var(--hero-band-end) 62%);
+  background: linear-gradient(135deg, var(--ember) 0%, var(--ink-photo) 62%);
   border-bottom: 1px solid var(--line);
   color: var(--hero-band-ink);
+  /* The band is dark in both themes, so its DESCENDANTS' ink is pinned here too —
+     an inline var(--text-2) inside it went dark-on-copper in light (run R13, 1a). */
+  --text: #efeeea;
+  --text-2: #c6c2b8;
+  --text-3: #9d998e;
+  --gold: #d8894a;
+  --accent-ink: #e8a56a;
+  --line: rgba(255, 255, 255, 0.12);
+  --line-mid: rgba(255, 255, 255, 0.20);
 }
 .hero-band h1,
 .hero-band h2,
@@ -628,15 +716,12 @@ h4 { font-size: 16px; letter-spacing: var(--track-wide); }
 .mono-row {
   display: inline-flex;
   align-items: center;
-  /* Wrap, don't squeeze. Without this the row keeps every item on ONE line and
-     lets each shrink instead, so at 390px a date became a five-line column and
-     the handle beside it ran off the screen (measured, run R12). */
   flex-wrap: wrap;
   gap: 14px;
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   font-size: 11px;
-  font-weight: 500;
-  letter-spacing: var(--track-wider);
+  font-weight: 700;
+  letter-spacing: 0.10em;
   color: var(--text-3);
   text-transform: uppercase;
 }
@@ -1161,6 +1246,7 @@ h4 { font-size: 16px; letter-spacing: var(--track-wide); }
   font-family: var(--font-body);
   font-size: 14px;
   outline: none;
+  border-radius: var(--radius-md);
 }
 .admin-form-input:focus { border-color: var(--gold); }
 .admin-form-btn {
@@ -1281,6 +1367,7 @@ h4 { font-size: 16px; letter-spacing: var(--track-wide); }
   font-size: 12px;
   letter-spacing: 0.5px;
   outline: none;
+  border-radius: var(--radius-md);
 }
 .admin-search-input:focus { border-color: var(--gold); }
 
@@ -1342,6 +1429,7 @@ h4 { font-size: 16px; letter-spacing: var(--track-wide); }
   font-family: var(--font-body);
   font-size: 16px;
   outline: none;
+  border-radius: var(--radius-md);
 }
 .admin-login-input:focus { border-color: var(--gold); }
 /* A ring, not just a border colour. The OTP field's border is ALREADY gold
@@ -1861,17 +1949,19 @@ h4 { font-size: 16px; letter-spacing: var(--track-wide); }
   display: grid;
   grid-template-columns: 132px 1fr;
   gap: 0;
+  position: relative;
   text-decoration: none;
-  border: 1px solid var(--line);
-  background: var(--bg-1);
+  border: 1px solid transparent;
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  box-shadow: var(--inner-glow), var(--shadow);
   overflow: hidden;
-  transition: border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+  transition: transform 0.35s cubic-bezier(0.2, 0.7, 0.2, 1), box-shadow 0.35s;
 }
 .meets-split-card:hover,
 .meets-split-card:focus-visible,
 .meets-split-card.is-active {
-  border-color: var(--gold);
-  box-shadow: 0 0 0 1px var(--gold-dim), 0 6px 22px rgba(0, 0, 0, 0.45);
+  box-shadow: var(--inner-glow), var(--shadow-ember);
   outline: none;
 }
 .meets-split-card.is-active { transform: translateY(-1px); }
@@ -2002,11 +2092,11 @@ h4 { font-size: 16px; letter-spacing: var(--track-wide); }
 
 /* ── Dark branded map popups (override Leaflet chrome) ─────────────────── */
 .rl-popup .leaflet-popup-content-wrapper {
-  background: var(--bg-2, #0c0c0c);
-  color: var(--text, #fff);
-  border: 1px solid var(--line-mid);
-  border-radius: 3px;
-  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.6);
+  background: var(--pop);
+  color: var(--text);
+  border: 1px solid var(--pop-line);
+  border-radius: 16px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.09), 0 2px 0 rgba(0, 0, 0, 0.5), 0 34px 70px -34px rgba(0, 0, 0, 1);
 }
 .rl-popup .leaflet-popup-content {
   margin: 0;
@@ -2015,8 +2105,8 @@ h4 { font-size: 16px; letter-spacing: var(--track-wide); }
   line-height: 1.45;
 }
 .rl-popup .leaflet-popup-tip {
-  background: var(--bg-2, #0c0c0c);
-  border: 1px solid var(--line-mid);
+  background: var(--pop);
+  border: 1px solid var(--pop-line);
   box-shadow: none;
 }
 .rl-popup a.leaflet-popup-close-button {
@@ -2507,14 +2597,16 @@ h4 { font-size: 16px; letter-spacing: var(--track-wide); }
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 30px;
-  height: 30px;
+  width: 44px;
+  height: 44px;
   padding: 0;
-  border: 1px solid var(--line);
-  background: transparent;
-  color: var(--text-3);
+  position: relative;
+  border: 1px solid transparent;
+  border-radius: var(--radius-pill);
+  background: var(--glass, rgba(255, 255, 255, 0.062));
+  color: var(--text-2);
   cursor: pointer;
-  transition: color 120ms ease, border-color 120ms ease;
+  transition: color 0.25s, background 0.25s;
 }
 .site-theme-toggle:hover {
   color: var(--gold);

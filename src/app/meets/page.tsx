@@ -7,6 +7,7 @@
  */
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { FilterChip } from '@/components/FilterChip';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { resolveCover } from '@/lib/event-covers';
 import { loadMapData } from './mapData';
@@ -167,19 +168,7 @@ export default async function MeetsDirectoryPage({
                     </div>
                     {/* View toggle — mobile/tablet only; desktop shows the split. */}
                     <div className="meets-view-toggle" style={{ display: 'flex', gap: 8 }}>
-                        <span
-                            style={{
-                                padding: '8px 14px',
-                                border: '1px solid var(--gold)',
-                                background: 'var(--gold)',
-                                color: 'var(--bg-0, #000)',
-                                fontFamily: 'var(--font-display)',
-                                fontSize: 11,
-                                letterSpacing: 'var(--track-wider)',
-                            }}
-                        >
-                            LIST
-                        </span>
+                        <span className="chip chip-nav chip-on" aria-current="page">LIST</span>
                         <FilterChip href={mapHref} label="MAP ▸" active={false} />
                     </div>
                 </div>
@@ -298,22 +287,3 @@ function MeetTile({ m, past = false }: { m: MeetCard; past?: boolean }) {
     );
 }
 
-function FilterChip({ href, label, active }: { href: string; label: string; active: boolean }) {
-    return (
-        <Link
-            href={href}
-            style={{
-                padding: '8px 14px',
-                border: '1px solid var(--gold)',
-                background: active ? 'var(--gold)' : 'transparent',
-                color: active ? 'var(--bg-0, #000)' : 'var(--gold)',
-                fontFamily: 'var(--font-display)',
-                fontSize: 11,
-                letterSpacing: 'var(--track-wider)',
-                textDecoration: 'none',
-            }}
-        >
-            {label}
-        </Link>
-    );
-}
