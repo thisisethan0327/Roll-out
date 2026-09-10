@@ -95,7 +95,7 @@ export async function NextRunBand() {
                     {dest ? ` → ${dest}` : ''}
                 </p>
             </div>
-            <Link href="/meets" className="mono-row" style={{ textDecoration: 'none' }}>
+            <Link href="/meets" className="mono-row" style={{ textDecoration: 'none', minHeight: 44, alignItems: 'center' }}>
                 <span className="accent">›</span> ALL MEETS
             </Link>
         </div>
@@ -106,7 +106,7 @@ export async function NextRunBand() {
     // shows the event's own card and the door to the live map instead.
     if (!site) {
         return (
-            <section className="section on-dark next-run" id="next-run">
+            <section className="section on-dark next-run" id="next-run" style={{ background: '#050505' }}>
                 <div className="container">
                     {head}
                     <div className="feature-card corner-wrap rv" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 24, flexWrap: 'wrap' }}>
@@ -132,7 +132,7 @@ export async function NextRunBand() {
     }
 
     return (
-        <section className="section on-dark next-run" id="next-run">
+        <section className="section on-dark next-run" id="next-run" style={{ background: '#050505' }}>
             <div className="container">
                 {head}
 

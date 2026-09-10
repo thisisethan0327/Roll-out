@@ -138,13 +138,7 @@ export default async function HomePage() {
                         Rollout puts your garage, your shops, and the people who get it in one place.
                     </p>
 
-                    <div
-                        style={{
-                            display: 'grid',
-                            gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-                            gap: 16,
-                        }}
-                    >
+                    <div className="feature-grid">
                         <FeatureCard plate="rsvps" glyph="◉" title="Convoy RSVPs" body="Know who's actually rolling. Live spot count, capacity gates, lat-long meet points." />
                         <FeatureCard plate="buildlog" glyph="◐" title="Build log" body="Track mods, miles, milestones. Up to 5 photos per build. Tagged feed for parts you ran." />
                         <FeatureCard plate="shopline" glyph="✎" title="Shop direct line" body="Talk to the shop that wrapped your car, not their public DMs. Quotes, status, follow-ups." />

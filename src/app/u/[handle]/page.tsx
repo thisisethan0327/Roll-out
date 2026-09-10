@@ -570,8 +570,8 @@ export default async function HandlePage({
                                 gap: 16,
                             }}
                         >
-                            {products.map((p) => (
-                                <ProductCard key={p.id} product={p} />
+                            {products.map((p, i) => (
+                                <ProductCard key={p.id} product={p} groundIndex={i} />
                             ))}
                         </div>
                     </div>

@@ -134,12 +134,15 @@ export function CheckoutClient({
     initialCart,
     stripeKey,
     signedInEmail,
+    initialAddress,
     actions,
     successPathPrefix,
 }: {
     initialCart: Cart;
     stripeKey: string;
     signedInEmail?: string | null;
+    /** The member's saved default shipping address, used when the cart has none. */
+    initialAddress?: AddressInput | null;
     /** Override the cart/checkout server actions (event-package lane). */
     actions?: CheckoutActions;
     /** The order id is appended to this on success (default: store order page). */
@@ -151,6 +154,7 @@ export function CheckoutClient({
             <CheckoutInner
                 initialCart={initialCart}
                 signedInEmail={signedInEmail ?? null}
+                initialAddress={initialAddress ?? null}
                 actions={actions ?? STORE_ACTIONS}
                 successPathPrefix={successPathPrefix ?? '/store/order/'}
             />
@@ -161,11 +165,13 @@ export function CheckoutClient({
 function CheckoutInner({
     initialCart,
     signedInEmail,
+    initialAddress,
     actions,
     successPathPrefix,
 }: {
     initialCart: Cart;
     signedInEmail: string | null;
+    initialAddress: AddressInput | null;
     actions: CheckoutActions;
     successPathPrefix: string;
 }) {
@@ -184,15 +190,15 @@ function CheckoutInner({
     // does not drop the shopper into a blank form (rerun 2026-09-06).
     const [form, setForm] = useState<AddressInput & { email: string }>({
         email: cart.email ?? signedInEmail ?? '',
-        firstName: cart.shippingAddress?.firstName ?? '',
-        lastName: cart.shippingAddress?.lastName ?? '',
-        address1: cart.shippingAddress?.address1 ?? '',
-        address2: cart.shippingAddress?.address2 ?? '',
-        city: cart.shippingAddress?.city ?? '',
-        province: cart.shippingAddress?.province ?? '',
-        postalCode: cart.shippingAddress?.postalCode ?? '',
-        countryCode: cart.shippingAddress?.countryCode ?? 'us',
-        phone: cart.shippingAddress?.phone ?? '',
+        firstName: cart.shippingAddress?.firstName || initialAddress?.firstName || '',
+        lastName: cart.shippingAddress?.lastName || initialAddress?.lastName || '',
+        address1: cart.shippingAddress?.address1 || initialAddress?.address1 || '',
+        address2: cart.shippingAddress?.address2 || initialAddress?.address2 || '',
+        city: cart.shippingAddress?.city || initialAddress?.city || '',
+        province: cart.shippingAddress?.province || initialAddress?.province || '',
+        postalCode: cart.shippingAddress?.postalCode || initialAddress?.postalCode || '',
+        countryCode: cart.shippingAddress?.countryCode || initialAddress?.countryCode || 'us',
+        phone: cart.shippingAddress?.phone || initialAddress?.phone || '',
     });
 
     const [shippingOptions, setShippingOptions] = useState<ShippingOption[]>([]);

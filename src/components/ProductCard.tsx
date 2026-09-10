@@ -20,15 +20,21 @@ import { formatMoney } from '@/lib/medusa';
 export function ProductCard({
     product,
     revealDealerPrice = false,
+    groundIndex,
 }: {
     product: MedusaProduct;
     revealDealerPrice?: boolean;
+    /** Grid position, so photo-less neighbours alternate grounds (a hash by id put the same one on 3 of 4). */
+    groundIndex?: number;
 }) {
     const { paused } = product;
     const hidePrice = product.dealerOnly && !revealDealerPrice;
     // A photo-less product sits on one of two store grounds, chosen by id so
     // the grid alternates whatever wraps the cards.
-    const ground = Array.from(String(product.id ?? product.handle)).reduce((a, c) => a + c.charCodeAt(0), 0) % 2 ? 'fender' : 'ppf';
+    const ground =
+        groundIndex != null
+            ? groundIndex % 2 ? 'fender' : 'ppf'
+            : Array.from(String(product.id ?? product.handle)).reduce((a, c) => a + c.charCodeAt(0), 0) % 2 ? 'fender' : 'ppf';
     return (
         <Link
             href={`/store/p/${product.handle}`}
@@ -79,9 +85,9 @@ export function ProductCard({
                                     fontWeight: 700,
                                     letterSpacing: 'var(--track-wider)',
                                     padding: '6px 14px',
-                                    border: '1px solid var(--gold)',
+                                    border: '1px solid #ffb733',
                                     background: 'rgba(0,0,0,0.72)',
-                                    color: 'var(--gold)',
+                                    color: '#ffb733', /* fixed: the ground is dark in both themes */
                                 }}
                             >
                                 COMING SOON

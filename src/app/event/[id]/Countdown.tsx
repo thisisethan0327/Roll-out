@@ -103,7 +103,7 @@ export function Countdown({ startAt }: { startAt: string }) {
                     <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 20, color: 'var(--text)', lineHeight: 1, letterSpacing: 1 }}>
                         {c.value}
                     </div>
-                    <div style={{ fontFamily: 'var(--font-display)', fontSize: 8, letterSpacing: 'var(--track-wider)', color: 'var(--text-3)', marginTop: 4 }}>
+                    <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: 'var(--track-wider)', color: 'var(--text-2)', marginTop: 4 }}>
                         {c.label}
                     </div>
                 </div>

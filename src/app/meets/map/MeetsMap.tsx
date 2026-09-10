@@ -96,7 +96,10 @@ const MAPLIBRE_LEAFLET_JS =
  */
 const BASEMAP_STYLES = {
     dark: 'https://tiles.openfreemap.org/styles/dark',
-    light: 'https://tiles.openfreemap.org/styles/positron',
+    // Dark in both themes: the light positron tiles fought the black/gold
+    // palette on /meets (run 13, slice 2). Both keys resolve to the same style
+    // so the theme plumbing below stays inert rather than removed.
+    light: 'https://tiles.openfreemap.org/styles/dark',
 } as const;
 
 /**

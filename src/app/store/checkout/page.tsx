@@ -7,6 +7,7 @@
  * silently falling back to test mode.
  */
 import type { Metadata } from 'next';
+import { loadDefaultShippingAddress } from '@/lib/medusa-address';
 import { redirect } from 'next/navigation';
 import { getCart } from '@/lib/medusa-cart';
 import { STRIPE_PUBLISHABLE_KEY } from '@/lib/medusa';
@@ -49,6 +50,9 @@ export default async function CheckoutPage() {
         data: { user },
     } = await supabase.auth.getUser();
     const signedInEmail = user?.email ?? null;
+    // A saved default shipping address (onboarding, or a past checkout) prefills
+    // the address step when this cart has none yet.
+    const savedAddress = user && !cart!.shippingAddress?.address1 ? await loadDefaultShippingAddress() : null;
 
     return (
         <section className="section" style={{ padding: '40px 0 72px' }}>
@@ -59,6 +63,7 @@ export default async function CheckoutPage() {
                     initialCart={cart!}
                     stripeKey={STRIPE_PUBLISHABLE_KEY}
                     signedInEmail={signedInEmail}
+                    initialAddress={savedAddress}
                 />
             </div>
         </section>

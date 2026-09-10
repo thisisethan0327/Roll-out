@@ -365,9 +365,15 @@ h4 { font-size: 16px; letter-spacing: var(--track-wide); }
   position: absolute;
   inset: 0;
   background:
+    radial-gradient(ellipse 42% 46% at 100% 0%, rgba(0, 0, 0, 0.74), transparent 72%),
     linear-gradient(180deg, rgba(0, 0, 0, 0.28) 0%, transparent 30%, #000000 100%),
     linear-gradient(90deg, rgba(0, 0, 0, 0.62) 0%, rgba(0, 0, 0, 0.3) 38%, transparent 58%);
 }
+/* The home feature grid: three across, two on tablets, one on phones — the
+   auto-fit grid left 6-in-4 with two ragged cells. */
+.feature-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+@media (max-width: 900px) { .feature-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 600px) { .feature-grid { grid-template-columns: 1fr; } }
 @media (max-width: 900px) {
   .home-hero-scrim {
     background:
@@ -418,11 +424,14 @@ h4 { font-size: 16px; letter-spacing: var(--track-wide); }
   --map-gold: #ffb733;
   --map-shop: #e6e3dc;
 }
-.map-stage-phone { display: none; }
+/* Crop toggles carry the stage's specificity so .stylised-map's display:block
+   (declared later) cannot re-show the hidden crop (run 13, slice 2: both crops
+   painted, the phone one on top at every width). */
+.map-stage .map-stage-phone { display: none; }
 @media (max-width: 700px) {
   .map-stage { aspect-ratio: 390 / 560; }
-  .map-stage-desktop { display: none; }
-  .map-stage-phone { display: block; }
+  .map-stage .map-stage-desktop { display: none; }
+  .map-stage .map-stage-phone { display: block; }
 }
 .stylised-map { position: absolute; inset: 0; width: 100%; height: 100%; display: block; z-index: 0; }
 /* legibility scrims — plain gradients, never a blur over the map */
@@ -1470,6 +1479,7 @@ h4 { font-size: 16px; letter-spacing: var(--track-wide); }
   background: var(--gold);
   color: var(--bg-0);
   border: none;
+  min-height: 44px;
   padding: 14px;
   font-family: var(--font-display);
   font-weight: 700;

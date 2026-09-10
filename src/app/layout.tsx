@@ -46,7 +46,7 @@ export const metadata: Metadata = {
         title: 'Rollout',
         description: 'A private network for the cars you build.',
     },
-    icons: { icon: '/favicon.png', apple: '/apple-touch-icon.png' },
+    icons: { icon: [{ url: '/favicon.ico', sizes: 'any' }, { url: '/favicon.png', type: 'image/png' }], apple: '/apple-touch-icon.png' },
     alternates: { canonical: '/' },
 };
 

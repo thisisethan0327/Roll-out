@@ -16,8 +16,11 @@ import { HostPanel } from './HostPanel';
 
 export const dynamic = 'force-dynamic';
 
-export default async function MeOverview() {
+export default async function MeOverview({ searchParams }: { searchParams: Promise<{ note?: string }> }) {
     const profile = await requireConsumer('/me');
+    // ?note=address — onboarding saved the profile but the store could not take
+    // the shipping address (best-effort by design): say so once, here.
+    const { note } = await searchParams;
     const [tickets, appts, rsvps] = await Promise.all([
         loadMyTickets(),
         loadMyAppointments(profile.profileId),
@@ -29,6 +32,11 @@ export default async function MeOverview() {
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
+            {note === 'address' ? (
+                <div className="admin-login-error" role="status">
+                    We couldn&apos;t save your shipping address just now — you can add it at checkout.
+                </div>
+            ) : null}
             {/* PROFILE CARD */}
             <section
                 style={{

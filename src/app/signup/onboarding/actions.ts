@@ -20,6 +20,7 @@
  * a profile, never shop access — that only comes from an admin staff invite.
  */
 import { redirect } from 'next/navigation';
+import { saveDefaultShippingAddress } from '@/lib/medusa-address';
 import { getConsumerProfile } from '@/lib/consumer';
 import {
     checkHandleAvailability,
@@ -48,6 +49,19 @@ function safeNext(raw: string | undefined | null): string | null {
 
 export type ClaimResult = { ok: false; error: string };
 
+/** The optional shipping section of the onboarding form. */
+export type OnboardingAddress = {
+    firstName: string;
+    lastName: string;
+    address1: string;
+    address2?: string;
+    city: string;
+    province: string;
+    postalCode: string;
+    countryCode: string;
+    phone?: string;
+};
+
 /**
  * Commit the member's onboarding choices. On success this REDIRECTS (throws the
  * Next redirect) and never returns; on validation failure it returns an error
@@ -57,6 +71,7 @@ export async function claimProfileAction(input: {
     handle: string;
     displayName: string;
     bio?: string;
+    address?: OnboardingAddress | null;
     next?: string;
 }): Promise<ClaimResult> {
     const me = await getConsumerProfile();
@@ -70,5 +85,27 @@ export async function claimProfileAction(input: {
     });
     if (!res.ok) return { ok: false, error: res.error };
 
-    redirect(safeNext(input.next) ?? '/me');
+    // The optional shipping address goes to the member's Medusa customer as
+    // the default shipping address — best-effort. The profile is already
+    // saved at this point; a store outage must not hold the member at the
+    // door, so the failure is a note on the next page, not a blocker.
+    let note: string | null = null;
+    if (input.address && input.address.address1.trim() && input.address.city.trim() && input.address.postalCode.trim()) {
+        const a = input.address;
+        const saved = await saveDefaultShippingAddress({
+            firstName: a.firstName.trim(),
+            lastName: a.lastName.trim(),
+            address1: a.address1.trim(),
+            address2: (a.address2 ?? '').trim(),
+            city: a.city.trim(),
+            province: a.province.trim(),
+            postalCode: a.postalCode.trim(),
+            countryCode: (a.countryCode || 'us').trim().toLowerCase(),
+            phone: (a.phone ?? '').trim(),
+        });
+        if (!saved.ok) note = 'address';
+    }
+
+    const dest = safeNext(input.next) ?? '/me';
+    redirect(note ? `${dest}${dest.includes('?') ? '&' : '?'}note=${note}` : dest);
 }
