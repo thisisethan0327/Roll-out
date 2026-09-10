@@ -1,6 +1,6 @@
 import './globals.css';
 import type { Metadata } from 'next';
-import { JetBrains_Mono, Inter, Noto_Sans_JP } from 'next/font/google';
+import { JetBrains_Mono, Manrope, Noto_Sans_JP } from 'next/font/google';
 import { MarketingChrome } from '@/components/MarketingChrome';
 import { cookies } from 'next/headers';
 import { THEME_COOKIE, normalizeTheme, themeAttribute } from '@/lib/theme';
@@ -10,11 +10,14 @@ import { tenantForHost } from '@/lib/tenant-hosts';
 const jetbrains = JetBrains_Mono({
     subsets: ['latin'],
     weight: ['500', '700'],
-    variable: '--font-display-loaded',
+    variable: '--font-mono-loaded',
 });
-const inter = Inter({
+// Manrope carries display AND body (6F Copper Map): 800 for headlines,
+// 400/600/700 for everything else. globals.css reads --font-body-loaded for
+// both --font-display and --font-body.
+const inter = Manrope({
     subsets: ['latin'],
-    weight: ['400', '500'],
+    weight: ['400', '600', '700', '800'],
     variable: '--font-body-loaded',
 });
 const notoJp = Noto_Sans_JP({

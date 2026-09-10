@@ -19,8 +19,8 @@ const LIBS: Array<{ name: string; license: string; usage: string }> = [
     { name: '@supabase/supabase-js', license: 'MIT', usage: 'Backend client (auth + DB + storage)' },
     { name: 'zustand', license: 'MIT', usage: 'State management' },
     { name: 'Next.js', license: 'MIT', usage: 'This website' },
-    { name: 'Inter font', license: 'OFL', usage: 'Body type' },
-    { name: 'JetBrains Mono', license: 'OFL', usage: 'Display + mono type' },
+    { name: 'Manrope', license: 'OFL', usage: 'Display + body type' },
+    { name: 'JetBrains Mono', license: 'OFL', usage: 'Mono — ids, money, meta' },
     { name: 'Noto Sans JP', license: 'OFL', usage: 'Japanese subtitles' },
 ];
 
