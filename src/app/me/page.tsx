@@ -114,7 +114,7 @@ export default async function MeOverview() {
             {/* UPCOMING RSVPS */}
             <Panel title="UPCOMING MEETS" href="/meets" hrefLabel="ALL MEETS">
                 {rsvps.length === 0 ? (
-                    <EmptyRow text="NO UPCOMING RSVPS" />
+                    <EmptyRow text="NO UPCOMING RSVPS" art="no-meets" />
                 ) : (
                     <div style={{ display: 'flex', flexDirection: 'column' }}>
                         {rsvps.map((r) => (

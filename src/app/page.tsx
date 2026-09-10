@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import Image from 'next/image';
+import { Icon, type IconName } from '@/components/Icon';
 import { HomeMotion } from '@/components/motion/HomeMotion';
 
 export default function HomePage() {
@@ -16,12 +17,24 @@ export default function HomePage() {
             <HomeMotion>
             <section className="on-dark" data-hero style={{ position: 'relative', overflow: 'hidden' }}>
                 <div data-hero-img style={{ position: 'absolute', inset: 0, zIndex: 0, transformOrigin: '50% 40%' }}>
+                    {/* Copper Map (6F): one coupe, two plates — 21:9 for desktop, 9:16
+                        for phones, swapped by CSS at 900px so both never download. */}
                     <Image
-                        src="/images/hero-harbor-run.jpg"
-                        alt="Night port — Skyline GT-R parked under sodium lights"
+                        src="/images/hero-desktop-21x9.webp"
+                        alt="Graphite coupe in a dark studio under copper rim light"
                         fill
                         priority
-                        style={{ objectFit: 'cover', objectPosition: 'center', filter: 'brightness(0.55) contrast(1.05)' }}
+                        sizes="100vw"
+                        className="hero-plate hero-plate-desktop"
+                        style={{ objectFit: 'cover', objectPosition: '50% 45%' }}
+                    />
+                    <Image
+                        src="/images/hero-portrait-9x16.webp"
+                        alt=""
+                        fill
+                        sizes="100vw"
+                        className="hero-plate hero-plate-portrait"
+                        style={{ objectFit: 'cover', objectPosition: '50% 40%' }}
                     />
                     <div
                         style={{
@@ -105,12 +118,12 @@ export default function HomePage() {
                             gap: 16,
                         }}
                     >
-                        <FeatureCard glyph="◉" title="Convoy RSVPs" body="Know who's actually rolling. Live spot count, capacity gates, lat-long meet points." />
-                        <FeatureCard glyph="◐" title="Build log" body="Track mods, miles, milestones. Up to 5 photos per build. Tagged feed for parts you ran." />
-                        <FeatureCard glyph="✎" title="Shop direct line" body="Talk to the shop that wrapped your car, not their public DMs. Quotes, status, follow-ups." />
-                        <FeatureCard glyph="◈" title="Garage that belongs to you" body="Your photos, your specs, your history. Delete anytime — fully — from inside the app." />
-                        <FeatureCard glyph="✦" title="Sector-aware" body="Meets, posts, and shops surfaced for your sector first. Opt out and go global." />
-                        <FeatureCard glyph="∿" title="Private by default" body="Posts default to followers-only. Ghost mode hides location. Block + report on every surface." />
+                        <FeatureCard icon="meet" title="Convoy RSVPs" body="Know who's actually rolling. Live spot count, capacity gates, lat-long meet points." />
+                        <FeatureCard icon="settings" title="Build log" body="Track mods, miles, milestones. Up to 5 photos per build. Tagged feed for parts you ran." />
+                        <FeatureCard icon="shop" title="Shop direct line" body="Talk to the shop that wrapped your car, not their public DMs. Quotes, status, follow-ups." />
+                        <FeatureCard icon="meet-solo" title="Garage that belongs to you" body="Your photos, your specs, your history. Delete anytime — fully — from inside the app." />
+                        <FeatureCard icon="map-pin" title="Sector-aware" body="Meets, posts, and shops surfaced for your sector first. Opt out and go global." />
+                        <FeatureCard icon="verified" title="Private by default" body="Posts default to followers-only. Ghost mode hides location. Block + report on every surface." />
                     </div>
                 </div>
             </section>
@@ -174,12 +187,12 @@ export default function HomePage() {
     );
 }
 
-function FeatureCard({ glyph, title, body }: { glyph: string; title: string; body: string }) {
+function FeatureCard({ icon, title, body }: { icon: IconName; title: string; body: string }) {
     return (
-        <div className="feature-card corner-wrap">
+        <div className="feature-card corner-wrap rv">
             <span className="corner-bottom-left" />
             <span className="corner-bottom-right" />
-            <div className="icon">{glyph}</div>
+            <div className="icon" style={{ color: 'var(--accent-ink)' }}><Icon name={icon} size={22} /></div>
             <h3>{title}</h3>
             <p>{body}</p>
         </div>

@@ -66,7 +66,7 @@ export function ProductCard({
                                 alignItems: 'center',
                                 justifyContent: 'center',
                             }}
-                        >
+                         data-ground>
                             <span
                                 style={{
                                     fontFamily: 'var(--font-display)',

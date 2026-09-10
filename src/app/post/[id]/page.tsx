@@ -207,7 +207,7 @@ export async function generateMetadata({
     const title = `${truncate(post.body, 60) || `${post.type ?? 'Post'} by ${author}`}`;
     const socialTitle = `${title} · Rollout`;
     const desc = truncate(post.body, 160) || `A ${(post.type ?? 'post').toLowerCase()} on Rollout.`;
-    const images = post.hero_image_url ? [post.hero_image_url] : ['/images/og-rollout.jpg'];
+    const images = post.hero_image_url ? [post.hero_image_url] : ['/images/og-card.jpg'];
     return {
         title,
         description: desc,

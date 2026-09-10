@@ -522,6 +522,37 @@ h4 { font-size: 16px; letter-spacing: var(--track-wide); }
   .w { will-change: auto; }
 }
 
+/* ── Copper Map imagery (Phase 4) ───────────────────────────────────────── */
+/* Two hero plates, one shown: the 21:9 above 900px, the 9:16 at and below.
+   Both are next/image fill layers; the hidden one is display:none so it never
+   loads (next/image only requests a visible image). */
+.hero-plate-portrait { display: none; }
+@media (max-width: 900px) {
+  .hero-plate-desktop { display: none; }
+  .hero-plate-portrait { display: block; }
+}
+/* Empty states with an illustration. */
+.empty-art {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 36px 16px;
+}
+.empty-art img { opacity: 0.92; }
+/* A product with no photo sits on one of the store grounds (PPF roll / wrapped
+   fender), alternating by position, instead of a flat COMING SOON tile. */
+[data-ground] {
+  background-image: linear-gradient(180deg, rgba(8, 8, 10, 0.25), rgba(8, 8, 10, 0.75)), url('/images/ground-ppf-4x5.webp');
+  background-size: cover;
+  background-position: center;
+}
+li:nth-child(even) [data-ground],
+article:nth-child(even) [data-ground],
+div:nth-child(even) > [data-ground] {
+  background-image: linear-gradient(180deg, rgba(8, 8, 10, 0.25), rgba(8, 8, 10, 0.75)), url('/images/ground-fender-4x5.webp');
+}
+
 /* ── Copper Map primitives (6F) ─────────────────────────────────────────── */
 .chip {
   display: inline-flex;

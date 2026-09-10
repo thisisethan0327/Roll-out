@@ -41,7 +41,7 @@ export const metadata: Metadata = {
         description: 'A private network for the cars you build.',
         url: 'https://rollout.club',
         siteName: 'Rollout',
-        images: ['/images/og-rollout.jpg'],
+        images: [{ url: '/images/og-card.jpg', width: 1200, height: 630 }],
         type: 'website',
     },
     twitter: {
@@ -49,7 +49,15 @@ export const metadata: Metadata = {
         title: 'Rollout',
         description: 'A private network for the cars you build.',
     },
-    icons: { icon: '/favicon.png' },
+    icons: {
+        icon: [
+            { url: '/favicon-32.png', sizes: '32x32', type: 'image/png' },
+            { url: '/icon-192.png', sizes: '192x192', type: 'image/png' },
+            { url: '/icon-512.png', sizes: '512x512', type: 'image/png' },
+            { url: '/icon.svg', type: 'image/svg+xml' },
+        ],
+        apple: '/apple-touch-icon.png',
+    },
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {

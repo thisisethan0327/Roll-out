@@ -94,7 +94,7 @@ export function MeetsSplit({
                         key={m.id}
                         href={`/event/${m.id}`}
                         data-meet={m.id}
-                        className={`meets-split-card${activeId === m.id ? ' is-active' : ''}`}
+                        className={`rv meets-split-card${activeId === m.id ? ' is-active' : ''}`}
                         onMouseEnter={() => plottable.has(m.id) && setActiveId(m.id)}
                         onMouseLeave={() => setActiveId((cur) => (cur === m.id ? null : cur))}
                         onFocus={() => plottable.has(m.id) && setActiveId(m.id)}
@@ -102,7 +102,7 @@ export function MeetsSplit({
                     >
                         <div
                             className="meets-split-thumb"
-                            style={{ backgroundImage: `url(${resolveCover(m.hero_image_url, m.type, m.id)})` }}
+                            style={{ backgroundImage: `url(${resolveCover(m.hero_image_url, m.type, m.id, '4x5')})` }}
                         />
                         <div className="meets-split-body">
                             <div className="mono-row" style={{ fontSize: 10 }}>

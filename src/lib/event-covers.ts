@@ -11,8 +11,17 @@
  * a specific cover store that URL in `hero_image_url` and are unaffected.
  */
 
-const BUCKET_BASE =
-    'https://sbbxsqvoxrzcgtslspbo.supabase.co/storage/v1/object/public/event-covers';
+/**
+ * Copper Map covers ship WITH the app under /public/covers rather than in the
+ * event-covers bucket. Production main reads that bucket, and replacing its
+ * ten files would have restyled every un-pinned event live before run 13 —
+ * so the branch points here, the bucket keeps the old set until merge, and a
+ * pinned hero_image_url (including old bucket URLs the picker saved) still
+ * resolves exactly as before. Two ratios: 16:9 for bands and desktop cards,
+ * 4:5 for the phone card (run R12 photo lanes cropped the 16:9 badly).
+ */
+const COVER_BASE = '/covers';
+export type CoverRatio = '16x9' | '4x5';
 
 export const EVENT_COVER_TYPES = [
     'NIGHT_RUN',
@@ -25,12 +34,14 @@ export const EVENT_COVER_TYPES = [
 export type EventCoverType = (typeof EVENT_COVER_TYPES)[number];
 
 /** type → [variant1, variant2] public URLs. */
+const cover = (type: string, n: 1 | 2, ratio: CoverRatio = '16x9') => `${COVER_BASE}/${type}-${n}-${ratio}.webp`;
+
 export const DEFAULT_EVENT_COVERS: Record<EventCoverType, [string, string]> = {
-    NIGHT_RUN: [`${BUCKET_BASE}/NIGHT_RUN-1.webp`, `${BUCKET_BASE}/NIGHT_RUN-2.webp`],
-    CAR_MEET: [`${BUCKET_BASE}/CAR_MEET-1.webp`, `${BUCKET_BASE}/CAR_MEET-2.webp`],
-    TRACK_DAY: [`${BUCKET_BASE}/TRACK_DAY-1.webp`, `${BUCKET_BASE}/TRACK_DAY-2.webp`],
-    CRUISE: [`${BUCKET_BASE}/CRUISE-1.webp`, `${BUCKET_BASE}/CRUISE-2.webp`],
-    SHOW: [`${BUCKET_BASE}/SHOW-1.webp`, `${BUCKET_BASE}/SHOW-2.webp`],
+    NIGHT_RUN: [cover('NIGHT_RUN', 1), cover('NIGHT_RUN', 2)],
+    CAR_MEET: [cover('CAR_MEET', 1), cover('CAR_MEET', 2)],
+    TRACK_DAY: [cover('TRACK_DAY', 1), cover('TRACK_DAY', 2)],
+    CRUISE: [cover('CRUISE', 1), cover('CRUISE', 2)],
+    SHOW: [cover('SHOW', 1), cover('SHOW', 2)],
 };
 
 /** Human labels for the picker UI. */
@@ -93,13 +104,18 @@ export function allCovers(): { type: EventCoverType; label: string; variant: num
     return out;
 }
 
-/** Resolve the cover to display: pinned URL if present, else deterministic default. */
+/**
+ * Resolve the cover to display: pinned URL if present, else deterministic
+ * default. `ratio` picks the 4:5 variant of a DEFAULT cover for phone cards; a
+ * pinned URL is returned as-is (we cannot re-crop someone's own photo).
+ */
 export function resolveCover(
     heroImageUrl: string | null | undefined,
     type: string | null | undefined,
     seed: string | null | undefined,
+    ratio: CoverRatio = '16x9',
 ): string {
-    return heroImageUrl && heroImageUrl.trim().length > 0
-        ? heroImageUrl
-        : defaultCoverFor(type, seed);
+    if (heroImageUrl && heroImageUrl.trim().length > 0) return heroImageUrl;
+    const url = defaultCoverFor(type, seed);
+    return ratio === '4x5' ? url.replace('-16x9.webp', '-4x5.webp') : url;
 }

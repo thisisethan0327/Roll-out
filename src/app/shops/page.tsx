@@ -234,7 +234,7 @@ function ShopDirectoryCard({ shop: s }: { shop: ShopCard }) {
     const initial = (s.name ?? s.slug ?? '?').trim().charAt(0).toUpperCase();
 
     const inner = (
-        <article className="shop-card feature-card corner-wrap">
+        <article className="shop-card feature-card corner-wrap rv">
             <span className="corner-bottom-left" />
             <span className="corner-bottom-right" />
 

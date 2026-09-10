@@ -30,7 +30,7 @@ export default async function GaragePage() {
 
             <Panel title="VEHICLES">
                 {vehicles.length === 0 ? (
-                    <EmptyRow text="NO VEHICLES YET — ADD ONE IN THE APP" />
+                    <EmptyRow text="NO VEHICLES YET — ADD ONE IN THE APP" art="no-garage-cars" />
                 ) : (
                     <div
                         style={{

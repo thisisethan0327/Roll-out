@@ -293,7 +293,7 @@ export async function generateMetadata({
             ? `Book vehicle wraps, PPF, ceramic coating with ${displayName} via Rollout.`
             : `${displayName} on Rollout — builds, meets, and shop drops.`;
 
-    const images = profile.avatar_url ? [profile.avatar_url] : ['/images/og-rollout.jpg'];
+    const images = profile.avatar_url ? [profile.avatar_url] : ['/images/og-card.jpg'];
 
     return {
         title,
@@ -332,9 +332,14 @@ export default async function HandlePage({
     const ratingAvg = Number(reviewStats?.rating_avg ?? 0);
 
     const primary = shop?.primary_color || 'var(--gold)';
-    const heroBg = profile.banner_url
-        ? `linear-gradient(180deg, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.85) 100%), url(${profile.banner_url}) center/cover no-repeat`
-        : `linear-gradient(135deg, ${primary} 0%, #000000 100%)`;
+    // No banner: one of three copper studio plates (garage / detailing /
+    // workshop), chosen by the profile id so it is stable per page and varies
+    // across shops. Was a flat primary-to-black gradient.
+    const DEFAULT_BANNERS = ['/images/banner-garage-21x9.webp', '/images/banner-detailing-21x9.webp', '/images/banner-workshop-21x9.webp'];
+    const bannerSeed = Array.from(profile.id).reduce((h, ch) => (h * 31 + ch.charCodeAt(0)) >>> 0, 7);
+    const bannerUrl = profile.banner_url || DEFAULT_BANNERS[bannerSeed % DEFAULT_BANNERS.length];
+    const heroBg = `linear-gradient(180deg, rgba(8,8,10,0.55) 0%, rgba(8,8,10,0.85) 100%), url(${bannerUrl}) center/cover no-repeat`;
+    void primary;
 
     return (
         <>

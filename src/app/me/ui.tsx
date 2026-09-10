@@ -104,8 +104,22 @@ export function Panel({
     );
 }
 
-export function EmptyRow({ text }: { text: string }) {
-    return <div className="admin-empty">{text}</div>;
+/**
+ * An empty state. `art` picks one of the six Copper Map illustrations shipped
+ * under /public/empty (SVG, currentColor-free, ~1 KB each); without it the row
+ * is the plain label as before.
+ */
+export type EmptyArt = 'no-meets' | 'no-orders' | 'no-garage-cars' | 'no-shops-nearby' | 'code-sent' | 'verified-host';
+
+export function EmptyRow({ text, art }: { text: string; art?: EmptyArt }) {
+    if (!art) return <div className="admin-empty">{text}</div>;
+    return (
+        <div className="admin-empty empty-art">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={`/empty/illo-${art}.svg`} alt="" width={160} height={120} loading="lazy" />
+            <div>{text}</div>
+        </div>
+    );
 }
 
 export function KV({ label, value, mono }: { label: string; value: React.ReactNode; mono?: boolean }) {

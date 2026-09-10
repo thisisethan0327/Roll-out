@@ -223,7 +223,7 @@ function MeetTile({ m, past = false }: { m: MeetCard; past?: boolean }) {
     return (
         <Link href={`/event/${m.id}`} style={{ textDecoration: 'none', display: 'block' }}>
             <article
-                className="feature-card corner-wrap"
+                className="feature-card corner-wrap rv"
                 style={{ padding: 0, overflow: 'hidden', height: '100%', display: 'flex', flexDirection: 'column' }}
             >
                 <span className="corner-bottom-left" />

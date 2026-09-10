@@ -29,7 +29,7 @@ export default async function OrdersPage() {
 
             {orders.length === 0 ? (
                 <div>
-                    <EmptyRow text={exchanged ? 'NO ORDERS YET' : 'STORE ACCOUNT NOT CONNECTED'} />
+                    <EmptyRow art="no-orders" text={exchanged ? 'NO ORDERS YET' : 'STORE ACCOUNT NOT CONNECTED'} />
                     {note && (
                         <div className="text-dim" style={{ fontSize: 12, marginTop: 8 }}>
                             {note}
