@@ -1279,6 +1279,7 @@ h4 { font-size: 16px; letter-spacing: var(--track-wide); }
   color: var(--text-3);
 }
 .admin-form-input {
+  min-width: 0; /* a grid item may shrink below the input's intrinsic width (the ZIP field ran past the card) */
   background: var(--bg-2);
   border: 1px solid var(--line-mid);
   color: var(--text);
@@ -1460,6 +1461,7 @@ h4 { font-size: 16px; letter-spacing: var(--track-wide); }
   color: var(--text-3);
 }
 .admin-login-input {
+  min-width: 0; /* a grid item may shrink below the input's intrinsic width (the ZIP field ran past the card) */
   background: var(--bg-2);
   border: 1px solid var(--line-mid);
   color: var(--text);
@@ -2665,6 +2667,7 @@ h4 { font-size: 16px; letter-spacing: var(--track-wide); }
   .admin-login-input,
   select.admin-form-input,
   textarea.admin-form-input {
+  min-width: 0; /* a grid item may shrink below the input's intrinsic width (the ZIP field ran past the card) */
     font-size: 16px;
   }
 }
