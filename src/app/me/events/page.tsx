@@ -3,6 +3,7 @@
  * Gated by requireVerifiedHost (non-hosts bounce to /me host onboarding).
  */
 import Link from 'next/link';
+import { formatEventTime } from '@/lib/event-time';
 import { requireVerifiedHost } from '@/lib/me-guard';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { resolveCover } from '@/lib/event-covers';
@@ -21,14 +22,7 @@ const TYPE_LABEL: Record<string, string> = {
 function fmt(iso: string | null): string {
     if (!iso) return 'TBA';
     try {
-        return new Date(iso).toLocaleString('en-US', {
-            weekday: 'short',
-            month: 'short',
-            day: 'numeric',
-            hour: 'numeric',
-            minute: '2-digit',
-            timeZone: 'America/Los_Angeles',
-        }) + ' PT';
+        return formatEventTime(iso);
     } catch {
         return 'TBA';
     }

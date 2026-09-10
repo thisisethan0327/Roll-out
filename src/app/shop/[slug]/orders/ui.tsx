@@ -1,3 +1,4 @@
+import { formatDateTime } from '@/lib/event-time';
 /**
  * Server-safe presentational helpers for the Orders section (shared by the list
  * and detail views). Pure rendering — no client hooks. Matches the shop
@@ -25,14 +26,7 @@ export function fmtDate(iso: string | null | undefined): string {
     // Pacific this should become a client-rendered local time instead — a
     // pinned zone is right for one region and merely consistent everywhere
     // else.
-    return d.toLocaleString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-        hour: 'numeric',
-        minute: '2-digit',
-        timeZone: 'America/Los_Angeles',
-    });
+    return formatDateTime(d);
 }
 
 /** Mask the middle of an email: joh•••@domain.com → keeps first 3 + domain. */

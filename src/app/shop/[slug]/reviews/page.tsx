@@ -1,4 +1,5 @@
 import { requireShopMemberBySlug } from '@/lib/auth-guard';
+import { formatDateOnly } from '@/lib/event-time';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { ReviewReply } from './ReviewReply';
 
@@ -38,12 +39,7 @@ function stars(rating: number): string {
 function reviewDate(iso: string | null): string {
     if (!iso) return '';
     try {
-        return new Date(iso).toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric',
-            timeZone: 'America/Los_Angeles',
-        });
+        return formatDateOnly(iso);
     } catch {
         return '';
     }

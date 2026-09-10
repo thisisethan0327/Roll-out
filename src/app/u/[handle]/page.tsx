@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { formatEventStamp } from '@/lib/event-time';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
@@ -127,12 +128,7 @@ function formatEventDate(iso: string | null | undefined): string {
     if (!iso) return '';
     try {
         const d = new Date(iso);
-        const dow = d.toLocaleDateString('en-US', { weekday: 'short', timeZone: 'America/Los_Angeles' }).toUpperCase();
-        const mon = d.toLocaleDateString('en-US', { month: 'short', timeZone: 'America/Los_Angeles' }).toUpperCase();
-        const day = d.toLocaleDateString('en-US', { day: 'numeric', timeZone: 'America/Los_Angeles' });
-        let hour = d.toLocaleTimeString('en-US', { hour: 'numeric', hour12: true, timeZone: 'America/Los_Angeles' });
-        hour = hour.replace(/\s/g, '').toUpperCase();
-        return `${dow} ${mon} ${day} · ${hour} PT`;
+        return formatEventStamp(d);
     } catch {
         return '';
     }
@@ -331,6 +327,22 @@ export default async function HandlePage({
     const ratingCount = reviewStats?.rating_count ?? 0;
     const ratingAvg = Number(reviewStats?.rating_avg ?? 0);
 
+    // LocalBusiness structured data for shop pages (name, page, city, rating).
+    const shopLd = isShop
+        ? {
+              '@context': 'https://schema.org',
+              '@type': 'LocalBusiness',
+              name: displayName,
+              url: `https://rollout.club/u/${cleanHandle}`,
+              ...(profile.avatar_url ? { image: profile.avatar_url } : {}),
+              ...(profile.bio ? { description: profile.bio } : {}),
+              ...(profile.location ? { address: { '@type': 'PostalAddress', addressLocality: profile.location } } : {}),
+              ...(ratingCount > 0
+                  ? { aggregateRating: { '@type': 'AggregateRating', ratingValue: ratingAvg.toFixed(1), reviewCount: ratingCount, bestRating: 5 } }
+                  : {}),
+          }
+        : null;
+
     const primary = shop?.primary_color || 'var(--gold)';
     const heroBg = profile.banner_url
         ? `linear-gradient(180deg, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.85) 100%), url(${profile.banner_url}) center/cover no-repeat`
@@ -338,6 +350,7 @@ export default async function HandlePage({
 
     return (
         <>
+            {shopLd ? <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(shopLd) }} /> : null}
             {/* ── HERO ─────────────────────────────────────────────────── */}
             {/* on-dark: the banner is a photo under a black scrim, or a gradient
                 that ends in #000 — dark in BOTH themes by construction, so its

@@ -1,7 +1,34 @@
 import Link from 'next/link';
+import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { AppStoreBadges } from '@/components/AppStoreBadges';
 import Image from 'next/image';
 
-export default function HomePage() {
+/**
+ * The stat band shows REAL platform counts (it was hardcoded 14 / 0042 with a
+ * "PNW 06" sector cell). Read with the admin client, revalidated every five
+ * minutes; a failed read shows a dash rather than a made-up number.
+ */
+export const revalidate = 300;
+
+async function platformCounts(): Promise<{ meets: string; shops: string; members: string }> {
+    const dash = { meets: '—', shops: '—', members: '—' };
+    try {
+        const supabase = getSupabaseAdmin();
+        const nowIso = new Date().toISOString();
+        const [meets, shops, members] = await Promise.all([
+            supabase.from('event_cards').select('id', { count: 'exact', head: true }).eq('visibility', 'public').gte('start_at', nowIso),
+            supabase.from('shops').select('id', { count: 'exact', head: true }),
+            supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('kind', 'user'),
+        ]);
+        const pad = (n: number | null) => (n == null ? '—' : String(n).padStart(2, '0'));
+        return { meets: pad(meets.count), shops: pad(shops.count), members: pad(members.count) };
+    } catch {
+        return dash;
+    }
+}
+
+export default async function HomePage() {
+    const counts = await platformCounts();
     return (
         <>
             {/* ── HERO ─────────────────────────────────────────────────────── */}
@@ -14,19 +41,24 @@ export default function HomePage() {
                 mode is unchanged by construction (--bg-0 was #000 there). */}
             <section className="on-dark" style={{ position: 'relative', overflow: 'hidden' }}>
                 <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
+                    {/* Polish plate A (Ethan's pick): wet rooftop at night, city bokeh
+                        below, gold rim light, the car on the right third and a
+                        near-black left third for the wordmark — so the old 0.55
+                        brightness filter goes and the scrim only guards the copy. */}
                     <Image
-                        src="/images/hero-harbor-run.jpg"
-                        alt="Night port — Skyline GT-R parked under sodium lights"
+                        src="/images/polish/hero-night-21x9.webp"
+                        alt="Wet rooftop at night, city lights below, a car under gold rim light"
                         fill
                         priority
-                        style={{ objectFit: 'cover', objectPosition: 'center', filter: 'brightness(0.55) contrast(1.05)' }}
+                        sizes="100vw"
+                        style={{ objectFit: 'cover', objectPosition: '62% 50%' }}
                     />
                     <div
                         style={{
                             position: 'absolute',
                             inset: 0,
                             background:
-                                'linear-gradient(180deg, rgba(0,0,0,0.4) 0%, transparent 35%, #000000 100%), linear-gradient(90deg, rgba(0,0,0,0.5) 0%, transparent 60%)',
+                                'linear-gradient(180deg, rgba(0,0,0,0.28) 0%, transparent 30%, #000000 100%), linear-gradient(90deg, rgba(0,0,0,0.62) 0%, rgba(0,0,0,0.3) 38%, transparent 58%)',
                         }}
                     />
                 </div>
@@ -40,7 +72,7 @@ export default function HomePage() {
                         </div>
                         <div className="mono-row" style={{ flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
                             <span className="accent">NIGHT_RUN ／ 0042</span>
-                            <span style={{ fontSize: 9 }}>BUILD 2026.05 · PNW</span>
+                            <span style={{ fontSize: 9 }}>BUILD 2026.09</span>
                         </div>
                     </div>
 
@@ -73,15 +105,16 @@ export default function HomePage() {
 
                     {/* CTAs */}
                     <div id="download" style={{ display: 'flex', gap: 12, marginTop: 56, flexWrap: 'wrap' }}>
-                        <a className="btn btn-lg" href="https://apps.apple.com/" rel="noopener" target="_blank">
-                            Download iOS
-                        </a>
-                        <a className="btn btn-lg btn-ghost" href="https://play.google.com/" rel="noopener" target="_blank">
-                            Get Android
-                        </a>
+                        <Link className="btn btn-lg" href="/meets">
+                            Find a meet
+                        </Link>
+                        <Link className="btn btn-lg btn-ghost" href="/signup">
+                            Create your account
+                        </Link>
+                        <AppStoreBadges />
                     </div>
                     <p className="text-muted" style={{ fontSize: 11, marginTop: 14, fontFamily: 'var(--font-display)', letterSpacing: 'var(--track-wider)' }}>
-                        TESTFLIGHT INVITES OPEN · GOOGLE PLAY BETA SOON
+                        WORKS IN YOUR BROWSER · NOTHING TO INSTALL
                     </p>
                 </div>
             </section>
@@ -106,9 +139,9 @@ export default function HomePage() {
                         <FeatureCard glyph="◉" title="Convoy RSVPs" body="Know who's actually rolling. Live spot count, capacity gates, lat-long meet points." />
                         <FeatureCard glyph="◐" title="Build log" body="Track mods, miles, milestones. Up to 5 photos per build. Tagged feed for parts you ran." />
                         <FeatureCard glyph="✎" title="Shop direct line" body="Talk to the shop that wrapped your car, not their public DMs. Quotes, status, follow-ups." />
-                        <FeatureCard glyph="◈" title="Garage that belongs to you" body="Your photos, your specs, your history. Delete anytime — fully — from inside the app." />
-                        <FeatureCard glyph="✦" title="Sector-aware" body="Meets, posts, and shops surfaced for your sector first. Opt out and go global." />
-                        <FeatureCard glyph="∿" title="Private by default" body="Posts default to followers-only. Ghost mode hides location. Block + report on every surface." />
+                        <FeatureCard glyph="◈" title="Garage that belongs to you" body="Your photos, your specs, your history. Delete anytime — fully." />
+                        <FeatureCard glyph="✦" title="Host your own meets" body="Verified hosts set the capacity, run the waitlist, sell packages and invite by email." />
+                        <FeatureCard glyph="∿" title="The store" body="Film, parts and merch from the shops on Rollout. One checkout, shipped by the shop that sells it." />
                     </div>
                 </div>
             </section>
@@ -118,16 +151,16 @@ export default function HomePage() {
                 <div className="container">
                     <div className="stat-band" style={{ border: 'none' }}>
                         <div className="stat-cell">
-                            <div className="lbl">Sector</div>
-                            <div className="val accent">PNW 06</div>
-                        </div>
-                        <div className="stat-cell">
                             <div className="lbl">Live meets</div>
-                            <div className="val">14</div>
+                            <div className="val accent" data-count={counts.meets}>{counts.meets}</div>
                         </div>
                         <div className="stat-cell">
-                            <div className="lbl">Build count</div>
-                            <div className="val">0042</div>
+                            <div className="lbl">Shops listed</div>
+                            <div className="val" data-count={counts.shops}>{counts.shops}</div>
+                        </div>
+                        <div className="stat-cell">
+                            <div className="lbl">Members</div>
+                            <div className="val" data-count={counts.members}>{counts.members}</div>
                         </div>
                     </div>
                 </div>
@@ -153,11 +186,16 @@ export default function HomePage() {
                     <div className="eyebrow eyebrow-gold mb-4">／ JOIN THE RUN</div>
                     <h2 style={{ marginBottom: 16 }}>YOUR GARAGE.<br />YOUR PEOPLE.<br />YOUR PLATFORM.</h2>
                     <p className="text-dim" style={{ maxWidth: 540, margin: '0 auto 32px', fontSize: 16 }}>
-                        We&apos;re onboarding shops + builders by invite during beta. Drop your email and we&apos;ll send a TestFlight link when your sector opens.
+                        Free for drivers. Create your account in your browser, RSVP to a meet this weekend, or list your shop and take bookings online.
                     </p>
-                    <a className="btn btn-lg" href="mailto:beta@rollout.club?subject=TestFlight%20invite%20request">
-                        Request TestFlight
-                    </a>
+                    <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
+                        <Link className="btn btn-lg" href="/signup">
+                            Create your account
+                        </Link>
+                        <Link className="btn btn-lg btn-ghost" href="/shop/apply">
+                            List your shop
+                        </Link>
+                    </div>
                 </div>
             </section>
 

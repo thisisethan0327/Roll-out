@@ -14,6 +14,7 @@
  * 1024px in CSS as a belt-and-braces guard.
  */
 import Link from 'next/link';
+import { formatEventTime } from '@/lib/event-time';
 import { useEffect, useRef, useState } from 'react';
 import { resolveCover } from '@/lib/event-covers';
 import { MeetsMap, type MapEvent, type MapShop } from './map/MeetsMap';
@@ -37,14 +38,7 @@ function formatDate(iso: string | null): string {
     if (!iso) return 'TBA';
     try {
         return (
-            new Date(iso).toLocaleString('en-US', {
-                weekday: 'short',
-                month: 'short',
-                day: 'numeric',
-                hour: 'numeric',
-                minute: '2-digit',
-                timeZone: 'America/Los_Angeles',
-            }) + ' PT'
+            formatEventTime(iso)
         );
     } catch {
         return 'TBA';

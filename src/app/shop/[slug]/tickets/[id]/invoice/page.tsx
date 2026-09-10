@@ -6,6 +6,7 @@
  * (Save as PDF). Chrome (sidebar, buttons) is hidden in @media print.
  */
 import Link from 'next/link';
+import { formatDateOnly } from '@/lib/event-time';
 import { notFound } from 'next/navigation';
 import { requireShopMemberBySlug } from '@/lib/auth-guard';
 import { getSupabaseAdmin, getSupabasePublicAdmin } from '@/lib/supabase/admin';
@@ -22,12 +23,7 @@ function money(n: number | null | undefined): string {
 function invoiceDate(iso: string | null): string {
     const d = iso ? new Date(iso) : new Date();
     try {
-        return d.toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-            timeZone: 'America/Los_Angeles',
-        });
+        return formatDateOnly(d, 'long');
     } catch {
         return '';
     }

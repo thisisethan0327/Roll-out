@@ -18,6 +18,7 @@ import type {
     InviteStyleMeta,
     RenderedInvite,
 } from './types';
+import { DEFAULT_EVENT_TIME_ZONE } from '@/lib/event-time';
 
 export const INVITE_STYLES: InviteStyleMeta[] = [
     { key: 'hud', name: 'HUD / Street', blurb: 'Dark, gold, monospace — the Rollout look.' },
@@ -49,7 +50,7 @@ function safeColor(c: string | null | undefined, fallback: string): string {
 }
 
 /** "Fri · Aug 15, 2026 · 8:00 PM PDT" — always with an explicit timezone. */
-export function formatEventDateTime(iso: string, timeZone = 'America/Los_Angeles'): string {
+export function formatEventDateTime(iso: string, timeZone: string = DEFAULT_EVENT_TIME_ZONE): string {
     const d = new Date(iso);
     if (Number.isNaN(d.getTime())) return 'Date TBA';
     const parts = new Intl.DateTimeFormat('en-US', {

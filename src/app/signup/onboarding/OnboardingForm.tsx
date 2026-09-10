@@ -151,19 +151,7 @@ export function OnboardingForm({
                 className="admin-login-btn"
             >
                 ENTER ROLLOUT ›
-            </PendingButton>
-            <p
-                style={{
-                    fontSize: 10,
-                    color: 'var(--text-3)',
-                    fontFamily: 'var(--font-display)',
-                    letterSpacing: 'var(--track-wide)',
-                    textAlign: 'center',
-                    margin: '4px 0 0',
-                }}
-            >
-                ONE ACCOUNT FOR ROLLOUT · NEFERSTOCK · EMWRAPS
-            </p>
+            </PendingButton>
         </form>
     );
 }

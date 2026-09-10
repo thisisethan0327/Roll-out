@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { AppStoreBadges } from '@/components/AppStoreBadges';
 import Link from 'next/link';
 
 export const metadata: Metadata = {
@@ -47,15 +48,13 @@ export default function SignInOnPhonePage() {
                         DON&apos;T HAVE ROLLOUT YET?
                     </div>
                     <p style={{ marginBottom: 18 }}>
-                        Grab the app and your sign-in code will work the moment you reach the email screen.
+                        Rollout works in your browser — the same 6-digit code signs you in on any device.
                     </p>
                     <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                        <a className="btn" href="https://apps.apple.com/" rel="noopener" target="_blank">
-                            Download iOS
-                        </a>
-                        <a className="btn btn-ghost" href="https://play.google.com/" rel="noopener" target="_blank">
-                            Get Android
-                        </a>
+                        <Link className="btn" href="/login">
+                            Sign in here
+                        </Link>
+                        <AppStoreBadges size="md" />
                     </div>
                 </div>
 

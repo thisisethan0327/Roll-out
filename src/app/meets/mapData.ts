@@ -10,7 +10,7 @@
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import type { MapEvent, MapShop } from './map/MeetsMap';
 
-const EVENT_TYPES = ['NIGHT_RUN', 'CAR_MEET', 'TRACK_DAY', 'CRUISE', 'SHOW'] as const;
+const EVENT_TYPES = ['CAR_MEET', 'CRUISE', 'SHOW', 'TRACK_DAY', 'NIGHT_RUN'] as const;
 export type EventType = (typeof EVENT_TYPES)[number];
 
 export function isValidType(t: string | undefined): t is EventType {

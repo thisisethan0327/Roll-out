@@ -138,42 +138,86 @@ export function browserTimeZone(): string {
 export const EVENT_TZ_FIELD = 'start_at_tz';
 
 /**
- * The zone event times are DISPLAYED in on server-rendered surfaces.
+ * ZONES. An event is rendered in ITS OWN zone with that zone's label ("PDT",
+ * "EDT"), never in a platform-wide one — Rollout is not a Seattle product. The
+ * zone comes from the event row (`time_zone`, written by the composer from the
+ * hidden start_at_tz field); rows from before the column existed fall back to
+ * DEFAULT_EVENT_TIME_ZONE, which is where every meet was hosted until then.
  *
- * A server component has no browser zone to ask, and the public event page,
- * /me/events and the .ics filename convention all already print Pacific with
- * a " PT" label — every event so far is a Seattle meet. This is the one place
- * that assumption lives; when events get a stored zone of their own, change it
- * here. Until then a surface that prints a time with NO label (the console
- * header and /me both did, in UTC) is wrong in a way nobody can see.
+ * PLATFORM_TIME_ZONE is for timestamps that belong to no event and no viewer
+ * a server component can see (order dates in a shop console, a review's date,
+ * an invoice): the tenants' zone until rollout.shops carries an IANA column.
  */
-export const DISPLAY_TIME_ZONE = 'America/Los_Angeles';
-export const DISPLAY_TIME_ZONE_LABEL = 'PT';
+export const DEFAULT_EVENT_TIME_ZONE = 'America/Los_Angeles';
+export const PLATFORM_TIME_ZONE = 'America/Los_Angeles';
 
-/** "Sat, Sep 12, 11:00 AM PT" — the public event page's shape. */
-export function formatEventTime(iso: string | Date | null | undefined): string {
-    if (!iso) return 'Date TBA';
+/** "PDT" / "PST" / "EDT" — the zone's short name AT that instant. */
+export function zoneLabel(timeZone: string, at: Date): string {
+    try {
+        const part = new Intl.DateTimeFormat('en-US', { timeZone, timeZoneName: 'short' })
+            .formatToParts(at)
+            .find((x) => x.type === 'timeZoneName');
+        return part?.value ?? timeZone;
+    } catch {
+        return timeZone;
+    }
+}
+
+function asDate(iso: string | Date | null | undefined): Date | null {
+    if (!iso) return null;
     const d = iso instanceof Date ? iso : new Date(iso);
-    if (Number.isNaN(d.getTime())) return 'Date TBA';
+    return Number.isNaN(d.getTime()) ? null : d;
+}
+
+function zoneOf(tz: string | null | undefined, fallback: string): string {
+    return tz && isValidTimeZone(tz) ? tz : fallback;
+}
+
+/** "Sat, Sep 12, 11:00 AM PDT" — the public event shape, in the event's zone. */
+export function formatEventTime(iso: string | Date | null | undefined, timeZone?: string | null): string {
+    const d = asDate(iso);
+    if (!d) return 'Date TBA';
+    const tz = zoneOf(timeZone, DEFAULT_EVENT_TIME_ZONE);
     return (
-        d.toLocaleString('en-US', {
-            weekday: 'short',
-            month: 'short',
-            day: 'numeric',
-            hour: 'numeric',
-            minute: '2-digit',
-            timeZone: DISPLAY_TIME_ZONE,
-        }) + ' ' + DISPLAY_TIME_ZONE_LABEL
+        d.toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: tz }) +
+        ' ' + zoneLabel(tz, d)
     );
 }
 
-/** "2:47 PM PT" — a time of day, for a hold that expires today. */
-export function formatClock(iso: string | Date | null | undefined): string {
-    if (!iso) return '';
-    const d = iso instanceof Date ? iso : new Date(iso);
-    if (Number.isNaN(d.getTime())) return '';
+/** "2:47 PM PDT" — a time of day, for a hold that expires today. */
+export function formatClock(iso: string | Date | null | undefined, timeZone?: string | null): string {
+    const d = asDate(iso);
+    if (!d) return '';
+    const tz = zoneOf(timeZone, DEFAULT_EVENT_TIME_ZONE);
+    return d.toLocaleString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: tz }) + ' ' + zoneLabel(tz, d);
+}
+
+/** "SAT SEP 12 · 11AM PDT" — the profile page's stamp register. */
+export function formatEventStamp(iso: string | Date | null | undefined, timeZone?: string | null): string {
+    const d = asDate(iso);
+    if (!d) return '';
+    const tz = zoneOf(timeZone, DEFAULT_EVENT_TIME_ZONE);
+    const dow = d.toLocaleDateString('en-US', { weekday: 'short', timeZone: tz }).toUpperCase();
+    const mon = d.toLocaleDateString('en-US', { month: 'short', timeZone: tz }).toUpperCase();
+    const day = d.toLocaleDateString('en-US', { day: 'numeric', timeZone: tz });
+    const hour = d.toLocaleTimeString('en-US', { hour: 'numeric', hour12: true, timeZone: tz }).replace(/\s/g, '').toUpperCase();
+    return `${dow} ${mon} ${day} · ${hour} ${zoneLabel(tz, d)}`;
+}
+
+/** "Sep 12, 2026, 11:00 AM PDT" — a dated timestamp (orders, /me), platform zone. */
+export function formatDateTime(iso: string | Date | null | undefined): string {
+    const d = asDate(iso);
+    if (!d) return '—';
     return (
-        d.toLocaleString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: DISPLAY_TIME_ZONE }) +
-        ' ' + DISPLAY_TIME_ZONE_LABEL
+        d.toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: PLATFORM_TIME_ZONE }) +
+        ' ' + zoneLabel(PLATFORM_TIME_ZONE, d)
     );
 }
+
+/** "Sep 12, 2026" (short) or "September 12, 2026" (long) — a date, platform zone. */
+export function formatDateOnly(iso: string | Date | null | undefined, month: 'short' | 'long' = 'short'): string {
+    const d = asDate(iso);
+    if (!d) return '';
+    return d.toLocaleDateString('en-US', { year: 'numeric', month, day: 'numeric', timeZone: PLATFORM_TIME_ZONE });
+}
+

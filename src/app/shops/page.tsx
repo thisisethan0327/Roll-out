@@ -116,7 +116,9 @@ export const metadata: Metadata = {
     title: 'Car Wrap, PPF & Detail Shops',
     description:
         'Find vehicle wrap, paint protection film, ceramic coating, and tint shops near you on Rollout — with ratings, locations, and online booking.',
+    alternates: { canonical: '/shops' },
     openGraph: {
+        url: '/shops',
         title: 'Car Wrap, PPF & Detail Shops · Rollout',
         description:
             'Find vehicle wrap, PPF, ceramic, and tint shops near you on Rollout — ratings, locations, and booking.',
@@ -130,7 +132,7 @@ export default async function ShopsDirectoryPage() {
     return (
         <>
             {/* HERO */}
-            <section className="hero-band">
+            <section className="hero-band" data-band="shops">
                 <div className="container" style={{ paddingTop: 64, paddingBottom: 48 }}>
                     <div className="eyebrow eyebrow-gold mb-4">／ SHOPS</div>
                     <h1 style={{ fontSize: 'clamp(32px, 5vw, 56px)', letterSpacing: 1, margin: 0 }}>
@@ -138,14 +140,12 @@ export default async function ShopsDirectoryPage() {
                     </h1>
                     <p style={{ color: 'var(--text-2)', fontSize: 16, marginTop: 14, maxWidth: 620 }}>
                         Vehicle wraps, paint protection film, ceramic coating, tint, and more —
-                        find a shop near you, check the reviews, and book in the app.
+                        find a shop near you, check the reviews, and book online.
                     </p>
                     {shops.length > 0 && (
                         <div className="mono-row" style={{ marginTop: 22 }}>
                             <span className="accent">{shops.length}</span>
                             <span>{shops.length === 1 ? 'SHOP LISTED' : 'SHOPS LISTED'}</span>
-                            <span className="sep" />
-                            <span>SEATTLE · PNW</span>
                         </div>
                     )}
                 </div>

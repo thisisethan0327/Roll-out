@@ -15,8 +15,8 @@ const BUCKET_BASE =
     'https://sbbxsqvoxrzcgtslspbo.supabase.co/storage/v1/object/public/event-covers';
 
 export const EVENT_COVER_TYPES = [
-    'NIGHT_RUN',
     'CAR_MEET',
+    'NIGHT_RUN',
     'TRACK_DAY',
     'CRUISE',
     'SHOW',

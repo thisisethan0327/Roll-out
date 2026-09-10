@@ -56,7 +56,7 @@ export function SiteFooter() {
                 </div>
 
                 <div className="mono-row" style={{ marginTop: 24, justifyContent: 'space-between', display: 'flex', width: '100%', fontSize: 10 }}>
-                    <span>ROLLOUT · UNITY USA LLC · SEATTLE WA</span>
+                    <span>ROLLOUT · UNITY USA LLC</span>
                     <span>© {year} UNITY USA LLC</span>
                 </div>
             </div>

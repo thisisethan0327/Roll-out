@@ -42,7 +42,7 @@ export function EventCoverPicker({
     initialUrl?: string | null;
     disabled?: boolean;
 }) {
-    const startType: EventCoverType = isEventCoverType(initialType) ? initialType : 'NIGHT_RUN';
+    const startType: EventCoverType = isEventCoverType(initialType) ? initialType : 'CAR_MEET';
     const [type, setType] = useState<EventCoverType>(startType);
 
     const pinned = (initialUrl ?? '').trim();

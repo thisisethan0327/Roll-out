@@ -19,7 +19,9 @@ export const metadata: Metadata = {
     title: 'Store — shop the brands on Rollout',
     description:
         'Shop apparel, wheels, and gear from the brands on Rollout — NeferStock, divine DESIGN WHEELS, and more. One checkout, shipped from the shop.',
+    alternates: { canonical: '/store' },
     openGraph: {
+        url: '/store',
         title: 'Store · Rollout',
         description: 'Shop the brands on Rollout — one checkout, shipped from the shop.',
         type: 'website',
@@ -45,7 +47,7 @@ export default async function StoreIndexPage({
     return (
         <>
             {/* HERO */}
-            <section className="hero-band">
+            <section className="hero-band" data-band="store">
                 <div className="container" style={{ paddingTop: 56, paddingBottom: 40 }}>
                     <div className="eyebrow eyebrow-gold mb-4">／ STORE</div>
                     <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>

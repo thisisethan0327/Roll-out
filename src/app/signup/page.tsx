@@ -69,20 +69,7 @@ export default async function ConsumerSignupPage({
                     startAtCode={startAtCode}
                     notice={notice}
                 />
-
-                <p
-                    style={{
-                        marginTop: 20,
-                        fontSize: 11,
-                        lineHeight: 1.6,
-                        color: 'var(--text-3)',
-                        fontFamily: 'var(--font-display)',
-                        letterSpacing: 'var(--track-wide)',
-                        textAlign: 'center',
-                    }}
-                >
-                    ONE ACCOUNT FOR ROLLOUT · NEFERSTOCK · EMWRAPS
-                </p>
+
 
                 <p
                     style={{

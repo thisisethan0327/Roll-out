@@ -9,6 +9,7 @@
  * JSON-LD Event structured data keeps meets indexable + rich-previewable.
  */
 import type { Metadata } from 'next';
+import { formatEventTime } from '@/lib/event-time';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
@@ -286,14 +287,7 @@ function formatDate(iso: string | null | undefined): string {
     if (!iso) return 'Date TBA';
     try {
         return (
-            new Date(iso).toLocaleString('en-US', {
-                weekday: 'short',
-                month: 'short',
-                day: 'numeric',
-                hour: 'numeric',
-                minute: '2-digit',
-                timeZone: 'America/Los_Angeles',
-            }) + ' PT'
+            formatEventTime(iso)
         );
     } catch {
         return 'Date TBA';

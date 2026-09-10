@@ -6,6 +6,7 @@
  * index the meets index page and individual /event/[id] pages.
  */
 import type { Metadata } from 'next';
+import { formatEventTime } from '@/lib/event-time';
 import Link from 'next/link';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { resolveCover } from '@/lib/event-covers';
@@ -15,7 +16,7 @@ import { MeetsSplit } from './MeetsSplit';
 // Read at request time: the map loader uses the runtime-only service-role key.
 export const dynamic = 'force-dynamic';
 
-const EVENT_TYPES = ['NIGHT_RUN', 'CAR_MEET', 'TRACK_DAY', 'CRUISE', 'SHOW'] as const;
+const EVENT_TYPES = ['CAR_MEET', 'CRUISE', 'SHOW', 'TRACK_DAY', 'NIGHT_RUN'] as const;
 type EventType = (typeof EVENT_TYPES)[number];
 
 const TYPE_LABEL: Record<EventType, string> = {
@@ -85,14 +86,7 @@ async function loadMeets(
 function formatDate(iso: string | null): string {
     if (!iso) return 'TBA';
     try {
-        return new Date(iso).toLocaleString('en-US', {
-            weekday: 'short',
-            month: 'short',
-            day: 'numeric',
-            hour: 'numeric',
-            minute: '2-digit',
-            timeZone: 'America/Los_Angeles',
-        }) + ' PT';
+        return formatEventTime(iso);
     } catch {
         return 'TBA';
     }
@@ -118,7 +112,9 @@ export async function generateMetadata({
     return {
         title,
         description: desc,
-        openGraph: { title, description: desc, type: 'website' },
+        // One canonical for every filter: the filtered lists are views of it.
+        alternates: { canonical: '/meets' },
+        openGraph: { title, description: desc, type: 'website', url: '/meets' },
         twitter: { card: 'summary_large_image', title, description: desc },
     };
 }
@@ -136,7 +132,7 @@ export default async function MeetsDirectoryPage({
     return (
         <>
             {/* HERO */}
-            <section className="hero-band">
+            <section className="hero-band" data-band="meets">
                 <div className="container" style={{ paddingTop: 64, paddingBottom: 48 }}>
                     <div className="eyebrow eyebrow-gold mb-4">／ MEETS</div>
                     <h1 style={{ fontSize: 'clamp(32px, 5vw, 56px)', letterSpacing: 1, margin: 0 }}>

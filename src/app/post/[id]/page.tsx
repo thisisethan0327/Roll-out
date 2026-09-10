@@ -9,6 +9,7 @@
  * "unavailable" shell). Engagement itself lives in the app.
  */
 import type { Metadata } from 'next';
+import { formatDateOnly } from '@/lib/event-time';
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
@@ -157,12 +158,7 @@ function initials(name: string | null | undefined, handle: string | null | undef
 function fmtDate(iso: string | null | undefined): string {
     if (!iso) return '';
     try {
-        return new Date(iso).toLocaleDateString('en-US', {
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric',
-            timeZone: 'America/Los_Angeles',
-        });
+        return formatDateOnly(iso);
     } catch {
         return '';
     }

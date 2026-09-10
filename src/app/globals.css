@@ -290,11 +290,51 @@ h4 { font-size: 16px; letter-spacing: var(--track-wide); }
    that its ink is pinned here rather than inherited, so it cannot follow the
    page to dark-on-dark. Anything placed inside it is light by default.
    ------------------------------------------------------------------------- */
+/* The band heads of /meets /shops /store: a wide dark photo plate under a
+   gold light leak on the left (where the copy sits), the copy pinned to light
+   ink, a 1px gold hairline below. One plate per page via data-band. The
+   gradients come first so the leak tints the plate rather than covering it. */
 .hero-band {
-  background: linear-gradient(135deg, var(--gold) 0%, var(--hero-band-end) 62%);
-  border-bottom: 1px solid var(--line);
+  position: relative;
+  background-color: #050505;
+  background-image:
+    radial-gradient(ellipse 60% 120% at 0% 55%, rgba(255, 183, 51, 0.30), rgba(255, 183, 51, 0) 60%),
+    linear-gradient(90deg, rgba(5, 5, 5, 0.86) 0%, rgba(5, 5, 5, 0.66) 40%, rgba(5, 5, 5, 0.18) 72%, rgba(5, 5, 5, 0.42) 100%);
+  background-size: cover, cover;
+  background-position: left center, center;
+  border-bottom: 1px solid var(--gold);
   color: var(--hero-band-ink);
 }
+.hero-band[data-band='meets'] {
+  background-image:
+    radial-gradient(ellipse 60% 120% at 0% 55%, rgba(255, 183, 51, 0.30), rgba(255, 183, 51, 0) 60%),
+    linear-gradient(90deg, rgba(5, 5, 5, 0.86) 0%, rgba(5, 5, 5, 0.66) 40%, rgba(5, 5, 5, 0.18) 72%, rgba(5, 5, 5, 0.42) 100%),
+    url('/images/polish/band-meets.webp');
+  background-size: cover, cover, cover;
+  background-position: left center, center, center right;
+}
+.hero-band[data-band='shops'] {
+  background-image:
+    radial-gradient(ellipse 60% 120% at 0% 55%, rgba(255, 183, 51, 0.30), rgba(255, 183, 51, 0) 60%),
+    linear-gradient(90deg, rgba(5, 5, 5, 0.86) 0%, rgba(5, 5, 5, 0.66) 40%, rgba(5, 5, 5, 0.18) 72%, rgba(5, 5, 5, 0.42) 100%),
+    url('/images/polish/band-shops.webp');
+  background-size: cover, cover, cover;
+  background-position: left center, center, center right;
+}
+.hero-band[data-band='store'] {
+  background-image:
+    radial-gradient(ellipse 60% 120% at 0% 55%, rgba(255, 183, 51, 0.30), rgba(255, 183, 51, 0) 60%),
+    linear-gradient(90deg, rgba(5, 5, 5, 0.86) 0%, rgba(5, 5, 5, 0.66) 40%, rgba(5, 5, 5, 0.18) 72%, rgba(5, 5, 5, 0.42) 100%),
+    url('/images/polish/band-store.webp');
+  background-size: cover, cover, cover;
+  background-position: left center, center, center right;
+}
+@media (max-width: 700px) {
+  .hero-band[data-band] { background-position: left center, center, 70% center; }
+}
+/* Chips and mono rows on the band read on the photo, not the theme. */
+.hero-band .mono-row,
+.hero-band .chip-nav { color: var(--hero-band-ink-2); }
 .hero-band h1,
 .hero-band h2,
 .hero-band h3 {

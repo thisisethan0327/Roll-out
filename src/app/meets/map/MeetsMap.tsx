@@ -28,6 +28,7 @@
  * a ref so React 18/19 strict-mode double-invoke doesn't create two maps.
  */
 import { useEffect, useRef, useState } from 'react';
+import { formatEventTime } from '@/lib/event-time';
 
 export type MapEvent = {
     id: string;
@@ -188,13 +189,7 @@ function fmtDate(iso: string | null): string {
     if (!iso) return 'TBA';
     try {
         return (
-            new Date(iso).toLocaleString('en-US', {
-                month: 'short',
-                day: 'numeric',
-                hour: 'numeric',
-                minute: '2-digit',
-                timeZone: 'America/Los_Angeles',
-            }) + ' PT'
+            formatEventTime(iso)
         );
     } catch {
         return 'TBA';
@@ -449,8 +444,10 @@ export function MeetsMap({
                 } else if (bounds.length > 1) {
                     map.fitBounds(bounds, { padding: [48, 48], maxZoom: 14 });
                 } else {
-                    // No pins at all — default to Seattle (platform home).
-                    map.setView([47.5783, -122.334], 11);
+                    // No pins at all: the national view, then the visitor's own area
+                    // if the browser will say. Never a city the visitor may not be in.
+                    map.setView([39.5, -98.35], 4);
+                    map.locate({ setView: true, maxZoom: 10 });
                 }
 
                 // Re-enable wheel zoom only after a click so the page still scrolls.

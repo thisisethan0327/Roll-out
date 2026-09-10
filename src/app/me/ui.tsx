@@ -4,6 +4,7 @@
  * the shared CSS custom properties.
  */
 import Link from 'next/link';
+import { formatDateTime } from '@/lib/event-time';
 
 export function fmtDate(iso: string | null | undefined): string {
     if (!iso) return '—';
@@ -11,14 +12,7 @@ export function fmtDate(iso: string | null | undefined): string {
     if (Number.isNaN(d.getTime())) return '—';
     // No timeZone here meant the SERVER's zone (UTC on Coolify) with no label:
     // "3:00 PM" on /me for an event the event page called 8:00 AM PT (R12).
-    return d.toLocaleString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-        hour: 'numeric',
-        minute: '2-digit',
-        timeZone: 'America/Los_Angeles',
-    }) + ' PT';
+    return formatDateTime(d);
 }
 
 export function fmtDay(iso: string | null | undefined): string {
