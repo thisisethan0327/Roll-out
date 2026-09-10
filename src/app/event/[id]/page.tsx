@@ -39,6 +39,8 @@ type EventRow = {
     sector_code: string | null;
     hero_image_url: string | null;
     start_at: string | null;
+    /** IANA zone the event is scheduled in (migration 058); rendered with its label. */
+    time_zone: string | null;
     capacity: number | null;
     attending_count: number | null;
     visibility: string | null;
@@ -69,7 +71,7 @@ async function loadEvent(
         .from('events')
         .select(
             `id, shop_id, host_id, code, type, title, description, location_name, location_detail,
-             lat, lng, sector_code, hero_image_url, start_at, capacity, attending_count,
+             lat, lng, sector_code, hero_image_url, start_at, time_zone, capacity, attending_count,
              visibility, is_official, cancelled_at, tags, rsvp_mode,
              host:profiles!events_host_id_fkey(handle, display_name, is_verified),
              shop:shops!events_shop_id_fkey(slug)`,
@@ -286,11 +288,11 @@ async function loadCoHostChips(eventId: string): Promise<HostChip[]> {
     }));
 }
 
-function formatDate(iso: string | null | undefined): string {
+function formatDate(iso: string | null, timeZone?: string | null | undefined): string {
     if (!iso) return 'Date TBA';
     try {
         return (
-            formatEventTime(iso)
+            formatEventTime(iso, timeZone)
         );
     } catch {
         return 'Date TBA';
@@ -358,7 +360,7 @@ export async function generateMetadata({
     const socialTitle = `${title} · Rollout`;
     const desc = ev.description
         ? truncate(ev.description, 160)
-        : `${ev.type ?? 'Meet'} at ${ev.location_name ?? 'TBA'} — ${formatDate(ev.start_at)}. RSVP on Rollout.`;
+        : `${ev.type ?? 'Meet'} at ${ev.location_name ?? 'TBA'} — ${formatDate(ev.start_at, ev.time_zone)}. RSVP on Rollout.`;
     const images = [resolveCover(ev.hero_image_url, ev.type, ev.id)];
 
     return {
@@ -566,7 +568,7 @@ export default async function PublicEventPage({
                     </h1>
 
                     <div className="mono-row" style={{ color: 'var(--text-2)', fontSize: 13 }}>
-                        <span style={{ color: 'var(--text)' }}>{formatDate(ev.start_at)}</span>
+                        <span style={{ color: 'var(--text)' }}>{formatDate(ev.start_at, ev.time_zone)}</span>
                         <span className="sep" />
                         <span>{ev.location_name ?? 'Location TBA'}</span>
                         {hostName ? (

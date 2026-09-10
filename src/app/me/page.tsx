@@ -16,11 +16,11 @@ import { HostPanel } from './HostPanel';
 
 export const dynamic = 'force-dynamic';
 
-export default async function MeOverview({ searchParams }: { searchParams: Promise<{ note?: string }> }) {
+export default async function MeOverview({ searchParams }: { searchParams: Promise<{ note?: string; host?: string }> }) {
     const profile = await requireConsumer('/me');
     // ?note=address — onboarding saved the profile but the store could not take
     // the shipping address (best-effort by design): say so once, here.
-    const { note } = await searchParams;
+    const { note, host } = await searchParams;
     const [tickets, appts, rsvps] = await Promise.all([
         loadMyTickets(),
         loadMyAppointments(profile.profileId),
@@ -32,6 +32,15 @@ export default async function MeOverview({ searchParams }: { searchParams: Promi
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
+            {host === 'not_verified' ? (
+                <div className="admin-login-error" role="status" style={{ borderColor: 'var(--gold)', background: 'rgba(255, 183, 51, 0.08)', color: 'var(--text)' }}>
+                    Hosting a meet needs a verified host account. Ask for host access below — a Rollout admin reviews it, then My events opens up.
+                </div>
+            ) : host === 'pending' ? (
+                <div className="admin-login-error" role="status" style={{ borderColor: 'var(--gold)', background: 'rgba(255, 183, 51, 0.08)', color: 'var(--text)' }}>
+                    Your host request is being reviewed. You&apos;ll be able to create meets once it&apos;s approved.
+                </div>
+            ) : null}
             {note === 'address' ? (
                 <div className="admin-login-error" role="status">
                     We couldn&apos;t save your shipping address just now — you can add it at checkout.

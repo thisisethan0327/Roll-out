@@ -52,7 +52,7 @@ export default async function EventCheckoutPage({
     const admin = getSupabaseAdmin();
     const { data: ev } = await admin
         .from('events')
-        .select('id, title, visibility')
+        .select('id, title, visibility, time_zone')
         .eq('id', id)
         .maybeSingle();
     if (!ev || (ev as any).visibility !== 'public') notFound();
@@ -111,7 +111,7 @@ export default async function EventCheckoutPage({
     // The hold's expiry is known to the page; it was never shown. A member
     // paying against a 15-minute clock they cannot see is the R12 complaint.
     const hold = await getRsvpSnapshot(id);
-    const holdUntil = hold.state === 'held' && hold.holdExpiresAt ? formatClock(hold.holdExpiresAt) : null;
+    const holdUntil = hold.state === 'held' && hold.holdExpiresAt ? formatClock(hold.holdExpiresAt, (ev as { time_zone?: string | null }).time_zone) : null;
 
     return (
         <section className="section" style={{ padding: '40px 0 72px' }}>

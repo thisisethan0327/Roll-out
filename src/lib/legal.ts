@@ -127,7 +127,7 @@ export const LEGAL: Record<'terms' | 'privacy' | 'guidelines', LegalDoc> = {
             {
                 heading: '5. Your rights',
                 paragraphs: [
-                    'Access: request a copy of your data via Settings → Privacy → Download Your Data.',
+                    'Access: email support@rollout.club to request a copy of your data.',
                     'Deletion: delete your account in-app via Settings → Delete Account. Deletion is permanent.',
                     'Correction: edit your profile at any time in Settings.',
                     'California (CCPA) and EU (GDPR) residents have additional rights including the right to opt out of any sale of personal information (we do not sell). Email privacy@rollout.club to exercise these.',
