@@ -66,10 +66,14 @@ export function ProductCard({
                             }}
                         />
                     ) : null}
+                    {/* The store ground exists ONLY when the product has no photo; a real
+                        thumbnail always wins (slice 2 painted it on every paused card,
+                        covering the tees and decals — Ethan, on /store). */}
+                    {!product.thumbnail ? (
+                        <div className="on-dark" data-ground={ground} style={{ position: 'absolute', inset: 0 }} aria-hidden />
+                    ) : null}
                     {paused ? (
                         <div
-                            className="on-dark"
-                            data-ground={ground}
                             style={{
                                 position: 'absolute',
                                 inset: 0,
