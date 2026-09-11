@@ -31,6 +31,8 @@ export interface InviteEvent {
     typeLabel: string;
     /** ISO timestamp (rollout.events.start_at). */
     startAtISO: string;
+    /** IANA zone the event is scheduled in (events.time_zone); the email renders in it. */
+    timeZone?: string | null;
     locationName: string;
     locationDetail: string | null;
     code: string | null;

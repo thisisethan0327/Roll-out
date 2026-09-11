@@ -64,6 +64,7 @@ type EventCard = {
     code: string | null;
     title: string | null;
     start_at: string | null;
+    time_zone: string | null;
     location_name: string | null;
     type: string | null;
     hero_image_url: string | null;
@@ -128,11 +129,11 @@ function reviewAge(iso: string | null | undefined): string {
     return `${Math.floor(d / 30)}MO AGO`;
 }
 
-function formatEventDate(iso: string | null | undefined): string {
+function formatEventDate(iso: string | null | undefined, tz?: string | null): string {
     if (!iso) return '';
     try {
         const d = new Date(iso);
-        return formatEventStamp(d);
+        return formatEventStamp(d, tz);
     } catch {
         return '';
     }
@@ -176,7 +177,7 @@ async function loadHandle(rawHandle: string) {
             .limit(10),
         supabase
             .from('event_cards')
-            .select('id, code, title, start_at, location_name, type, hero_image_url')
+            .select('id, code, title, start_at, time_zone, location_name, type, hero_image_url')
             .eq('host_id', p.id)
             .gt('start_at', nowIso)
             .order('start_at', { ascending: true })
@@ -755,7 +756,7 @@ export default async function HandlePage({
                                                     <div className="mono-row" style={{ fontSize: 10 }}>
                                                         <span className="accent">{ev.code || 'EVENT'}</span>
                                                         <span className="sep" />
-                                                        <span>{formatEventDate(ev.start_at)}</span>
+                                                        <span>{formatEventDate(ev.start_at, ev.time_zone)}</span>
                                                     </div>
                                                     <h3 style={{ fontSize: 17, margin: 0, color: 'var(--text)', letterSpacing: 0.8 }}>
                                                         {(ev.title || 'Untitled event').toUpperCase()}

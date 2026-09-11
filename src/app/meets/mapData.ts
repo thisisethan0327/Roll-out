@@ -26,7 +26,7 @@ export async function loadMapData(
     let eventsQ = supabase
         .from('event_cards')
         .select(
-            'id, code, type, title, location_name, start_at, lat, lng, attending_count, host_handle, is_official',
+            'id, code, type, title, location_name, start_at, time_zone, lat, lng, attending_count, host_handle, is_official',
         )
         .eq('visibility', 'public')
         .gte('start_at', nowIso)

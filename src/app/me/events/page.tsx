@@ -20,10 +20,10 @@ const TYPE_LABEL: Record<string, string> = {
     SHOW: 'Show',
 };
 
-function fmt(iso: string | null): string {
+function fmt(iso: string | null, tz?: string | null): string {
     if (!iso) return 'TBA';
     try {
-        return formatEventTime(iso);
+        return formatEventTime(iso, tz);
     } catch {
         return 'TBA';
     }
@@ -34,7 +34,7 @@ export default async function MyEventsPage() {
     const admin = getSupabaseAdmin();
     const { data, error } = await admin
         .from('events')
-        .select('id, type, title, start_at, location_name, hero_image_url, visibility, cancelled_at, attending_count')
+        .select('id, type, title, start_at, time_zone, location_name, hero_image_url, visibility, cancelled_at, attending_count')
         .eq('host_id', profile.profileId)
         .is('shop_id', null)
         .order('start_at', { ascending: false });
@@ -87,7 +87,7 @@ export default async function MyEventsPage() {
                                     {e.cancelled_at ? (<><span className="sep" /><span style={{ color: 'var(--danger,#d33)' }}>CANCELLED</span></>) : null}
                                 </div>
                                 <div style={{ fontSize: 16, letterSpacing: 0.4, color: 'var(--text)' }}>{e.title}</div>
-                                <div className="text-dim" style={{ fontSize: 12 }}>{fmt(e.start_at)} · {e.location_name ?? 'TBA'}</div>
+                                <div className="text-dim" style={{ fontSize: 12 }}>{fmt(e.start_at, e.time_zone)} · {e.location_name ?? 'TBA'}</div>
                                 <div className="mono-row" style={{ fontSize: 10, marginTop: 4 }}>
                                     <span><span className="accent">●</span> {e.attending_count ?? 0} GOING</span>
                                 </div>

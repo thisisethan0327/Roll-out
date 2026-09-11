@@ -4,6 +4,7 @@
  * loaders.
  */
 import Link from 'next/link';
+import { formatEventTime } from '@/lib/event-time';
 import { requireConsumer } from '@/lib/me-guard';
 import {
     loadMyTickets,
@@ -166,7 +167,7 @@ export default async function MeOverview({ searchParams }: { searchParams: Promi
                                 </div>
                                 <div style={{ textAlign: 'right' }}>
                                     <div className="text-dim" style={{ fontSize: 11, fontFamily: 'var(--font-mono, monospace)' }}>
-                                        {fmtDate(r.start_at)}
+                                        {formatEventTime(r.start_at, r.time_zone)}
                                     </div>
                                     {r.status && <StatusPill status={r.status} />}
                                 </div>

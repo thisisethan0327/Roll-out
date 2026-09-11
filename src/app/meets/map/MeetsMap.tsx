@@ -37,6 +37,7 @@ export type MapEvent = {
     title: string;
     location_name: string | null;
     start_at: string | null;
+    time_zone: string | null;
     lat: number;
     lng: number;
     attending_count: number;
@@ -188,11 +189,11 @@ function esc(s: string | null | undefined): string {
     return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
-function fmtDate(iso: string | null): string {
+function fmtDate(iso: string | null, tz?: string | null): string {
     if (!iso) return 'TBA';
     try {
         return (
-            formatEventTime(iso)
+            formatEventTime(iso, tz)
         );
     } catch {
         return 'TBA';
@@ -205,7 +206,7 @@ function starStr(rating: number): string {
 }
 
 function buildEventPopup(e: MapEvent): string {
-    const meta = [fmtDate(e.start_at), e.location_name].filter(Boolean).map(esc).join(' · ');
+    const meta = [fmtDate(e.start_at, e.time_zone), e.location_name].filter(Boolean).map(esc).join(' · ');
     return `
         <div class="rl-pop rl-pop-event">
           <div class="rl-pop-kicker">

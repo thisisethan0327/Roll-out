@@ -28,17 +28,18 @@ export type SplitMeet = {
     sector_code: string | null;
     hero_image_url: string | null;
     start_at: string | null;
+    time_zone: string | null;
     attending_count: number | null;
     spots_left: number | null;
     is_official: boolean | null;
     host_handle: string | null;
 };
 
-function formatDate(iso: string | null): string {
+function formatDate(iso: string | null, tz?: string | null): string {
     if (!iso) return 'TBA';
     try {
         return (
-            formatEventTime(iso)
+            formatEventTime(iso, tz)
         );
     } catch {
         return 'TBA';
@@ -122,7 +123,7 @@ export function MeetsSplit({
                             </div>
                             <h3 className="meets-split-title">{(m.title ?? 'Untitled meet').toUpperCase()}</h3>
                             <div className="text-dim" style={{ fontSize: 12.5 }}>
-                                {formatDate(m.start_at)} · {m.location_name ?? 'TBA'}
+                                {formatDate(m.start_at, m.time_zone)} · {m.location_name ?? 'TBA'}
                             </div>
                             <div className="mono-row" style={{ fontSize: 10, marginTop: 'auto', paddingTop: 8 }}>
                                 <span><span className="accent">●</span> {m.attending_count ?? 0} GOING</span>

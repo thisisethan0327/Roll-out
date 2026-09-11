@@ -47,7 +47,7 @@ async function loadEvent(eventId: string) {
         .from('events')
         .select(
             `id, shop_id, host_id, code, type, title, description, location_name, location_detail,
-             lat, lng, sector_code, hero_image_url, start_at, capacity, attending_count,
+             lat, lng, sector_code, hero_image_url, start_at, time_zone, capacity, attending_count,
              visibility, tags, cancelled_at, is_official, rsvp_mode, created_at, updated_at`,
         )
         .eq('id', eventId)
@@ -226,7 +226,7 @@ export default async function EventDetailPage({
                     <div className="admin-page-title">{event.title}</div>
                     <div className="admin-page-sub">
                         {event.code} ·{' '}
-                        {formatEventTime(event.start_at)}
+                        {formatEventTime(event.start_at, event.time_zone)}
                     </div>
                 </div>
                 <Link
@@ -448,7 +448,7 @@ function ReadOnlyEventCard({ event, hostName }: { event: any; hostName: string }
         { label: 'HOSTED BY', value: hostName },
         {
             label: 'STARTS',
-            value: formatEventTime(event.start_at),
+            value: formatEventTime(event.start_at, event.time_zone),
         },
         {
             label: 'LOCATION',

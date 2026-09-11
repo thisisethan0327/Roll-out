@@ -39,6 +39,7 @@ type MeetCard = {
     sector_code: string | null;
     hero_image_url: string | null;
     start_at: string | null;
+    time_zone: string | null;
     attending_count: number | null;
     capacity: number | null;
     spots_left: number | null;
@@ -52,7 +53,7 @@ function isValidType(t: string | undefined): t is EventType {
 }
 
 const CARD_COLS =
-    'id, code, type, title, description, location_name, sector_code, hero_image_url, start_at, attending_count, capacity, spots_left, is_official, host_handle, host_name';
+    'id, code, type, title, description, location_name, sector_code, hero_image_url, start_at, attending_count, capacity, spots_left, is_official, host_handle, host_name, time_zone';
 
 async function loadMeets(
     type: EventType | null,
@@ -85,10 +86,10 @@ async function loadMeets(
     };
 }
 
-function formatDate(iso: string | null): string {
+function formatDate(iso: string | null, tz?: string | null): string {
     if (!iso) return 'TBA';
     try {
-        return formatEventTime(iso);
+        return formatEventTime(iso, tz);
     } catch {
         return 'TBA';
     }
@@ -271,7 +272,7 @@ function MeetTile({ m, past = false }: { m: MeetCard; past?: boolean }) {
                         {(m.title ?? 'Untitled meet').toUpperCase()}
                     </h3>
                     <div className="text-dim" style={{ fontSize: 13 }}>
-                        {formatDate(m.start_at)} · {m.location_name ?? 'TBA'}
+                        {formatDate(m.start_at, m.time_zone)} · {m.location_name ?? 'TBA'}
                     </div>
                     {m.description ? (
                         <p style={{ color: 'var(--text-2)', fontSize: 13, lineHeight: 1.5, margin: 0 }}>

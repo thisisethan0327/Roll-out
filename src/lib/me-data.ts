@@ -229,6 +229,7 @@ export type MyRsvp = {
     status: string | null;
     title: string | null;
     start_at: string | null;
+    time_zone: string | null;
     location_name: string | null;
     code: string | null;
     type: string | null;
@@ -249,7 +250,7 @@ export async function loadMyUpcomingRsvps(profileId: string): Promise<MyRsvp[]> 
     const nowIso = new Date().toISOString();
     const { data: events, error: eventsError } = await admin
         .from('events')
-        .select('id, title, start_at, location_name, code, type, hero_image_url, cancelled_at')
+        .select('id, title, start_at, time_zone, location_name, code, type, hero_image_url, cancelled_at')
         .in('id', eventIds)
         .is('cancelled_at', null)
         .gte('start_at', nowIso)
@@ -262,6 +263,7 @@ export async function loadMyUpcomingRsvps(profileId: string): Promise<MyRsvp[]> 
         status: statusById.get(e.id) ?? null,
         title: e.title,
         start_at: e.start_at,
+        time_zone: e.time_zone ?? null,
         location_name: e.location_name,
         code: e.code,
         type: e.type ?? null,

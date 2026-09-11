@@ -18,6 +18,7 @@ type Row = {
     title: string | null;
     type: string | null;
     start_at: string | null;
+    time_zone: string | null;
     location_name: string | null;
     location_detail: string | null;
     description: string | null;
@@ -37,7 +38,7 @@ async function loadBand(): Promise<{ featured: Row; others: Row[]; shops: { lat:
         const [events, shops] = await Promise.all([
             supabase
                 .from('event_cards')
-                .select('id, title, type, start_at, location_name, location_detail, description, lat, lng, attending_count, capacity, spots_left, host_name, host_handle')
+                .select('id, title, type, start_at, time_zone, location_name, location_detail, description, lat, lng, attending_count, capacity, spots_left, host_name, host_handle')
                 .eq('visibility', 'public')
                 .gte('start_at', nowIso)
                 .order('start_at', { ascending: true })
@@ -90,7 +91,7 @@ export async function NextRunBand() {
                 <div className="eyebrow eyebrow-gold mb-4">／ NEXT RUN</div>
                 <h2 style={{ margin: 0 }}>{(featured.title ?? 'NEXT MEET').toUpperCase()}</h2>
                 <p className="text-dim" style={{ marginTop: 10, fontSize: 15 }}>
-                    {formatEventTime(featured.start_at)}
+                    {formatEventTime(featured.start_at, featured.time_zone)}
                     {featured.location_name ? ` · ${featured.location_name}` : ''}
                     {dest ? ` → ${dest}` : ''}
                 </p>
@@ -157,7 +158,7 @@ export async function NextRunBand() {
                                 {featured.host_name ? <span>HOST · {featured.host_name.toUpperCase()}</span> : null}
                             </div>
                             <h4>{featured.title}</h4>
-                            <div className="pop-when">{formatEventTime(featured.start_at)}</div>
+                            <div className="pop-when">{formatEventTime(featured.start_at, featured.time_zone)}</div>
                             <div className="pop-where">
                                 {featured.location_name ?? 'Meet point TBA'}
                                 {dest ? ` → ${dest}` : ''}

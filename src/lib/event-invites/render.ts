@@ -151,7 +151,7 @@ function buildCtx(input: InviteRenderInput): Ctx {
         note: (input.personalNote || '').trim() || null,
         rsvpUrl: buildRsvpUrl(base, ev.id, input.token),
         icsUrl: buildIcsUrl(base, ev.id),
-        when: formatEventDateTime(ev.startAtISO),
+        when: formatEventDateTime(ev.startAtISO, ev.timeZone ?? undefined),
         where: where || 'Location TBA',
         accent,
         accent2,
@@ -337,7 +337,7 @@ export function renderCoHostInvite(input: CoHostInviteInput): RenderedInvite {
     const b = input.hostBranding;
     const ev = input.event;
     const accent = safeColor(b.primaryColor, '#e8a845');
-    const when = formatEventDateTime(ev.startAtISO);
+    const when = formatEventDateTime(ev.startAtISO, ev.timeZone ?? undefined);
     const where = [ev.locationName, ev.locationDetail].filter(Boolean).join(' · ') || 'Location TBA';
     const subject = `${b.fromName} invited ${input.coHostName} to co-host ${ev.title}`;
     const row = (label: string, value: string) =>

@@ -49,7 +49,7 @@ async function loadEventRow(eventId: string) {
     const { data } = await admin
         .from('events')
         .select(
-            'id, shop_id, host_id, code, type, title, description, location_name, location_detail, start_at, cancelled_at',
+            'id, shop_id, host_id, code, type, title, description, location_name, location_detail, start_at, time_zone, cancelled_at',
         )
         .eq('id', eventId)
         .maybeSingle();
@@ -62,6 +62,7 @@ function toInviteEvent(ev: any): InviteEvent {
         title: ev.title,
         typeLabel: TYPE_LABEL[ev.type] ?? String(ev.type ?? 'EVENT').replace(/_/g, ' '),
         startAtISO: ev.start_at,
+        timeZone: (ev as { time_zone?: string | null }).time_zone ?? null,
         locationName: ev.location_name ?? '',
         locationDetail: ev.location_detail ?? null,
         code: ev.code ?? null,
