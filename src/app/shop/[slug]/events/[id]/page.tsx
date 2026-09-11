@@ -8,6 +8,8 @@ import { EventEditForm } from './EventEditForm';
 import type { TierDraft } from '../TierRowsEditor';
 import { InviteSection } from './InviteSection';
 import { CoHostSection, type CoHostRow } from './CoHostSection';
+import QRCode from 'qrcode';
+import { VerificationSection, type VerificationView } from './VerificationSection';
 
 export const metadata = { title: 'Event Detail' };
 
@@ -48,7 +50,7 @@ async function loadEvent(eventId: string) {
         .select(
             `id, shop_id, host_id, code, type, title, description, location_name, location_detail,
              lat, lng, sector_code, hero_image_url, start_at, time_zone, capacity, attending_count,
-             visibility, tags, cancelled_at, is_official, rsvp_mode, verification_status, coin_enabled, created_at, updated_at`,
+             visibility, tags, cancelled_at, is_official, rsvp_mode, verification_status, coin_enabled, checkin_code, created_at, updated_at`,
         )
         .eq('id', eventId)
         .maybeSingle();
@@ -147,6 +149,43 @@ async function loadInvites(eventId: string, shopId: number, isHost: boolean) {
     return (data as any[]) ?? [];
 }
 
+/** Verification + door state for the host view (066/067 tables, service-role reads). */
+async function loadVerificationView(event: any, rsvps: any[]): Promise<VerificationView> {
+    const admin = getSupabaseAdmin();
+    const [verRes, coinRes, ciRes, awardRes] = await Promise.all([
+        admin.from('event_verifications').select('status, attestations, notes, created_at, decided_at').eq('event_id', event.id).order('created_at', { ascending: false }).limit(1).maybeSingle(),
+        admin.from('event_coins').select('cap, issued_count, finish, artwork_url').eq('event_id', event.id).maybeSingle(),
+        admin.from('event_checkins').select('profile_id, method, checked_in_at, arrived_at, profile:profiles!event_checkins_profile_id_fkey(handle, display_name)').eq('event_id', event.id).order('checked_in_at', { ascending: false }).limit(500),
+        admin.from('coin_awards').select('profile_id, serial').eq('event_id', event.id),
+    ]);
+    const ver = verRes.data as any;
+    const coin = coinRes.data as any;
+    const serialBy = new Map<string, number>();
+    for (const a of (awardRes.data as any[]) ?? []) serialBy.set(a.profile_id, a.serial);
+    const qrSvg = event.checkin_code ? await QRCode.toString(String(event.checkin_code), { type: 'svg', margin: 0, errorCorrectionLevel: 'M' }) : null;
+    return {
+        status: event.verification_status ?? 'none',
+        coinEnabled: !!event.coin_enabled,
+        requestedAt: ver?.created_at ?? null,
+        decidedAt: ver?.decided_at ?? null,
+        notes: ver?.notes ?? null,
+        attestations: (ver?.attestations ?? {}) as Record<string, unknown>,
+        checkinCode: event.checkin_code ?? null,
+        qrSvg,
+        coin: coin ? { cap: coin.cap, issued: coin.issued_count, finish: coin.finish, artworkUrl: coin.artwork_url ?? null } : null,
+        checkins: ((ciRes.data as any[]) ?? []).map((c) => ({
+            profileId: c.profile_id,
+            handle: c.profile?.handle ?? null,
+            displayName: c.profile?.display_name ?? null,
+            method: c.method,
+            at: c.checked_in_at,
+            serial: serialBy.get(c.profile_id) ?? null,
+            arrivedAt: c.arrived_at ?? null,
+        })),
+        going: rsvps.filter((r) => r.status === 'going').map((r) => ({ profileId: r.profile_id, handle: r.profile?.handle ?? null, displayName: r.profile?.display_name ?? null })),
+    };
+}
+
 export default async function EventDetailPage({
     params,
     searchParams,
@@ -188,6 +227,7 @@ export default async function EventDetailPage({
         .eq('id', event.shop_id)
         .maybeSingle();
     const hostDisplayName = (hostShop as any)?.from_name ?? (hostShop as any)?.name ?? 'Host';
+    const verification = isHost ? await loadVerificationView(event, rsvps) : null;
     const hostNames = computeHostNames(hostDisplayName, cohosts);
 
     const inviteEvent: InviteEvent = {
@@ -287,6 +327,11 @@ export default async function EventDetailPage({
                 />
             ) : (
                 <ReadOnlyEventCard event={event} hostName={hostDisplayName} />
+            )}
+
+            {/* ROLLOUT VERIFICATION + DOOR CHECK-IN (host only) */}
+            {isHost && verification && (
+                <VerificationSection eventId={event.id} shopId={shop.shopId} slug={slug} view={verification} />
             )}
 
             {/* CO-HOSTS */}

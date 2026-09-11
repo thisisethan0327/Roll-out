@@ -8,6 +8,7 @@
  */
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { VerificationRow, type VReq } from './VerificationRow';
+import { EventVerificationRow, type EventVReq } from './EventVerificationRow';
 
 export const metadata = { title: 'Verifications' };
 export const dynamic = 'force-dynamic';
@@ -57,6 +58,49 @@ async function loadQueue(): Promise<VReq[]> {
     }));
 }
 
+/** Event verifications (066): requested ones to decide, verified ones to revoke / enable coins. */
+async function loadEventQueue(): Promise<EventVReq[]> {
+    const admin = getSupabaseAdmin();
+    const { data, error } = await admin
+        .from('event_verifications')
+        .select('event_id, status, rules_version, attestations, notes, created_at, requested_by, event:events!event_verifications_event_id_fkey(title, code, type, start_at, capacity, host_id, cancelled_at)')
+        .in('status', ['requested', 'verified'])
+        .order('created_at', { ascending: true });
+    if (error) console.error('[admin/verifications] event queue load failed:', error.message);
+    const rows = ((data as any[]) ?? []).filter((r) => r.event && !r.event.cancelled_at);
+    if (rows.length === 0) return [];
+    const eventIds = rows.map((r) => r.event_id);
+    const profileIds = [...new Set(rows.flatMap((r) => [r.requested_by, r.event.host_id]).filter((x): x is string => !!x))];
+    const [profRes, coinRes, countRes] = await Promise.all([
+        admin.from('profiles').select('id, handle').in('id', profileIds),
+        admin.from('event_coins').select('event_id, cap, issued_count, finish, artwork_url').in('event_id', eventIds),
+        Promise.all(rows.map((r) => admin.rpc('host_completed_verified_count', { p_host: r.event.host_id, p_exclude: r.event_id }))),
+    ]);
+    const handle = new Map<string, string>();
+    for (const p of (profRes.data as any[]) ?? []) handle.set(p.id, p.handle);
+    const coinBy = new Map<string, any>();
+    for (const c of (coinRes.data as any[]) ?? []) coinBy.set(c.event_id, c);
+    return rows.map((r, i) => ({
+        eventId: r.event_id,
+        status: r.status,
+        title: r.event.title,
+        code: r.event.code ?? null,
+        type: r.event.type ?? null,
+        startAt: r.event.start_at ?? null,
+        capacity: r.event.capacity ?? null,
+        hostHandle: handle.get(r.event.host_id) ?? null,
+        hostCompletedVerified: Number(countRes[i]?.data ?? 0),
+        requestedBy: handle.get(r.requested_by) ?? null,
+        requestedAt: r.created_at,
+        rulesVersion: r.rules_version,
+        attestations: (r.attestations ?? {}) as Record<string, unknown>,
+        notes: r.notes ?? null,
+        coin: coinBy.has(r.event_id)
+            ? { cap: coinBy.get(r.event_id).cap, issued: coinBy.get(r.event_id).issued_count, finish: coinBy.get(r.event_id).finish, artworkUrl: coinBy.get(r.event_id).artwork_url ?? null }
+            : null,
+    }));
+}
+
 function Section({ title, reqs }: { title: string; reqs: VReq[] }) {
     return (
         <div style={{ marginBottom: 32 }}>
@@ -77,7 +121,9 @@ function Section({ title, reqs }: { title: string; reqs: VReq[] }) {
 }
 
 export default async function VerificationsPage() {
-    const all = await loadQueue();
+    const [all, events] = await Promise.all([loadQueue(), loadEventQueue()]);
+    const eventsPending = events.filter((e) => e.status === 'requested');
+    const eventsVerified = events.filter((e) => e.status === 'verified');
     const shop = all.filter((r) => r.kind === 'shop');
     const commerce = all.filter((r) => r.kind === 'commerce');
     const host = all.filter((r) => r.kind === 'host');
@@ -88,7 +134,7 @@ export default async function VerificationsPage() {
                 <div>
                     <div className="admin-page-title">VERIFICATIONS</div>
                     <div className="admin-page-sub">
-                        {all.length} OPEN · SHOP LISTING · COMMERCE KYC · HOST
+                        {all.length + eventsPending.length} OPEN · SHOP LISTING · COMMERCE KYC · HOST · EVENTS
                     </div>
                 </div>
             </div>
@@ -96,6 +142,26 @@ export default async function VerificationsPage() {
             <Section title="SHOP LISTING" reqs={shop} />
             <Section title="COMMERCE (SELL ON NEFERSTOCK)" reqs={commerce} />
             <Section title="INDIVIDUAL HOSTS" reqs={host} />
+            <div style={{ marginBottom: 32 }}>
+                <div className="admin-page-sub" style={{ marginBottom: 12 }}>EVENT VERIFICATIONS · {eventsPending.length} PENDING</div>
+                {eventsPending.length === 0 ? (
+                    <div className="admin-empty">NOTHING IN THIS QUEUE</div>
+                ) : (
+                    <div style={{ display: 'grid', gap: 14, gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))' }}>
+                        {eventsPending.map((e) => <EventVerificationRow key={e.eventId} req={e} />)}
+                    </div>
+                )}
+            </div>
+            <div style={{ marginBottom: 32 }}>
+                <div className="admin-page-sub" style={{ marginBottom: 12 }}>VERIFIED EVENTS · {eventsVerified.length} · REVOKE OR ENABLE THE COIN</div>
+                {eventsVerified.length === 0 ? (
+                    <div className="admin-empty">NO VERIFIED EVENTS YET</div>
+                ) : (
+                    <div style={{ display: 'grid', gap: 14, gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))' }}>
+                        {eventsVerified.map((e) => <EventVerificationRow key={e.eventId} req={e} />)}
+                    </div>
+                )}
+            </div>
         </>
     );
 }
