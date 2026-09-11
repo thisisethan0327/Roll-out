@@ -15,8 +15,8 @@ export type UserRowData = {
     kind: 'user' | 'shop_page';
     is_verified: boolean;
     location: string | null;
-    rep_tier: number;
-    rep_score: number;
+    level: number;
+    xp_total: number;
     created_at: string;
     isPlatformAdmin: boolean;
     isMeetCoordinator: boolean;
@@ -68,7 +68,7 @@ export function UserRow({
                 </div>
             </td>
             <td>
-                T{user.rep_tier} · {user.rep_score}
+                L{user.level} · {user.xp_total} XP
             </td>
             <td>{new Date(user.created_at).toISOString().slice(0, 10)}</td>
             <td style={{ textAlign: 'right' }}>

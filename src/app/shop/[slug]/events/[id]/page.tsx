@@ -48,7 +48,7 @@ async function loadEvent(eventId: string) {
         .select(
             `id, shop_id, host_id, code, type, title, description, location_name, location_detail,
              lat, lng, sector_code, hero_image_url, start_at, time_zone, capacity, attending_count,
-             visibility, tags, cancelled_at, is_official, rsvp_mode, created_at, updated_at`,
+             visibility, tags, cancelled_at, is_official, rsvp_mode, verification_status, coin_enabled, created_at, updated_at`,
         )
         .eq('id', eventId)
         .maybeSingle();
@@ -246,6 +246,9 @@ export default async function EventDetailPage({
                     {String(event.visibility).toUpperCase()}
                 </span>
                 {event.is_official && <span className="admin-pill gold">OFFICIAL</span>}
+                {event.verification_status === 'verified' && <span className="admin-pill neon">VERIFIED{event.coin_enabled ? ' · COIN' : ''}</span>}
+                {event.verification_status === 'requested' && <span className="admin-pill">VERIFICATION PENDING</span>}
+                {event.verification_status === 'revoked' && <span className="admin-pill warn">VERIFICATION REVOKED</span>}
                 {event.cancelled_at && <span className="admin-pill warn">CANCELLED</span>}
                 {!isHost && <span className="admin-pill gold">CO-HOST VIEW</span>}
             </div>

@@ -58,7 +58,7 @@ async function loadRolloutCustomer(profileId: string, shopId: number) {
         admin
             .from('profiles')
             .select(
-                'id, handle, display_name, avatar_url, location, sector_code, kind, created_at, is_verified, rep_tier, rep_score, auth_user_id',
+                'id, handle, display_name, avatar_url, location, sector_code, kind, created_at, is_verified, level, xp_total, auth_user_id',
             )
             .eq('id', profileId)
             .maybeSingle(),

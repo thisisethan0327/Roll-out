@@ -9,7 +9,7 @@ async function listUsers(query?: string) {
     let q = admin
         .from('profiles')
         .select(
-            'id, handle, display_name, kind, is_verified, location, rep_tier, rep_score, created_at, shop_id',
+            'id, handle, display_name, kind, is_verified, location, level, xp_total, created_at, shop_id',
         )
         .order('created_at', { ascending: false })
         .limit(200);
@@ -77,7 +77,7 @@ export default async function UsersPage({
                             <th>NAME</th>
                             <th>KIND</th>
                             <th>FLAGS</th>
-                            <th>REP</th>
+                            <th>LEVEL</th>
                             <th>JOINED</th>
                             <th style={{ textAlign: 'right' }}>ACTIONS</th>
                         </tr>
