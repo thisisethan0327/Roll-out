@@ -23,6 +23,9 @@ import { RsvpControls } from './RsvpControls';
 import { ShareBar } from './ShareBar';
 import { TiersSection, type TierView } from './TiersSection';
 import type { RsvpState } from './actions';
+import { parseRoutePlan, buildRoutePoints, buildGoogleMapsDirUrl } from '@/lib/route-plan';
+import { fetchDrivingPolyline, type LatLng } from './route-osrm';
+import RouteMapLoader from './RouteMapLoader';
 
 type EventRow = {
     id: string;
@@ -51,6 +54,13 @@ type EventRow = {
     rsvp_mode: string | null;
     host: { handle: string | null; display_name: string | null; is_verified: boolean | null } | null;
     shop: { slug: string | null } | null;
+    /** Host-planned itinerary (migration 20260921_076_event_route_plan.sql) —
+     * jsonb array of {seq, kind, name, lat, lng, eta_local?, dwell_min?, note?}
+     * or null. Parsed via route-plan.ts's parseRoutePlan, never read raw. */
+    route_plan: unknown;
+    destination_name: string | null;
+    destination_lat: number | null;
+    destination_lng: number | null;
 };
 
 type Attendee = {
@@ -73,6 +83,7 @@ async function loadEvent(
             `id, shop_id, host_id, code, type, title, description, location_name, location_detail,
              lat, lng, sector_code, hero_image_url, start_at, time_zone, capacity, attending_count,
              visibility, is_official, cancelled_at, tags, rsvp_mode,
+             route_plan, destination_name, destination_lat, destination_lng,
              host:profiles!events_host_id_fkey(handle, display_name, is_verified),
              shop:shops!events_shop_id_fkey(slug)`,
         )
@@ -387,10 +398,36 @@ export default async function PublicEventPage({
     // E2/E3: tiered/paid events swap the flat RSVP strip for the tier picker.
     // Every pre-E2 event is rsvp_mode='free' and renders exactly as before.
     const isTiered = ev.rsvp_mode === 'tiered' || ev.rsvp_mode === 'paid';
-    const [myRsvp, coHostChips, tiers] = await Promise.all([
+
+    // ROUTE PREVIEW: only a host-planned itinerary (route_plan non-empty)
+    // renders the section — a bare start+destination with no stops is just
+    // the existing LOCATION pin, not a "planned route" (rule: section is
+    // gated on route_plan being a non-empty array).
+    const routeStops = parseRoutePlan(ev.route_plan);
+    const hasRoutePlan = routeStops.length > 0;
+    const routePoints = hasRoutePlan
+        ? buildRoutePoints({
+              startLat: ev.lat,
+              startLng: ev.lng,
+              startName: ev.location_name,
+              stops: routeStops,
+              destLat: ev.destination_lat,
+              destLng: ev.destination_lng,
+              destName: ev.destination_name,
+          })
+        : [];
+    const routeGoogleMaps = hasRoutePlan ? buildGoogleMapsDirUrl(routePoints) : null;
+
+    const [myRsvp, coHostChips, tiers, routePolyline] = await Promise.all([
         loadMyRsvp(id),
         loadCoHostChips(id),
         isTiered ? loadTiers(id) : Promise.resolve([] as TierView[]),
+        // One server-side OSRM request per render (Data Cache dedupes it for
+        // an hour — see route-osrm.ts). Skipped entirely when there's no
+        // route plan to draw, or fewer than two points to route between.
+        hasRoutePlan && routePoints.length >= 2
+            ? fetchDrivingPolyline(routePoints.map((p) => [p.lat, p.lng] as LatLng))
+            : Promise.resolve(null),
     ]);
     const { isLoggedIn, state: myState, spotNo: mySpotNo, waitlistPosition: myWaitPos } = myRsvp;
     const rsvpReturnPath = inviteToken
@@ -801,7 +838,10 @@ export default async function PublicEventPage({
                         {ev.description ? (
                             <>
                                 <div className="eyebrow eyebrow-gold mb-4">／ BRIEF</div>
-                                <p className="text-dim" style={{ fontSize: 16, lineHeight: 1.7, marginBottom: 32 }}>{ev.description}</p>
+                                {/* whiteSpace: pre-line — hosts often write the itinerary as
+                                    plain-text line breaks in the description; without this the
+                                    browser collapsed them into one run-on paragraph. */}
+                                <p className="text-dim" style={{ fontSize: 16, lineHeight: 1.7, marginBottom: 32, whiteSpace: 'pre-line' }}>{ev.description}</p>
                             </>
                         ) : null}
 
@@ -893,6 +933,74 @@ export default async function PublicEventPage({
                     ) : null}
                 </div>
             </section>
+
+            {/* ROUTE — host-planned itinerary, only when route_plan carries stops */}
+            {hasRoutePlan ? (
+                <section className="section" style={{ padding: '48px 0', borderTop: '1px solid var(--line)' }}>
+                    <div className="container">
+                        <div className="eyebrow eyebrow-gold mb-4">／ ROUTE</div>
+                        <h2 style={{ margin: '0 0 8px' }}>PLANNED ITINERARY</h2>
+                        <p className="text-dim" style={{ fontSize: 14, margin: '0 0 18px' }}>
+                            {routeStops.length} planned stop{routeStops.length === 1 ? '' : 's'} from meet to
+                            {ev.destination_name ? ' destination' : ' finish'}.
+                        </p>
+
+                        <div className="route-grid">
+                            <div className="route-stage corner-wrap">
+                                <span className="corner-bottom-left" />
+                                <span className="corner-bottom-right" />
+                                <RouteMapLoader
+                                    points={routePoints}
+                                    polyline={routePolyline?.coords ?? routePoints.map((p) => [p.lat, p.lng] as [number, number])}
+                                />
+                            </div>
+
+                            <div className="route-itinerary">
+                                <div className="route-stop">
+                                    <span className="route-stop-eta">MEET</span>
+                                    <div style={{ minWidth: 0, flex: 1 }}>
+                                        <div className="route-stop-name">{ev.location_name ?? 'Start'}</div>
+                                        <div className="route-stop-dwell">{formatDate(ev.start_at, ev.time_zone)}</div>
+                                    </div>
+                                </div>
+                                {routeStops.map((s, i) => (
+                                    <div className="route-stop" key={`${s.seq}-${i}`}>
+                                        <span className="route-stop-eta">{s.etaLocal ?? `STOP ${i + 1}`}</span>
+                                        <div style={{ minWidth: 0, flex: 1 }}>
+                                            <div className="route-stop-name">{s.name}</div>
+                                            {s.dwellMin != null ? (
+                                                <div className="route-stop-dwell">· {s.dwellMin} min</div>
+                                            ) : null}
+                                        </div>
+                                    </div>
+                                ))}
+                                {routePoints.some((p) => p.kind === 'destination') ? (
+                                    <div className="route-stop">
+                                        <span className="route-stop-eta">FINISH</span>
+                                        <div style={{ minWidth: 0, flex: 1 }}>
+                                            <div className="route-stop-name">{ev.destination_name ?? 'Destination'}</div>
+                                        </div>
+                                    </div>
+                                ) : null}
+                            </div>
+                        </div>
+
+                        {routeGoogleMaps ? (
+                            <div style={{ marginTop: 16 }}>
+                                <a
+                                    className="text-link"
+                                    href={routeGoogleMaps.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    style={{ fontSize: 12, fontFamily: 'var(--font-display)', letterSpacing: 'var(--track-wider)', textDecoration: 'none', borderBottom: '1px solid var(--line-mid)', paddingBottom: 2 }}
+                                >
+                                    OPEN IN GOOGLE MAPS ›
+                                </a>
+                            </div>
+                        ) : null}
+                    </div>
+                </section>
+            ) : null}
         </>
     );
 }

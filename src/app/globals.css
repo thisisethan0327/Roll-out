@@ -502,6 +502,77 @@ h4 { font-size: 16px; letter-spacing: var(--track-wide); }
   .map-stage-loc { aspect-ratio: 560 / 364; }
 }
 
+/* ── ROUTE PREVIEW (event page, host-planned itinerary map) ──────────────
+   Map + itinerary list side by side on desktop, stacked under 768px (the
+   same breakpoint .container repaints at). The map stage reuses the
+   LOCATION crop's aspect ratio so the two surfaces read as one system. */
+.route-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 24px;
+  align-items: start;
+}
+@media (max-width: 768px) {
+  .route-grid { grid-template-columns: 1fr; }
+}
+.route-stage {
+  position: relative;
+  aspect-ratio: 1000 / 425;
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  overflow: hidden;
+}
+@media (max-width: 700px) {
+  .route-stage { aspect-ratio: 560 / 364; }
+}
+.route-itinerary {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.route-stop {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+.route-stop:last-child { border-bottom: none; }
+.route-stop-eta {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: var(--track-wider);
+  color: var(--gold);
+  white-space: nowrap;
+  min-width: 58px;
+}
+.route-stop-name { font-size: 13px; color: var(--text); line-height: 1.4; }
+.route-stop-dwell { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+
+/* MapLibre markers for the route preview — plain divs (no Leaflet marker
+   plumbing needed for four to a dozen static pins). */
+.rl-route-pin {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #ffb733;
+  color: #0c0c0c;
+  font-family: var(--font-display);
+  font-size: 10px;
+  font-weight: 700;
+  border: 2px solid #0c0c0c;
+  box-shadow: 0 0 0 3px rgba(255, 183, 51, 0.28);
+}
+.rl-route-pin-start,
+.rl-route-pin-destination {
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.22);
+}
+
 /* ── Motion (UI polish §7) ──────────────────────────────────────────────── */
 /* .rv → .in is the cheap reveal layer: RevealController adds .in once 12% of
    the element is on screen; stagger comes from nth-child. */
