@@ -403,6 +403,16 @@ export default async function PublicEventPage({
     // renders the section — a bare start+destination with no stops is just
     // the existing LOCATION pin, not a "planned route" (rule: section is
     // gated on route_plan being a non-empty array).
+    //
+    // parseRoutePlan already sorts by `seq` ascending — the field the data
+    // model calls authoritative for order (host-authored spacing like
+    // 10/20/30). `eta_local` is separate, host-typed free text and can read
+    // out of chronological order (a host's own estimate was off) without
+    // that being a sort bug: seq order is what both this itinerary list AND
+    // the map's numbered markers (buildRoutePoints, which independently
+    // re-sorts by seq too) render by. Both consumers read directly off this
+    // one sorted array — nothing downstream re-sorts by name/lat/eta/OSRM
+    // waypoint order.
     const routeStops = parseRoutePlan(ev.route_plan);
     const hasRoutePlan = routeStops.length > 0;
     const routePoints = hasRoutePlan

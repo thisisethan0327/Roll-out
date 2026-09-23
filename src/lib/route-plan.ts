@@ -72,7 +72,17 @@ export function buildRoutePoints(args: {
     if (args.startLat != null && args.startLng != null) {
         points.push({ kind: 'start', label: 'START', name: args.startName || 'Start', lat: args.startLat, lng: args.startLng });
     }
-    args.stops.forEach((s, i) => {
+    // Defensively re-sort by seq even though parseRoutePlan's caller already
+    // sorted `args.stops` — this is the ONE place that assigns the 1..N pin
+    // labels the map and the itinerary list both key off of, so a future
+    // caller that hands in an unsorted (or eta_local-sorted) array must not
+    // silently scramble the numbering. `eta_local` is host-typed free text
+    // and is NOT authoritative for order — `seq` is (see this file's header
+    // comment); a plan can legitimately have eta_local values that read
+    // out of chronological order (a host's estimate was off) while seq
+    // stays the correct planned sequence.
+    const orderedStops = [...args.stops].sort((a, b) => a.seq - b.seq);
+    orderedStops.forEach((s, i) => {
         points.push({ kind: 'stop', label: String(i + 1), name: s.name, lat: s.lat, lng: s.lng });
     });
     if (args.destLat != null && args.destLng != null) {

@@ -99,18 +99,38 @@ export default function RouteMap({
                 const map = new maplibregl.Map({
                     container: containerRef.current,
                     style: BASEMAP_STYLE,
-                    attributionControl: false,
+                    // Built-in control (not a manually addControl()'d one) so
+                    // its resize listener wires up through the control's own
+                    // onAdd lifecycle.
+                    attributionControl: { compact: true, customAttribution: BASEMAP_ATTRIBUTION },
                     scrollZoom: false,
                     dragRotate: false,
                     pitchWithRotate: false,
                 });
                 mapRef.current = map;
-                map.addControl(
-                    new maplibregl.AttributionControl({ compact: true, customAttribution: BASEMAP_ATTRIBUTION }),
-                    'bottom-right',
-                );
                 map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
                 map.touchZoomRotate?.disableRotation?.();
+
+                // `compact: true` alone is NOT "always collapsed to the (i)
+                // button" — maplibre-gl's compact AttributionControl renders
+                // as an open <details> on first paint (full customAttribution
+                // text visible) and only collapses on the map's FIRST drag
+                // (its own `_updateCompactMinimize`, bound to the 'drag'
+                // event). On a short route-preview map that pre-drag text
+                // block covered close to a third of the box on a 390px
+                // screen. Force the collapsed state immediately instead of
+                // waiting on a gesture the visitor may never make; the
+                // native <details>/<summary> element still opens normally on
+                // click after this, so the (i) button stays usable.
+                const collapseAttribution = () => {
+                    const el = map.getContainer().querySelector('.maplibregl-ctrl-attrib');
+                    if (el) {
+                        el.removeAttribute('open');
+                        el.classList.remove('maplibregl-compact-show');
+                    }
+                };
+                collapseAttribution();
+                map.on('load', collapseAttribution);
 
                 const paintRoute = () => {
                     if (cancelled || !mapRef.current) return;
