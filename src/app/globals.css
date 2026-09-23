@@ -572,6 +572,13 @@ h4 { font-size: 16px; letter-spacing: var(--track-wide); }
   background: #ffffff;
   box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.22);
 }
+/* Drop-pin marker for the host ROUTE editor's click-to-pick map
+   (RoutePickerMap.tsx) — distinct from the numbered itinerary pins above. */
+.rl-route-pin-pick {
+  background: var(--gold);
+  font-size: 13px;
+  box-shadow: 0 0 0 3px rgba(232, 168, 69, 0.32);
+}
 
 /* ── Motion (UI polish §7) ──────────────────────────────────────────────── */
 /* .rv → .in is the cheap reveal layer: RevealController adds .in once 12% of

@@ -9,6 +9,8 @@ import { useRouter } from 'next/navigation';
 import { updateHostEvent, cancelHostEvent } from '../actions';
 import { EventCoverPicker } from '@/app/shop/[slug]/events/EventCoverPicker';
 import { EventStartAtField } from '@/components/EventStartAtField';
+import { RoutePlanEditor } from './RoutePlanEditor';
+import { parseRoutePlan } from '@/lib/route-plan';
 
 const VISIBILITY: { value: string; label: string }[] = [
     { value: 'public', label: 'PUBLIC' },
@@ -23,6 +25,14 @@ export function HostEventEditForm({ event }: { event: any }) {
 
     // Start time and its zone travel together now — see EventStartAtField.
     const tagsString = Array.isArray(event.tags) ? event.tags.join(', ') : '';
+
+    // ROUTE (migration 076) — destination is controlled here so it submits
+    // with the rest of DETAILS via this form's own updateHostEvent action;
+    // the stop list lives entirely inside RoutePlanEditor (its own RPC save).
+    const [destinationName, setDestinationName] = useState(event.destination_name ?? '');
+    const [destinationLat, setDestinationLat] = useState<number | null>(event.destination_lat ?? null);
+    const [destinationLng, setDestinationLng] = useState<number | null>(event.destination_lng ?? null);
+    const initialStops = parseRoutePlan(event.route_plan);
 
     const onSubmit = async (formData: FormData) => {
         start(async () => {
@@ -110,6 +120,23 @@ export function HostEventEditForm({ event }: { event: any }) {
             <SectionHeading>TAGS</SectionHeading>
             <label className="admin-form-label">TAGS (COMMA-SEPARATED)</label>
             <input name="tags" className="admin-form-input" defaultValue={tagsString} disabled={pending} />
+
+            <RoutePlanEditor
+                eventId={event.id}
+                startLat={event.lat ?? null}
+                startLng={event.lng ?? null}
+                startName={event.location_name ?? null}
+                destinationName={destinationName}
+                destinationLat={destinationLat}
+                destinationLng={destinationLng}
+                onDestinationChange={(next) => {
+                    if (next.name !== undefined) setDestinationName(next.name);
+                    if (next.lat !== undefined) setDestinationLat(next.lat);
+                    if (next.lng !== undefined) setDestinationLng(next.lng);
+                }}
+                initialStops={initialStops}
+                disabled={pending}
+            />
 
             <div style={{ marginTop: 18, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 <button type="submit" className="admin-form-btn" disabled={pending}>

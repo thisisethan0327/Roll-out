@@ -62,6 +62,24 @@ export default async function NewHostEventPage() {
                     Add lat/lng to pin your meet on the Meets map. Look them up on Google Maps (right-click → coordinates).
                 </div>
 
+                <SectionHeading>／ ROUTE DESTINATION (OPTIONAL)</SectionHeading>
+                <label className="admin-form-label">DESTINATION NAME</label>
+                <input name="destination_name" className="admin-form-input" maxLength={80} placeholder="e.g. Chuckanut Manor Seafood & Grill" />
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                    <div>
+                        <label className="admin-form-label">DESTINATION LAT</label>
+                        <input type="number" step="any" name="destination_lat" className="admin-form-input" placeholder="47.7300" />
+                    </div>
+                    <div>
+                        <label className="admin-form-label">DESTINATION LNG</label>
+                        <input type="number" step="any" name="destination_lng" className="admin-form-input" placeholder="-122.4800" />
+                    </div>
+                </div>
+                <div className="admin-form-hint" style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 4 }}>
+                    You can also plan stops and pick coordinates on a map right after creating the event.
+                </div>
+
                 <SectionHeading>WHEN & CAPACITY</SectionHeading>
                 <label className="admin-form-label">START AT</label>
                 <EventStartAtField />

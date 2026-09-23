@@ -24,16 +24,21 @@ const TYPE_LABEL: Record<string, string> = {
 
 export default async function HostEventDetail({
     params,
+    searchParams,
 }: {
     params: Promise<{ id: string }>;
+    searchParams: Promise<{ just_created?: string }>;
 }) {
     const { id } = await params;
+    const { just_created } = await searchParams;
     const profile = await requireVerifiedHost('/me/events');
     const admin = getSupabaseAdmin();
 
     const { data, error } = await admin
         .from('events')
-        .select('id, shop_id, host_id, code, type, title, description, location_name, location_detail, lat, lng, start_at, capacity, visibility, tags, hero_image_url, cancelled_at')
+        .select(
+            'id, shop_id, host_id, code, type, title, description, location_name, location_detail, lat, lng, start_at, capacity, visibility, tags, hero_image_url, cancelled_at, destination_name, destination_lat, destination_lng, route_plan',
+        )
         .eq('id', id)
         .maybeSingle();
     if (error) console.error('[me/events/[id]] event load failed:', error.message);
@@ -71,8 +76,42 @@ export default async function HostEventDetail({
         description: event.description ?? null,
     };
 
+    const justCreated = just_created === '1';
+
     return (
         <>
+            {justCreated ? (
+                <div
+                    style={{
+                        margin: '0 0 12px 0',
+                        padding: '12px 16px',
+                        background: 'var(--gold-dim)',
+                        border: '1px solid var(--gold)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 12,
+                        flexWrap: 'wrap',
+                    }}
+                >
+                    <span
+                        style={{
+                            color: 'var(--gold)',
+                            fontFamily: 'var(--font-display)',
+                            fontSize: 12,
+                            letterSpacing: 'var(--track-wider)',
+                        }}
+                    >
+                        ✓ EVENT CREATED
+                    </span>
+                    <a
+                        href="#route"
+                        className="admin-action-btn"
+                        style={{ textDecoration: 'none', borderColor: 'var(--gold)', color: 'var(--gold)' }}
+                    >
+                        ／ PLAN THE ROUTE ›
+                    </a>
+                </div>
+            ) : null}
             <div className="admin-page-head">
                 <div>
                     <div className="admin-page-title">{(event.title ?? 'EVENT').toUpperCase()}</div>

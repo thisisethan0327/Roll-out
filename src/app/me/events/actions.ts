@@ -17,6 +17,7 @@ import { EVENT_TZ_FIELD, resolveFormZone, zonedWallClockToUtc } from '@/lib/even
 import { redirect } from 'next/navigation';
 import { requireVerifiedHost } from '@/lib/me-guard';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { getRolloutMemberClient } from '@/lib/consumer';
 import { sendPlatformNotification } from '@/lib/platform-notify';
 import {
     renderInvite,
@@ -82,6 +83,16 @@ async function loadOwnEvent(eventId: string, hostProfileId: string) {
     return ev;
 }
 
+/** `destination_name` — trimmed, optional (null clears it). Same 1..80-char
+ * cap the route_plan stop names carry (migration 076), for consistency. */
+function parseDestinationName(raw: FormDataEntryValue | null): string | null {
+    if (raw == null) return null;
+    const s = String(raw).trim();
+    if (!s) return null;
+    if (s.length > 80) throw new Error('Destination name must be 80 characters or fewer.');
+    return s;
+}
+
 export async function createHostEvent(formData: FormData) {
     const profile = await requireVerifiedHost('/me/events/new');
 
@@ -97,6 +108,9 @@ export async function createHostEvent(formData: FormData) {
     const visibility = String(formData.get('visibility') ?? 'public').trim();
     const tags = parseTags(String(formData.get('tags') ?? ''));
     const hero_image_url = parseHeroUrl(formData.get('hero_image_url'));
+    const destination_name = parseDestinationName(formData.get('destination_name'));
+    const destination_lat = parseNumber(formData.get('destination_lat'));
+    const destination_lng = parseNumber(formData.get('destination_lng'));
 
     if (!ALLOWED_TYPES.has(type)) throw new Error('Invalid event type.');
     if (title.length < 4) throw new Error('Title must be at least 4 characters.');
@@ -133,6 +147,9 @@ export async function createHostEvent(formData: FormData) {
             visibility,
             tags,
             hero_image_url,
+            destination_name,
+            destination_lat,
+            destination_lng,
             is_official: false,
             attending_count: 0,
         })
@@ -162,6 +179,12 @@ export async function updateHostEvent(eventId: string, formData: FormData) {
     const visibility = String(formData.get('visibility') ?? 'public').trim();
     const tags = parseTags(String(formData.get('tags') ?? ''));
     const hero_image_url = parseHeroUrl(formData.get('hero_image_url'));
+    // Route destination (migration 076) — plain columns on events, updated
+    // through this same ownership-checked write path (not the route_plan
+    // RPC below, which only covers the jsonb stop array).
+    const destination_name = parseDestinationName(formData.get('destination_name'));
+    const destination_lat = parseNumber(formData.get('destination_lat'));
+    const destination_lng = parseNumber(formData.get('destination_lng'));
 
     if (title.length < 4) throw new Error('Title must be at least 4 characters.');
     if (description.length > 400) throw new Error('Description must be 400 chars or fewer.');
@@ -193,6 +216,9 @@ export async function updateHostEvent(eventId: string, formData: FormData) {
             visibility,
             tags,
             hero_image_url,
+            destination_name,
+            destination_lat,
+            destination_lng,
             updated_at: new Date().toISOString(),
         })
         .eq('id', eventId)
@@ -202,7 +228,76 @@ export async function updateHostEvent(eventId: string, formData: FormData) {
 
     revalidatePath('/me/events');
     revalidatePath(`/me/events/${eventId}`);
+    revalidatePath(`/event/${eventId}`);
     revalidatePath('/meets');
+}
+
+// ── Route plan (migration 076) ───────────────────────────────────────────
+
+export type RoutePlanStopInput = {
+    kind: string;
+    name: string;
+    lat: number;
+    lng: number;
+    etaLocal?: string | null;
+    dwellMin?: number | null;
+    note?: string | null;
+};
+
+export type SetRoutePlanResult = { ok: true; count: number } | { ok: false; error: string };
+
+/**
+ * Replace this event's planned stop list. ONE call to `rollout.
+ * set_event_route_plan` per save — the whole array is renumbered to
+ * seq 100, 200, 300, … in list order first (the RPC requires strictly
+ * ascending seq; the UI only exposes reordering, not raw seq entry).
+ *
+ * Runs as the SIGNED-IN HOST's own Supabase session (getRolloutMemberClient,
+ * i.e. `(await getSupabaseServer()).schema('rollout')` — the exact same anon
+ * SSR client event/[id]/actions.ts's RSVP writes use), NOT the service-role
+ * admin client: the RPC is `security definer` and does its own host/
+ * shop-manager/platform-admin check against `auth.uid()`, so it must see the
+ * real caller for that check to mean anything.
+ *
+ * No client-side re-validation of stop shape here on purpose — the RPC is
+ * the single source of truth for what a valid stop looks like (kind enum,
+ * name length, lat/lng range, seq bounds) and raises `22023` naming the
+ * exact bad stop ("stop N: …"); duplicating those rules here would just be
+ * two copies to keep in sync. `loadOwnEvent` below is only a friendlier
+ * "event not found" than the RPC's own P0002/42501 would read as inline.
+ */
+export async function setEventRoutePlan(
+    eventId: string,
+    stops: RoutePlanStopInput[],
+): Promise<SetRoutePlanResult> {
+    const profile = await requireVerifiedHost('/me/events');
+    const ev = await loadOwnEvent(eventId, profile.profileId);
+    if (!ev) return { ok: false, error: 'Event not found.' };
+
+    const plan = stops.map((s, i) => {
+        const entry: Record<string, unknown> = {
+            seq: (i + 1) * 100,
+            kind: s.kind,
+            name: s.name.trim(),
+            lat: s.lat,
+            lng: s.lng,
+        };
+        if (s.etaLocal && s.etaLocal.trim()) entry.eta_local = s.etaLocal.trim();
+        if (s.dwellMin != null && Number.isFinite(s.dwellMin)) entry.dwell_min = s.dwellMin;
+        if (s.note && s.note.trim()) entry.note = s.note.trim();
+        return entry;
+    });
+
+    const member = await getRolloutMemberClient();
+    const { data, error } = await member.rpc('set_event_route_plan', {
+        p_event: eventId,
+        p_plan: plan.length > 0 ? plan : null,
+    });
+    if (error) return { ok: false, error: error.message };
+
+    revalidatePath(`/me/events/${eventId}`);
+    revalidatePath(`/event/${eventId}`);
+    return { ok: true, count: (data as number | null) ?? 0 };
 }
 
 export async function cancelHostEvent(eventId: string, cancel: boolean) {
