@@ -289,6 +289,8 @@ export function RoutePlanEditor({
                     {stops.map((s, i) => (
                         <div
                             key={s.tempId}
+                            data-testid="stop-row"
+                            data-stop-index={i}
                             style={{
                                 border: `1px solid ${errorStopIndex === i ? 'var(--warn)' : 'var(--line)'}`,
                                 padding: 10,
@@ -358,18 +360,19 @@ export function RoutePlanEditor({
                                 />
                             </div>
                             <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
-                                <button type="button" className="admin-action-btn muted" onClick={() => moveStop(i, -1)} disabled={busy || i === 0}>
+                                <button type="button" data-testid="stop-move-up" className="admin-action-btn muted" onClick={() => moveStop(i, -1)} disabled={busy || i === 0}>
                                     ↑
                                 </button>
                                 <button
                                     type="button"
+                                    data-testid="stop-move-down"
                                     className="admin-action-btn muted"
                                     onClick={() => moveStop(i, 1)}
                                     disabled={busy || i === stops.length - 1}
                                 >
                                     ↓
                                 </button>
-                                <button type="button" className="admin-action-btn danger" onClick={() => removeStop(i)} disabled={busy}>
+                                <button type="button" data-testid="stop-remove" className="admin-action-btn danger" onClick={() => removeStop(i)} disabled={busy}>
                                     REMOVE
                                 </button>
                             </div>
@@ -394,7 +397,7 @@ export function RoutePlanEditor({
             </div>
 
             {/* PICKER MAP — always mounted; `pickMode` decides what a click sets. */}
-            <div className="route-stage corner-wrap" style={{ marginBottom: newStop ? 8 : 16 }}>
+            <div data-testid="route-picker-map" className="route-stage corner-wrap" style={{ marginBottom: newStop ? 8 : 16 }}>
                 <span className="corner-bottom-left" />
                 <span className="corner-bottom-right" />
                 <RoutePickerMapLoader
@@ -408,12 +411,13 @@ export function RoutePlanEditor({
             </div>
 
             {newStop ? (
-                <div style={{ border: '1px solid var(--gold)', padding: 10, marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div data-testid="new-stop-panel" style={{ border: '1px solid var(--gold)', padding: 10, marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
                     <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: 'var(--track-wider)', color: 'var(--gold)' }}>
                         NEW STOP · {newStop.lat.toFixed(5)}, {newStop.lng.toFixed(5)}
                     </div>
                     <div style={{ display: 'flex', gap: 8 }}>
                         <input
+                            data-testid="new-stop-name"
                             className="admin-form-input"
                             style={{ flex: 1 }}
                             placeholder="Stop name"
@@ -424,6 +428,7 @@ export function RoutePlanEditor({
                             disabled={busy}
                         />
                         <select
+                            data-testid="new-stop-kind"
                             className="admin-form-input"
                             style={{ width: 130 }}
                             value={newStop.kind}
@@ -439,6 +444,7 @@ export function RoutePlanEditor({
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 2fr', gap: 8 }}>
                         <input
+                            data-testid="new-stop-eta"
                             className="admin-form-input"
                             placeholder='ETA, e.g. "11:55 AM"'
                             value={newStop.etaLocal}
@@ -463,7 +469,7 @@ export function RoutePlanEditor({
                         />
                     </div>
                     <div style={{ display: 'flex', gap: 8 }}>
-                        <button type="button" className="admin-form-btn" onClick={confirmNewStop} disabled={busy || !newStop.name.trim()}>
+                        <button type="button" data-testid="new-stop-confirm" className="admin-form-btn" onClick={confirmNewStop} disabled={busy || !newStop.name.trim()}>
                             ADD STOP
                         </button>
                         <button type="button" className="admin-action-btn muted" onClick={cancelNewStop} disabled={busy}>
@@ -488,7 +494,7 @@ export function RoutePlanEditor({
             )}
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 4 }}>
-                <button type="button" className="admin-form-btn" onClick={onSaveRoute} disabled={busy}>
+                <button type="button" data-testid="save-route" className="admin-form-btn" onClick={onSaveRoute} disabled={busy}>
                     {savedFlash ? 'ROUTE SAVED ✓' : saving ? 'SAVING…' : 'SAVE ROUTE'}
                 </button>
                 {dirty && !saving && !savedFlash ? (
