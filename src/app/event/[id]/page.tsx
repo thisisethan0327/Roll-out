@@ -308,21 +308,43 @@ async function loadTiers(eventId: string): Promise<TierView[]> {
         tiers.map((t) => t.medusa_product_id as string | null),
     );
 
-    // Per-tier occupancy for sub-capped tiers, in one query.
+    // Per-tier occupancy for sub-capped tiers, in one query. Multi-ticket
+    // packages (migration 080) add event_rsvps.seats (1..5, buyer's row
+    // carries the party size) — occupancy must SUM seats, not count rows, or
+    // a party of 5 on one row only counts as 1. Before 080 lands the column
+    // doesn't exist yet, so the first attempt (with `seats`) can fail with an
+    // "unknown column" error; that retries WITHOUT it and treats every row as
+    // 1 seat — today's exact behaviour. A row whose `seats` comes back
+    // null/0 (legacy data even after the column exists) also falls back to 1.
     const capped = tiers.filter((t) => t.capacity != null);
     const usedByTier = new Map<string, number>();
     if (capped.length > 0) {
-        const { data: occ, error: occError } = await supabase
+        let occRows: any[] | null = null;
+        const withSeats = await supabase
             .from('event_rsvps')
-            .select('tier_id, hold_state')
+            .select('tier_id, hold_state, seats')
             .eq('event_id', eventId)
             .eq('status', 'going')
             .in('hold_state', ['confirmed', 'held'])
             .in('tier_id', capped.map((t) => t.id));
-        if (occError) console.error('[event/[id]] tier occupancy load failed:', occError.message);
-        for (const r of (occ as any[]) ?? []) {
+        if (!withSeats.error) {
+            occRows = (withSeats.data as any[]) ?? [];
+        } else {
+            console.error('[event/[id]] tier occupancy (seats) load failed, falling back to row-count:', withSeats.error.message);
+            const fallback = await supabase
+                .from('event_rsvps')
+                .select('tier_id, hold_state')
+                .eq('event_id', eventId)
+                .eq('status', 'going')
+                .in('hold_state', ['confirmed', 'held'])
+                .in('tier_id', capped.map((t) => t.id));
+            if (fallback.error) console.error('[event/[id]] tier occupancy load failed:', fallback.error.message);
+            occRows = (fallback.data as any[]) ?? [];
+        }
+        for (const r of occRows ?? []) {
             if (!r.tier_id) continue;
-            usedByTier.set(r.tier_id, (usedByTier.get(r.tier_id) ?? 0) + 1);
+            const seats = Number(r.seats ?? 1) || 1;
+            usedByTier.set(r.tier_id, (usedByTier.get(r.tier_id) ?? 0) + seats);
         }
     }
 

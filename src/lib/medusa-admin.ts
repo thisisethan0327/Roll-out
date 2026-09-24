@@ -1441,13 +1441,25 @@ export async function refundAndCancelEventOrder(
     }
 
     const captured = Number(payment.amount ?? 0);
-    const alreadyRefunded = paymentRefundedAmount(payment) >= captured - 0.005;
+    const alreadyRefundedAmount = paymentRefundedAmount(payment);
+    const alreadyRefunded = alreadyRefundedAmount >= captured - 0.005;
 
-    if (!alreadyRefunded) {
+    // Refund what's actually still OWED (captured − already refunded), never
+    // the order's full original captured amount unconditionally. Multi-ticket
+    // packages (feature-gated) can refund a per-ticket share before seat 1's
+    // own whole-order cancel runs — asking Medusa to refund the full original
+    // total on a payment that's already partially refunded is an over-refund
+    // and it refuses the request outright, which made seat-1 cancel fail
+    // forever after any earlier per-ticket refund. The end state is still a
+    // FULLY refunded payment either way, so the "did it land" check below
+    // keeps comparing against `captured`.
+    const amount = Math.max(0, captured - alreadyRefundedAmount);
+
+    if (!alreadyRefunded && amount > 0) {
         const attemptRefund = () =>
             adminFetch(`/admin/payments/${payment.id}/refund`, {
                 method: 'POST',
-                body: JSON.stringify({ amount: captured }),
+                body: JSON.stringify({ amount }),
             });
 
         let res: Response | null;
@@ -1501,22 +1513,30 @@ export async function refundAndCancelEventOrder(
  * Returns the refund id once confirmed landed (re-reads the payment before
  * returning ok, exactly like refundAndCancelEventOrder) — callers pass that
  * id to cancel_ticket(p_ticket, p_refund_ref) as the idempotency key.
+ *
+ * `phase` on a failure tells the caller whether it's SAFE to release a
+ * refund lock (ticket_refund_abort): 'refused' means nothing was ever POSTed
+ * to Medusa (bad input, order mismatch, nothing refundable) — abort away.
+ * 'refund_failed' means the POST itself came back non-2xx — also safe,
+ * nothing moved. 'confirm_failed' means the POST succeeded but re-reading
+ * the payment couldn't verify it landed — the money may have moved, so the
+ * caller must NOT abort; leave the ticket locked for support to check by hand.
  */
 export async function refundEventTicketShare(
     orderId: string,
     amountCents: number,
     expect?: { eventId?: string | null },
-): Promise<ActionResult & { refundId?: string | null }> {
-    if (!orderId) return { ok: false, error: 'No order id.' };
+): Promise<ActionResult & { refundId?: string | null; phase?: 'refused' | 'refund_failed' | 'confirm_failed' }> {
+    if (!orderId) return { ok: false, error: 'No order id.', phase: 'refused' };
     if (!Number.isFinite(amountCents) || amountCents <= 0) {
-        return { ok: false, error: 'Invalid refund amount.' };
+        return { ok: false, error: 'Invalid refund amount.', phase: 'refused' };
     }
     const o = await fetchOrderForEventRefund(orderId);
-    if (!o?.id) return { ok: false, error: 'Order not found.' };
+    if (!o?.id) return { ok: false, error: 'Order not found.', phase: 'refused' };
 
     const m = (o.metadata ?? {}) as Record<string, unknown>;
     if (expect?.eventId && m.event_id !== expect.eventId) {
-        return { ok: false, error: 'This order does not match the event — refused as a safety check.' };
+        return { ok: false, error: 'This order does not match the event — refused as a safety check.', phase: 'refused' };
     }
 
     let payment: any = null;
@@ -1529,7 +1549,7 @@ export async function refundEventTicketShare(
         }
         if (payment) break;
     }
-    if (!payment?.id) return { ok: false, error: 'No captured payment to refund.' };
+    if (!payment?.id) return { ok: false, error: 'No captured payment to refund.', phase: 'refused' };
 
     const captured = Number(payment.amount ?? 0);
     const alreadyRefunded = paymentRefundedAmount(payment);
@@ -1539,10 +1559,11 @@ export async function refundEventTicketShare(
         return {
             ok: false,
             error: `That ticket's share (${amount.toFixed(2)}) exceeds what's still refundable (${refundable.toFixed(2)}) on this order.`,
+            phase: 'refused',
         };
     }
     if (amount > refundable) amount = refundable;
-    if (amount <= 0) return { ok: false, error: 'Nothing left to refund on this order.' };
+    if (amount <= 0) return { ok: false, error: 'Nothing left to refund on this order.', phase: 'refused' };
 
     const attemptRefund = () =>
         adminFetch(`/admin/payments/${payment.id}/refund`, {
@@ -1561,7 +1582,7 @@ export async function refundEventTicketShare(
             throw e;
         }
     }
-    if (!res || !res.ok) return { ok: false, error: await errorMessage(res) };
+    if (!res || !res.ok) return { ok: false, error: await errorMessage(res), phase: 'refund_failed' };
 
     const refundJson = await res.json().catch(() => null);
     // Fall back to the payment id if the response shape doesn't surface a
@@ -1579,6 +1600,7 @@ export async function refundEventTicketShare(
         return {
             ok: false,
             error: 'Refund was submitted but could not be confirmed yet — check the order before retrying.',
+            phase: 'confirm_failed',
         };
     }
     return { ok: true, refundId };

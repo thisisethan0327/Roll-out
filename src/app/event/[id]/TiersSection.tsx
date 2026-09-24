@@ -344,7 +344,7 @@ export function TiersSection({
                 router.push(res.redirect);
                 return;
             }
-            if (res.ok) {
+            if (res.ok && res.state === 'waitlisted') {
                 // Full event or full tier — the reservation queued instead.
                 setState('waitlisted');
                 setTierId(tier.id);
@@ -352,11 +352,29 @@ export function TiersSection({
                 router.refresh();
                 return;
             }
-            if (res.error === 'auth') {
-                router.push(`/login?next=${encodeURIComponent(nextPath)}&error=rsvp`);
+            if (res.ok && res.state === 'confirmed') {
+                // Migration 080: reserve_spot claimed a ticket someone else
+                // already bought for this member — they're in, no payment.
+                setState('confirmed');
+                setTierId(tier.id);
+                setSpotNo(res.spotNo ?? null);
+                router.refresh();
                 return;
             }
-            setMsg(ERROR_COPY[res.error]);
+            if (res.ok && res.state === 'ticket_pending') {
+                // Migration 080: waiting on the buyer of that ticket to pay.
+                setState('ticket_pending');
+                setTierId(tier.id);
+                router.refresh();
+                return;
+            }
+            if (!res.ok) {
+                if (res.error === 'auth') {
+                    router.push(`/login?next=${encodeURIComponent(nextPath)}&error=rsvp`);
+                    return;
+                }
+                setMsg(ERROR_COPY[res.error]);
+            }
         });
     };
 
@@ -507,10 +525,29 @@ export function TiersSection({
                         LEAVE WAITLIST
                     </button>
                 </div>
+            ) : state === 'ticket_pending' ? (
+                // Migration 080: the caller has a ticket on someone else's
+                // still-unpaid multi-ticket order — nothing for THEM to pay
+                // or reserve; they're just waiting on that buyer.
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                    <div
+                        style={{
+                            fontFamily: 'var(--font-display)',
+                            fontSize: 12,
+                            letterSpacing: 'var(--track-wider)',
+                            color: 'var(--text-2)',
+                        }}
+                    >
+                        ● TICKET PENDING{myTierName ? ` · ${myTierName.toUpperCase()}` : ''}
+                    </div>
+                    <p className="text-muted" style={{ fontSize: 11, margin: 0, textAlign: 'center', maxWidth: 320 }}>
+                        You&apos;re on someone else&apos;s order for this meet — your spot confirms once they finish paying.
+                    </p>
+                </div>
             ) : null}
 
             {/* TIER CARDS — pick a tier (hidden once confirmed/held) */}
-            {state !== 'confirmed' && (state !== 'held' || holdExpired) ? (
+            {state !== 'confirmed' && state !== 'ticket_pending' && (state !== 'held' || holdExpired) ? (
                 <div
                     style={{
                         display: 'grid',

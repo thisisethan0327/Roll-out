@@ -42,8 +42,14 @@ export type RsvpChoice = 'going' | 'maybe' | 'declined';
  * than RsvpChoice by exactly that one value. It matches rollout.rsvp_status.
  */
 export type InviteRsvpStatus = RsvpChoice | 'waitlist';
-/** The member's resolved RSVP state after a write (or as loaded for the page). */
-export type RsvpState = 'confirmed' | 'held' | 'waitlisted' | 'maybe' | 'declined' | null;
+/**
+ * The member's resolved RSVP state after a write (or as loaded for the page).
+ * 'ticket_pending' (migration 080, reserve_spot's new outcome): the caller
+ * has a ticket on someone ELSE's multi-ticket order that's still HELD (the
+ * buyer hasn't paid yet) — reserve_spot can't confirm anything for them
+ * until that resolves, so their own reserve attempt just reports the wait.
+ */
+export type RsvpState = 'confirmed' | 'held' | 'waitlisted' | 'maybe' | 'declined' | 'ticket_pending' | null;
 export type RsvpError = 'auth' | 'full' | 'closed' | 'invalid' | 'tier' | 'write' | 'paid_spot';
 export type RsvpResult =
     | {
@@ -53,12 +59,22 @@ export type RsvpResult =
           waitlistPosition?: number | null;
           /** ISO timestamp the paid-tier hold expires at (state === 'held'). */
           holdExpiresAt?: string | null;
+          /** Set when reserve_spot's 'confirmed' outcome came from CLAIMING a
+           *  ticket bought for the caller's email on someone else's order
+           *  (migration 080), rather than a fresh reservation. */
+          ticketId?: string | null;
       }
     | { ok: false; error: RsvpError };
 
 export type PackageCheckoutResult =
     | { ok: true; redirect: string }
     | { ok: true; state: 'waitlisted'; waitlistPosition: number | null }
+    // Migration 080: reserve_spot claimed a ticket already bought for the
+    // caller's email — they're in, no payment needed from them.
+    | { ok: true; state: 'confirmed'; spotNo: number | null }
+    // Migration 080: the caller has a ticket on someone else's order that's
+    // still held (unpaid) — nothing to reserve/pay for on their own yet.
+    | { ok: true; state: 'ticket_pending' }
     | { ok: false; error: RsvpError | 'config' };
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -142,7 +158,16 @@ export async function setRsvp(
         revalidatePath(`/event/${eventId}`);
 
         if (state === 'confirmed') {
-            return { ok: true, state: 'confirmed', spotNo: (data as any)?.spot_no ?? null };
+            // Migration 080: reserve_spot can now confirm by CLAIMING a
+            // ticket someone else already bought for the caller's email
+            // (rather than freshly reserving) — ticket_id is present only
+            // on that path; undefined on the pre-080 / ordinary confirm.
+            return {
+                ok: true,
+                state: 'confirmed',
+                spotNo: (data as any)?.spot_no ?? null,
+                ticketId: (data as any)?.ticket_id ?? null,
+            };
         }
         if (state === 'held') {
             return {
@@ -154,6 +179,11 @@ export async function setRsvp(
         }
         if (state === 'waitlisted') {
             return { ok: true, state: 'waitlisted', waitlistPosition: (data as any)?.waitlist_position ?? null };
+        }
+        if (state === 'ticket_pending') {
+            // Migration 080: the caller has a ticket on someone else's
+            // order that's still held (unpaid) — nothing to confirm yet.
+            return { ok: true, state: 'ticket_pending' };
         }
         return { ok: false, error: 'write' };
     }
@@ -227,6 +257,18 @@ export async function startPackageCheckout(
             waitlistPosition: (data as any)?.waitlist_position ?? null,
         };
     }
+    if (state === 'ticket_pending') {
+        // Migration 080: caller already has a ticket on someone else's
+        // still-unpaid order — no cart/payment to start for them.
+        revalidatePath(`/event/${eventId}`);
+        return { ok: true, state: 'ticket_pending' };
+    }
+    if (state === 'confirmed' && (data as any)?.ticket_id) {
+        // Migration 080: reserve_spot claimed a pre-bought ticket instead of
+        // reserving a fresh spot — they're already in, skip cart/payment.
+        revalidatePath(`/event/${eventId}`);
+        return { ok: true, state: 'confirmed', spotNo: (data as any)?.spot_no ?? null };
+    }
     if (state !== 'held' && state !== 'confirmed') return { ok: false, error: 'write' };
 
     const cart = await createEventPackageCart({
@@ -288,16 +330,6 @@ export type ReserveEventTicketsResult =
     | { ok: true; redirect: string }
     | { ok: false; error: string };
 
-const RESERVE_ERROR_COPY: Record<string, string> = {
-    full: 'This meet is at capacity.',
-    tier_full: 'That tier just sold out.',
-    duplicate_email: 'One of these emails already has a ticket for this event.',
-    closed: 'RSVPs are closed for this meet.',
-    auth: 'Sign in to reserve tickets.',
-    invalid: 'Check the attendee details and try again.',
-    write: "Couldn't reserve those tickets — try again.",
-};
-
 export async function reserveEventTicketsAction(
     eventId: string,
     tierId: string,
@@ -335,7 +367,9 @@ export async function reserveEventTicketsAction(
 
     const result = await reserveTickets(eventId, tierId, stamped);
     if (!result.ok) {
-        return { ok: false, error: result.detail || RESERVE_ERROR_COPY[result.error] || 'Could not reserve those tickets.' };
+        // reserveTickets() already turned the RPC's {state,detail} into a
+        // plain-language message — see describeReserveFailure in event-tickets.ts.
+        return { ok: false, error: result.error };
     }
 
     const cart = await createEventTicketsCart({
