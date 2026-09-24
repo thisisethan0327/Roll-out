@@ -141,7 +141,7 @@ type RelinkOutcome =
     | { kind: 'failed' };
 
 /**
- * POST /store/customers/me/relink with the CALLER's own token. The backend
+ * POST /store/customers/relink with the CALLER's own token. The backend
  * reads only the caller's auth context: if the auth identity's
  * app_metadata.customer_id (or the token's actor) points at a customer that
  * no longer exists, it clears that link server-side and returns
@@ -157,7 +157,7 @@ type RelinkOutcome =
  */
 async function relinkStaleCustomer(token: string): Promise<RelinkOutcome> {
     try {
-        const res = await fetch(`${MEDUSA_URL}/store/customers/me/relink`, {
+        const res = await fetch(`${MEDUSA_URL}/store/customers/relink`, {
             method: 'POST',
             headers: pkHeaders({ Authorization: `Bearer ${token}` }),
             cache: 'no-store',
@@ -165,7 +165,9 @@ async function relinkStaleCustomer(token: string): Promise<RelinkOutcome> {
         if (res.status === 404) return { kind: 'not-deployed' };
         if (!res.ok) return { kind: 'failed' };
         const json = await res.json().catch(() => ({}) as any);
-        if (json?.relinked === true) {
+        // identity_missing: a previous relink already deleted this token's identity —
+        // same remedy (fresh re-exchange creates a new one), so treat it as relinked.
+        if (json?.relinked === true || json?.identity_missing === true) {
             return { kind: 'relinked', clearedCustomerId: json?.cleared_customer_id ?? null };
         }
         if (typeof json?.customer_id === 'string' && json.customer_id) {
@@ -256,7 +258,7 @@ async function createAndLink(
  *   1. Exchange the platform JWT for a Medusa token (POST /auth/customer/supabase).
  *   2. GET /store/customers/me. Success → already linked, actor-scoped; return it.
  *   3. On 404, or a 401 from a token whose actor is missing, POST
- *      /store/customers/me/relink with the SAME token — the backend clears a
+ *      /store/customers/relink with the SAME token — the backend clears a
  *      dangling app_metadata link (an actor pointing at a deleted customer)
  *      server-side when that's what this is. Bounded: at most one relink
  *      attempt per call, never a loop.
