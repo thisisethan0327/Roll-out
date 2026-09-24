@@ -102,16 +102,21 @@ import 'server-only';
  */
 import { getConsumerProfile, getRolloutMemberClient } from './consumer';
 import { getSupabaseAdmin } from './supabase/admin';
+import {
+    MAX_TICKETS_PER_ORDER,
+    SWEATER_SIZES,
+    type SweaterSize,
+    type TicketAttendeeInput,
+    sizeLabel,
+    formatCents,
+} from './event-tickets-shared';
 
-export const MAX_TICKETS_PER_ORDER = 5;
-export const SWEATER_SIZES = ['S', 'M', 'L', 'XL', 'XXL'] as const;
-export type SweaterSize = (typeof SWEATER_SIZES)[number];
-
-export type TicketAttendeeInput = {
-    name: string;
-    email: string;
-    size: SweaterSize;
-};
+// Re-exported so every existing server-side import path (`@/lib/event-tickets`)
+// keeps working unchanged — only the NEW client import (TicketAttendeesForm.tsx)
+// needs to reach into event-tickets-shared.ts directly (see that file's doc
+// comment for why the split exists).
+export { MAX_TICKETS_PER_ORDER, SWEATER_SIZES, sizeLabel, formatCents };
+export type { SweaterSize, TicketAttendeeInput };
 
 export type ReserveTicketsTicket = {
     id: string;
@@ -569,13 +574,4 @@ export async function ticketsForOrder(orderId: string): Promise<MyTicketRow[]> {
 export async function myTicketsForEvent(eventId: string): Promise<MyTicketRow[]> {
     const rows = await myTickets();
     return rows.filter((r) => r.eventId === eventId);
-}
-
-export function sizeLabel(size: string | null | undefined): string {
-    return size ? size.toUpperCase() : '—';
-}
-
-/** cents → "$160.00" (USD-only, matching the rest of the event checkout surface). */
-export function formatCents(cents: number): string {
-    return `$${(cents / 100).toFixed(2)}`;
 }

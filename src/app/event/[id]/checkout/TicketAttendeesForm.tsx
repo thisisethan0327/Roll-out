@@ -15,7 +15,7 @@
 import { useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { reserveEventTicketsAction } from '../actions';
-import { SWEATER_SIZES, type SweaterSize } from '@/lib/event-tickets';
+import { SWEATER_SIZES, type SweaterSize } from '@/lib/event-tickets-shared';
 
 type SeatDraft = { name: string; email: string; size: SweaterSize | '' };
 
