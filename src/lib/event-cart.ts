@@ -25,7 +25,7 @@
  */
 import { cookies } from 'next/headers';
 import { MEDUSA_URL, MEDUSA_REGION_ID } from './medusa';
-import { ensureMedusaCustomerToken } from './medusa-customer';
+import { ensureMedusaCustomerToken, getSessionUserId } from './medusa-customer';
 import type {
     ActionResult,
     AddressInput,
@@ -84,9 +84,15 @@ async function eventAuthHeader(): Promise<Record<string, string>> {
 }
 
 // ── low-level fetch (duplicated from medusa-cart.ts — its copy is private) ──
+/**
+ * `_retryOn401` is internal — callers never pass it. It bounds the
+ * relink-and-retry below to exactly one attempt so a still-broken identity
+ * fails fast instead of looping.
+ */
 async function eventMedusaFetch<T = any>(
     path: string,
     init?: RequestInit & { query?: Record<string, string | string[]> },
+    _retryOn401 = true,
 ): Promise<T> {
     const url = new URL(`${MEDUSA_URL}${path}`);
     if (init?.query) {
@@ -104,6 +110,22 @@ async function eventMedusaFetch<T = any>(
         headers: { ...eventMedusaHeaders(), ...auth, ...(init?.headers || {}) },
         cache: 'no-store',
     });
+
+    // A member-scoped call that comes back 401 can mean the Medusa auth
+    // identity's link went stale between when eventAuthHeader() fetched the
+    // token and now (e.g. deleted-actor identity — see the KNOWN GAP note in
+    // ensureMedusaCustomerToken). ensureMedusaCustomerToken() is idempotent
+    // and re-runs its full validate→create→re-exchange sequence on every
+    // call, so simply calling it again IS the relink attempt. Bounded to one
+    // retry via _retryOn401 — this never loops.
+    if (res.status === 401 && _retryOn401 && auth.Authorization) {
+        const uid = await getSessionUserId();
+        console.warn(
+            `[event-cart] 401 on ${path} for member ${uid ?? 'unknown'} — attempting one relink + retry (no token logged).`,
+        );
+        return eventMedusaFetch<T>(path, init, false);
+    }
+
     const text = await res.text();
     let json: any = {};
     try {
