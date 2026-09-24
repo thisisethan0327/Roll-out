@@ -21,6 +21,7 @@
  *    display, plus a `vendors` list and a `multi` flag.
  */
 import { cookies } from 'next/headers';
+import { cache } from 'react';
 import { revalidatePath } from 'next/cache';
 import {
     MEDUSA_URL,
@@ -198,13 +199,46 @@ function normalizeCart(raw: any): Cart {
     };
 }
 
-async function fetchRawCart(id: string): Promise<any | null> {
+/**
+ * The signed-in member's Medusa token, once per request (null for guests).
+ *
+ * Needed for READS: the backend hides a cart that belongs to a registered
+ * customer from everyone but that customer (Neferstock middlewares.ts, GET
+ * /store/carts/:id → 404 without the owner's bearer — the cart carries the
+ * owner's email). attachCustomerToCart() binds the member at the FIRST add,
+ * so without this every read after it came back 404: the cart page showed
+ * "YOUR BAG IS EMPTY" and the next add minted a brand-new cart (paid E2E
+ * 2026-09-24, rollout store half).
+ */
+const memberCartToken = cache(async (): Promise<string | null> => {
     try {
+        return await ensureMedusaCustomerToken();
+    } catch {
+        return null;
+    }
+});
+
+async function fetchRawCart(id: string): Promise<any | null> {
+    const get = async (headers?: Record<string, string>) => {
         const { cart } = await medusaFetch<{ cart: any }>(`/store/carts/${id}`, {
             method: 'GET',
             query: { fields: CART_FIELDS },
+            headers,
         });
         return cart ?? null;
+    };
+    // Member first (owns the cart once attached), then anonymous (guest carts,
+    // and a member whose token failed still sees an unattached cart).
+    const token = await memberCartToken();
+    if (token) {
+        try {
+            return await get({ Authorization: `Bearer ${token}` });
+        } catch {
+            /* fall through to the anonymous read */
+        }
+    }
+    try {
+        return await get();
     } catch {
         return null;
     }
