@@ -24,8 +24,14 @@
 import { revalidatePath } from 'next/cache';
 import { getConsumerProfile, getRolloutMemberClient } from '@/lib/consumer';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
-import { createEventPackageCart } from '@/lib/event-cart';
+import { createEventPackageCart, createEventTicketsCart } from '@/lib/event-cart';
 import { cancelPaidRsvpAndRefund, getRefundWindowOpen } from '@/lib/event-refund';
+import {
+    multiTicketsEnabled,
+    reserveTickets,
+    MAX_TICKETS_PER_ORDER,
+    type TicketAttendeeInput,
+} from '@/lib/event-tickets';
 
 export type RsvpChoice = 'going' | 'maybe' | 'declined';
 
@@ -268,6 +274,86 @@ export async function cancelPaidRsvp(eventId: string): Promise<CancelPaidRsvpAct
 export async function checkRefundWindowOpen(eventId: string): Promise<boolean> {
     if (!UUID_RE.test(eventId)) return false;
     return getRefundWindowOpen(eventId);
+}
+
+/**
+ * Multi-ticket packages (feature-gated). Reserves 1..5 seats via
+ * reserve_tickets (seat 1 must be the caller's own identity — enforced
+ * server-side by re-stamping it here rather than trusting the client's copy
+ * of seat 1), then wires up the event cart with that hold's quantity. On
+ * success the caller should navigate the browser to `redirect` — this never
+ * throws, matching every other action on this page.
+ */
+export type ReserveEventTicketsResult =
+    | { ok: true; redirect: string }
+    | { ok: false; error: string };
+
+const RESERVE_ERROR_COPY: Record<string, string> = {
+    full: 'This meet is at capacity.',
+    tier_full: 'That tier just sold out.',
+    duplicate_email: 'One of these emails already has a ticket for this event.',
+    closed: 'RSVPs are closed for this meet.',
+    auth: 'Sign in to reserve tickets.',
+    invalid: 'Check the attendee details and try again.',
+    write: "Couldn't reserve those tickets — try again.",
+};
+
+export async function reserveEventTicketsAction(
+    eventId: string,
+    tierId: string,
+    attendees: TicketAttendeeInput[],
+): Promise<ReserveEventTicketsResult> {
+    if (!UUID_RE.test(eventId) || !UUID_RE.test(tierId)) return { ok: false, error: 'Invalid event.' };
+    if (!(await multiTicketsEnabled())) return { ok: false, error: 'Multi-ticket packages are not available.' };
+    if (attendees.length < 1 || attendees.length > MAX_TICKETS_PER_ORDER) {
+        return { ok: false, error: `Between 1 and ${MAX_TICKETS_PER_ORDER} tickets.` };
+    }
+
+    const me = await getConsumerProfile();
+    if (!me) return { ok: false, error: 'Sign in to reserve tickets.' };
+
+    // Seat 1 is always the caller — never trust the client's copy of it.
+    const seat1 = attendees[0];
+    const stamped: TicketAttendeeInput[] = [
+        { ...seat1, name: me.displayName || seat1.name, email: (me.email || seat1.email).toLowerCase() },
+        ...attendees.slice(1),
+    ];
+
+    // Validate the tier the same way startPackageCheckout does.
+    const admin = getSupabaseAdmin();
+    const { data: tier, error: tierError } = await admin
+        .from('event_tiers')
+        .select('id, event_id, active, medusa_product_id')
+        .eq('id', tierId)
+        .maybeSingle();
+    if (tierError) console.error('[event/[id]] reserveEventTicketsAction tier load failed:', tierError.message);
+    if (!tier || (tier as any).event_id !== eventId || !(tier as any).active) {
+        return { ok: false, error: 'That tier is not available. Refresh and try again.' };
+    }
+    const medusaProductId = (tier as any).medusa_product_id as string | null;
+    if (!medusaProductId) return { ok: false, error: 'That tier is not available. Refresh and try again.' };
+
+    const result = await reserveTickets(eventId, tierId, stamped);
+    if (!result.ok) {
+        return { ok: false, error: result.detail || RESERVE_ERROR_COPY[result.error] || 'Could not reserve those tickets.' };
+    }
+
+    const cart = await createEventTicketsCart({
+        eventId,
+        tierId,
+        profileId: me.profileId,
+        medusaProductId,
+        holdId: result.holdId,
+        quantity: stamped.length,
+    });
+    if (!cart.ok) {
+        // The hold stands (its own TTL frees it) — surface a retry-able error.
+        console.error('[event/[id]] event tickets cart creation failed:', cart.error);
+        return { ok: false, error: cart.error };
+    }
+
+    revalidatePath(`/event/${eventId}`);
+    return { ok: true, redirect: `/event/${eventId}/checkout` };
 }
 
 /**

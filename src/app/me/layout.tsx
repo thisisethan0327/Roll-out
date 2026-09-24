@@ -9,6 +9,7 @@
 import { requireConsumer } from '@/lib/me-guard';
 import { headers } from 'next/headers';
 import { MeNav } from './MeNav';
+import { multiTicketsEnabled } from '@/lib/event-tickets';
 
 export const metadata = { title: 'My Rollout' };
 export const dynamic = 'force-dynamic';
@@ -19,11 +20,13 @@ export default async function MeLayout({ children }: { children: React.ReactNode
     const stamped = (await headers()).get('x-pathname') ?? '';
     const nextPath = stamped.startsWith('/me') && !stamped.startsWith('//') ? stamped : '/me';
     const profile = await requireConsumer(nextPath);
+    const ticketsEnabled = await multiTicketsEnabled();
     return (
         <>
             <MeNav
                 displayName={profile.displayName || profile.handle || 'Member'}
                 isHost={profile.hostStatus === 'verified'}
+                ticketsEnabled={ticketsEnabled}
             />
             <main className="container" style={{ paddingTop: 24, paddingBottom: 64 }}>
                 {children}

@@ -1485,6 +1485,105 @@ export async function refundAndCancelEventOrder(
     return { ok: true, skipped: alreadyRefunded ? 'already_refunded' : undefined };
 }
 
+/**
+ * Multi-ticket packages (feature-gated, see lib/event-tickets.ts): PARTIAL,
+ * NON-cancelling refund of one ticket's share on an event order that still
+ * has other live tickets. Deliberately does NOT cancel the order — unlike
+ * refundAndCancelEventOrder above (seat 1 / whole-order), a single ticket's
+ * refund must leave the order and its remaining tickets alone.
+ *
+ * `amountCents` is the amount lib/event-tickets.ts's ticketRefundQuote()
+ * already computed server-side (DB-derived, matching cancel_ticket's own
+ * share math) — this function trusts it but still bounds it to what's
+ * actually still refundable on the payment, the same tolerance
+ * refundVendorOrder uses.
+ *
+ * Returns the refund id once confirmed landed (re-reads the payment before
+ * returning ok, exactly like refundAndCancelEventOrder) — callers pass that
+ * id to cancel_ticket(p_ticket, p_refund_ref) as the idempotency key.
+ */
+export async function refundEventTicketShare(
+    orderId: string,
+    amountCents: number,
+    expect?: { eventId?: string | null },
+): Promise<ActionResult & { refundId?: string | null }> {
+    if (!orderId) return { ok: false, error: 'No order id.' };
+    if (!Number.isFinite(amountCents) || amountCents <= 0) {
+        return { ok: false, error: 'Invalid refund amount.' };
+    }
+    const o = await fetchOrderForEventRefund(orderId);
+    if (!o?.id) return { ok: false, error: 'Order not found.' };
+
+    const m = (o.metadata ?? {}) as Record<string, unknown>;
+    if (expect?.eventId && m.event_id !== expect.eventId) {
+        return { ok: false, error: 'This order does not match the event — refused as a safety check.' };
+    }
+
+    let payment: any = null;
+    for (const pc of (o.payment_collections ?? []) as any[]) {
+        for (const p of (pc?.payments ?? []) as any[]) {
+            if (p?.captured_at && !p?.canceled_at) {
+                payment = p;
+                break;
+            }
+        }
+        if (payment) break;
+    }
+    if (!payment?.id) return { ok: false, error: 'No captured payment to refund.' };
+
+    const captured = Number(payment.amount ?? 0);
+    const alreadyRefunded = paymentRefundedAmount(payment);
+    const refundable = Math.max(0, captured - alreadyRefunded);
+    let amount = Math.round(amountCents) / 100;
+    if (amount > refundable + 0.005) {
+        return {
+            ok: false,
+            error: `That ticket's share (${amount.toFixed(2)}) exceeds what's still refundable (${refundable.toFixed(2)}) on this order.`,
+        };
+    }
+    if (amount > refundable) amount = refundable;
+    if (amount <= 0) return { ok: false, error: 'Nothing left to refund on this order.' };
+
+    const attemptRefund = () =>
+        adminFetch(`/admin/payments/${payment.id}/refund`, {
+            method: 'POST',
+            body: JSON.stringify({ amount }),
+        });
+
+    let res: Response | null;
+    try {
+        res = await attemptRefund();
+    } catch (e: any) {
+        if (String(e?.message ?? '').includes('Maximum call stack size exceeded')) {
+            console.error(`[event-tickets] ${orderId}: refund POST threw a stack overflow — retrying once.`);
+            res = await attemptRefund();
+        } else {
+            throw e;
+        }
+    }
+    if (!res || !res.ok) return { ok: false, error: await errorMessage(res) };
+
+    const refundJson = await res.json().catch(() => null);
+    // Fall back to the payment id if the response shape doesn't surface a
+    // discrete refund id — cancel_ticket only needs a STABLE string to key
+    // idempotency on, and each ticket is refunded at most once.
+    const refundId: string | null = refundJson?.payment?.refunds?.slice?.(-1)?.[0]?.id ?? payment.id ?? null;
+
+    // Confirm the refund actually landed before the caller calls cancel_ticket.
+    const reread = await fetchOrderForEventRefund(orderId);
+    const repay = ((reread?.payment_collections ?? []) as any[])
+        .flatMap((pc: any) => pc?.payments ?? [])
+        .find((p: any) => p.id === payment.id);
+    const covered = repay ? paymentRefundedAmount(repay) >= alreadyRefunded + amount - 0.005 : false;
+    if (!covered) {
+        return {
+            ok: false,
+            error: 'Refund was submitted but could not be confirmed yet — check the order before retrying.',
+        };
+    }
+    return { ok: true, refundId };
+}
+
 /** Cancel an order. Vendor-scoped; re-verified before acting. */
 export async function cancelVendorOrder(
     vendorKey: string,

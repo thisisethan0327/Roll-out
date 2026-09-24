@@ -35,7 +35,9 @@ import { Countdown } from './Countdown';
 import { RsvpControls } from './RsvpControls';
 import { ShareBar } from './ShareBar';
 import { TiersSection, type TierView } from './TiersSection';
+import { MyTicketsPanel } from './MyTicketsPanel';
 import type { RsvpState } from './actions';
+import { multiTicketsEnabled, myTicketsForEvent } from '@/lib/event-tickets';
 import { parseRoutePlan, buildRoutePoints, buildGoogleMapsDirUrl } from '@/lib/route-plan';
 import { fetchDrivingPolyline, type LatLng } from './route-osrm';
 import RouteMapLoader from './RouteMapLoader';
@@ -508,7 +510,7 @@ export default async function PublicEventPage({
         : [];
     const routeGoogleMaps = hasRoutePlan ? buildGoogleMapsDirUrl(routePoints) : null;
 
-    const [myRsvp, coHostChips, tiers, routePolyline] = await Promise.all([
+    const [myRsvp, coHostChips, tiers, routePolyline, ticketsEnabled] = await Promise.all([
         loadMyRsvp(id),
         loadCoHostChips(id),
         isTiered ? loadTiers(id) : Promise.resolve([] as TierView[]),
@@ -518,7 +520,13 @@ export default async function PublicEventPage({
         hasRoutePlan && routePoints.length >= 2
             ? fetchDrivingPolyline(routePoints.map((p) => [p.lat, p.lng] as LatLng))
             : Promise.resolve(null),
+        multiTicketsEnabled(),
     ]);
+    // Multi-ticket packages (feature-gated): the buyer's own individual seats
+    // for THIS event, shown as "YOU'RE IN · N TICKETS" below the tier picker.
+    // Disabled → always [] → the block never renders → today's page is
+    // pixel-identical.
+    const myTickets = ticketsEnabled && myRsvp.isLoggedIn ? await myTicketsForEvent(id) : [];
     const { isLoggedIn, state: myState, spotNo: mySpotNo, waitlistPosition: myWaitPos } = myRsvp;
     const rsvpReturnPath = inviteToken
         ? `/event/${id}?invite=${encodeURIComponent(inviteToken)}`
@@ -801,7 +809,11 @@ export default async function PublicEventPage({
                                 initialHoldExpiresAt={myRsvp.holdExpiresAt}
                                 nextPath={rsvpReturnPath}
                                 inviteToken={inviteToken}
+                                ticketsEnabled={ticketsEnabled}
                             />
+                            {myTickets.length > 0 ? (
+                                <MyTicketsPanel eventId={ev.id} tickets={myTickets} reservationPolicy={ev.reservation_policy} eventStartAt={ev.start_at} eventTimeZone={ev.time_zone} />
+                            ) : null}
                         </div>
                     ) : rsvpOpen ? (
                         <RsvpControls

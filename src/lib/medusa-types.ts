@@ -141,4 +141,8 @@ export type EventCartMeta = {
     eventId: string;
     tierId: string;
     profileId: string;
+    /** Multi-ticket packages only (feature-gated, see lib/event-tickets.ts):
+     *  the rollout.event_tickets hold group this cart's line was created for.
+     *  Absent/null on every single-ticket cart (today's behaviour). */
+    ticketHoldId?: string | null;
 };

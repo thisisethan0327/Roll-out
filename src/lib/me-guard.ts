@@ -15,6 +15,7 @@ import 'server-only';
 import { redirect } from 'next/navigation';
 import { getConsumerProfile, type ConsumerProfile } from './consumer';
 import { isPlaceholderHandle, isOnboardingPath, onboardingUrl } from './onboarding';
+import { claimMyTicketsBestEffort } from './event-tickets';
 
 /**
  * Ensure the caller is a signed-in member. Redirects to /login with a next=
@@ -32,6 +33,13 @@ export async function requireConsumer(nextPath: string = '/me'): Promise<Consume
     if (isPlaceholderHandle(profile.handle) && !isOnboardingPath(nextPath)) {
         redirect(onboardingUrl(nextPath));
     }
+    // Multi-ticket packages (feature-gated): every /me page goes through here,
+    // which is the natural "the member's session/profile just resolved on the
+    // server" hook the design doc asks for. Awaited (not fire-and-forget) so
+    // it reliably completes even on serverless — but it can never fail this
+    // call: claimMyTicketsBestEffort swallows every error internally and a
+    // disabled feature short-circuits to a no-op before touching the network.
+    await claimMyTicketsBestEffort();
     return profile;
 }
 

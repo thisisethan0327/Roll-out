@@ -78,7 +78,13 @@ type Props = {
     nextPath: string;
     /** Per-invite token from ?invite= — stamps invite attribution on RSVP. */
     inviteToken?: string | null;
+    /** Multi-ticket packages (feature-gated, see lib/event-tickets.ts). False
+     *  keeps every paid-tier button on today's single-seat reserve_spot path
+     *  — this prop is the ONLY thing that changes tier-card behaviour. */
+    ticketsEnabled?: boolean;
 };
+
+const MAX_TICKETS = 5;
 
 const ERROR_COPY: Record<RsvpError | 'config', string> = {
     auth: 'Sign in to RSVP.',
@@ -250,8 +256,11 @@ export function TiersSection({
     initialHoldExpiresAt,
     nextPath,
     inviteToken,
+    ticketsEnabled = false,
 }: Props) {
     const router = useRouter();
+    // Per-tier quantity stepper (multi-ticket packages only) — 1..min(5, spots left).
+    const [qty, setQty] = useState<Record<string, number>>({});
     // Client-side estimate (TS fallback per lib/refund-policy.ts) — good
     // enough to decide which button to show; cancelPaidRsvp always re-checks
     // the live window server-side (preferring the RPC) before refunding.
@@ -313,6 +322,17 @@ export function TiersSection({
                 setMsg(ERROR_COPY[res.error]);
             }
         });
+    };
+
+    // Multi-ticket packages (feature-gated): quantity is chosen here, but the
+    // hold itself needs attendee name/email/size per seat, which this card
+    // doesn't collect — so this only navigates to checkout with the chosen
+    // tier + quantity; the actual reserve_tickets hold is created when the
+    // member submits the WHO'S GOING form there (see checkout/page.tsx).
+    const chooseTickets = (tier: TierView) => {
+        if (pending) return;
+        const n = Math.max(1, Math.min(MAX_TICKETS, qty[tier.id] ?? 1));
+        router.push(`/event/${eventId}/checkout?tier=${tier.id}&tickets=${n}`);
     };
 
     const choosePaid = (tier: TierView) => {
@@ -630,10 +650,51 @@ export function TiersSection({
                                         </a>
                                     </div>
                                 ) : (
+                                <>
+                                {ticketsEnabled && !isFree && buyable && !soldOut ? (() => {
+                                    const max = Math.max(1, Math.min(MAX_TICKETS, tier.remaining ?? MAX_TICKETS));
+                                    const n = Math.max(1, Math.min(max, qty[tier.id] ?? 1));
+                                    return (
+                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginTop: 4 }}>
+                                            <span className="font-display" style={{ fontSize: 10, letterSpacing: 'var(--track-wider)', color: 'var(--text-2)' }}>
+                                                TICKETS
+                                            </span>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                                <button
+                                                    type="button"
+                                                    aria-label="Fewer tickets"
+                                                    disabled={n <= 1}
+                                                    onClick={() => setQty((q) => ({ ...q, [tier.id]: Math.max(1, n - 1) }))}
+                                                    style={{ width: 28, height: 28, border: '1px solid var(--line-mid)', background: 'transparent', color: 'var(--text)', cursor: n <= 1 ? 'not-allowed' : 'pointer', opacity: n <= 1 ? 0.4 : 1 }}
+                                                >
+                                                    −
+                                                </button>
+                                                <span style={{ minWidth: 18, textAlign: 'center', fontFamily: 'var(--font-display)', fontSize: 13, color: 'var(--text)' }}>
+                                                    {n}
+                                                </span>
+                                                <button
+                                                    type="button"
+                                                    aria-label="More tickets"
+                                                    disabled={n >= max}
+                                                    onClick={() => setQty((q) => ({ ...q, [tier.id]: Math.min(max, n + 1) }))}
+                                                    style={{ width: 28, height: 28, border: '1px solid var(--line-mid)', background: 'transparent', color: 'var(--text)', cursor: n >= max ? 'not-allowed' : 'pointer', opacity: n >= max ? 0.4 : 1 }}
+                                                >
+                                                    +
+                                                </button>
+                                            </div>
+                                        </div>
+                                    );
+                                })() : null}
                                 <button
                                     type="button"
                                     disabled={pending || !buyable}
-                                    onClick={() => (isFree ? chooseFree(tier) : choosePaid(tier))}
+                                    onClick={() =>
+                                        isFree
+                                            ? chooseFree(tier)
+                                            : ticketsEnabled
+                                                ? chooseTickets(tier)
+                                                : choosePaid(tier)
+                                    }
                                     style={{
                                         marginTop: 4,
                                         padding: '12px 16px',
@@ -655,8 +716,11 @@ export function TiersSection({
                                             ? 'JOIN WAITLIST'
                                             : isFree
                                                 ? 'RSVP FREE'
-                                                : 'RESERVE + PAY ›'}
+                                                : ticketsEnabled && (qty[tier.id] ?? 1) > 1
+                                                    ? `RESERVE ${Math.max(1, Math.min(MAX_TICKETS, tier.remaining ?? MAX_TICKETS, qty[tier.id] ?? 1))} + PAY ›`
+                                                    : 'RESERVE + PAY ›'}
                                 </button>
+                                </>
                                 )}
                                 </div>
                             </div>

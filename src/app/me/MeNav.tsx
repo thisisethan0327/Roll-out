@@ -23,12 +23,22 @@ function isActive(pathname: string, href: string): boolean {
     return pathname === href || pathname.startsWith(href + '/');
 }
 
-export function MeNav({ displayName, isHost = false }: { displayName: string; isHost?: boolean }) {
+export function MeNav({
+    displayName,
+    isHost = false,
+    ticketsEnabled = false,
+}: {
+    displayName: string;
+    isHost?: boolean;
+    /** Multi-ticket packages (feature-gated) — adds the /me/event-tickets
+     *  link. False (the default) keeps this nav exactly as it is today. */
+    ticketsEnabled?: boolean;
+}) {
     const pathname = usePathname() || '';
     const [pending, start] = useTransition();
-    const LINKS = isHost
-        ? [...BASE_LINKS, { href: '/me/events', label: 'Events' }]
-        : BASE_LINKS;
+    let LINKS = BASE_LINKS;
+    if (ticketsEnabled) LINKS = [...LINKS, { href: '/me/event-tickets', label: 'Event Tickets' }];
+    if (isHost) LINKS = [...LINKS, { href: '/me/events', label: 'Events' }];
 
     return (
         <header

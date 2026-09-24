@@ -24,6 +24,7 @@ import {
 import { getSellingShops } from '@/lib/store-shops';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { refundPolicyShortLine, REFUND_POLICY_PATH } from '@/lib/refund-policy';
+import { ticketsForOrder, sizeLabel } from '@/lib/event-tickets';
 import { fmtDate, fmtDay, StatusPill, EmptyRow } from '../../ui';
 
 export const dynamic = 'force-dynamic';
@@ -121,6 +122,12 @@ export default async function OrderDetailPage({
             console.error('[me/orders/[id]] refund policy lookup failed:', (e as any)?.message ?? e);
         }
     }
+    // Multi-ticket packages (feature-gated): the ATTENDEES table under an
+    // event order that carries tickets. ticketsForOrder() is buyer-scoped
+    // (my_tickets() itself), so a non-event order or a member who isn't the
+    // buyer simply gets []; the section is omitted entirely in that case.
+    const attendees = o.is_event ? await ticketsForOrder(o.id) : [];
+
     const pay = paymentStatusCopy(o.payment_status);
     const ful = fulfillmentStatusCopy(o.fulfillment_status);
 
@@ -190,6 +197,31 @@ export default async function OrderDetailPage({
                             Full policy ›
                         </Link>
                     </p>
+                </section>
+            ) : null}
+
+            {/* ATTENDEES — multi-ticket packages (feature-gated) */}
+            {attendees.length > 0 ? (
+                <section style={SECTION}>
+                    <div style={SECTION_TITLE}>ATTENDEES ({attendees.length})</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        {[...attendees].sort((a, b) => a.seat - b.seat).map((t) => (
+                            <div
+                                key={t.ticketId}
+                                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, borderTop: '1px solid var(--line)', paddingTop: 8 }}
+                            >
+                                <div>
+                                    <div style={{ fontSize: 13, color: 'var(--text)' }}>
+                                        SEAT {t.seat} · {t.attendeeName || '—'}
+                                    </div>
+                                    <div className="text-dim" style={{ fontSize: 11, marginTop: 2 }}>
+                                        Sweater {sizeLabel(t.sweaterSize)}
+                                    </div>
+                                </div>
+                                <StatusPill status={t.status} />
+                            </div>
+                        ))}
+                    </div>
                 </section>
             ) : null}
 

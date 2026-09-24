@@ -25,9 +25,11 @@ import {
 import { STRIPE_PUBLISHABLE_KEY } from '@/lib/medusa';
 import { CheckoutClient } from '../../../store/checkout/CheckoutClient';
 import { ConfirmPoll } from './ConfirmPoll';
+import { TicketAttendeesForm } from './TicketAttendeesForm';
 import { getRsvpSnapshot } from '../actions';
 import { formatClock } from '@/lib/event-time';
 import { refundPolicyShortLine, REFUND_POLICY_PATH } from '@/lib/refund-policy';
+import { multiTicketsEnabled, MAX_TICKETS_PER_ORDER } from '@/lib/event-tickets';
 
 export const dynamic = 'force-dynamic';
 
@@ -43,10 +45,10 @@ export default async function EventCheckoutPage({
     searchParams,
 }: {
     params: Promise<{ id: string }>;
-    searchParams: Promise<{ done?: string }>;
+    searchParams: Promise<{ done?: string; tier?: string; tickets?: string }>;
 }) {
     const { id } = await params;
-    const { done } = await searchParams;
+    const { done, tier: tierParam, tickets: ticketsParam } = await searchParams;
     if (!UUID_RE.test(id)) notFound();
 
     // Only public events have a member checkout surface.
@@ -83,14 +85,67 @@ export default async function EventCheckoutPage({
 
     // ── Checkout state — the event cart must belong to THIS event + member ──
     const eventCart = await getEventCart();
-    if (
-        !eventCart ||
-        eventCart.meta.eventId !== id ||
-        eventCart.meta.profileId !== me.profileId ||
-        eventCart.cart.items.length === 0
-    ) {
+    const hasMatchingCart =
+        !!eventCart &&
+        eventCart.meta.eventId === id &&
+        eventCart.meta.profileId === me.profileId &&
+        eventCart.cart.items.length > 0;
+
+    if (!hasMatchingCart) {
+        // Multi-ticket packages (feature-gated): the tier card navigates here
+        // with ?tier=&tickets=N BEFORE any hold exists (reserve_tickets needs
+        // attendee name/email/size per seat, which the tier card doesn't
+        // collect) — render the WHO'S GOING form instead of bouncing back to
+        // the event page. Any other case (disabled, no tier param, a stale/
+        // mismatched cart with no tier param) keeps today's behaviour exactly:
+        // redirect to the event page.
+        const ticketsEnabled = await multiTicketsEnabled();
+        const wantN = Math.max(1, Math.min(MAX_TICKETS_PER_ORDER, Number(ticketsParam ?? '0') || 0));
+        if (ticketsEnabled && tierParam && UUID_RE.test(tierParam) && wantN > 0) {
+            const { data: tier } = await admin
+                .from('event_tiers')
+                .select('id, event_id, name, price_cents, currency, active')
+                .eq('id', tierParam)
+                .maybeSingle();
+            if (!tier || (tier as any).event_id !== id || !(tier as any).active) {
+                redirect(`/event/${id}`);
+            }
+            const policyLine = refundPolicyShortLine(
+                (ev as any).start_at,
+                (ev as any).time_zone,
+                (ev as any).reservation_policy,
+            );
+            return (
+                <section className="section" style={{ padding: '40px 0 72px' }}>
+                    <div className="container">
+                        <div className="eyebrow eyebrow-gold mb-4">／ EVENT CHECKOUT</div>
+                        <h1 style={{ letterSpacing: 1, margin: '0 0 10px' }}>
+                            {((ev as any).title ?? 'EVENT PACKAGE').toUpperCase()}
+                        </h1>
+                        <p className="text-muted" style={{ fontSize: 12, margin: '0 0 28px', lineHeight: 1.6 }}>
+                            {policyLine}{' '}
+                            <Link href={REFUND_POLICY_PATH} className="text-link">
+                                Full refund & cancellation policy ›
+                            </Link>
+                        </p>
+                        <TicketAttendeesForm
+                            eventId={id}
+                            tierId={tierParam}
+                            quantity={wantN}
+                            priceCents={Number((tier as any).price_cents ?? 0)}
+                            currency={(tier as any).currency ?? 'usd'}
+                            signedInName={me.displayName || ''}
+                            signedInEmail={me.email || ''}
+                        />
+                    </div>
+                </section>
+            );
+        }
         redirect(`/event/${id}`);
     }
+    // hasMatchingCart is true here, so eventCart is non-null — TS can't
+    // follow that through the boolean alone, so it's re-asserted once here.
+    const confirmedCart = eventCart!;
 
     // Refuse to render checkout without a Stripe key — same loud guard as the
     // store lane (never silently fall back to test mode).
@@ -139,7 +194,7 @@ export default async function EventCheckoutPage({
                     </Link>
                 </p>
                 <CheckoutClient
-                    initialCart={eventCart.cart}
+                    initialCart={confirmedCart.cart}
                     stripeKey={STRIPE_PUBLISHABLE_KEY}
                     signedInEmail={me.email}
                     actions={{

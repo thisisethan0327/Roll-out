@@ -175,7 +175,8 @@ function metaOf(raw: any): EventCartMeta | null {
     const tierId = typeof m.event_tier_id === 'string' ? m.event_tier_id : null;
     const profileId = typeof m.event_profile_id === 'string' ? m.event_profile_id : null;
     if (!eventId || !tierId || !profileId) return null;
-    return { eventId, tierId, profileId };
+    const ticketHoldId = typeof m.ticket_hold_id === 'string' ? m.ticket_hold_id : null;
+    return { eventId, tierId, profileId, ticketHoldId };
 }
 
 /**
@@ -354,6 +355,113 @@ export async function createEventPackageCart(input: {
         return { ok: true, data: { cartId: cart.id } };
     } catch (e: any) {
         return { ok: false, error: e?.message ?? 'Could not start event checkout.' };
+    }
+}
+
+/**
+ * Multi-ticket packages (feature-gated — see lib/event-tickets.ts's
+ * multiTicketsEnabled). Same shape as createEventPackageCart but the line
+ * quantity is N (one per reserved seat) and the cart metadata additionally
+ * carries `ticket_hold_id` so Medusa's completion gate / order.placed
+ * subscriber can find the matching event_tickets hold group. Callers MUST
+ * have already reserved the hold via reserveTickets() in event-tickets.ts —
+ * this function only ever wires up the cart, never reserves spots itself.
+ *
+ * Reuses an existing cart only when it matches the SAME hold id (not just
+ * the same event+tier — a member who abandons one hold and starts a fresh
+ * one must never resume paying for the stale hold's line).
+ */
+export async function createEventTicketsCart(input: {
+    eventId: string;
+    tierId: string;
+    profileId: string;
+    medusaProductId: string;
+    holdId: string;
+    quantity: number;
+}): Promise<ActionResult<{ cartId: string }>> {
+    if (!eventsConfigured()) {
+        return { ok: false, error: 'Event checkout is not configured.' };
+    }
+    const { eventId, tierId, profileId, medusaProductId, holdId, quantity } = input;
+    if (!eventId || !tierId || !profileId || !medusaProductId || !holdId || quantity < 1) {
+        return { ok: false, error: 'Missing event ticket details.' };
+    }
+
+    const token = await ensureMedusaCustomerToken();
+    if (!token) {
+        return {
+            ok: false,
+            error: 'Sign in to reserve tickets — an event package is tied to your account.',
+        };
+    }
+
+    const existingId = await getCartIdCookie();
+    if (existingId) {
+        const raw = await fetchRawCart(existingId);
+        const meta = raw ? metaOf(raw) : null;
+        if (
+            meta &&
+            meta.eventId === eventId &&
+            meta.tierId === tierId &&
+            meta.profileId === profileId &&
+            meta.ticketHoldId === holdId &&
+            Array.isArray(raw.items) &&
+            raw.items.length > 0
+        ) {
+            return { ok: true, data: { cartId: existingId } };
+        }
+        await clearCartIdCookie();
+    }
+
+    try {
+        const { products } = await eventMedusaFetch<{ products: any[] }>(`/store/products`, {
+            method: 'GET',
+            query: {
+                'id[]': [medusaProductId],
+                region_id: MEDUSA_REGION_ID,
+                fields: 'id,*variants',
+                limit: '1',
+            },
+        });
+        const variantId: string | undefined = products?.[0]?.variants?.[0]?.id;
+        if (!variantId) {
+            return { ok: false, error: 'This package is not available right now.' };
+        }
+
+        const { cart } = await eventMedusaFetch<{ cart: any }>(`/store/carts`, {
+            method: 'POST',
+            body: JSON.stringify({
+                region_id: MEDUSA_REGION_ID,
+                sales_channel_id: EVENTS_SALES_CHANNEL_ID,
+                metadata: {
+                    event_id: eventId,
+                    event_tier_id: tierId,
+                    event_profile_id: profileId,
+                    ticket_hold_id: holdId,
+                },
+            }),
+        });
+
+        await eventMedusaFetch(`/store/carts/${cart.id}/customer`, { method: 'POST' });
+
+        const bound = await fetchRawCart(cart.id);
+        if (!bound?.customer_id) {
+            await clearCartIdCookie();
+            return {
+                ok: false,
+                error: 'Could not tie these tickets to your account — sign in again and retry. Nothing has been charged.',
+            };
+        }
+
+        await eventMedusaFetch(`/store/carts/${cart.id}/line-items`, {
+            method: 'POST',
+            body: JSON.stringify({ variant_id: variantId, quantity }),
+        });
+
+        await setCartIdCookie(cart.id);
+        return { ok: true, data: { cartId: cart.id } };
+    } catch (e: any) {
+        return { ok: false, error: e?.message ?? 'Could not start ticket checkout.' };
     }
 }
 
