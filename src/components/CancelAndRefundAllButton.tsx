@@ -113,7 +113,9 @@ export function CancelAndRefundAllButton({
                     <p style={{ fontSize: 13, color: 'var(--text-2)', margin: 0, lineHeight: 1.6 }}>
                         This cancels the event immediately and refunds every confirmed
                         paid ticket in full, regardless of the 72-hour window — full
-                        refund on host cancellation is the policy.
+                        refund on host cancellation is the policy. If a refund fails,
+                        that ticket holder stays on the cancelled event until you run
+                        this again.
                     </p>
                     <div style={{ fontSize: 13, color: 'var(--text)' }}>
                         {loadingPreview ? (

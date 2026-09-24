@@ -11,6 +11,7 @@ import { EventCoverPicker } from '@/app/shop/[slug]/events/EventCoverPicker';
 import { EventStartAtField } from '@/components/EventStartAtField';
 import { RoutePlanEditor } from './RoutePlanEditor';
 import { parseRoutePlan } from '@/lib/route-plan';
+import { CancelAndRefundAllButton } from '@/components/CancelAndRefundAllButton';
 
 const VISIBILITY: { value: string; label: string }[] = [
     { value: 'public', label: 'PUBLIC' },
@@ -18,7 +19,7 @@ const VISIBILITY: { value: string; label: string }[] = [
     { value: 'private', label: 'PRIVATE' },
 ];
 
-export function HostEventEditForm({ event }: { event: any }) {
+export function HostEventEditForm({ event, isPaidEvent }: { event: any; isPaidEvent: boolean }) {
     const router = useRouter();
     const [pending, start] = useTransition();
     const [savedFlash, setSavedFlash] = useState(false);
@@ -150,7 +151,13 @@ export function HostEventEditForm({ event }: { event: any }) {
                 <button type="submit" className="admin-form-btn" disabled={pending}>
                     {savedFlash ? 'SAVED ✓' : 'SAVE CHANGES'}
                 </button>
-                {!event.cancelled_at ? (
+                {!event.cancelled_at && isPaidEvent ? (
+                    <CancelAndRefundAllButton
+                        eventId={event.id}
+                        eventTitle={event.title ?? ''}
+                        onDone={() => router.refresh()}
+                    />
+                ) : !event.cancelled_at ? (
                     <button type="button" className="admin-action-btn danger" onClick={onCancel} disabled={pending}>CANCEL EVENT</button>
                 ) : (
                     <button type="button" className="admin-action-btn" onClick={onUncancel} disabled={pending}>UNCANCEL EVENT</button>

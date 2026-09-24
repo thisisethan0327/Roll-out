@@ -4,9 +4,20 @@
  * Loads from the base rollout.events table (via the service-role client) so
  * PAST and CANCELLED public events still render with the right banner — the
  * event_cards view hides cancelled rows, which is wrong for a shareable link.
- * Only public events render; non-public 404. Logged-in members RSVP inline
- * (RLS-enforced writes); signed-out members get a sign-in CTA that returns here.
- * JSON-LD Event structured data keeps meets indexable + rich-previewable.
+ *
+ * A public event renders for anyone. A non-public event (followers/private)
+ * only renders for a signed-in viewer who is the host, a manager+ of the
+ * hosting shop, a platform admin, or who already has an RSVP row for it — see
+ * lib/event-visibility.ts's canViewEvent (pure, unit-checkable) for the rule.
+ * Everyone else, including signed-out visitors, gets notFound() same as a
+ * bad id. This does not change who may RSVP — the RSVP RPCs enforce that on
+ * their own regardless of what this page renders. Non-public events also
+ * carry `robots: noindex` (see generateMetadata) and are already excluded
+ * from sitemap.ts, which only lists visibility='public' rows.
+ *
+ * Logged-in members RSVP inline (RLS-enforced writes); signed-out members get
+ * a sign-in CTA that returns here. JSON-LD Event structured data keeps public
+ * meets indexable + rich-previewable.
  */
 import type { Metadata } from 'next';
 import { StylisedMap } from '@/components/map/StylisedMap';
@@ -17,6 +28,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { getConsumerProfile } from '@/lib/consumer';
+import { canViewEvent } from '@/lib/event-visibility';
 import { resolveCover } from '@/lib/event-covers';
 import { fetchEventTierProductImages } from '@/lib/event-tier-images';
 import { Countdown } from './Countdown';
@@ -75,6 +87,45 @@ type Attendee = {
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+/**
+ * Gathers this request's viewer signal (profile, platform-admin flag, shop
+ * role on the event's shop, existing RSVP row) and hands them to the pure
+ * canViewEvent() rule. Only called for non-public events — a public event
+ * never reaches this. A signed-out viewer resolves to `viewer: null`, which
+ * canViewEvent already treats as "no" for anything non-public.
+ */
+async function viewerCanSeeNonPublicEvent(ev: EventRow): Promise<boolean> {
+    const me = await getConsumerProfile();
+    if (!me) {
+        return canViewEvent({
+            visibility: ev.visibility,
+            viewer: null,
+            hostId: ev.host_id,
+            shopRole: null,
+            isAdmin: false,
+            hasRsvp: false,
+        });
+    }
+
+    const admin = getSupabaseAdmin();
+    const [{ data: padmin }, { data: mem }, { data: rsvp }] = await Promise.all([
+        admin.from('platform_admins').select('profile_id').eq('profile_id', me.profileId).maybeSingle(),
+        ev.shop_id != null
+            ? admin.from('shop_memberships').select('role').eq('profile_id', me.profileId).eq('shop_id', ev.shop_id).maybeSingle()
+            : Promise.resolve({ data: null } as { data: null }),
+        admin.from('event_rsvps').select('profile_id').eq('event_id', ev.id).eq('profile_id', me.profileId).maybeSingle(),
+    ]);
+
+    return canViewEvent({
+        visibility: ev.visibility,
+        viewer: { profileId: me.profileId },
+        hostId: ev.host_id,
+        shopRole: (mem as any)?.role ?? null,
+        isAdmin: !!padmin,
+        hasRsvp: !!rsvp,
+    });
+}
+
 async function loadEvent(
     id: string,
 ): Promise<{ event: EventRow; attendees: Attendee[]; spotsLeft: number | null } | null> {
@@ -95,7 +146,11 @@ async function loadEvent(
     if (evError) console.error('[event/[id]] event load failed:', evError.message);
 
     const ev = evRaw as EventRow | null;
-    if (!ev || ev.visibility !== 'public') return null;
+    if (!ev) return null;
+    if (ev.visibility !== 'public') {
+        const canSee = await viewerCanSeeNonPublicEvent(ev);
+        if (!canSee) return null;
+    }
 
     const { data: rsvpRaw, error: rsvpError } = await supabase
         .from('event_rsvps')
@@ -388,6 +443,10 @@ export async function generateMetadata({
     return {
         title,
         description: desc,
+        // Non-public events are only reachable by an authorised viewer (see
+        // viewerCanSeeNonPublicEvent above) — keep them out of search results
+        // and link previews all the same. sitemap.ts already excludes them.
+        ...(ev.visibility !== 'public' ? { robots: { index: false, follow: false } } : {}),
         openGraph: { title: socialTitle, description: desc, images, type: 'website' },
         twitter: { card: 'summary_large_image', title: socialTitle, description: desc, images },
     };
