@@ -286,21 +286,11 @@ export function TiersSection({
         return () => clearInterval(t);
     }, []);
 
-    if (!isLoggedIn) {
-        return (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
-                <a className="btn btn-lg" href={`/login?next=${encodeURIComponent(nextPath)}&error=rsvp`}>
-                    Sign In to RSVP
-                </a>
-                <p
-                    className="text-muted"
-                    style={{ fontSize: 11, margin: 0, fontFamily: 'var(--font-display)', letterSpacing: 'var(--track-wider)' }}
-                >
-                    PICK A TIER RIGHT HERE ON THE WEB · NO APP NEEDED
-                </p>
-            </div>
-        );
-    }
+    // Signed-out visitors see the same tier cards (photos, contents, price,
+    // refund policy) so the full package is public; only the action differs:
+    // sign in, or sign up, and come straight back here to pick the tier.
+    const loginHref = `/login?next=${encodeURIComponent(nextPath)}&error=rsvp`;
+    const signupHref = `/signup?next=${encodeURIComponent(nextPath)}`;
 
     const holdExpired =
         mounted && state === 'held' && holdExpiresAt != null && new Date(holdExpiresAt).getTime() - now <= 0;
@@ -603,6 +593,43 @@ export function TiersSection({
                                     </p>
                                 ) : null}
 
+                                {!isLoggedIn ? (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 4 }}>
+                                        <a
+                                            href={loginHref}
+                                            style={{
+                                                padding: '12px 16px',
+                                                border: '1px solid var(--gold)',
+                                                background: isFree ? 'transparent' : 'var(--gold)',
+                                                color: isFree ? 'var(--gold)' : 'var(--bg-0, #000)',
+                                                fontFamily: 'var(--font-display)',
+                                                fontSize: 11,
+                                                fontWeight: 700,
+                                                letterSpacing: 'var(--track-wider)',
+                                                textAlign: 'center',
+                                                textDecoration: 'none',
+                                            }}
+                                        >
+                                            {isFree ? 'SIGN IN TO RSVP ›' : 'SIGN IN TO RESERVE ›'}
+                                        </a>
+                                        <a
+                                            href={signupHref}
+                                            className="font-display"
+                                            style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                minHeight: 44,
+                                                color: 'var(--text-2)',
+                                                fontSize: 10,
+                                                letterSpacing: 'var(--track-wider)',
+                                                textDecoration: 'underline',
+                                            }}
+                                        >
+                                            NEW TO ROLLOUT? SIGN UP ›
+                                        </a>
+                                    </div>
+                                ) : (
                                 <button
                                     type="button"
                                     disabled={pending || !buyable}
@@ -630,6 +657,7 @@ export function TiersSection({
                                                 ? 'RSVP FREE'
                                                 : 'RESERVE + PAY ›'}
                                 </button>
+                                )}
                                 </div>
                             </div>
                         );
@@ -652,9 +680,11 @@ export function TiersSection({
                     ? msg.toUpperCase()
                     : holdExpired
                         ? 'YOUR HOLD EXPIRED — PICK A TIER TO TRY AGAIN'
-                        : state == null
-                            ? 'PICK A TIER TO RSVP'
-                            : ''}
+                        : !isLoggedIn
+                            ? 'SIGN IN OR SIGN UP TO RSVP · NO APP NEEDED'
+                            : state == null
+                                ? 'PICK A TIER TO RSVP'
+                                : ''}
             </p>
         </div>
     );
