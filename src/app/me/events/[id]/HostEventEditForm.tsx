@@ -22,6 +22,7 @@ export function HostEventEditForm({ event }: { event: any }) {
     const router = useRouter();
     const [pending, start] = useTransition();
     const [savedFlash, setSavedFlash] = useState(false);
+    const [err, setErr] = useState<string | null>(null);
 
     // Start time and its zone travel together now — see EventStartAtField.
     const tagsString = Array.isArray(event.tags) ? event.tags.join(', ') : '';
@@ -35,14 +36,19 @@ export function HostEventEditForm({ event }: { event: any }) {
     const initialStops = parseRoutePlan(event.route_plan);
 
     const onSubmit = async (formData: FormData) => {
+        setErr(null);
         start(async () => {
             try {
-                await updateHostEvent(event.id, formData);
+                const result = await updateHostEvent(event.id, formData);
+                if (!result.ok) {
+                    setErr(result.error);
+                    return;
+                }
                 setSavedFlash(true);
                 setTimeout(() => setSavedFlash(false), 1500);
                 router.refresh();
             } catch (e: any) {
-                alert('Save failed: ' + (e?.message ?? 'unknown'));
+                setErr(e?.message ?? 'Save failed.');
             }
         });
     };
@@ -72,6 +78,8 @@ export function HostEventEditForm({ event }: { event: any }) {
 
     return (
         <form className="admin-form" action={onSubmit} style={{ maxWidth: 720 }}>
+            {err ? <div className="admin-form-error" style={{ marginBottom: 12 }}>{err}</div> : null}
+
             <SectionHeading>DETAILS</SectionHeading>
             <label className="admin-form-label">TITLE</label>
             <input name="title" className="admin-form-input" minLength={4} required defaultValue={event.title ?? ''} disabled={pending} />

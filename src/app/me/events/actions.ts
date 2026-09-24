@@ -19,6 +19,7 @@ import { requireVerifiedHost } from '@/lib/me-guard';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { getRolloutMemberClient } from '@/lib/consumer';
 import { sendPlatformNotification } from '@/lib/platform-notify';
+import { parseDestinationName, parseHeroUrl } from '@/lib/host-event-parse';
 import {
     renderInvite,
     type InviteBranding,
@@ -59,15 +60,6 @@ function parseTags(raw: string | null | undefined): string[] {
     return raw.split(',').map((t) => t.trim()).filter(Boolean);
 }
 
-function parseHeroUrl(raw: FormDataEntryValue | null): string | null {
-    if (raw == null) return null;
-    const s = String(raw).trim();
-    if (!s) return null;
-    if (!/^https?:\/\//i.test(s)) throw new Error('Cover URL must be an http(s) link.');
-    if (s.length > 1000) throw new Error('Cover URL is too long.');
-    return s;
-}
-
 /** Load an event the caller owns (host_id = them, shop_id null). Null if not. */
 async function loadOwnEvent(eventId: string, hostProfileId: string) {
     const admin = getSupabaseAdmin();
@@ -83,17 +75,16 @@ async function loadOwnEvent(eventId: string, hostProfileId: string) {
     return ev;
 }
 
-/** `destination_name` — trimmed, optional (null clears it). Same 1..80-char
- * cap the route_plan stop names carry (migration 076), for consistency. */
-function parseDestinationName(raw: FormDataEntryValue | null): string | null {
-    if (raw == null) return null;
-    const s = String(raw).trim();
-    if (!s) return null;
-    if (s.length > 80) throw new Error('Destination name must be 80 characters or fewer.');
-    return s;
-}
+/** Failure shape returned by createHostEvent/updateHostEvent — matches
+ * setEventRoutePlan's { ok: false, error } below. On success createHostEvent
+ * redirects (never returns) and updateHostEvent returns { ok: true }; Next
+ * redacts thrown Error messages from server actions in production, so form
+ * input problems must come back as data, not a throw. */
+export type HostEventActionResult = { ok: true } | { ok: false; error: string };
 
-export async function createHostEvent(formData: FormData) {
+export async function createHostEvent(
+    formData: FormData,
+): Promise<{ ok: false; error: string } | void> {
     const profile = await requireVerifiedHost('/me/events/new');
 
     const type = String(formData.get('type') ?? '').trim();
@@ -107,17 +98,24 @@ export async function createHostEvent(formData: FormData) {
     const capacity = parseNumber(formData.get('capacity'));
     const visibility = String(formData.get('visibility') ?? 'public').trim();
     const tags = parseTags(String(formData.get('tags') ?? ''));
-    const hero_image_url = parseHeroUrl(formData.get('hero_image_url'));
-    const destination_name = parseDestinationName(formData.get('destination_name'));
+
+    const heroResult = parseHeroUrl(formData.get('hero_image_url'));
+    if (!heroResult.ok) return { ok: false, error: heroResult.error };
+    const hero_image_url = heroResult.value;
+
+    const destResult = parseDestinationName(formData.get('destination_name'));
+    if (!destResult.ok) return { ok: false, error: destResult.error };
+    const destination_name = destResult.value;
+
     const destination_lat = parseNumber(formData.get('destination_lat'));
     const destination_lng = parseNumber(formData.get('destination_lng'));
 
-    if (!ALLOWED_TYPES.has(type)) throw new Error('Invalid event type.');
-    if (title.length < 4) throw new Error('Title must be at least 4 characters.');
-    if (description.length > 400) throw new Error('Description must be 400 chars or fewer.');
-    if (location_name.length < 2) throw new Error('Location name is required.');
-    if (!start_at_raw) throw new Error('Start time is required.');
-    if (!ALLOWED_VIS.has(visibility)) throw new Error('Invalid visibility.');
+    if (!ALLOWED_TYPES.has(type)) return { ok: false, error: 'Invalid event type.' };
+    if (title.length < 4) return { ok: false, error: 'Title must be at least 4 characters.' };
+    if (description.length > 400) return { ok: false, error: 'Description must be 400 chars or fewer.' };
+    if (location_name.length < 2) return { ok: false, error: 'Location name is required.' };
+    if (!start_at_raw) return { ok: false, error: 'Start time is required.' };
+    if (!ALLOWED_VIS.has(visibility)) return { ok: false, error: 'Invalid visibility.' };
     // The wall clock is meaningless without the zone it was typed in; the form
     // carries it. Parsing it with `new Date()` used the SERVER's zone (UTC),
     // which is what moved every meet by the offset. See lib/event-time.ts.
@@ -126,7 +124,7 @@ export async function createHostEvent(formData: FormData) {
         console.warn('[events] no %s on the form — reading the wall clock as UTC', EVENT_TZ_FIELD);
     }
     const start_at = zonedWallClockToUtc(start_at_raw, timeZone);
-    if (!start_at) throw new Error('Invalid start time.');
+    if (!start_at) return { ok: false, error: 'Invalid start time.' };
 
     const admin = getSupabaseAdmin();
     const { data, error } = await admin
@@ -155,7 +153,7 @@ export async function createHostEvent(formData: FormData) {
         })
         .select('id')
         .single();
-    if (error) throw new Error(error.message);
+    if (error) return { ok: false, error: error.message };
 
     const newId = (data as any).id as string;
     revalidatePath('/me/events');
@@ -163,10 +161,13 @@ export async function createHostEvent(formData: FormData) {
     redirect(`/me/events/${newId}?just_created=1`);
 }
 
-export async function updateHostEvent(eventId: string, formData: FormData) {
+export async function updateHostEvent(
+    eventId: string,
+    formData: FormData,
+): Promise<HostEventActionResult> {
     const profile = await requireVerifiedHost('/me/events');
     const ev = await loadOwnEvent(eventId, profile.profileId);
-    if (!ev) throw new Error('Event not found.');
+    if (!ev) return { ok: false, error: 'Event not found.' };
 
     const title = String(formData.get('title') ?? '').trim();
     const description = String(formData.get('description') ?? '').trim();
@@ -178,19 +179,26 @@ export async function updateHostEvent(eventId: string, formData: FormData) {
     const capacity = parseNumber(formData.get('capacity'));
     const visibility = String(formData.get('visibility') ?? 'public').trim();
     const tags = parseTags(String(formData.get('tags') ?? ''));
-    const hero_image_url = parseHeroUrl(formData.get('hero_image_url'));
+
+    const heroResult = parseHeroUrl(formData.get('hero_image_url'));
+    if (!heroResult.ok) return { ok: false, error: heroResult.error };
+    const hero_image_url = heroResult.value;
+
     // Route destination (migration 076) — plain columns on events, updated
     // through this same ownership-checked write path (not the route_plan
     // RPC below, which only covers the jsonb stop array).
-    const destination_name = parseDestinationName(formData.get('destination_name'));
+    const destResult = parseDestinationName(formData.get('destination_name'));
+    if (!destResult.ok) return { ok: false, error: destResult.error };
+    const destination_name = destResult.value;
+
     const destination_lat = parseNumber(formData.get('destination_lat'));
     const destination_lng = parseNumber(formData.get('destination_lng'));
 
-    if (title.length < 4) throw new Error('Title must be at least 4 characters.');
-    if (description.length > 400) throw new Error('Description must be 400 chars or fewer.');
-    if (location_name.length < 2) throw new Error('Location name is required.');
-    if (!start_at_raw) throw new Error('Start time is required.');
-    if (!ALLOWED_VIS.has(visibility)) throw new Error('Invalid visibility.');
+    if (title.length < 4) return { ok: false, error: 'Title must be at least 4 characters.' };
+    if (description.length > 400) return { ok: false, error: 'Description must be 400 chars or fewer.' };
+    if (location_name.length < 2) return { ok: false, error: 'Location name is required.' };
+    if (!start_at_raw) return { ok: false, error: 'Start time is required.' };
+    if (!ALLOWED_VIS.has(visibility)) return { ok: false, error: 'Invalid visibility.' };
     // The wall clock is meaningless without the zone it was typed in; the form
     // carries it. Parsing it with `new Date()` used the SERVER's zone (UTC),
     // which is what moved every meet by the offset. See lib/event-time.ts.
@@ -199,7 +207,7 @@ export async function updateHostEvent(eventId: string, formData: FormData) {
         console.warn('[events] no %s on the form — reading the wall clock as UTC', EVENT_TZ_FIELD);
     }
     const start_at = zonedWallClockToUtc(start_at_raw, timeZone);
-    if (!start_at) throw new Error('Invalid start time.');
+    if (!start_at) return { ok: false, error: 'Invalid start time.' };
 
     const admin = getSupabaseAdmin();
     const { error } = await admin
@@ -224,12 +232,13 @@ export async function updateHostEvent(eventId: string, formData: FormData) {
         .eq('id', eventId)
         .eq('host_id', profile.profileId)
         .is('shop_id', null);
-    if (error) throw new Error(error.message);
+    if (error) return { ok: false, error: error.message };
 
     revalidatePath('/me/events');
     revalidatePath(`/me/events/${eventId}`);
     revalidatePath(`/event/${eventId}`);
     revalidatePath('/meets');
+    return { ok: true };
 }
 
 // ── Route plan (migration 076) ───────────────────────────────────────────
@@ -309,6 +318,9 @@ export async function cancelHostEvent(eventId: string, cancel: boolean) {
         .eq('id', eventId)
         .eq('host_id', profile.profileId)
         .is('shop_id', null);
+    // Not form-input driven — `cancel` is a fixed boolean toggle, so a
+    // failure here is a genuine DB/infra error, not something a validation
+    // message would help with. Left as a throw (see actions.ts audit notes).
     if (error) throw new Error(error.message);
     revalidatePath('/me/events');
     revalidatePath(`/me/events/${eventId}`);
