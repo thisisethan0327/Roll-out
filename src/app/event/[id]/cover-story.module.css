@@ -302,52 +302,197 @@
     margin: 0 0 18px;
 }
 
-/* ============ per-tier coupon card (TiersSection) ============ */
+/* ============ per-tier coupon card (TiersSection) ============
+   Mobile + multi-tier grids: the tier card IS the coupon — package photo
+   full-bleed at the top, half-circle notches on the card edges where the
+   photo meets the cut line, then "✂ cut here", then the details.
+   Desktop with a single tier: two columns — the coupon (details, stepper,
+   CTA, policy) beside a "what's in the box" photo panel. */
+.tierGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+    gap: 18px;
+    width: 100%;
+}
+.tierGridSingle {
+    grid-template-columns: 1fr;
+}
 .tierCard {
+    position: relative;
     display: flex;
     flex-direction: column;
+    border: 1px solid var(--line-mid);
+    background: var(--bg-2);
+    text-align: left;
+    min-width: 0;
 }
-.tierCardHasImage {
+.tierPhotoPanel {
     position: relative;
+    background: var(--bg-1);
+}
+.tierCardHasImage .tierPhotoPanel::before,
+.tierCardHasImage .tierPhotoPanel::after,
+.tierCoupon::before,
+.tierCoupon::after {
+    content: '';
+    position: absolute;
+    width: 22px;
+    height: 22px;
+    background: var(--bg-0);
+    border: 1px solid var(--line-mid);
+    border-radius: 50%;
+    z-index: 1;
+    pointer-events: none;
+}
+.tierCardHasImage .tierPhotoPanel::before,
+.tierCardHasImage .tierPhotoPanel::after {
+    bottom: -11px;
+}
+.tierCardHasImage .tierPhotoPanel::before {
+    left: -12px;
+}
+.tierCardHasImage .tierPhotoPanel::after {
+    right: -12px;
+}
+/* the coupon's own side notches only show in the desktop two-column layout */
+.tierCoupon::before,
+.tierCoupon::after {
+    display: none;
+}
+.tierPhotoCaption {
+    display: none;
+}
+.tierCoupon {
+    position: relative;
+    padding: 16px 18px 20px;
 }
 .tierCardBody {
     display: flex;
     flex-direction: column;
     gap: 10px;
-    padding: 18px 18px 16px;
 }
-@media (max-width: 900px) {
-    .tierCardHasImage::before,
-    .tierCardHasImage::after {
-        content: '';
-        position: absolute;
-        top: calc(var(--tier-media-h, 180px) - 11px);
-        width: 20px;
-        height: 20px;
-        background: var(--bg-0);
-        border: 1px solid var(--line-mid);
-        border-radius: 50%;
-        z-index: 1;
-    }
-    .tierCardHasImage::before {
-        left: -10px;
-    }
-    .tierCardHasImage::after {
-        right: -10px;
+.tierEyebrow {
+    font-family: var(--font-display);
+    font-weight: 700;
+    letter-spacing: var(--track-wide);
+    font-size: 11px;
+    color: var(--gold);
+    text-transform: uppercase;
+}
+.tierTitle {
+    font-family: var(--font-display);
+    font-weight: 800;
+    text-transform: uppercase;
+    font-size: clamp(22px, 3.2vw, 30px);
+    line-height: 1.05;
+    letter-spacing: -0.01em;
+    color: var(--text);
+    overflow-wrap: anywhere;
+}
+.tierPrice {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 22px;
+    color: var(--gold);
+}
+.includesList {
+    list-style: none;
+    margin: 6px 0 4px;
+    padding: 0;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px 14px;
+}
+.includesList li {
+    font-family: var(--font-body, Inter, sans-serif);
+    font-size: 13px;
+    line-height: 1.4;
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    color: var(--text-2);
+}
+.includesList li::before {
+    content: '✓';
+    color: var(--gold);
+    font-weight: 900;
+    flex: none;
+}
+.tierPolicy {
+    margin: 10px 0 0;
+    padding-top: 14px;
+    border-top: 1px solid var(--line);
+    font-family: var(--font-body, Inter, sans-serif);
+    font-size: 12.5px;
+    line-height: 1.6;
+    color: var(--text-2);
+}
+.tierPhotoCap {
+    font-family: var(--font-display);
+    font-weight: 700;
+    letter-spacing: var(--track-wide);
+    text-transform: uppercase;
+    color: var(--gold);
+    font-size: 12px;
+}
+.tierPhotoCapSub {
+    font-size: 12px;
+    color: var(--text-3);
+}
+@media (max-width: 460px) {
+    .includesList {
+        grid-template-columns: 1fr;
     }
 }
 @media (min-width: 901px) {
-    .tierCardHasImage {
-        flex-direction: row;
-        align-items: stretch;
+    .tierGridSingle .tierCard:not(.tierCardHasImage) {
+        width: 100%;
+        max-width: 640px;
+        margin: 0 auto;
     }
-    .tierCardHasImage > :first-child {
-        flex: 0 0 42%;
-        max-width: 42%;
+    .tierGridSingle .tierCardHasImage {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 26px;
+        align-items: start;
+        border: none;
+        background: transparent;
     }
-    .tierCardBody {
-        flex: 1;
-        min-width: 0;
+    .tierGridSingle .tierCardHasImage .tierPhotoPanel {
+        order: 2;
+        background: var(--bg-2);
+        border: 1px solid var(--line);
+        padding: 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+    .tierGridSingle .tierCardHasImage .tierPhotoPanel::before,
+    .tierGridSingle .tierCardHasImage .tierPhotoPanel::after {
+        display: none;
+    }
+    .tierGridSingle .tierCardHasImage .tierPhotoCaption {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+    .tierGridSingle .tierCardHasImage .tierCoupon {
+        order: 1;
+        border: 1px solid var(--line-mid);
+        background: var(--bg-2);
+        padding: 26px 30px 30px;
+    }
+    /* notches sit on the coupon edges, level with the cut line */
+    .tierGridSingle .tierCardHasImage .tierCoupon::before,
+    .tierGridSingle .tierCardHasImage .tierCoupon::after {
+        display: block;
+        top: 40px;
+    }
+    .tierGridSingle .tierCardHasImage .tierCoupon::before {
+        left: -12px;
+    }
+    .tierGridSingle .tierCardHasImage .tierCoupon::after {
+        right: -12px;
     }
 }
 

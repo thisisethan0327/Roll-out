@@ -708,12 +708,13 @@ export default async function PublicEventPage({
                 {/* RSVP / TICKET CARD */}
                 <section className={`section ${styles.section}`} style={{ textAlign: 'center' }}>
                     <div className="container" style={{ display: 'flex', flexDirection: 'column', gap: 26, alignItems: 'center' }}>
-                        <div className={styles.sectionEyebrow} style={{ justifyContent: 'center', width: '100%', maxWidth: 760 }}>
+                        <div className={styles.sectionEyebrow} style={{ width: '100%', maxWidth: isTiered ? undefined : 760 }}>
                             ／ {isTiered ? 'RESERVE' : 'RSVP'}
                         </div>
                         {rsvpOpen && isTiered && tiers.length > 0 ? (
-                            <TicketCard>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 20, alignItems: 'center' }}>
+                            // Tier events: each tier card IS the coupon (see TiersSection /
+                            // .tierCard) — no outer TicketCard frame, so no double border.
+                            <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 20, alignItems: 'center' }}>
                                     <TiersSection
                                         eventId={ev.id}
                                         tiers={tiers}
@@ -733,8 +734,7 @@ export default async function PublicEventPage({
                                     {myTickets.length > 0 ? (
                                         <MyTicketsPanel eventId={ev.id} tickets={myTickets} reservationPolicy={ev.reservation_policy} eventStartAt={ev.start_at} eventTimeZone={ev.time_zone} />
                                     ) : null}
-                                </div>
-                            </TicketCard>
+                            </div>
                         ) : rsvpOpen ? (
                             <TicketCard>
                                 <RsvpControls

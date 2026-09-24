@@ -549,85 +549,48 @@ export function TiersSection({
 
             {/* TIER CARDS — pick a tier (hidden once confirmed/held) */}
             {state !== 'confirmed' && state !== 'ticket_pending' && (state !== 'held' || holdExpired) ? (
-                <div
-                    style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 320px))',
-                        gap: 14,
-                        justifyContent: 'center',
-                        width: '100%',
-                    }}
-                >
+                <div className={`${styles.tierGrid} ${tiers.length === 1 ? styles.tierGridSingle : ''}`}>
                     {tiers.map((tier) => {
                         const soldOut = tier.remaining != null && tier.remaining <= 0;
                         const isFree = tier.priceCents === 0;
                         const buyable = isFree || tier.purchasable;
                         const hasImage = !!(tier.image && (tier.image.images.length > 0 || tier.image.thumbnail));
+                        const eyebrow = [
+                            tier.includes.length > 0 ? 'PACKAGE' : 'TIER',
+                            tier.reservedSpot ? 'RESERVED SPOT' : null,
+                        ]
+                            .filter(Boolean)
+                            .join(' · ');
                         return (
                             <div
                                 key={tier.id}
                                 className={`${styles.tierCard} ${hasImage ? styles.tierCardHasImage : ''}`}
-                                style={{
-                                    display: 'flex',
-                                    border: '1px solid var(--line-mid)',
-                                    background: 'var(--bg-1)',
-                                    textAlign: 'left',
-                                    opacity: soldOut ? 0.65 : 1,
-                                    overflow: hasImage ? 'visible' : 'hidden',
-                                }}
+                                style={{ opacity: soldOut ? 0.65 : 1 }}
                             >
-                                <TierMedia image={tier.image} name={tier.name} />
+                                {hasImage ? (
+                                    <div className={styles.tierPhotoPanel}>
+                                        <TierMedia image={tier.image} name={tier.name} />
+                                        <div className={styles.tierPhotoCaption}>
+                                            <span className={styles.tierPhotoCap}>
+                                                {tier.includes.length > 0 ? "WHAT'S IN THE BOX" : tier.name.toUpperCase()}
+                                            </span>
+                                            {tier.includes.length > 0 ? (
+                                                <span className={styles.tierPhotoCapSub}>{tier.name}</span>
+                                            ) : null}
+                                        </div>
+                                    </div>
+                                ) : null}
 
-                                <div className={styles.tierCardBody} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10 }}>
-                                    <span
-                                        style={{
-                                            fontFamily: 'var(--font-display)',
-                                            fontSize: 13,
-                                            fontWeight: 700,
-                                            letterSpacing: 1,
-                                            color: 'var(--text)',
-                                        }}
-                                    >
-                                        {tier.name.toUpperCase()}
-                                    </span>
-                                    <span className="accent" style={{ fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 700 }}>
-                                        {formatPrice(tier.priceCents, tier.currency)}
-                                    </span>
+                                <div className={styles.tierCoupon}>
+                                <div className={styles.cutLineLabel} style={{ marginBottom: 6 }}>
+                                    <span aria-hidden="true">✂</span> CUT HERE
                                 </div>
+                                <hr className={styles.cutLine} />
 
-                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                                    {tier.reservedSpot ? (
-                                        <span
-                                            style={{
-                                                padding: '3px 8px',
-                                                border: '1px solid var(--gold)',
-                                                color: 'var(--gold)',
-                                                fontFamily: 'var(--font-display)',
-                                                fontSize: 9,
-                                                letterSpacing: 'var(--track-wider)',
-                                            }}
-                                        >
-                                            RESERVED SPOT
-                                        </span>
-                                    ) : null}
-                                    {tier.includes.map((inc) => (
-                                        <span
-                                            key={inc}
-                                            style={{
-                                                padding: '3px 8px',
-                                                border: '1px solid var(--line-mid)',
-                                                color: 'var(--text-2)',
-                                                fontFamily: 'var(--font-display)',
-                                                fontSize: 9,
-                                                letterSpacing: 'var(--track-wider)',
-                                                textTransform: 'uppercase',
-                                            }}
-                                        >
-                                            {inc}
-                                        </span>
-                                    ))}
-                                </div>
+                                <div className={styles.tierCardBody}>
+                                <div className={styles.tierEyebrow}>{eyebrow}</div>
+                                <div className={styles.tierTitle}>{tier.name}</div>
+                                <div className={styles.tierPrice}>{formatPrice(tier.priceCents, tier.currency)}</div>
 
                                 {tier.capacity != null ? (
                                     <div
@@ -640,16 +603,12 @@ export function TiersSection({
                                     </div>
                                 ) : null}
 
-                                {!isFree ? (
-                                    <p
-                                        className="text-muted"
-                                        style={{ fontSize: 10, lineHeight: 1.5, margin: 0 }}
-                                    >
-                                        {policyLine}{' '}
-                                        <Link href={REFUND_POLICY_PATH} className="text-link" style={{ color: 'inherit', textDecoration: 'underline' }}>
-                                            Full policy ›
-                                        </Link>
-                                    </p>
+                                {tier.includes.length > 0 ? (
+                                    <ul className={styles.includesList}>
+                                        {tier.includes.map((inc) => (
+                                            <li key={inc}>{inc}</li>
+                                        ))}
+                                    </ul>
                                 ) : null}
 
                                 {!isLoggedIn ? (
@@ -761,6 +720,16 @@ export function TiersSection({
                                 </button>
                                 </>
                                 )}
+
+                                {!isFree ? (
+                                    <p className={styles.tierPolicy}>
+                                        {policyLine}{' '}
+                                        <Link href={REFUND_POLICY_PATH} className="text-link" style={{ color: 'var(--gold)', fontWeight: 700, textDecoration: 'underline' }}>
+                                            Full policy ›
+                                        </Link>
+                                    </p>
+                                ) : null}
+                                </div>
                                 </div>
                             </div>
                         );
