@@ -22,7 +22,6 @@
 import type { Metadata } from 'next';
 import { StylisedMap } from '@/components/map/StylisedMap';
 import { hasDrawnRoute } from '@/lib/map-sites';
-import { HeroParallax } from '@/components/motion/HeroParallax';
 import { formatEventTime } from '@/lib/event-time';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
@@ -31,7 +30,6 @@ import { getConsumerProfile } from '@/lib/consumer';
 import { viewerCanSeeNonPublicEvent } from '@/lib/event-viewer';
 import { resolveCover } from '@/lib/event-covers';
 import { fetchEventTierProductImages } from '@/lib/event-tier-images';
-import { Countdown } from './Countdown';
 import { RsvpControls } from './RsvpControls';
 import { ShareBar } from './ShareBar';
 import { TiersSection, type TierView } from './TiersSection';
@@ -40,7 +38,16 @@ import type { RsvpState } from './actions';
 import { multiTicketsEnabled, myTicketsForEvent } from '@/lib/event-tickets';
 import { parseRoutePlan, buildRoutePoints, buildGoogleMapsDirUrl } from '@/lib/route-plan';
 import { fetchDrivingPolyline, type LatLng } from './route-osrm';
-import RouteMapLoader from './RouteMapLoader';
+import { EventCoverHero } from './EventCoverHero';
+import { StatBand } from './StatBand';
+import { CoverStoryBrief } from './CoverStoryBrief';
+import { TicketCard } from './TicketCard';
+import { RouteSection } from './RouteSection';
+import { SponsorsSection } from './SponsorsSection';
+import { HostBlock } from './HostBlock';
+import { ActionsToolbar } from './ActionsToolbar';
+import { ConvoySection } from './ConvoySection';
+import styles from './cover-story.module.css';
 
 type EventRow = {
     id: string;
@@ -582,6 +589,23 @@ export default async function PublicEventPage({
     const shareUrl = `https://rollout.club/event/${ev.id}`;
     const shareTitle = ev.title ?? 'Car meet on Rollout';
 
+    // Cover Story B masthead "issue bar" line — derived from the event's own
+    // code/date, never fabricated copy. Falls back gracefully with no date.
+    const issueDateLabel = (() => {
+        if (!ev.start_at) return 'DATE TBA';
+        try {
+            return new Intl.DateTimeFormat('en-US', {
+                timeZone: ev.time_zone ?? undefined,
+                month: '2-digit',
+                day: '2-digit',
+                year: 'numeric',
+            }).format(new Date(ev.start_at));
+        } catch {
+            return 'DATE TBA';
+        }
+    })();
+    const issueLine = `ISSUE · ${(ev.code ?? ev.type ?? 'MEET').toUpperCase()} · ${issueDateLabel}`;
+
     const jsonLd = {
         '@context': 'https://schema.org',
         '@type': 'Event',
@@ -640,589 +664,233 @@ export default async function PublicEventPage({
                 </div>
             ) : null}
 
-            {/* HERO */}
-            <HeroParallax>
-            <section
-                className="corner-wrap on-dark"
-                style={{
-                    position: 'relative',
-                    minHeight: 440,
-                    overflow: 'hidden',
-                    background: '#050505', /* solid ground under the photo layer */
-                    borderBottom: '1px solid var(--line)',
-                    filter: isCancelled ? 'grayscale(0.5)' : undefined,
-                }}
-            >
-                {/* The photo is its own layer so it can drift under the copy; the
-                    12% oversize lives in CSS and is reset under reduced motion. */}
-                <div data-parallax style={{ position: 'absolute', zIndex: 0, background: heroBg }} />
-                <span className="corner-bottom-left" />
-                <span className="corner-bottom-right" />
 
-                <div className="event-hero-chips">
-                <div
-                    style={{
-                        padding: '8px 12px',
-                        border: '1px solid var(--line-mid)',
-                        background: 'rgba(0,0,0,0.6)',
-                        fontFamily: 'var(--font-display)',
-                        fontSize: 10,
-                        letterSpacing: 'var(--track-wider)',
-                        color: 'var(--gold)',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 8,
-                    }}
-                >
-                    <span style={{ width: 5, height: 5, background: 'var(--gold)', display: 'inline-block' }} />
-                    {ev.sector_code ?? 'SECTOR 06'}
-                    {ev.lat != null && ev.lng != null ? (
-                        <>
-                            <span style={{ color: 'var(--text-3)' }}>·</span>
-                            <span style={{ color: 'var(--text-2)' }}>
-                                {Math.abs(ev.lat).toFixed(3)}°{ev.lat >= 0 ? 'N' : 'S'} ·{' '}
-                                {Math.abs(ev.lng).toFixed(3)}°{ev.lng >= 0 ? 'E' : 'W'}
-                            </span>
-                        </>
-                    ) : null}
-                </div>
+            {/* COVER HERO */}
+            <EventCoverHero
+                title={(ev.title ?? 'Car meet').toUpperCase()}
+                code={ev.code}
+                isOfficial={!!ev.is_official}
+                sectorCode={ev.sector_code}
+                lat={ev.lat}
+                lng={ev.lng}
+                coverUrl={coverUrl}
+                isCancelled={isCancelled}
+                dateLabel={formatDate(ev.start_at, ev.time_zone)}
+                locationName={ev.location_name ?? 'Location TBA'}
+                hostName={hostName}
+                hostHandle={hostHandle}
+                hostVerified={hostVerified}
+                coHostChips={coHostChips}
+                tags={ev.tags ?? []}
+                startAt={ev.start_at}
+                rsvpOpen={rsvpOpen}
+                issueLine={issueLine}
+            />
 
-                <div
-                    style={{
-                        padding: '8px 12px',
-                        border: '1px solid var(--line-mid)',
-                        background: 'rgba(0,0,0,0.6)',
-                        fontFamily: 'var(--font-display)',
-                        fontSize: 10,
-                        letterSpacing: 'var(--track-wider)',
-                        color: 'var(--text-2)',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 8,
-                    }}
-                >
-                    <span className="accent">{ev.code ?? ev.type ?? 'MEET'}</span>
-                    <span style={{ color: 'var(--text-3)' }}>·</span>
-                    <span className="accent">{ev.is_official ? 'OFFICIAL' : 'COMMUNITY MEET'}</span>
-                </div>
-                </div>
-
-                <div
-                    className="container"
-                    style={{
-                        position: 'relative',
-                        zIndex: 1,
-                        paddingTop: 100,
-                        paddingBottom: 56,
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: 18,
-                        maxWidth: 1100,
-                    }}
-                >
-                    <h1 style={{ fontSize: 'clamp(32px, 6vw, 64px)', letterSpacing: 1, lineHeight: 1.05, margin: 0, maxWidth: 900 }}>
-                        {(ev.title ?? 'Car meet').toUpperCase()}
-                    </h1>
-
-                    <div className="mono-row" style={{ color: 'var(--text-2)', fontSize: 13 }}>
-                        <span style={{ color: 'var(--text)' }}>{formatDate(ev.start_at, ev.time_zone)}</span>
-                        <span className="sep" />
-                        <span>{ev.location_name ?? 'Location TBA'}</span>
-                        {hostName ? (
-                            <>
-                                <span className="sep" />
-                                <span>HOSTED BY</span>
-                                {hostHandle ? (
-                                    <Link href={`/u/${hostHandle}`} className="accent" style={{ textDecoration: 'none' }}>
-                                        @{hostHandle}
-                                    </Link>
-                                ) : (
-                                    <span className="accent">{hostName}</span>
-                                )}
-                                {hostVerified ? <span className="accent">✓</span> : null}
-                                {coHostChips.map((c) => (
-                                    <span key={c.name} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                                        <span style={{ opacity: 0.6 }}>×</span>
-                                        {c.handle ? (
-                                            <Link
-                                                href={`/u/${c.handle}`}
-                                                className="accent"
-                                                style={{ textDecoration: 'none' }}
-                                            >
-                                                @{c.handle}
-                                            </Link>
-                                        ) : (
-                                            <span className="accent">{c.name}</span>
-                                        )}
-                                    </span>
-                                ))}
-                            </>
-                        ) : null}
-                    </div>
-
-                    {ev.tags && ev.tags.length > 0 ? (
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
-                            {ev.tags.slice(0, 8).map((tag) => (
-                                <span
-                                    key={tag}
-                                    style={{
-                                        padding: '4px 10px',
-                                        border: '1px solid var(--line-mid)',
-                                        background: 'rgba(0,0,0,0.4)',
-                                        fontFamily: 'var(--font-display)',
-                                        fontSize: 10,
-                                        letterSpacing: 'var(--track-wider)',
-                                        color: 'var(--text-2)',
-                                        textTransform: 'uppercase',
-                                    }}
-                                >
-                                    {tag}
-                                </span>
-                            ))}
-                        </div>
-                    ) : null}
-
-                    {ev.start_at && rsvpOpen ? (
-                        <div style={{ marginTop: 12 }}>
-                            <Countdown startAt={ev.start_at} />
-                        </div>
-                    ) : null}
-                </div>
-            </section>
-            </HeroParallax>
-
-            {/* STAT BAR */}
-            <section style={{ background: 'var(--bg-1)', borderBottom: '1px solid var(--line)' }}>
-                <div className="container" style={{ padding: 0 }}>
-                    <div className="stat-band" style={{ gridTemplateColumns: 'repeat(3, 1fr)', border: 'none', margin: 0 }}>
-                        <div className="stat-cell">
-                            <div className="lbl">Attending</div>
-                            <div className="val accent">{ev.attending_count ?? 0}</div>
-                        </div>
-                        <div className="stat-cell">
-                            <div className="lbl">Capacity</div>
-                            <div className="val">{ev.capacity ?? '—'}</div>
-                        </div>
-                        <div className="stat-cell">
-                            <div className="lbl">Spots Left</div>
-                            <div className="val">{spotsLeft ?? '—'}</div>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            {/* RSVP + Calendar + Share */}
-            <section className="section" style={{ padding: '48px 0', textAlign: 'center' }}>
-                <div className="container" style={{ display: 'flex', flexDirection: 'column', gap: 26, alignItems: 'center' }}>
-                    {rsvpOpen && isTiered && tiers.length > 0 ? (
-                        <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 20, alignItems: 'center' }}>
-                            <div className="eyebrow eyebrow-gold" style={{ justifyContent: 'center' }}>／ TIERS</div>
-                            <TiersSection
-                                eventId={ev.id}
-                                tiers={tiers}
-                                eventStartAt={ev.start_at}
-                                eventTimeZone={ev.time_zone}
-                                reservationPolicy={ev.reservation_policy}
-                                isLoggedIn={isLoggedIn}
-                                initialState={myState}
-                                initialTierId={myRsvp.tierId}
-                                initialSpotNo={mySpotNo}
-                                initialWaitlistPosition={myWaitPos}
-                                initialHoldExpiresAt={myRsvp.holdExpiresAt}
-                                nextPath={rsvpReturnPath}
-                                inviteToken={inviteToken}
-                                ticketsEnabled={ticketsEnabled}
-                            />
-                            {myTickets.length > 0 ? (
-                                <MyTicketsPanel eventId={ev.id} tickets={myTickets} reservationPolicy={ev.reservation_policy} eventStartAt={ev.start_at} eventTimeZone={ev.time_zone} />
-                            ) : null}
-                        </div>
-                    ) : rsvpOpen ? (
-                        <RsvpControls
-                            eventId={ev.id}
-                            isLoggedIn={isLoggedIn}
-                            initialState={myState}
-                            initialSpotNo={mySpotNo}
-                            initialWaitlistPosition={myWaitPos}
-                            nextPath={rsvpReturnPath}
-                            inviteToken={inviteToken}
-                        />
-                    ) : (
-                        <p
-                            className="text-muted"
-                            style={{ fontSize: 12, fontFamily: 'var(--font-display)', letterSpacing: 'var(--track-wider)', margin: 0 }}
-                        >
-                            {isCancelled ? 'THIS MEET WAS CANCELLED' : 'THIS MEET HAS ALREADY HAPPENED'}
-                        </p>
-                    )}
-
-                    <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center' }}>
-                        {calUrl ? (
-                            <a
-                                href={calUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-link"
-                                style={{ fontSize: 12, fontFamily: 'var(--font-display)', letterSpacing: 'var(--track-wider)', textDecoration: 'none', borderBottom: '1px solid var(--line-mid)', paddingBottom: 2 }}
-                            >
-                                + GOOGLE CALENDAR
-                            </a>
-                        ) : null}
-                        {rsvpOpen ? (
-                            <a
-                                href={`/event/${ev.id}/ics`}
-                                className="text-link"
-                                style={{ fontSize: 12, fontFamily: 'var(--font-display)', letterSpacing: 'var(--track-wider)', textDecoration: 'none', borderBottom: '1px solid var(--line-mid)', paddingBottom: 2 }}
-                            >
-                                + DOWNLOAD .ICS
-                            </a>
-                        ) : null}
-                    </div>
-
-                    <ShareBar url={shareUrl} title={shareTitle} />
-
-                    {shopSlug && canManageThisEvent ? (
-                        <Link
-                            href={`/shop/${shopSlug}/events/${ev.id}`}
-                            className="text-link"
-                            style={{ fontSize: 11, fontFamily: 'var(--font-display)', letterSpacing: 'var(--track-wider)', textDecoration: 'none', color: 'var(--text-3)' }}
-                        >
-                            HOST · MANAGE THIS EVENT ›
-                        </Link>
-                    ) : null}
-                </div>
-            </section>
-
-            {/* CONVOY — attendee preview */}
-            {attendees.length > 0 || (ev.attending_count ?? 0) > 0 ? (
-                <section className="section" style={{ padding: '40px 0', borderTop: '1px solid var(--line)', background: 'var(--bg-1)' }}>
+            <div className={styles.page}>
+                {/* STATS */}
+                <section style={{ background: 'var(--bg-1)', borderBottom: '1px solid var(--line)', padding: '32px 0' }}>
                     <div className="container">
-                        <div className="eyebrow eyebrow-gold mb-4">／ CONVOY</div>
-                        <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap', marginBottom: 24 }}>
-                            <h2 style={{ margin: 0 }}>WHO&apos;S GOING</h2>
-                            <span className="mono-row" style={{ fontSize: 11 }}>
-                                <span className="accent">●</span>
-                                <span>{ev.attending_count ?? 0} CONFIRMED</span>
-                            </span>
-                        </div>
-
-                        {attendees.length === 0 ? (
-                            <p className="text-dim">{ev.attending_count ?? 0} attending.</p>
-                        ) : (
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 12 }}>
-                                {attendees.map((a) => (
-                                    <Link
-                                        key={a.profile_id}
-                                        href={`/u/${a.handle}`}
-                                        style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: 'var(--bg-2)', border: '1px solid var(--line)', textDecoration: 'none' }}
-                                    >
-                                        <div
-                                            style={{
-                                                width: 36,
-                                                height: 36,
-                                                borderRadius: '50%',
-                                                background: a.avatar_url ? `url(${a.avatar_url}) center/cover no-repeat` : 'var(--bg-3)',
-                                                border: '1px solid var(--gold)',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
-                                                fontFamily: 'var(--font-display)',
-                                                fontWeight: 700,
-                                                fontSize: 11,
-                                                color: 'var(--gold)',
-                                                flexShrink: 0,
-                                            }}
-                                        >
-                                            {!a.avatar_url && initials(a.display_name, a.handle)}
-                                        </div>
-                                        <div style={{ minWidth: 0, flex: 1 }}>
-                                            <div style={{ color: 'var(--text)', fontFamily: 'var(--font-display)', fontSize: 12, letterSpacing: 0.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                                @{a.handle}
-                                            </div>
-                                            <div style={{ color: 'var(--text-3)', fontFamily: 'var(--font-display)', fontSize: 9, letterSpacing: 'var(--track-wider)', marginTop: 2 }}>
-                                                GOING
-                                            </div>
-                                        </div>
-                                    </Link>
-                                ))}
-                                {remaining > 0 ? (
-                                    <div
-                                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '10px 12px', border: '1px dashed var(--line-mid)', background: 'transparent', color: 'var(--gold)', fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: 'var(--track-wider)' }}
-                                    >
-                                        +{remaining} MORE
-                                    </div>
-                                ) : null}
-                            </div>
-                        )}
+                        <StatBand attending={ev.attending_count ?? 0} capacity={ev.capacity} spotsLeft={spotsLeft} />
                     </div>
                 </section>
-            ) : null}
 
-            {/* SPONSORS */}
-            {sponsors.length > 0 ? (
-                <section className="section" style={{ padding: '40px 0', borderTop: '1px solid var(--line)' }}>
-                    <div className="container">
-                        <div className="eyebrow eyebrow-gold mb-4">／ SPONSORS</div>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gridAutoRows: '1fr', gap: 16 }}>
-                            {sponsors.map((s, i) => {
-                                const card = (
-                                    <div
-                                        style={{
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: 16,
-                                            height: '100%',
-                                            boxSizing: 'border-box',
-                                            padding: '16px 18px',
-                                            background: 'var(--bg-2)',
-                                            border: '1px solid var(--line)',
-                                        }}
-                                    >
-                                        <div
-                                            style={{
-                                                flexShrink: 0,
-                                                width: 96,
-                                                height: 56,
-                                                borderRadius: 8,
-                                                background: '#fff',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
-                                                padding: 8,
-                                            }}
-                                        >
-                                            {/* eslint-disable-next-line @next/next/no-img-element -- external/local sponsor art, no need for next/image's optimizer here */}
-                                            <img
-                                                src={s.logo_url}
-                                                alt={s.name}
-                                                style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
-                                            />
-                                        </div>
-                                        <div style={{ minWidth: 0, flex: 1 }}>
-                                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 6 }}>
-                                                <span
-                                                    style={{
-                                                        fontFamily: 'var(--font-display)',
-                                                        fontSize: 14,
-                                                        letterSpacing: 0.5,
-                                                        color: 'var(--text)',
-                                                    }}
-                                                >
-                                                    {s.name}
-                                                </span>
-                                                {s.role ? (
-                                                    <span
-                                                        style={{
-                                                            padding: '2px 8px',
-                                                            border: '1px solid var(--gold)',
-                                                            color: 'var(--gold)',
-                                                            fontFamily: 'var(--font-display)',
-                                                            fontSize: 9,
-                                                            letterSpacing: 'var(--track-wider)',
-                                                            textTransform: 'uppercase',
-                                                        }}
-                                                    >
-                                                        {s.role}
-                                                    </span>
-                                                ) : null}
-                                            </div>
-                                            {s.note ? (
-                                                <p className="text-dim" style={{ fontSize: 12, margin: '4px 0 0', lineHeight: 1.5 }}>
-                                                    {s.note}
-                                                </p>
-                                            ) : null}
-                                        </div>
-                                    </div>
-                                );
-                                return s.url ? (
-                                    <a
-                                        key={`${s.name}-${i}`}
-                                        href={s.url}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        style={{ textDecoration: 'none', color: 'inherit', display: 'block', height: '100%' }}
-                                    >
-                                        {card}
-                                    </a>
-                                ) : (
-                                    <div key={`${s.name}-${i}`} style={{ height: '100%' }}>{card}</div>
-                                );
-                            })}
+                {/* THE COVER STORY — event brief */}
+                {ev.description ? (
+                    <section className={`section ${styles.section}`}>
+                        <div className="container container-narrow">
+                            <div className={styles.sectionEyebrow}>／ THE COVER STORY</div>
+                            <CoverStoryBrief description={ev.description} />
                         </div>
-                    </div>
-                </section>
-            ) : null}
+                    </section>
+                ) : null}
 
-            {/* BRIEF + HOST */}
-            {ev.description || hostName ? (
-                <section className="section" style={{ padding: '48px 0', borderTop: '1px solid var(--line)' }}>
-                    <div className="container container-narrow">
-                        {ev.description ? (
-                            <>
-                                <div className="eyebrow eyebrow-gold mb-4">／ BRIEF</div>
-                                {/* whiteSpace: pre-line — hosts often write the itinerary as
-                                    plain-text line breaks in the description; without this the
-                                    browser collapsed them into one run-on paragraph. */}
-                                <p className="text-dim" style={{ fontSize: 16, lineHeight: 1.7, marginBottom: 32, whiteSpace: 'pre-line' }}>{ev.description}</p>
-                            </>
-                        ) : null}
-
-                        {hostName ? (
-                            <>
-                                <div className="eyebrow eyebrow-gold mb-4">／ HOSTED BY</div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                                    <div
-                                        style={{ width: 48, height: 48, borderRadius: '50%', background: 'var(--bg-3)', border: '1px solid var(--gold)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-display)', fontWeight: 700, color: 'var(--gold)', fontSize: 14 }}
-                                    >
-                                        {initials(hostName, hostHandle)}
-                                    </div>
-                                    <div>
-                                        {hostHandle ? (
-                                            <Link href={`/u/${hostHandle}`} style={{ fontFamily: 'var(--font-display)', fontSize: 16, color: 'var(--text)', textDecoration: 'none', letterSpacing: 0.5 }}>
-                                                {hostName}{hostVerified ? ' ✓' : ''}
-                                            </Link>
-                                        ) : (
-                                            <span style={{ fontSize: 16 }}>{hostName}</span>
-                                        )}
-                                        {hostHandle ? <div className="text-dim" style={{ fontSize: 12, marginTop: 2 }}>@{hostHandle}</div> : null}
-                                    </div>
+                {/* RSVP / TICKET CARD */}
+                <section className={`section ${styles.section}`} style={{ textAlign: 'center' }}>
+                    <div className="container" style={{ display: 'flex', flexDirection: 'column', gap: 26, alignItems: 'center' }}>
+                        <div className={styles.sectionEyebrow} style={{ justifyContent: 'center', width: '100%', maxWidth: 760 }}>
+                            ／ {isTiered ? 'RESERVE' : 'RSVP'}
+                        </div>
+                        {rsvpOpen && isTiered && tiers.length > 0 ? (
+                            <TicketCard>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 20, alignItems: 'center' }}>
+                                    <TiersSection
+                                        eventId={ev.id}
+                                        tiers={tiers}
+                                        eventStartAt={ev.start_at}
+                                        eventTimeZone={ev.time_zone}
+                                        reservationPolicy={ev.reservation_policy}
+                                        isLoggedIn={isLoggedIn}
+                                        initialState={myState}
+                                        initialTierId={myRsvp.tierId}
+                                        initialSpotNo={mySpotNo}
+                                        initialWaitlistPosition={myWaitPos}
+                                        initialHoldExpiresAt={myRsvp.holdExpiresAt}
+                                        nextPath={rsvpReturnPath}
+                                        inviteToken={inviteToken}
+                                        ticketsEnabled={ticketsEnabled}
+                                    />
+                                    {myTickets.length > 0 ? (
+                                        <MyTicketsPanel eventId={ev.id} tickets={myTickets} reservationPolicy={ev.reservation_policy} eventStartAt={ev.start_at} eventTimeZone={ev.time_zone} />
+                                    ) : null}
                                 </div>
-                            </>
-                        ) : null}
+                            </TicketCard>
+                        ) : rsvpOpen ? (
+                            <TicketCard>
+                                <RsvpControls
+                                    eventId={ev.id}
+                                    isLoggedIn={isLoggedIn}
+                                    initialState={myState}
+                                    initialSpotNo={mySpotNo}
+                                    initialWaitlistPosition={myWaitPos}
+                                    nextPath={rsvpReturnPath}
+                                    inviteToken={inviteToken}
+                                />
+                            </TicketCard>
+                        ) : (
+                            <p
+                                className="text-muted"
+                                style={{ fontSize: 12, fontFamily: 'var(--font-display)', letterSpacing: 'var(--track-wider)', margin: 0 }}
+                            >
+                                {isCancelled ? 'THIS MEET WAS CANCELLED' : 'THIS MEET HAS ALREADY HAPPENED'}
+                            </p>
+                        )}
+
+                        <ShareBar url={shareUrl} title={shareTitle} />
                     </div>
                 </section>
-            ) : null}
 
-            {/* LOCATION */}
-            <section className="section" style={{ padding: '48px 0', borderTop: '1px solid var(--line)', background: 'var(--bg-1)' }}>
-                <div className="container">
-                    <div className="eyebrow eyebrow-gold mb-4">／ LOCATION</div>
-                    <h2 style={{ margin: '0 0 8px' }}>{(ev.location_name ?? 'TBA').toUpperCase()}</h2>
-                    {ev.location_detail ? <p className="text-dim" style={{ fontSize: 14, margin: '0 0 18px' }}>{ev.location_detail}</p> : null}
-
-                    {mapEmbedUrl ? (
-                        <div className="corner-wrap" style={{ position: 'relative', marginTop: 12, aspectRatio: '16 / 7', background: 'var(--bg-2)', border: '1px solid var(--line)', overflow: 'hidden' }}>
-                            <span className="corner-bottom-left" />
-                            <span className="corner-bottom-right" />
-                            <iframe
-                                src={mapEmbedUrl}
-                                title="Event location map"
-                                className="map-embed"
-                                loading="lazy"
-                                referrerPolicy="no-referrer-when-downgrade"
-                            />
+                {/* CONVOY — attendee preview (existing feature, not in the mockup's
+                    section list; placed right after the ticket card) */}
+                {attendees.length > 0 || (ev.attending_count ?? 0) > 0 ? (
+                    <section className={`section ${styles.section}`} style={{ background: 'var(--bg-1)' }}>
+                        <div className="container">
+                            <div className={styles.sectionEyebrow}>／ CONVOY</div>
+                            <h2 className={styles.sectionTitle}>WHO&apos;S GOING</h2>
+                            <ConvoySection attendees={attendees} attendingCount={ev.attending_count ?? 0} remaining={remaining} />
                         </div>
-                    ) : null}
+                    </section>
+                ) : null}
 
-                    {hasDrawnRoute(ev) ? (
-                        <div className="map-stage map-stage-loc corner-wrap" style={{ marginTop: 20 }}>
-                            <span className="corner-bottom-left" />
-                            <span className="corner-bottom-right" />
-                            <StylisedMap crop="loc" route pins={[{ x: 940, y: 462, hi: true }]} className="map-stage-desktop" />
-                            <StylisedMap crop="loc-p" route pins={[{ x: 940, y: 462, hi: true }]} className="map-stage-phone" />
-                            <div className="map-key mono-row">
-                                <i>
-                                    <u />
-                                    MEET POINT
-                                </i>
-                                <i className="k-rt">
-                                    <u />
-                                    ROUTE
-                                </i>
-                            </div>
-                        </div>
-                    ) : null}
-
-                    {mapsUrl ? (
-                        <div style={{ marginTop: 16, display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-                            <a
-                                className="text-link"
-                                href={mapsUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                style={{ fontSize: 12, fontFamily: 'var(--font-display)', letterSpacing: 'var(--track-wider)', textDecoration: 'none', borderBottom: '1px solid var(--line-mid)', paddingBottom: 2 }}
-                            >
-                                OPEN IN GOOGLE MAPS ›
-                            </a>
-                            <Link
-                                className="text-link"
-                                href="/meets/map"
-                                style={{ fontSize: 12, fontFamily: 'var(--font-display)', letterSpacing: 'var(--track-wider)', textDecoration: 'none', borderBottom: '1px solid var(--line-mid)', paddingBottom: 2 }}
-                            >
-                                VIEW MEETS MAP ›
-                            </Link>
-                        </div>
-                    ) : null}
-                </div>
-            </section>
-
-            {/* ROUTE — host-planned itinerary, only when route_plan carries stops */}
-            {hasRoutePlan ? (
-                <section className="section" style={{ padding: '48px 0', borderTop: '1px solid var(--line)' }}>
+                {/* LOCATION — meet-point map (existing feature; kept ahead of the
+                    planned-itinerary ROUTE section below, which only renders when
+                    the host actually planned stops) */}
+                <section className={`section ${styles.section}`}>
                     <div className="container">
-                        <div className="eyebrow eyebrow-gold mb-4">／ ROUTE</div>
-                        <h2 style={{ margin: '0 0 8px' }}>PLANNED ITINERARY</h2>
-                        <p className="text-dim" style={{ fontSize: 14, margin: '0 0 18px' }}>
-                            {routeStops.length} planned stop{routeStops.length === 1 ? '' : 's'} from meet to
-                            {ev.destination_name ? ' destination' : ' finish'}.
-                        </p>
+                        <div className={styles.sectionEyebrow}>／ LOCATION</div>
+                        <h2 className={styles.sectionTitle}>{(ev.location_name ?? 'TBA').toUpperCase()}</h2>
+                        {ev.location_detail ? <p className="text-dim" style={{ fontSize: 14, margin: '0 0 18px' }}>{ev.location_detail}</p> : null}
 
-                        <div className="route-grid">
-                            <div className="route-stage corner-wrap">
+                        {mapEmbedUrl ? (
+                            <div className="corner-wrap" style={{ position: 'relative', marginTop: 12, aspectRatio: '16 / 7', background: 'var(--bg-2)', border: '1px solid var(--line)', overflow: 'hidden' }}>
                                 <span className="corner-bottom-left" />
                                 <span className="corner-bottom-right" />
-                                <RouteMapLoader
-                                    points={routePoints}
-                                    polyline={routePolyline?.coords ?? routePoints.map((p) => [p.lat, p.lng] as [number, number])}
+                                <iframe
+                                    src={mapEmbedUrl}
+                                    title="Event location map"
+                                    className="map-embed"
+                                    loading="lazy"
+                                    referrerPolicy="no-referrer-when-downgrade"
                                 />
                             </div>
+                        ) : null}
 
-                            <div className="route-itinerary">
-                                <div className="route-stop">
-                                    <span className="route-stop-eta">MEET</span>
-                                    <div style={{ minWidth: 0, flex: 1 }}>
-                                        <div className="route-stop-name">{ev.location_name ?? 'Start'}</div>
-                                        <div className="route-stop-dwell">{formatDate(ev.start_at, ev.time_zone)}</div>
-                                    </div>
+                        {hasDrawnRoute(ev) ? (
+                            <div className="map-stage map-stage-loc corner-wrap" style={{ marginTop: 20 }}>
+                                <span className="corner-bottom-left" />
+                                <span className="corner-bottom-right" />
+                                <StylisedMap crop="loc" route pins={[{ x: 940, y: 462, hi: true }]} className="map-stage-desktop" />
+                                <StylisedMap crop="loc-p" route pins={[{ x: 940, y: 462, hi: true }]} className="map-stage-phone" />
+                                <div className="map-key mono-row">
+                                    <i>
+                                        <u />
+                                        MEET POINT
+                                    </i>
+                                    <i className="k-rt">
+                                        <u />
+                                        ROUTE
+                                    </i>
                                 </div>
-                                {routeStops.map((s, i) => (
-                                    <div className="route-stop" key={`${s.seq}-${i}`}>
-                                        <span className="route-stop-eta">{s.etaLocal ?? `STOP ${i + 1}`}</span>
-                                        <div style={{ minWidth: 0, flex: 1 }}>
-                                            <div className="route-stop-name">{s.name}</div>
-                                            {s.dwellMin != null ? (
-                                                <div className="route-stop-dwell">· {s.dwellMin} min</div>
-                                            ) : null}
-                                        </div>
-                                    </div>
-                                ))}
-                                {routePoints.some((p) => p.kind === 'destination') ? (
-                                    <div className="route-stop">
-                                        <span className="route-stop-eta">FINISH</span>
-                                        <div style={{ minWidth: 0, flex: 1 }}>
-                                            <div className="route-stop-name">{ev.destination_name ?? 'Destination'}</div>
-                                        </div>
-                                    </div>
-                                ) : null}
                             </div>
-                        </div>
+                        ) : null}
 
-                        {routeGoogleMaps ? (
-                            <div style={{ marginTop: 16 }}>
+                        {mapsUrl ? (
+                            <div style={{ marginTop: 16, display: 'flex', gap: 16, flexWrap: 'wrap' }}>
                                 <a
                                     className="text-link"
-                                    href={routeGoogleMaps.url}
+                                    href={mapsUrl}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     style={{ fontSize: 12, fontFamily: 'var(--font-display)', letterSpacing: 'var(--track-wider)', textDecoration: 'none', borderBottom: '1px solid var(--line-mid)', paddingBottom: 2 }}
                                 >
                                     OPEN IN GOOGLE MAPS ›
                                 </a>
+                                <Link
+                                    className="text-link"
+                                    href="/meets/map"
+                                    style={{ fontSize: 12, fontFamily: 'var(--font-display)', letterSpacing: 'var(--track-wider)', textDecoration: 'none', borderBottom: '1px solid var(--line-mid)', paddingBottom: 2 }}
+                                >
+                                    VIEW MEETS MAP ›
+                                </Link>
                             </div>
                         ) : null}
                     </div>
                 </section>
-            ) : null}
+
+                {/* ROUTE — host-planned itinerary (mockup's "feature story" route spread) */}
+                {hasRoutePlan ? (
+                    <section className={`section ${styles.section}`}>
+                        <div className="container">
+                            <div className={styles.sectionEyebrow}>／ ROUTE</div>
+                            <h2 className={styles.sectionTitle}>PLANNED ITINERARY</h2>
+                            <RouteSection
+                                routeStops={routeStops}
+                                routePoints={routePoints}
+                                polyline={routePolyline?.coords ?? routePoints.map((p) => [p.lat, p.lng] as [number, number])}
+                                startLabel={formatDate(ev.start_at, ev.time_zone)}
+                                startName={ev.location_name ?? 'Start'}
+                                destinationName={ev.destination_name}
+                                hasDestination={routePoints.some((p) => p.kind === 'destination')}
+                                googleMapsUrl={routeGoogleMaps?.url ?? null}
+                            />
+                        </div>
+                    </section>
+                ) : null}
+
+                {/* SPONSORS */}
+                {sponsors.length > 0 ? (
+                    <section className={`section ${styles.section}`}>
+                        <div className="container">
+                            <div className={styles.sectionEyebrow}>／ SPONSORS</div>
+                            <SponsorsSection sponsors={sponsors} />
+                        </div>
+                    </section>
+                ) : null}
+
+                {/* HOST */}
+                {hostName ? (
+                    <section className={`section ${styles.section}`} style={{ background: 'var(--bg-1)' }}>
+                        <div className="container container-narrow">
+                            <div className={styles.sectionEyebrow}>／ HOSTED BY</div>
+                            <HostBlock hostName={hostName} hostHandle={hostHandle} hostVerified={hostVerified} />
+                        </div>
+                    </section>
+                ) : null}
+
+                {/* CALENDAR / SHARE ACTIONS */}
+                <section className={`section ${styles.section}`} style={{ textAlign: 'center' }}>
+                    <div className="container" style={{ display: 'flex', flexDirection: 'column', gap: 18, alignItems: 'center' }}>
+                        <div className={styles.sectionEyebrow} style={{ justifyContent: 'center', width: '100%', maxWidth: 500 }}>
+                            ／ SAVE THE DATE
+                        </div>
+                        <ActionsToolbar
+                            calUrl={calUrl}
+                            icsUrl={rsvpOpen ? `/event/${ev.id}/ics` : null}
+                            manageHref={shopSlug && canManageThisEvent ? `/shop/${shopSlug}/events/${ev.id}` : null}
+                        />
+                    </div>
+                </section>
+            </div>
         </>
     );
 }
