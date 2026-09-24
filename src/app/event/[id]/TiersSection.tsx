@@ -40,6 +40,17 @@ export type TierView = {
     packagePriceCents: number | null;
     /** True when the tier has a Medusa product to sell (paid tiers need one). */
     purchasable: boolean;
+    /** Package photo(s) from the tier's Medusa product — null when there is
+     * no product, or the (best-effort) fetch found/returned none. `images`
+     * are the web-sized opt/*.webp display URLs; `imagesOriginal` are the
+     * untouched originals, index-paired, for onError fallback if a twin
+     * 404s. */
+    image: {
+        thumbnail: string | null;
+        thumbnailOriginal: string | null;
+        images: string[];
+        imagesOriginal: string[];
+    } | null;
 };
 
 type Props = {
@@ -80,6 +91,134 @@ function formatRemaining(deadline: string, now: number): string {
     const m = Math.floor(diff / 60_000);
     const s = Math.floor((diff % 60_000) / 1000);
     return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+}
+
+/**
+ * Tier card package photo — a 4:3 image up top, with a small clickable
+ * thumbnail strip when the product has 2+ images. Plain <img> (not
+ * next/image): this page renders its other remote images as CSS
+ * background-image, not through the optimizer, so a plain tag matches how
+ * images already render here and needs no next.config change. Renders a
+ * dark placeholder (no broken-image icon) when there's no photo yet, and
+ * keeps showing it under the fading-in <img> until the image finishes
+ * loading.
+ *
+ * Each src is the web-sized opt/*.webp twin; if that 404s (e.g. a
+ * brand-new upload the batch optimiser hasn't reached yet) onError swaps
+ * that one <img> to the untouched original, index-paired via `originals`.
+ */
+function TierMedia({ image, name }: { image: TierView['image']; name: string }) {
+    const gallery =
+        image?.images && image.images.length > 0
+            ? image.images
+            : image?.thumbnail
+                ? [image.thumbnail]
+                : [];
+    const originals =
+        image?.imagesOriginal && image.imagesOriginal.length > 0
+            ? image.imagesOriginal
+            : image?.thumbnailOriginal
+                ? [image.thumbnailOriginal]
+                : [];
+    const [active, setActive] = useState(0);
+    const [loaded, setLoaded] = useState(false);
+    const src = gallery[active] ?? null;
+    const fallbackSrc = originals[active] ?? null;
+
+    return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div
+                style={{
+                    position: 'relative',
+                    aspectRatio: '4 / 3',
+                    background: 'var(--bg-2)',
+                    borderBottom: '1px solid var(--line)',
+                    overflow: 'hidden',
+                }}
+            >
+                {src ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                        key={src}
+                        src={src}
+                        alt={name}
+                        loading="lazy"
+                        // A cached image can finish loading before React
+                        // attaches onLoad (the browser resolves it
+                        // synchronously), which would leave opacity stuck at
+                        // 0 forever. The ref callback runs right after mount
+                        // and catches that already-complete case; onLoad
+                        // still covers the normal not-yet-cached path.
+                        ref={(el) => {
+                            if (el?.complete) setLoaded(true);
+                        }}
+                        onLoad={() => setLoaded(true)}
+                        onError={(e) => {
+                            // opt/*.webp twin 404'd — fall back to the
+                            // original once, never loop if that fails too.
+                            const el = e.currentTarget;
+                            if (fallbackSrc && el.src !== fallbackSrc) el.src = fallbackSrc;
+                        }}
+                        style={{
+                            position: 'absolute',
+                            inset: 0,
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'cover',
+                            opacity: loaded ? 1 : 0,
+                            transition: 'opacity 160ms ease',
+                        }}
+                    />
+                ) : null}
+            </div>
+
+            {gallery.length > 1 ? (
+                <div style={{ display: 'flex', gap: 6, padding: '0 10px 2px', flexWrap: 'wrap' }}>
+                    {gallery.slice(0, 6).map((img, i) => {
+                        const isActive = i === active;
+                        const thumbFallback = originals[i] ?? null;
+                        return (
+                            <button
+                                key={img}
+                                type="button"
+                                onClick={() => {
+                                    setActive(i);
+                                    setLoaded(false);
+                                }}
+                                aria-label={`View image ${i + 1} of ${gallery.length}`}
+                                aria-pressed={isActive}
+                                style={{
+                                    position: 'relative',
+                                    width: 36,
+                                    height: 27,
+                                    padding: 0,
+                                    flexShrink: 0,
+                                    cursor: 'pointer',
+                                    overflow: 'hidden',
+                                    background: 'var(--bg-2)',
+                                    border: `1px solid ${isActive ? 'var(--gold)' : 'var(--line)'}`,
+                                    opacity: isActive ? 1 : 0.72,
+                                    transition: 'opacity 120ms ease, border-color 120ms ease',
+                                }}
+                            >
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
+                                    src={img}
+                                    alt=""
+                                    loading="lazy"
+                                    onError={(e) => {
+                                        const el = e.currentTarget;
+                                        if (thumbFallback && el.src !== thumbFallback) el.src = thumbFallback;
+                                    }}
+                                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                />
+                            </button>
+                        );
+                    })}
+                </div>
+            ) : null}
+        </div>
+    );
 }
 
 export function TiersSection({
@@ -343,14 +482,16 @@ export function TiersSection({
                                 style={{
                                     display: 'flex',
                                     flexDirection: 'column',
-                                    gap: 10,
-                                    padding: '18px 18px 16px',
                                     border: '1px solid var(--line-mid)',
                                     background: 'var(--bg-1)',
                                     textAlign: 'left',
                                     opacity: soldOut ? 0.65 : 1,
+                                    overflow: 'hidden',
                                 }}
                             >
+                                <TierMedia image={tier.image} name={tier.name} />
+
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '18px 18px 16px' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10 }}>
                                     <span
                                         style={{
@@ -439,6 +580,7 @@ export function TiersSection({
                                                 ? 'RSVP FREE'
                                                 : 'RESERVE + PAY ›'}
                                 </button>
+                                </div>
                             </div>
                         );
                     })}
