@@ -28,7 +28,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { getConsumerProfile } from '@/lib/consumer';
-import { canViewEvent } from '@/lib/event-visibility';
+import { viewerCanSeeNonPublicEvent } from '@/lib/event-viewer';
 import { resolveCover } from '@/lib/event-covers';
 import { fetchEventTierProductImages } from '@/lib/event-tier-images';
 import { Countdown } from './Countdown';
@@ -86,45 +86,6 @@ type Attendee = {
 };
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-/**
- * Gathers this request's viewer signal (profile, platform-admin flag, shop
- * role on the event's shop, existing RSVP row) and hands them to the pure
- * canViewEvent() rule. Only called for non-public events — a public event
- * never reaches this. A signed-out viewer resolves to `viewer: null`, which
- * canViewEvent already treats as "no" for anything non-public.
- */
-async function viewerCanSeeNonPublicEvent(ev: EventRow): Promise<boolean> {
-    const me = await getConsumerProfile();
-    if (!me) {
-        return canViewEvent({
-            visibility: ev.visibility,
-            viewer: null,
-            hostId: ev.host_id,
-            shopRole: null,
-            isAdmin: false,
-            hasRsvp: false,
-        });
-    }
-
-    const admin = getSupabaseAdmin();
-    const [{ data: padmin }, { data: mem }, { data: rsvp }] = await Promise.all([
-        admin.from('platform_admins').select('profile_id').eq('profile_id', me.profileId).maybeSingle(),
-        ev.shop_id != null
-            ? admin.from('shop_memberships').select('role').eq('profile_id', me.profileId).eq('shop_id', ev.shop_id).maybeSingle()
-            : Promise.resolve({ data: null } as { data: null }),
-        admin.from('event_rsvps').select('profile_id').eq('event_id', ev.id).eq('profile_id', me.profileId).maybeSingle(),
-    ]);
-
-    return canViewEvent({
-        visibility: ev.visibility,
-        viewer: { profileId: me.profileId },
-        hostId: ev.host_id,
-        shopRole: (mem as any)?.role ?? null,
-        isAdmin: !!padmin,
-        hasRsvp: !!rsvp,
-    });
-}
 
 async function loadEvent(
     id: string,

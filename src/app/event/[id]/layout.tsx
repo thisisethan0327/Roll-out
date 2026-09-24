@@ -17,6 +17,7 @@
  */
 import { notFound } from 'next/navigation';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { viewerCanSeeNonPublicEvent } from '@/lib/event-viewer';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -33,7 +34,7 @@ export default async function EventLayout({
     const admin = getSupabaseAdmin();
     const { data, error } = await admin
         .from('events')
-        .select('id, visibility')
+        .select('id, visibility, host_id, shop_id')
         .eq('id', id)
         .maybeSingle();
 
@@ -43,7 +44,11 @@ export default async function EventLayout({
         console.error('[event/[id]] existence check failed:', error.message);
         return <>{children}</>;
     }
-    if (!data || (data as { visibility?: string }).visibility !== 'public') notFound();
+    if (!data) notFound();
+    const row = data as { id: string; visibility: string | null; host_id: string | null; shop_id: number | null };
+    // Non-public: same rule as the page (host / shop manager+ / platform admin /
+    // existing RSVP holder may view); everyone else gets a real 404.
+    if (row.visibility !== 'public' && !(await viewerCanSeeNonPublicEvent(row))) notFound();
 
     return <>{children}</>;
 }
