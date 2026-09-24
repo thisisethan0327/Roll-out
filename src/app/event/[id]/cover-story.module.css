@@ -1,0 +1,566 @@
+/**
+ * Cover Story B — page-scoped restyle for /event/[id].
+ *
+ * Scoped entirely to this CSS module (never touches globals.css). Colors are
+ * NOT re-declared here on purpose: the site's existing dark tokens in
+ * globals.css (--bg-0/1/2/3, --line*, --text*, --gold*, --font-display,
+ * --track-wider) already ARE the Cover Story B palette (black grounds, gold
+ * accent, JetBrains Mono labels) — this file only adds the Cover Story B
+ * LAYOUT/TYPE motifs (masthead, torn edges, coupon ticket, drop cap, feature
+ * route spread, equal sponsor cards) on top of them, plus the page's own
+ * Bebas Neue display face for the single cover-hero title.
+ */
+
+.page {
+    position: relative;
+}
+
+.page :global(.corner-wrap) {
+    /* keep existing corner-notch treatment used elsewhere on the site */
+}
+
+/* ============ torn paper edges ============ */
+.tornTop {
+    clip-path: polygon(
+        0% 4%, 3% 0%, 6% 5%, 9% 1%, 12% 6%, 15% 0%, 18% 4%, 21% 1%, 24% 5%, 27% 0%,
+        30% 4%, 33% 1%, 36% 6%, 39% 0%, 42% 4%, 45% 1%, 48% 5%, 51% 0%, 54% 4%, 57% 1%,
+        60% 6%, 63% 0%, 66% 4%, 69% 1%, 72% 5%, 75% 0%, 78% 4%, 81% 1%, 84% 6%, 87% 0%,
+        90% 4%, 93% 1%, 96% 5%, 100% 0%,
+        100% 100%, 0% 100%
+    );
+}
+.tornBottom {
+    clip-path: polygon(
+        0% 0%, 100% 0%, 100% 96%,
+        96% 100%, 93% 96%, 90% 100%, 87% 95%, 84% 100%, 81% 96%, 78% 100%,
+        75% 95%, 72% 100%, 69% 96%, 66% 100%, 63% 95%, 60% 100%, 57% 96%,
+        54% 100%, 51% 95%, 48% 100%, 45% 96%, 42% 100%, 39% 95%, 36% 100%,
+        33% 96%, 30% 100%, 27% 95%, 24% 100%, 21% 96%, 18% 100%, 15% 95%,
+        12% 100%, 9% 96%, 6% 100%, 3% 95%, 0% 100%
+    );
+}
+.tornBoth {
+    clip-path: polygon(
+        0% 4%, 6% 0%, 12% 5%, 18% 1%, 24% 5%, 30% 0%, 36% 4%, 42% 1%, 48% 5%, 54% 0%,
+        60% 4%, 66% 1%, 72% 5%, 78% 0%, 84% 4%, 90% 1%, 96% 5%, 100% 0%,
+        100% 96%, 94% 100%, 88% 95%, 82% 100%, 76% 96%, 70% 100%, 64% 95%, 58% 100%,
+        52% 96%, 46% 100%, 40% 95%, 34% 100%, 28% 96%, 22% 100%, 16% 95%, 10% 100%,
+        4% 96%, 0% 100%
+    );
+}
+
+/* ============ masthead / issue bar ============ */
+.mastheadBar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 0 10px;
+    border-bottom: 2px solid var(--gold);
+    flex-wrap: wrap;
+}
+.issueLine,
+.barcode {
+    font-family: var(--font-display);
+    letter-spacing: var(--track-wide);
+    font-size: 11px;
+    color: var(--text-2);
+    text-transform: uppercase;
+}
+.barcode {
+    color: var(--text-3);
+}
+
+/* ============ hero ============ */
+.heroContent {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+.kickerRow {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+.verifiedPill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid var(--line-mid);
+    color: var(--text);
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-family: var(--font-display);
+    font-size: 11px;
+    letter-spacing: var(--track-tight);
+    text-transform: uppercase;
+    font-weight: 700;
+}
+.checkDot {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--gold);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    color: #000;
+    font-weight: 900;
+}
+.mastheadTitle {
+    font-size: clamp(48px, 12vw, 128px);
+    line-height: 0.88;
+    letter-spacing: 0.01em;
+    color: var(--text);
+    text-shadow: 0 6px 0 rgba(0, 0, 0, 0.6);
+    margin: 0;
+    max-width: 100%;
+    text-transform: uppercase;
+}
+.coverDeck {
+    font-family: var(--font-display);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: var(--track-wide);
+    font-size: clamp(11px, 2vw, 13px);
+    color: var(--text-2);
+}
+.heroMeta {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: 10px 22px;
+    margin-top: 6px;
+}
+.heroMetaItem {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    border-left: 3px solid var(--gold);
+    padding-left: 10px;
+}
+.heroMetaLabel {
+    font-family: var(--font-display);
+    font-size: 10px;
+    letter-spacing: var(--track-wide);
+    text-transform: uppercase;
+    color: var(--text-3);
+}
+.heroMetaValue {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text);
+}
+.tagRow {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 4px;
+}
+.tagChip {
+    font-family: var(--font-display);
+    font-weight: 700;
+    letter-spacing: var(--track-wide);
+    font-size: 11px;
+    text-transform: uppercase;
+    color: var(--text-2);
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid var(--line-mid);
+    padding: 5px 10px 4px;
+    border-radius: 2px;
+}
+
+/* ============ section shell ============ */
+.section {
+    padding: 48px 0;
+    border-top: 1px solid var(--line);
+}
+.sectionEyebrow {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 12px;
+    letter-spacing: var(--track-widest);
+    text-transform: uppercase;
+    color: var(--gold);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0 0 16px;
+}
+.sectionEyebrow::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, var(--gold), transparent);
+}
+.sectionTitle {
+    font-family: var(--font-display);
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: clamp(22px, 4vw, 36px);
+    line-height: 1.05;
+    letter-spacing: -0.01em;
+    margin: 0 0 8px;
+    color: var(--text);
+}
+
+/* ============ stats strip ============ */
+.statsStrip {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+}
+.statCard {
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    color: var(--text);
+    padding: 18px 14px 26px;
+    position: relative;
+}
+.statCard:nth-child(odd) {
+    transform: rotate(-0.5deg);
+}
+.statCard:nth-child(even) {
+    transform: rotate(0.5deg);
+}
+.statNum {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: clamp(26px, 4vw, 38px);
+    line-height: 1;
+    color: var(--gold);
+    font-variant-numeric: tabular-nums;
+}
+.statLbl {
+    margin-top: 6px;
+    font-family: var(--font-display);
+    font-size: 10px;
+    letter-spacing: var(--track-wide);
+    text-transform: uppercase;
+    color: var(--text-3);
+    font-weight: 700;
+}
+
+/* ============ brief / editorial ============ */
+.briefPanel {
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    color: var(--text);
+    padding: 34px clamp(18px, 4vw, 52px) 40px;
+}
+.briefPanel p {
+    font-family: var(--font-body, Inter, sans-serif);
+    font-size: clamp(16px, 2vw, 19px);
+    line-height: 1.7;
+    max-width: 74ch;
+    margin: 0 0 16px;
+    color: var(--text-2);
+}
+.dropCap:first-letter {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 52px;
+    float: left;
+    line-height: 0.8;
+    padding: 6px 8px 0 0;
+    color: var(--gold);
+}
+
+/* ============ ticket coupon shell ============ */
+.ticketWrap {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+}
+.ticketCoupon {
+    width: 100%;
+    max-width: 760px;
+    background: var(--bg-2);
+    border: 1px solid var(--line-mid);
+    color: var(--text);
+    position: relative;
+    padding: 26px clamp(18px, 3vw, 30px) 30px;
+}
+.cutLineLabel {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--font-display);
+    font-size: 10px;
+    letter-spacing: var(--track-wide);
+    text-transform: uppercase;
+    color: var(--text-3);
+    margin-bottom: 14px;
+}
+.cutLine {
+    border: none;
+    border-top: 2px dashed var(--line-strong);
+    margin: 0 0 18px;
+}
+
+/* ============ per-tier coupon card (TiersSection) ============ */
+.tierCard {
+    display: flex;
+    flex-direction: column;
+}
+.tierCardHasImage {
+    position: relative;
+}
+.tierCardBody {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 18px 18px 16px;
+}
+@media (max-width: 900px) {
+    .tierCardHasImage::before,
+    .tierCardHasImage::after {
+        content: '';
+        position: absolute;
+        top: calc(var(--tier-media-h, 180px) - 11px);
+        width: 20px;
+        height: 20px;
+        background: var(--bg-0);
+        border: 1px solid var(--line-mid);
+        border-radius: 50%;
+        z-index: 1;
+    }
+    .tierCardHasImage::before {
+        left: -10px;
+    }
+    .tierCardHasImage::after {
+        right: -10px;
+    }
+}
+@media (min-width: 901px) {
+    .tierCardHasImage {
+        flex-direction: row;
+        align-items: stretch;
+    }
+    .tierCardHasImage > :first-child {
+        flex: 0 0 42%;
+        max-width: 42%;
+    }
+    .tierCardBody {
+        flex: 1;
+        min-width: 0;
+    }
+}
+
+/* ============ route / feature spread ============ */
+.routeGrid {
+    display: grid;
+    grid-template-columns: minmax(220px, 340px) 1fr;
+    gap: 26px;
+    align-items: start;
+}
+.routeStage {
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    padding: 14px;
+}
+.routeList {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.routeStopItem {
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-left: 4px solid transparent;
+    padding: 12px 14px;
+    transition: background 0.15s ease, border-color 0.15s ease;
+}
+.routeStopItem:hover {
+    background: var(--bg-3);
+    border-left-color: var(--gold);
+}
+.routeStopNum {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 20px;
+    color: var(--gold);
+    min-width: 34px;
+    line-height: 1;
+}
+
+/* ============ sponsors ============ */
+.sponsorStrip {
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    padding: 26px clamp(16px, 3vw, 30px);
+}
+.sponsorGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    grid-auto-rows: 1fr;
+    gap: 14px;
+}
+.sponsorCard {
+    background: var(--bg-3);
+    border: 1px solid var(--line);
+    padding: 16px 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    text-align: center;
+    text-decoration: none;
+    color: inherit;
+    height: 100%;
+}
+.sponsorMark {
+    background: #fff;
+    border-radius: 4px;
+    padding: 8px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 44px;
+    width: 100%;
+}
+.sponsorMark img {
+    height: 28px;
+    width: auto;
+    max-width: 100%;
+    object-fit: contain;
+}
+.sponsorName {
+    font-family: var(--font-display);
+    font-weight: 800;
+    letter-spacing: var(--track-tight);
+    text-transform: uppercase;
+    font-size: 12px;
+    color: var(--text);
+}
+.sponsorRole {
+    font-family: var(--font-display);
+    font-size: 10px;
+    color: var(--text-3);
+    text-transform: uppercase;
+    letter-spacing: var(--track-wide);
+}
+.sponsorBlurb {
+    font-size: 11.5px;
+    color: var(--text-2);
+    font-style: italic;
+    margin: 0;
+}
+
+/* ============ host block ============ */
+.hostBlock {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    padding: 20px;
+    flex-wrap: wrap;
+}
+.hostAvatar {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: var(--gold-dim);
+    border: 1px solid var(--gold);
+    color: var(--gold);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 20px;
+    flex: none;
+}
+.hostName {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 16px;
+    letter-spacing: var(--track-tight);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text);
+    text-decoration: none;
+}
+.hostDesc {
+    font-size: 13px;
+    color: var(--text-2);
+    margin-top: 4px;
+    max-width: 60ch;
+}
+
+/* ============ actions toolbar ============ */
+.actionsToolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+}
+.actionBtn {
+    background: var(--bg-2);
+    border: 1px solid var(--line-mid);
+    color: var(--text);
+    padding: 11px 16px;
+    font-family: var(--font-display);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: var(--track-wide);
+    text-transform: uppercase;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    border-radius: 2px;
+    transition: border-color 0.12s ease, color 0.12s ease;
+}
+.actionBtn:hover {
+    border-color: var(--gold);
+    color: var(--gold);
+}
+
+/* ============ convoy ============ */
+.convoyGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 12px;
+}
+
+/* ============ responsive ============ */
+@media (max-width: 900px) {
+    .statsStrip {
+        grid-template-columns: repeat(3, 1fr);
+    }
+    .routeGrid {
+        grid-template-columns: 1fr;
+    }
+}
+@media (max-width: 460px) {
+    .statsStrip {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+    }
+    .statCard {
+        padding: 12px 8px 16px;
+    }
+    .heroMeta {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .statCard {
+        transform: none !important;
+    }
+}
