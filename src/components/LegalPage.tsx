@@ -9,7 +9,13 @@ export function LegalPage({ docKey }: { docKey: DocKey }) {
         <div className="legal">
             <div className="container container-narrow">
                 <div className="eyebrow eyebrow-gold mb-4">
-                    ／ {docKey === 'terms' ? 'TERMS' : docKey === 'privacy' ? 'PRIVACY' : 'GUIDELINES'}
+                    ／ {docKey === 'terms'
+                        ? 'TERMS'
+                        : docKey === 'privacy'
+                            ? 'PRIVACY'
+                            : docKey === 'refunds'
+                                ? 'REFUNDS'
+                                : 'GUIDELINES'}
                 </div>
                 <h1>{doc.title}</h1>
                 <div className="meta">

@@ -13,6 +13,7 @@
  * enforcement — this helper only resolves *who* the caller is.
  */
 import 'server-only';
+import { createClient } from '@supabase/supabase-js';
 import { getSupabaseServer } from './supabase/server';
 import { getSupabaseAdmin, getSupabasePublicAdmin } from './supabase/admin';
 
@@ -91,6 +92,56 @@ export async function getConsumerProfile(): Promise<ConsumerProfile | null> {
         hostStatus: ((created as any).host_status ?? 'none') as ConsumerProfile['hostStatus'],
         hostAppointedByShopId: (created as any).host_appointed_by_shop_id ?? null,
     };
+}
+
+/**
+ * Resolve the signed-in member's rollout profile from a raw Supabase access
+ * token (the `Authorization: Bearer <jwt>` the MOBILE app sends), rather than
+ * the SSR cookie session getConsumerProfile() reads. Used only by API route
+ * handlers the mobile app calls directly (e.g. /api/events/[id]/cancel-refund)
+ * — server actions from the web app should keep using getConsumerProfile().
+ *
+ * Does NOT mint a new profile on first sight (unlike getConsumerProfile): a
+ * caller hitting this route already holds a paid RSVP, which means a profile
+ * already exists. Returns null for an invalid/expired token or no linked
+ * profile, never throws.
+ */
+export async function getConsumerProfileFromBearer(token: string): Promise<ConsumerProfile | null> {
+    if (!token) return null;
+    try {
+        const client = createClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+            { auth: { autoRefreshToken: false, persistSession: false } },
+        );
+        const {
+            data: { user },
+            error,
+        } = await client.auth.getUser(token);
+        if (error || !user) return null;
+
+        const admin = getSupabaseAdmin();
+        const { data: existing } = await admin
+            .from('profiles')
+            .select('id, handle, display_name, avatar_url, host_status, host_appointed_by_shop_id')
+            .eq('auth_user_id', user.id)
+            .maybeSingle();
+        if (!existing) return null;
+
+        return {
+            authUserId: user.id,
+            profileId: (existing as any).id,
+            handle: (existing as any).handle,
+            displayName: (existing as any).display_name,
+            email: user.email ?? null,
+            avatarUrl: (existing as any).avatar_url ?? null,
+            hostStatus: ((existing as any).host_status ?? 'none') as ConsumerProfile['hostStatus'],
+            hostAppointedByShopId: (existing as any).host_appointed_by_shop_id ?? null,
+        };
+    } catch (e) {
+        console.error('[lib/consumer] getConsumerProfileFromBearer failed:', (e as any)?.message ?? e);
+        return null;
+    }
 }
 
 /**

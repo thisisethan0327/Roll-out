@@ -5,6 +5,7 @@ import { updateEvent, cancelEvent, uncancelEvent, deleteEvent } from '../actions
 import { EventCoverPicker } from '../EventCoverPicker';
 import { TierRowsEditor, type TierDraft } from '../TierRowsEditor';
 import { EventStartAtField } from '@/components/EventStartAtField';
+import { CancelAndRefundAllButton } from '@/components/CancelAndRefundAllButton';
 
 const VISIBILITY: { value: string; label: string }[] = [
     { value: 'public', label: 'PUBLIC' },
@@ -35,6 +36,14 @@ export function EventEditForm({
 
     const canManage = MANAGER_ROLES.has(callerRole);
     const canDelete = OWNER_ROLES.has(callerRole);
+
+    // 077: any active priced tier means this event needs the refund-aware
+    // cancel path instead of the plain one. cancelEventAndRefundAllAction
+    // re-derives the real paid/confirmed list from the DB regardless — this
+    // is only which button to show.
+    const isPaidEvent =
+        (event.rsvp_mode === 'tiered' || event.rsvp_mode === 'paid') &&
+        (tiers ?? []).some((t) => Number(t.price || 0) > 0);
 
     // Start time and its zone travel together now — see EventStartAtField.
     // The old pre-fill rendered the instant in the BROWSER's zone while the
@@ -227,7 +236,14 @@ export function EventEditForm({
                         {savedFlash ? 'SAVED ✓' : 'SAVE CHANGES'}
                     </button>
                 )}
-                {canManage && !event.cancelled_at && (
+                {canManage && !event.cancelled_at && isPaidEvent && (
+                    <CancelAndRefundAllButton
+                        eventId={event.id}
+                        eventTitle={event.title ?? ''}
+                        onDone={() => router.refresh()}
+                    />
+                )}
+                {canManage && !event.cancelled_at && !isPaidEvent && (
                     <button
                         type="button"
                         className="admin-action-btn danger"

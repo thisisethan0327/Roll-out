@@ -22,6 +22,8 @@ import {
     type MedusaAddress,
 } from '@/lib/medusa-customer';
 import { getSellingShops } from '@/lib/store-shops';
+import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { refundPolicyShortLine, REFUND_POLICY_PATH } from '@/lib/refund-policy';
 import { fmtDate, fmtDay, StatusPill, EmptyRow } from '../../ui';
 
 export const dynamic = 'force-dynamic';
@@ -94,6 +96,31 @@ export default async function OrderDetailPage({
     const o = result.order;
     const cur = o.currency_code;
     const vendorShop = await resolveVendorHandle(o.vendor);
+
+    // Paid-event ticket (077) — the refund policy line, with the event's
+    // OWN cutoff date. Read-only public-ish event fields via the admin
+    // client (same pattern the public event page uses); best-effort — a
+    // failed lookup just omits the line rather than failing the order page.
+    let refundPolicyLine: string | null = null;
+    if (o.is_event && o.event_id) {
+        try {
+            const admin = getSupabaseAdmin();
+            const { data: ev } = await admin
+                .from('events')
+                .select('start_at, time_zone, reservation_policy')
+                .eq('id', o.event_id)
+                .maybeSingle();
+            if (ev) {
+                refundPolicyLine = refundPolicyShortLine(
+                    (ev as any).start_at,
+                    (ev as any).time_zone,
+                    (ev as any).reservation_policy,
+                );
+            }
+        } catch (e) {
+            console.error('[me/orders/[id]] refund policy lookup failed:', (e as any)?.message ?? e);
+        }
+    }
     const pay = paymentStatusCopy(o.payment_status);
     const ful = fulfillmentStatusCopy(o.fulfillment_status);
 
@@ -153,6 +180,18 @@ export default async function OrderDetailPage({
                     </div>
                 </div>
             </div>
+
+            {refundPolicyLine ? (
+                <section style={SECTION}>
+                    <div style={SECTION_TITLE}>REFUND & CANCELLATION POLICY</div>
+                    <p className="text-dim" style={{ fontSize: 13, margin: 0, lineHeight: 1.6 }}>
+                        {refundPolicyLine}{' '}
+                        <Link href={REFUND_POLICY_PATH} className="text-link" style={{ color: 'var(--gold)', textDecoration: 'none' }}>
+                            Full policy ›
+                        </Link>
+                    </p>
+                </section>
+            ) : null}
 
             {/* STATUS */}
             <section style={SECTION}>

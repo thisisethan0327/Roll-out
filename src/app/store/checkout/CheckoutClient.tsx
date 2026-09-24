@@ -130,6 +130,17 @@ const STORE_ACTIONS: CheckoutActions = {
     completeCart,
 };
 
+/**
+ * An extra required checkbox rendered above the pay button — used by the
+ * event-package checkout to gate payment on agreeing to the refund &
+ * cancellation policy (077). Optional and unused by the store checkout, so
+ * this is purely additive to the shared component.
+ */
+export type CheckoutAgreement = {
+    /** Rendered next to the checkbox, e.g. "I agree to the refund & …". */
+    label: React.ReactNode;
+};
+
 export function CheckoutClient({
     initialCart,
     stripeKey,
@@ -137,6 +148,7 @@ export function CheckoutClient({
     initialAddress,
     actions,
     successPathPrefix,
+    agreement,
 }: {
     initialCart: Cart;
     stripeKey: string;
@@ -147,6 +159,8 @@ export function CheckoutClient({
     actions?: CheckoutActions;
     /** The order id is appended to this on success (default: store order page). */
     successPathPrefix?: string;
+    /** Required checkbox that gates the pay button (event checkout only). */
+    agreement?: CheckoutAgreement;
 }) {
     const stripePromise = useMemo(() => getStripe(stripeKey), [stripeKey]);
     return (
@@ -157,6 +171,7 @@ export function CheckoutClient({
                 initialAddress={initialAddress ?? null}
                 actions={actions ?? STORE_ACTIONS}
                 successPathPrefix={successPathPrefix ?? '/store/order/'}
+                agreement={agreement}
             />
         </Elements>
     );
@@ -168,12 +183,14 @@ function CheckoutInner({
     initialAddress,
     actions,
     successPathPrefix,
+    agreement,
 }: {
     initialCart: Cart;
     signedInEmail: string | null;
     initialAddress: AddressInput | null;
     actions: CheckoutActions;
     successPathPrefix: string;
+    agreement?: CheckoutAgreement;
 }) {
     const cardColors = useCardColors();
     const router = useRouter();
@@ -216,6 +233,9 @@ function CheckoutInner({
     // cart (verified: Medusa replaces per shipping profile) and re-prices the
     // payment collection, so the amount charged is always items + chosen ship.
     const [shippingSet, setShippingSet] = useState(false);
+    // Only meaningful when `agreement` is passed (event checkout); defaults
+    // true so the store checkout's pay button is never affected.
+    const [agreed, setAgreed] = useState(!agreement);
 
     const currency = cart.currencyCode;
     const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
@@ -484,7 +504,19 @@ function CheckoutInner({
                             <p className="text-muted" style={{ fontSize: 11, margin: 0 }}>
                                 TEST MODE — use 4242 4242 4242 4242, any future date + CVC.
                             </p>
-                            <button type="button" className="btn btn-lg" onClick={placeOrder} disabled={placing || !stripe} style={{ width: '100%' }}>
+                            {agreement ? (
+                                <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 12, color: 'var(--text-2)', cursor: 'pointer' }}>
+                                    <input
+                                        type="checkbox"
+                                        checked={agreed}
+                                        onChange={(e) => setAgreed(e.target.checked)}
+                                        style={{ marginTop: 2 }}
+                                        required
+                                    />
+                                    <span>{agreement.label}</span>
+                                </label>
+                            ) : null}
+                            <button type="button" className="btn btn-lg" onClick={placeOrder} disabled={placing || !stripe || !agreed} style={{ width: '100%' }}>
                                 {placing ? <>PLACING ORDER<Dots /></> : `PLACE ORDER · ${formatMoney(cart.total, currency)}`}
                             </button>
                         </div>

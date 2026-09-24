@@ -195,6 +195,12 @@ export type VendorOrderDetail = {
     hasAuthorizedPayment: boolean;
     /** True when there are line items still awaiting fulfillment. */
     hasUnfulfilledItems: boolean;
+    /** metadata.event_id (077) — null for an ordinary store order. Event
+     *  orders cannot actually reach this vendor-scoped lookup today (see
+     *  refuseIfClosedEventOrder's comment in shop orders actions.ts), but the
+     *  field is threaded through so the order page can show the policy line
+     *  the day that changes, instead of silently having nothing to key off. */
+    eventId: string | null;
 };
 
 // ── mapping ──────────────────────────────────────────────────────────────────
@@ -496,6 +502,7 @@ function mapDetail(o: any, vendorKey: string): VendorOrderDetail {
         payments,
         hasAuthorizedPayment,
         hasUnfulfilledItems,
+        eventId: typeof o?.metadata?.event_id === 'string' ? o.metadata.event_id : null,
     };
 }
 
@@ -1314,6 +1321,168 @@ export async function searchAdminProducts(
         status: p.status ?? null,
     }));
     return { products, error: null };
+}
+
+// ── event-package refunds (NOT vendor-scoped) ────────────────────────────────
+// Event-package orders carry no `metadata.vendor` stamp (see event-cart.ts —
+// "an event package belongs to the event, not a selling shop"), so they never
+// match a shop's vendor key and the vendor-scoped functions above can never
+// see them. These are the ONE place event-package orders are refunded: the
+// member's own "Cancel & get a full refund" action, the host's "cancel event
+// & refund everyone", and the shop-console guard's belt-and-suspenders check
+// all call through here so the refund-then-cancel sequence is written once.
+
+/** Raw order fields needed to refund + cancel one order. Internal shape. */
+async function fetchOrderForEventRefund(orderId: string): Promise<any | null> {
+    if (!orderId) return null;
+    const fields =
+        'id,status,metadata,' +
+        'payment_collections.payments.id,payment_collections.payments.amount,' +
+        'payment_collections.payments.captured_at,payment_collections.payments.canceled_at,' +
+        'payment_collections.payments.refunds.amount';
+    const res = await adminFetch(`/admin/orders/${encodeURIComponent(orderId)}?fields=${encodeURIComponent(fields)}`);
+    if (!res || !res.ok) return null;
+    const o = (await res.json())?.order;
+    return o?.id ? o : null;
+}
+
+/**
+ * The event contract an order was placed under, read from ORDER metadata
+ * (cart metadata carries over to the order on completion). Used by the
+ * shop-console refund guard to recognise an event-package order defensively
+ * — today no event order can reach that console at all (see the guard's own
+ * comment), so this is a belt for an architecture that may change, not the
+ * primary safeguard.
+ */
+export async function getOrderEventMeta(
+    orderId: string,
+): Promise<{ eventId: string | null; eventProfileId: string | null; eventTierId: string | null } | null> {
+    const o = await fetchOrderForEventRefund(orderId);
+    if (!o) return null;
+    const m = (o.metadata ?? {}) as Record<string, unknown>;
+    return {
+        eventId: typeof m.event_id === 'string' ? m.event_id : null,
+        eventProfileId: typeof m.event_profile_id === 'string' ? m.event_profile_id : null,
+        eventTierId: typeof m.event_tier_id === 'string' ? m.event_tier_id : null,
+    };
+}
+
+async function cancelPlainOrder(orderId: string): Promise<ActionResult> {
+    const res = await adminFetch(`/admin/orders/${encodeURIComponent(orderId)}/cancel`, {
+        method: 'POST',
+        body: JSON.stringify({}),
+    });
+    if (!res || !res.ok) {
+        const msg = await errorMessage(res);
+        // Idempotent: a retry that lands after the order already cancelled
+        // (e.g. the previous attempt's response was lost) is a success, not
+        // a failure — the desired end state is already true.
+        if (/already.*cancel|is canceled/i.test(msg)) return { ok: true };
+        return { ok: false, error: msg };
+    }
+    return { ok: true };
+}
+
+/**
+ * Idempotent refund-then-cancel of ONE event-package order.
+ *
+ * 1. Refund the full captured amount of its one captured payment (skipped if
+ *    already fully refunded).
+ * 2. Re-read the payment and confirm the refund actually landed before
+ *    touching anything else.
+ * 3. Cancel the order (skipped if already cancelled) — order.canceled is
+ *    what the backend's subscriber uses to free the RSVP spot automatically
+ *    (see migration 20260814_052_event_paid_holds.sql).
+ *
+ * `expect` is a belt-and-suspenders check against the order's own metadata
+ * (stamped at cart creation — see event-cart.ts) so a wrong id can never
+ * refund the wrong member's money, even though callers already resolve the
+ * order id from a source they trust (event_rsvps.payment_ref).
+ *
+ * A "Maximum call stack size exceeded" throw from the refund POST — seen
+ * intermittently — is retried exactly once and logged; any other throw
+ * propagates.
+ */
+export async function refundAndCancelEventOrder(
+    orderId: string,
+    expect?: { eventId?: string | null; eventProfileId?: string | null },
+): Promise<ActionResult & { skipped?: 'already_refunded' | 'already_canceled' | 'no_payment' }> {
+    if (!orderId) return { ok: false, error: 'No order id.' };
+    const o = await fetchOrderForEventRefund(orderId);
+    if (!o?.id) return { ok: false, error: 'Order not found.' };
+
+    const m = (o.metadata ?? {}) as Record<string, unknown>;
+    if (expect?.eventId && m.event_id !== expect.eventId) {
+        return { ok: false, error: 'This order does not match the event — refused as a safety check.' };
+    }
+    if (expect?.eventProfileId && m.event_profile_id !== expect.eventProfileId) {
+        return { ok: false, error: 'This order does not match the member — refused as a safety check.' };
+    }
+
+    const alreadyCanceled = String(o.status ?? '').toLowerCase() === 'canceled';
+
+    let payment: any = null;
+    for (const pc of (o.payment_collections ?? []) as any[]) {
+        for (const p of (pc?.payments ?? []) as any[]) {
+            if (p?.captured_at && !p?.canceled_at) {
+                payment = p;
+                break;
+            }
+        }
+        if (payment) break;
+    }
+
+    if (!payment?.id) {
+        // Nothing captured (e.g. a hold that never completed payment) —
+        // there is nothing to refund; just make sure the order is cancelled.
+        if (alreadyCanceled) return { ok: true, skipped: 'already_canceled' };
+        const cancelled = await cancelPlainOrder(orderId);
+        return cancelled.ok ? { ...cancelled, skipped: 'no_payment' } : cancelled;
+    }
+
+    const captured = Number(payment.amount ?? 0);
+    const alreadyRefunded = paymentRefundedAmount(payment) >= captured - 0.005;
+
+    if (!alreadyRefunded) {
+        const attemptRefund = () =>
+            adminFetch(`/admin/payments/${payment.id}/refund`, {
+                method: 'POST',
+                body: JSON.stringify({ amount: captured }),
+            });
+
+        let res: Response | null;
+        try {
+            res = await attemptRefund();
+        } catch (e: any) {
+            if (String(e?.message ?? '').includes('Maximum call stack size exceeded')) {
+                console.error(`[event-refund] ${orderId}: refund POST threw a stack overflow — retrying once.`);
+                res = await attemptRefund();
+            } else {
+                throw e;
+            }
+        }
+        if (!res || !res.ok) return { ok: false, error: await errorMessage(res) };
+
+        // Confirm the refund actually landed before we cancel anything.
+        const reread = await fetchOrderForEventRefund(orderId);
+        const repay = ((reread?.payment_collections ?? []) as any[])
+            .flatMap((pc: any) => pc?.payments ?? [])
+            .find((p: any) => p.id === payment.id);
+        const covered = repay ? paymentRefundedAmount(repay) >= captured - 0.005 : false;
+        if (!covered) {
+            return {
+                ok: false,
+                error: 'Refund was submitted but could not be confirmed yet — check the order before retrying.',
+            };
+        }
+    }
+
+    if (alreadyCanceled) {
+        return { ok: true, skipped: alreadyRefunded ? 'already_refunded' : undefined };
+    }
+    const cancelled = await cancelPlainOrder(orderId);
+    if (!cancelled.ok) return cancelled;
+    return { ok: true, skipped: alreadyRefunded ? 'already_refunded' : undefined };
 }
 
 /** Cancel an order. Vendor-scoped; re-verified before acting. */

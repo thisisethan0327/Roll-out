@@ -39,6 +39,8 @@ export type MedusaOrder = {
     vendor: string | null;
     /** True for an event package (order.metadata.event_id) — not a store buy. */
     is_event: boolean;
+    /** The event id, when is_event — used to show the refund policy cutoff. */
+    event_id: string | null;
     items: MedusaOrderItem[];
 };
 
@@ -243,6 +245,7 @@ export async function loadMyOrders(): Promise<OrdersResult> {
             created_at: o.created_at ?? null,
             vendor: vendorLabel(o?.metadata?.vendor),
             is_event: !!o?.metadata?.event_id,
+            event_id: typeof o?.metadata?.event_id === 'string' ? o.metadata.event_id : null,
             items: (o.items ?? []).map((it: any) => ({
                 id: it.id,
                 title: it.title ?? it.product_title ?? null,
@@ -455,6 +458,7 @@ export async function loadMyOrder(orderId: string): Promise<OrderDetailResult> {
             created_at: o.created_at ?? null,
             vendor: vendorLabel(o?.metadata?.vendor),
             is_event: !!o?.metadata?.event_id,
+            event_id: typeof o?.metadata?.event_id === 'string' ? o.metadata.event_id : null,
             email: o.email ?? null,
             subtotal: o.item_subtotal ?? o.subtotal ?? null,
             shipping_total: o.shipping_total ?? null,
