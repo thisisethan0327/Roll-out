@@ -85,11 +85,24 @@ type Attendee = {
     avatar_url: string | null;
 };
 
+/** Event sponsors (migration 20260924_079_event_sponsors.sql, not yet
+ * applied as of this writing). Fetched in a SEPARATE best-effort query (see
+ * loadSponsors) rather than folded into the main events select above, so
+ * this page keeps working — sponsors section just stays empty — if it
+ * deploys before 079 lands and `sponsors` doesn't exist on the table yet. */
+type Sponsor = {
+    name: string;
+    logo_url: string;
+    url: string | null;
+    role: string | null;
+    note: string | null;
+};
+
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 async function loadEvent(
     id: string,
-): Promise<{ event: EventRow; attendees: Attendee[]; spotsLeft: number | null } | null> {
+): Promise<{ event: EventRow; attendees: Attendee[]; spotsLeft: number | null; sponsors: Sponsor[] } | null> {
     if (!UUID_RE.test(id)) return null;
     const supabase = getSupabaseAdmin();
     const { data: evRaw, error: evError } = await supabase
@@ -134,7 +147,38 @@ async function loadEvent(
     const spotsLeft =
         ev.capacity != null ? Math.max(ev.capacity - (ev.attending_count ?? 0), 0) : null;
 
-    return { event: ev, attendees, spotsLeft };
+    const sponsors = await loadSponsors(supabase, id);
+
+    return { event: ev, attendees, spotsLeft, sponsors };
+}
+
+/** Best-effort sponsors fetch, kept OUT of the main events select above on
+ * purpose: `sponsors` (migration 079) may not exist on the table yet at
+ * deploy time. Any error here (missing column, RLS hiccup, etc.) is
+ * swallowed and treated as "no sponsors" — never blocks the page. */
+async function loadSponsors(
+    supabase: ReturnType<typeof getSupabaseAdmin>,
+    id: string,
+): Promise<Sponsor[]> {
+    try {
+        const { data, error } = await supabase.from('events').select('sponsors').eq('id', id).maybeSingle();
+        if (error || !data) return [];
+        const raw = (data as { sponsors?: unknown }).sponsors;
+        if (!Array.isArray(raw)) return [];
+        return raw
+            .filter((s): s is Record<string, unknown> => !!s && typeof s === 'object')
+            .map((s) => ({
+                name: typeof s.name === 'string' ? s.name : '',
+                logo_url: typeof s.logo_url === 'string' ? s.logo_url : '',
+                url: typeof s.url === 'string' ? s.url : null,
+                role: typeof s.role === 'string' ? s.role : null,
+                note: typeof s.note === 'string' ? s.note : null,
+            }))
+            .filter((s) => s.name && s.logo_url);
+    } catch (err) {
+        console.error('[event/[id]] sponsors load failed (non-fatal):', err);
+        return [];
+    }
 }
 
 type MyRsvp = {
@@ -387,7 +431,7 @@ export async function generateMetadata({
     const { id } = await params;
     const data = await loadEvent(id);
     if (!data) return { title: 'Event not found' };
-    const { event: ev } = data;
+    const { event: ev, sponsors } = data;
 
     const cancelledPrefix = ev.cancelled_at ? '[Cancelled] ' : '';
     // The root layout's title template already appends ' · Rollout'. Appending
@@ -396,9 +440,12 @@ export async function generateMetadata({
     // the suffix explicitly.
     const title = `${cancelledPrefix}${ev.title ?? 'Car meet'}`;
     const socialTitle = `${title} · Rollout`;
-    const desc = ev.description
+    const baseDesc = ev.description
         ? truncate(ev.description, 160)
         : `${ev.type ?? 'Meet'} at ${ev.location_name ?? 'TBA'} — ${formatDate(ev.start_at, ev.time_zone)}. RSVP on Rollout.`;
+    const sponsorSuffix =
+        sponsors.length > 0 ? ` Sponsored by ${sponsors.map((s) => s.name).join(', ')}.` : '';
+    const desc = `${baseDesc}${sponsorSuffix}`;
     const images = [resolveCover(ev.hero_image_url, ev.type, ev.id)];
 
     return {
@@ -425,7 +472,7 @@ export default async function PublicEventPage({
     const inviteToken = typeof invite === 'string' && invite.trim() ? invite.trim() : null;
     const data = await loadEvent(id);
     if (!data) notFound();
-    const { event: ev, attendees, spotsLeft } = data;
+    const { event: ev, attendees, spotsLeft, sponsors } = data;
     // E2/E3: tiered/paid events swap the flat RSVP strip for the tier picker.
     // Every pre-E2 event is rsvp_mode='free' and renders exactly as before.
     const isTiered = ev.rsvp_mode === 'tiered' || ev.rsvp_mode === 'paid';
@@ -871,6 +918,99 @@ export default async function PublicEventPage({
                                 ) : null}
                             </div>
                         )}
+                    </div>
+                </section>
+            ) : null}
+
+            {/* SPONSORS */}
+            {sponsors.length > 0 ? (
+                <section className="section" style={{ padding: '40px 0', borderTop: '1px solid var(--line)' }}>
+                    <div className="container">
+                        <div className="eyebrow eyebrow-gold mb-4">／ SPONSORS</div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 16 }}>
+                            {sponsors.map((s, i) => {
+                                const card = (
+                                    <div
+                                        style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: 16,
+                                            padding: '16px 18px',
+                                            background: 'var(--bg-2)',
+                                            border: '1px solid var(--line)',
+                                        }}
+                                    >
+                                        <div
+                                            style={{
+                                                flexShrink: 0,
+                                                width: 96,
+                                                height: 56,
+                                                borderRadius: 8,
+                                                background: '#fff',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                padding: 8,
+                                            }}
+                                        >
+                                            {/* eslint-disable-next-line @next/next/no-img-element -- external/local sponsor art, no need for next/image's optimizer here */}
+                                            <img
+                                                src={s.logo_url}
+                                                alt={s.name}
+                                                style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
+                                            />
+                                        </div>
+                                        <div style={{ minWidth: 0, flex: 1 }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                                                <span
+                                                    style={{
+                                                        fontFamily: 'var(--font-display)',
+                                                        fontSize: 14,
+                                                        letterSpacing: 0.5,
+                                                        color: 'var(--text)',
+                                                    }}
+                                                >
+                                                    {s.name}
+                                                </span>
+                                                {s.role ? (
+                                                    <span
+                                                        style={{
+                                                            padding: '2px 8px',
+                                                            border: '1px solid var(--gold)',
+                                                            color: 'var(--gold)',
+                                                            fontFamily: 'var(--font-display)',
+                                                            fontSize: 9,
+                                                            letterSpacing: 'var(--track-wider)',
+                                                            textTransform: 'uppercase',
+                                                        }}
+                                                    >
+                                                        {s.role}
+                                                    </span>
+                                                ) : null}
+                                            </div>
+                                            {s.note ? (
+                                                <p className="text-dim" style={{ fontSize: 12, margin: '4px 0 0', lineHeight: 1.5 }}>
+                                                    {s.note}
+                                                </p>
+                                            ) : null}
+                                        </div>
+                                    </div>
+                                );
+                                return s.url ? (
+                                    <a
+                                        key={`${s.name}-${i}`}
+                                        href={s.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        style={{ textDecoration: 'none', color: 'inherit' }}
+                                    >
+                                        {card}
+                                    </a>
+                                ) : (
+                                    <div key={`${s.name}-${i}`}>{card}</div>
+                                );
+                            })}
+                        </div>
                     </div>
                 </section>
             ) : null}
