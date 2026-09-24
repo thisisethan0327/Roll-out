@@ -98,6 +98,42 @@ async function exchangeForMedusaToken(): Promise<string | null> {
 }
 
 /**
+ * True when a Medusa token resolves to a live, readable actor (GET
+ * /store/customers/me succeeds). False on 401/404 AND on a network error —
+ * callers that need to tell "not linked" apart from "network hiccup" use the
+ * raw fetch instead; this is only for the bounded verify-before-trusting
+ * passes below.
+ */
+async function verifyMedusaToken(token: string): Promise<boolean> {
+    try {
+        const res = await fetch(`${MEDUSA_URL}/store/customers/me`, {
+            method: 'GET',
+            headers: pkHeaders({ Authorization: `Bearer ${token}` }),
+            cache: 'no-store',
+        });
+        return res.ok;
+    } catch {
+        return false;
+    }
+}
+
+/**
+ * The signed-in platform user's id, for diagnostic logging only (never a
+ * token, never PII beyond the id itself). Best-effort: null on any failure.
+ */
+export async function getSessionUserId(): Promise<string | null> {
+    try {
+        const supabase = await getSupabaseServer();
+        const {
+            data: { session },
+        } = await supabase.auth.getSession();
+        return session?.user?.id ?? null;
+    } catch {
+        return null;
+    }
+}
+
+/**
  * A vendor worth showing. The backend stamps metadata.vendor = 'unknown' on an
  * order with no selling shop — an event package, by design — and /me/orders
  * printed the literal word (R12, lane RV). Absent is the honest value.
@@ -141,7 +177,27 @@ function nameParts(user: {
  *      token is actor-scoped; return it.
  *   3. Otherwise create + link the customer with the registration-scoped token,
  *      stamping metadata.supabase_user_id (the one ecosystem id).
- *   4. Re-exchange to obtain the now actor-scoped token and return it.
+ *   4. Re-exchange to obtain the now actor-scoped token and return it, but only
+ *      after re-verifying it — see the KNOWN GAP below.
+ *
+ * KNOWN GAP (diagnosed 2026-09-24, rollout.club "Couldn't start checkout"):
+ * Medusa's `supabase` auth provider returns 200 for an identity whose
+ * app_metadata still points at a Medusa customer that was deleted out from
+ * under it (e.g. a test-data sweep). That 200 hands back a token scoped to a
+ * MISSING actor. Medusa's own authenticate middleware then rejects EVERY
+ * authenticated store call carrying that token with 401 — including step 3's
+ * POST /store/customers — so "create + re-exchange" cannot relink a dangling
+ * identity: step 3 401s, the retry re-exchanges the SAME stale identity, and
+ * authExchange hands back the SAME broken token forever. The only real fix is
+ * clearing the stale link server-side (Medusa's admin auth-identities API),
+ * and src/lib/medusa-admin.ts exposes no such route today (it is scoped to
+ * vendor orders/products/pulse) — so this cannot self-heal from the web app.
+ * Rather than hand a caller a token that looks valid but 401s on every store
+ * call, step 4 below re-verifies the token it is about to return and fails
+ * closed (null) when it is still broken, so callers refuse BEFORE taking
+ * money instead of 401ing after (see event-cart.ts's eventMedusaFetch, which
+ * also does one bounded relink-and-retry of its own for calls that slip
+ * through with a token that was valid when fetched but stops being so).
  */
 export async function ensureMedusaCustomerToken(): Promise<string | null> {
     const supabase = await getSupabaseServer();
@@ -157,20 +213,19 @@ export async function ensureMedusaCustomerToken(): Promise<string | null> {
     if (!token) return null;
 
     // 2. Already linked? Then this token is actor-scoped and we're done.
+    let linked: boolean;
     try {
-        const meRes = await fetch(`${MEDUSA_URL}/store/customers/me`, {
-            method: 'GET',
-            headers: pkHeaders({ Authorization: `Bearer ${token}` }),
-            cache: 'no-store',
-        });
-        if (meRes.ok) return token;
-        // 401/404 = authenticated identity with no linked customer yet → create.
+        linked = await verifyMedusaToken(token);
+        if (linked) return token;
+        // 401/404 = authenticated identity with no linked customer yet (or a
+        // dangling one — see KNOWN GAP above) → attempt to create/relink.
     } catch {
         return token; // transient — use what we have rather than block the caller
     }
 
     // 3. Create + link the Medusa customer with the registration-scoped token.
     const { firstName, lastName } = nameParts(user);
+    let relinkedToken: string | null = null;
     try {
         const createRes = await fetch(`${MEDUSA_URL}/store/customers`, {
             method: 'POST',
@@ -184,18 +239,31 @@ export async function ensureMedusaCustomerToken(): Promise<string | null> {
             cache: 'no-store',
         });
         if (!createRes.ok) {
-            // A concurrent request may have created it first — re-exchange to
-            // pick up the now-linked (actor-scoped) token either way.
-            const retry = await authExchange(accessToken);
-            return retry ?? token;
+            // A concurrent request may have created it first (or this is the
+            // KNOWN GAP dangling-identity case, which 401s here too) —
+            // re-exchange once to pick up whatever the identity now resolves
+            // to, then verify it below rather than trust it blindly.
+            relinkedToken = await authExchange(accessToken);
+        } else {
+            // 4. Re-exchange → actor-scoped customer token now that the link exists.
+            relinkedToken = await authExchange(accessToken);
         }
     } catch {
         return token;
     }
 
-    // 4. Re-exchange → actor-scoped customer token now that the link exists.
-    const actorToken = await authExchange(accessToken);
-    return actorToken ?? token;
+    if (!relinkedToken) return token;
+    // Bounded: exactly one verify of the post-relink token. If it is STILL
+    // unusable, this is the dangling-identity gap, not a transient blip —
+    // fail closed instead of handing back a token that will 401 downstream.
+    const ok = await verifyMedusaToken(relinkedToken);
+    if (ok) return relinkedToken;
+
+    const uid = await getSessionUserId();
+    console.error(
+        `[medusa-customer] identity for member ${uid ?? 'unknown'} still does not resolve to a live Medusa actor after create+re-exchange — likely a dangling auth_identity (see KNOWN GAP in ensureMedusaCustomerToken). Refusing to hand back a token that would 401 downstream.`,
+    );
+    return null;
 }
 
 /**
