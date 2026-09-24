@@ -31,6 +31,7 @@ import {
     REFUND_POLICY_PATH,
     type ReservationPolicy,
 } from '@/lib/refund-policy';
+import styles from './cover-story.module.css';
 
 export type TierView = {
     id: string;
@@ -561,22 +562,23 @@ export function TiersSection({
                         const soldOut = tier.remaining != null && tier.remaining <= 0;
                         const isFree = tier.priceCents === 0;
                         const buyable = isFree || tier.purchasable;
+                        const hasImage = !!(tier.image && (tier.image.images.length > 0 || tier.image.thumbnail));
                         return (
                             <div
                                 key={tier.id}
+                                className={`${styles.tierCard} ${hasImage ? styles.tierCardHasImage : ''}`}
                                 style={{
                                     display: 'flex',
-                                    flexDirection: 'column',
                                     border: '1px solid var(--line-mid)',
                                     background: 'var(--bg-1)',
                                     textAlign: 'left',
                                     opacity: soldOut ? 0.65 : 1,
-                                    overflow: 'hidden',
+                                    overflow: hasImage ? 'visible' : 'hidden',
                                 }}
                             >
                                 <TierMedia image={tier.image} name={tier.name} />
 
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '18px 18px 16px' }}>
+                                <div className={styles.tierCardBody} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10 }}>
                                     <span
                                         style={{
