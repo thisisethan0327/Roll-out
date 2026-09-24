@@ -929,7 +929,7 @@ export default async function PublicEventPage({
                 <section className="section" style={{ padding: '40px 0', borderTop: '1px solid var(--line)' }}>
                     <div className="container">
                         <div className="eyebrow eyebrow-gold mb-4">／ SPONSORS</div>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 16 }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gridAutoRows: '1fr', gap: 16 }}>
                             {sponsors.map((s, i) => {
                                 const card = (
                                     <div
@@ -937,6 +937,8 @@ export default async function PublicEventPage({
                                             display: 'flex',
                                             alignItems: 'center',
                                             gap: 16,
+                                            height: '100%',
+                                            boxSizing: 'border-box',
                                             padding: '16px 18px',
                                             background: 'var(--bg-2)',
                                             border: '1px solid var(--line)',
@@ -963,7 +965,7 @@ export default async function PublicEventPage({
                                             />
                                         </div>
                                         <div style={{ minWidth: 0, flex: 1 }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 6 }}>
                                                 <span
                                                     style={{
                                                         fontFamily: 'var(--font-display)',
@@ -1004,12 +1006,12 @@ export default async function PublicEventPage({
                                         href={s.url}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        style={{ textDecoration: 'none', color: 'inherit' }}
+                                        style={{ textDecoration: 'none', color: 'inherit', display: 'block', height: '100%' }}
                                     >
                                         {card}
                                     </a>
                                 ) : (
-                                    <div key={`${s.name}-${i}`}>{card}</div>
+                                    <div key={`${s.name}-${i}`} style={{ height: '100%' }}>{card}</div>
                                 );
                             })}
                         </div>
