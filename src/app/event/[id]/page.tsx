@@ -28,7 +28,7 @@ import { notFound } from 'next/navigation';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { getConsumerProfile } from '@/lib/consumer';
 import { viewerCanSeeNonPublicEvent } from '@/lib/event-viewer';
-import { resolveCover } from '@/lib/event-covers';
+import { resolveCover, isDefaultCoverUrl } from '@/lib/event-covers';
 import { fetchEventTierProductImages } from '@/lib/event-tier-images';
 import { RsvpControls } from './RsvpControls';
 import { ShareBar } from './ShareBar';
@@ -572,6 +572,11 @@ export default async function PublicEventPage({
     const canManageThisEvent = await viewerCanManageShop(ev.shop_id);
 
     const coverUrl = resolveCover(ev.hero_image_url, ev.type, ev.id);
+    // Poster mode: only a truly custom pinned image (a host's flyer/poster) —
+    // never one of our default covers, shipped or bucket. The hero component
+    // still falls back to full-bleed on the client if it turns out landscape.
+    const pinnedHero = ev.hero_image_url?.trim() || null;
+    const posterUrl = pinnedHero && !isDefaultCoverUrl(pinnedHero) ? pinnedHero : null;
     const heroBg = `linear-gradient(180deg, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.92) 100%), url(${coverUrl}) center/cover no-repeat`;
 
     const mapEmbedUrl =
@@ -685,6 +690,7 @@ export default async function PublicEventPage({
                 startAt={ev.start_at}
                 rsvpOpen={rsvpOpen}
                 issueLine={issueLine}
+                posterUrl={posterUrl}
             />
 
             <div className={styles.page}>

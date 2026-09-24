@@ -34,6 +34,22 @@ export function coverAtRatio(url: string, ratio: CoverRatio): string {
     return m ? `${m[1] ?? ''}${COVER_BASE}/${m[2]}-${ratio}.webp` : url;
 }
 
+/**
+ * Is this URL one of OUR default covers (not a host's own upload)? Covers the
+ * shipped /covers/<TYPE>-<n>-<ratio>.webp art (relative or on rollout.club)
+ * and the legacy event-covers bucket defaults (…/event-covers/<TYPE>-<n>.webp).
+ * The event page uses this to keep defaults on the full-bleed hero: only a
+ * truly custom pinned image is a poster-mode candidate.
+ */
+export function isDefaultCoverUrl(url: string | null | undefined): boolean {
+    if (!url) return false;
+    const u = url.trim().split(/[?#]/)[0];
+    return (
+        /^(https?:\/\/rollout\.club)?\/covers\/[A-Z_]+-[12]-(16x9|4x5)\.webp$/.test(u) ||
+        /\/event-covers\/[A-Z_]+-\d+\.webp$/.test(u)
+    );
+}
+
 export const EVENT_COVER_TYPES = [
     'CAR_MEET',
     'NIGHT_RUN',

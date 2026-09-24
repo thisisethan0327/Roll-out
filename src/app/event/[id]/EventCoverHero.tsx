@@ -14,7 +14,18 @@ import Link from 'next/link';
 import { Bebas_Neue } from 'next/font/google';
 import { HeroParallax } from '@/components/motion/HeroParallax';
 import { Countdown } from './Countdown';
+import { PosterModeSwitch } from './PosterModeSwitch';
 import styles from './cover-story.module.css';
+
+/**
+ * Responsive sources for a poster, by convention only: an asset shipped at
+ * …/events/<slug>/cover.webp has a 900px-wide twin at cover-900.webp next to
+ * it. Any other pinned URL (a host upload) gets no srcset — just its src.
+ */
+function posterSrcSet(url: string): string | undefined {
+    const m = url.match(/^(.*\/events\/[^/?#]+\/)cover\.webp$/);
+    return m ? `${m[1]}cover-900.webp 900w, ${url} 1520w` : undefined;
+}
 
 const bebasNeue = Bebas_Neue({
     weight: '400',
@@ -43,6 +54,7 @@ export function EventCoverHero({
     startAt,
     rsvpOpen,
     issueLine,
+    posterUrl,
 }: {
     title: string;
     code: string | null;
@@ -63,27 +75,14 @@ export function EventCoverHero({
     rsvpOpen: boolean;
     /** e.g. "ISSUE · MEET · 10.10.2026" — derived from real fields, never fabricated. */
     issueLine: string;
+    /** A custom pinned hero image (never one of our default covers) → poster
+     *  mode; null keeps the full-bleed hero. Decided by the page. */
+    posterUrl: string | null;
 }) {
     const heroBg = `linear-gradient(180deg, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.94) 100%), url(${coverUrl}) center/cover no-repeat`;
 
-    return (
-        <HeroParallax>
-            <section
-                className={`corner-wrap on-dark ${styles.page}`}
-                style={{
-                    position: 'relative',
-                    minHeight: 520,
-                    overflow: 'hidden',
-                    background: '#050505',
-                    borderBottom: '1px solid var(--line)',
-                    filter: isCancelled ? 'grayscale(0.5)' : undefined,
-                }}
-            >
-                <div data-parallax style={{ position: 'absolute', zIndex: 0, background: heroBg, inset: '0 0 -12% 0' }} />
-                <span className="corner-bottom-left" />
-                <span className="corner-bottom-right" />
-
-                <div className="container" style={{ position: 'relative', zIndex: 1, paddingTop: 28, paddingBottom: 40, maxWidth: 1100 }}>
+    const titleBlock = (
+        <>
                     <div className={styles.mastheadBar}>
                         <span className={styles.issueLine}>{issueLine}</span>
                         <span className={styles.barcode}>ROLLOUT ／ロールアウト</span>
@@ -173,8 +172,66 @@ export function EventCoverHero({
                             </div>
                         ) : null}
                     </div>
+        </>
+    );
+
+    const fullBleed = (
+        <HeroParallax>
+            <section
+                className={`corner-wrap on-dark ${styles.page}`}
+                style={{
+                    position: 'relative',
+                    minHeight: 520,
+                    overflow: 'hidden',
+                    background: '#050505',
+                    borderBottom: '1px solid var(--line)',
+                    filter: isCancelled ? 'grayscale(0.5)' : undefined,
+                }}
+            >
+                <div data-parallax style={{ position: 'absolute', zIndex: 0, background: heroBg, inset: '0 0 -12% 0' }} />
+                <span className="corner-bottom-left" />
+                <span className="corner-bottom-right" />
+
+                <div className="container" style={{ position: 'relative', zIndex: 1, paddingTop: 28, paddingBottom: 40, maxWidth: 1100 }}>
+                    {titleBlock}
                 </div>
             </section>
         </HeroParallax>
     );
+
+    if (!posterUrl) return fullBleed;
+
+    // POSTER MODE — a custom pinned image (usually a flyer/poster) is shown
+    // WHOLE, never cropped, framed like a magazine on a stand, over a blurred
+    // + darkened copy of itself. PosterModeSwitch falls back to the
+    // full-bleed hero above if the image turns out to be landscape.
+    const srcSet = posterSrcSet(posterUrl);
+    // The blurred backdrop only needs a small source: reuse the 900w twin
+    // when there is one, so phones don't fetch the full-size file twice.
+    const backdropUrl = srcSet ? posterUrl.replace(/cover\.webp$/, 'cover-900.webp') : posterUrl;
+    const poster = (
+        <section
+            className={`on-dark ${styles.page} ${styles.posterHero}`}
+            style={{ filter: isCancelled ? 'grayscale(0.5)' : undefined }}
+        >
+            <div aria-hidden="true" className={styles.posterBackdrop} style={{ backgroundImage: `url(${backdropUrl})` }} />
+            <div className={`container ${styles.posterGrid}`} style={{ maxWidth: 1100 }}>
+                <figure className={styles.posterFigure}>
+                    {/* eslint-disable-next-line @next/next/no-img-element -- host-pinned art, same plain-<img> approach as the rest of this page */}
+                    <img
+                        data-poster
+                        src={posterUrl}
+                        srcSet={srcSet}
+                        sizes={srcSet ? '(min-width: 901px) 460px, calc(100vw - 32px)' : undefined}
+                        alt={`${title} poster`}
+                        className={styles.posterImg}
+                        fetchPriority="high"
+                    />
+                </figure>
+                <div className={styles.posterCopy}>{titleBlock}</div>
+            </div>
+        </section>
+    );
+
+    return <PosterModeSwitch poster={poster} fallback={fullBleed} />;
 }
