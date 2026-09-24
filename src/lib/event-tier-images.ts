@@ -67,7 +67,7 @@ export async function fetchEventTierProductImages(
     try {
         const url = new URL(`${MEDUSA_URL}/store/products`);
         url.searchParams.set('limit', String(Math.min(unique.length, 100)));
-        url.searchParams.set('fields', 'id,thumbnail,+images');
+        url.searchParams.set('fields', 'id,thumbnail,*images');
         for (const id of unique) url.searchParams.append('id[]', id);
 
         const res = await fetch(url.toString(), {
