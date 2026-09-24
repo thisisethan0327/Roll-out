@@ -18,6 +18,7 @@ import { notFound } from 'next/navigation';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { getConsumerProfile } from '@/lib/consumer';
 import { resolveCover } from '@/lib/event-covers';
+import { fetchEventTierProductImages } from '@/lib/event-tier-images';
 import { Countdown } from './Countdown';
 import { RsvpControls } from './RsvpControls';
 import { ShareBar } from './ShareBar';
@@ -234,6 +235,13 @@ async function loadTiers(eventId: string): Promise<TierView[]> {
     const tiers = (data as any[]) ?? [];
     if (tiers.length === 0) return [];
 
+    // Product photos for paid tiers (best-effort — see event-tier-images.ts).
+    // A tier with no medusa_product_id or whose product fetch failed simply
+    // gets `image: null` and the card renders without one.
+    const imagesByProduct = await fetchEventTierProductImages(
+        tiers.map((t) => t.medusa_product_id as string | null),
+    );
+
     // Per-tier occupancy for sub-capped tiers, in one query.
     const capped = tiers.filter((t) => t.capacity != null);
     const usedByTier = new Map<string, number>();
@@ -267,6 +275,7 @@ async function loadTiers(eventId: string): Promise<TierView[]> {
         packageMode: (t.package_mode ?? 'none') as TierView['packageMode'],
         packagePriceCents: t.package_price_cents != null ? Number(t.package_price_cents) : null,
         purchasable: Boolean(t.medusa_product_id),
+        image: t.medusa_product_id ? (imagesByProduct[t.medusa_product_id] ?? null) : null,
     }));
 }
 
