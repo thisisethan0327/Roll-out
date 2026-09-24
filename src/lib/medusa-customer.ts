@@ -134,28 +134,35 @@ export async function getSessionUserId(): Promise<string | null> {
 }
 
 type RelinkOutcome =
-    | { kind: 'relinked'; clearedCustomerId: string | null }
-    | { kind: 'live'; customerId: string | null }
-    | { kind: 'no-link' }
+    /** {relinked:true, identity_deleted:true, cleared_customer_id} — the
+     *  dangling auth identity itself was deleted server-side. */
+    | { kind: 'deleted'; clearedCustomerId: string | null }
+    /** {relinked:false, identity_missing:true} — the token's identity is
+     *  already gone; nothing left to relink. */
+    | { kind: 'identity-missing' }
+    /** {relinked:false, customer_id:"cus_…"} — the linked customer is live.
+     *  A no-op; the earlier 401/404 was transient. */
+    | { kind: 'live'; customerId: string }
+    /** {relinked:false, customer_id:null} — clean unregistered identity,
+     *  never linked. */
+    | { kind: 'clean' }
+    /** HTTP 404 on the route itself — not deployed on this backend yet. */
     | { kind: 'not-deployed' }
     | { kind: 'failed' };
 
 /**
- * POST /store/customers/relink with the CALLER's own token. The backend
- * reads only the caller's auth context: if the auth identity's
- * app_metadata.customer_id (or the token's actor) points at a customer that
- * no longer exists, it clears that link server-side and returns
- * {relinked:true, cleared_customer_id}; a live link returns {relinked:false,
- * customer_id}; no link at all returns {relinked:false, customer_id:null}.
- * Idempotent — safe to call again, but ensureMedusaCustomerToken below bounds
- * this to exactly one attempt per call.
+ * POST /store/customers/relink with the CALLER's own current token
+ * (unregistered or actor-scoped — whichever we have). The backend reads only
+ * the caller's own auth context. See RelinkOutcome above for the response
+ * shapes. Idempotent — safe to call again, but ensureMedusaCustomerToken
+ * below bounds this to exactly one attempt per call.
  *
- * The route may not be deployed yet on every environment. A 404 here means
- * "cannot ask", NOT "no dangling link" — callers fall back to the pre-relink
- * create+re-exchange behaviour instead of treating it as a clean bill of
- * health.
+ * The route may not be deployed yet on every environment. A 404 STATUS here
+ * means "cannot ask", NOT "no dangling link" — callers fall back to the
+ * pre-relink create+re-exchange behaviour instead of treating it as a clean
+ * bill of health.
  */
-async function relinkStaleCustomer(token: string): Promise<RelinkOutcome> {
+async function relinkCustomer(token: string): Promise<RelinkOutcome> {
     try {
         const res = await fetch(`${MEDUSA_URL}/store/customers/relink`, {
             method: 'POST',
@@ -165,18 +172,30 @@ async function relinkStaleCustomer(token: string): Promise<RelinkOutcome> {
         if (res.status === 404) return { kind: 'not-deployed' };
         if (!res.ok) return { kind: 'failed' };
         const json = await res.json().catch(() => ({}) as any);
-        // identity_missing: a previous relink already deleted this token's identity —
-        // same remedy (fresh re-exchange creates a new one), so treat it as relinked.
-        if (json?.relinked === true || json?.identity_missing === true) {
-            return { kind: 'relinked', clearedCustomerId: json?.cleared_customer_id ?? null };
+        if (json?.relinked === true) {
+            return { kind: 'deleted', clearedCustomerId: json?.cleared_customer_id ?? null };
         }
+        if (json?.identity_missing === true) return { kind: 'identity-missing' };
         if (typeof json?.customer_id === 'string' && json.customer_id) {
             return { kind: 'live', customerId: json.customer_id };
         }
-        return { kind: 'no-link' };
+        return { kind: 'clean' };
     } catch {
         return { kind: 'failed' };
     }
+}
+
+/**
+ * True for the specific 500 the store owner traced: an admin customer
+ * delete can leave the auth identity's app_metadata.customer_id DEFINED but
+ * EMPTY, so the next exchange mints an unregistered token, GET
+ * /store/customers/me 401s (no readable actor), and POST /store/customers
+ * then 500s because Postgres sees the (empty but present) key as already
+ * set. Treated as a second, reactive signal that a relink is needed — for
+ * whichever call path did not already go through relinkCustomer this call.
+ */
+function isAlreadyExistsInAppMetadata(status: number, bodyText: string): boolean {
+    return status === 500 && /already exists in app metadata/i.test(bodyText);
 }
 
 /**
@@ -248,6 +267,150 @@ async function createAndLink(
     return actorToken ?? token;
 }
 
+type StoreUser = { id: string; email?: string | null; user_metadata?: Record<string, unknown> | null };
+
+/**
+ * POST /store/customers with `tokenForCreate`, then re-exchange and verify
+ * before handing a token back — never return one that will 401 downstream.
+ *
+ * `relinkUsedAlready` bounds the reactive relink below to firing AT MOST
+ * ONCE more per top-level call: if create fails with the "already exists in
+ * app metadata" 500 (the customer_id-defined-but-empty case) and it hasn't
+ * fired yet, it fires now, then resolves through the same
+ * handleRelinkOutcome switch as the proactive path — but that recursive call
+ * is itself marked `isReactiveRetry`, so ITS 'clean' branch treats the
+ * budget as spent too. Net effect: at most 2 relink HTTP calls total for
+ * this scenario (the proactive diagnostic read + one reactive fix attempt),
+ * never a 3rd, never a loop.
+ */
+async function createCustomerAndFinish(
+    tokenForCreate: string,
+    accessToken: string,
+    user: StoreUser,
+    uid: string | null,
+    relinkUsedAlready: boolean,
+): Promise<string | null> {
+    const { firstName, lastName } = nameParts(user);
+    let createOk = false;
+    let alreadyExists = false;
+    let createStatus = 0;
+    try {
+        const createRes = await fetch(`${MEDUSA_URL}/store/customers`, {
+            method: 'POST',
+            headers: pkHeaders({ Authorization: `Bearer ${tokenForCreate}` }),
+            body: JSON.stringify({
+                email: user.email ?? undefined,
+                first_name: firstName,
+                last_name: lastName,
+                metadata: { supabase_user_id: user.id },
+            }),
+            cache: 'no-store',
+        });
+        createOk = createRes.ok;
+        createStatus = createRes.status;
+        if (!createOk) {
+            const text = await createRes.text().catch(() => '');
+            alreadyExists = isAlreadyExistsInAppMetadata(createRes.status, text);
+        }
+    } catch {
+        return null;
+    }
+
+    if (!createOk) {
+        if (alreadyExists && !relinkUsedAlready) {
+            console.warn(
+                `[medusa-customer] create 500 'already exists in app metadata' for member ${uid ?? 'unknown'} — treating as a dangling link the earlier relink read missed; relinking once more.`,
+            );
+            const outcome = await relinkCustomer(tokenForCreate);
+            return handleRelinkOutcome(outcome, accessToken, tokenForCreate, user, uid, /* isReactiveRetry */ true);
+        }
+        console.error(
+            `[medusa-customer] customer create failed (${createStatus}) for member ${uid ?? 'unknown'}${
+                relinkUsedAlready ? ' (relink already attempted this call)' : ''
+            } — refusing to proceed.`,
+        );
+        return null;
+    }
+
+    const actorToken = await authExchange(accessToken);
+    if (!actorToken) return null;
+    const ok = await verifyMedusaToken(actorToken);
+    if (!ok) {
+        console.error(
+            `[medusa-customer] post-create token still does not resolve to a live actor for member ${uid ?? 'unknown'} — refusing to proceed.`,
+        );
+        return null;
+    }
+    console.log(`[medusa-customer] link established for member ${uid ?? 'unknown'}.`);
+    return actorToken;
+}
+
+/**
+ * Resolve a relinkCustomer() outcome per the required flow. `token` is the
+ * pre-relink token (needed for the 'clean' branch, which creates with it
+ * directly rather than re-exchanging first — there is no stale link to shed).
+ *
+ * `isReactiveRetry` is true only when THIS relink call was itself the one
+ * reactive retry fired from createCustomerAndFinish's create-500 handling
+ * (see there). It exists to keep 'clean' from re-opening the reactive budget
+ * a second time — everything else already terminates the call outright
+ * ('deleted'/'identity-missing' represent a real, backend-confirmed fix, so
+ * they always spend the budget; 'not-deployed'/'failed'/'live' never reach
+ * create at all).
+ */
+async function handleRelinkOutcome(
+    outcome: RelinkOutcome,
+    accessToken: string,
+    token: string,
+    user: StoreUser,
+    uid: string | null,
+    isReactiveRetry: boolean = false,
+): Promise<string | null> {
+    switch (outcome.kind) {
+        case 'not-deployed':
+            console.warn(
+                `[medusa-customer] relink route not deployed yet for member ${uid ?? 'unknown'} — falling back to create+re-exchange.`,
+            );
+            return createAndLink(accessToken, token, user);
+
+        case 'failed':
+            console.error(`[medusa-customer] relink attempt failed for member ${uid ?? 'unknown'} — refusing to proceed.`);
+            return null;
+
+        case 'deleted':
+        case 'identity-missing': {
+            console.log(`[medusa-customer] relink outcome for member ${uid ?? 'unknown'}: ${outcome.kind}.`);
+            // The provider mints a fresh (actor-less) identity on the next
+            // exchange now that the dangling one is gone. This IS a
+            // backend-confirmed fix, so it always spends the relink budget.
+            const freshToken = await authExchange(accessToken);
+            if (!freshToken) return null;
+            return createCustomerAndFinish(freshToken, accessToken, user, uid, true);
+        }
+
+        case 'clean':
+            console.log(`[medusa-customer] relink outcome for member ${uid ?? 'unknown'}: clean (never linked).`);
+            // A 'clean' read is a diagnosis, not a corrective action — it did
+            // not spend the budget UNLESS this was already the one reactive
+            // retry, in which case it must (never a 3rd relink call).
+            return createCustomerAndFinish(token, accessToken, user, uid, isReactiveRetry);
+
+        case 'live': {
+            console.log(
+                `[medusa-customer] relink outcome for member ${uid ?? 'unknown'}: live customer ${outcome.customerId} — the earlier 401/404 was transient.`,
+            );
+            const reToken = await authExchange(accessToken);
+            if (!reToken) return null;
+            const ok = await verifyMedusaToken(reToken);
+            if (ok) return reToken;
+            console.error(
+                `[medusa-customer] re-exchange for already-linked member ${uid ?? 'unknown'} still failed verify — refusing to proceed.`,
+            );
+            return null;
+        }
+    }
+}
+
 /**
  * Resolve the signed-in platform user to a linked Medusa customer, creating one
  * on first sight, and return an actor-scoped Medusa customer JWT. Mirrors the
@@ -257,24 +420,28 @@ async function createAndLink(
  *
  *   1. Exchange the platform JWT for a Medusa token (POST /auth/customer/supabase).
  *   2. GET /store/customers/me. Success → already linked, actor-scoped; return it.
- *   3. On 404, or a 401 from a token whose actor is missing, POST
- *      /store/customers/relink with the SAME token — the backend clears a
- *      dangling app_metadata link (an actor pointing at a deleted customer)
- *      server-side when that's what this is. Bounded: at most one relink
- *      attempt per call, never a loop.
- *        - Relink route not deployed (404) → fall back to today's behaviour
- *          (createAndLink, above) unchanged.
- *        - Relink call itself fails → fail closed (null).
- *   4. Re-exchange with the SAME platform access token (fresh token, no actor
- *      now that any stale link is cleared).
- *   5. POST /store/customers (create) with that fresh token, stamping
- *      metadata.supabase_user_id.
- *   6. Re-exchange again → the now actor-scoped customer token.
- *   7. Verify with GET /store/customers/me before returning it — never hand a
- *      caller a token that will 401 downstream.
+ *   3. On 401 or 404, POST /store/customers/relink with that SAME (current)
+ *      token, then branch on its outcome (handleRelinkOutcome, above):
+ *        - deleted / identity-missing → re-exchange (fresh, actor-less) →
+ *          create → re-exchange → verify. A backend-confirmed fix — the
+ *          relink budget is spent, no further relink this call.
+ *        - clean (customer_id null) → create directly with the current
+ *          token → re-exchange → verify. A diagnostic read, not a fix — see
+ *          step 4.
+ *        - live (customer_id set) → the 401/404 was transient; re-exchange
+ *          once and verify — no create.
+ *        - relink route not deployed (404 status) → fall back to the
+ *          pre-relink create+re-exchange behaviour (createAndLink) unchanged.
+ *        - relink call itself fails → fail closed (null).
+ *   4. A "already exists in app metadata" 500 from a create that followed a
+ *      'clean' read is a second, reactive signal that the read missed a
+ *      dangling link (customer_id defined-but-empty) — relinks ONE more
+ *      time, then create → re-exchange → verify. Capped at 2 relink calls
+ *      total for this call (1 diagnostic + 1 reactive fix); the reactive
+ *      call's own outcome always spends the budget, so this can never loop.
  *
- * Any step failing → fail closed (null), same as before the relink route
- * existed. Logs the member id + outcome only, never a token.
+ * Any step failing → fail closed (null). Logs the member id + outcome only,
+ * never a token.
  */
 export async function ensureMedusaCustomerToken(): Promise<string | null> {
     const supabase = await getSupabaseServer();
@@ -285,7 +452,8 @@ export async function ensureMedusaCustomerToken(): Promise<string | null> {
     const user = session?.user;
     if (!accessToken || !user) return null;
 
-    // 1. Platform JWT → Medusa token.
+    // 1. Platform JWT → Medusa token (unregistered or actor — whichever the
+    //    identity currently resolves to).
     const token = await authExchange(accessToken);
     if (!token) return null;
 
@@ -298,68 +466,11 @@ export async function ensureMedusaCustomerToken(): Promise<string | null> {
     }
     if (linked) return token;
 
-    // 3. 401/404 = no linked customer yet, OR a dangling link (actor points
-    //    at a deleted customer). Ask the backend to tell the two apart and
-    //    clear the link server-side if it's the latter — bounded to one call.
-    const outcome = await relinkStaleCustomer(token);
+    // 3. 401/404 → ask the backend to relink (bounded to one call) and
+    //    branch on what it reports.
     const uid = await getSessionUserId();
-
-    if (outcome.kind === 'not-deployed') {
-        console.warn(
-            `[medusa-customer] relink route not deployed yet for member ${uid ?? 'unknown'} — falling back to create+re-exchange.`,
-        );
-        return createAndLink(accessToken, token, user);
-    }
-    if (outcome.kind === 'failed') {
-        console.error(`[medusa-customer] relink attempt failed for member ${uid ?? 'unknown'} — refusing to proceed.`);
-        return null;
-    }
-    console.log(`[medusa-customer] relink outcome for member ${uid ?? 'unknown'}: ${outcome.kind}.`);
-
-    // 4. Re-exchange with the SAME platform access token — a fresh,
-    //    actor-less (registration-scoped) token now that any stale link is
-    //    cleared.
-    const freshToken = await authExchange(accessToken);
-    if (!freshToken) return null;
-
-    // 5. Create + link the Medusa customer with the fresh token.
-    const { firstName, lastName } = nameParts(user);
-    try {
-        const createRes = await fetch(`${MEDUSA_URL}/store/customers`, {
-            method: 'POST',
-            headers: pkHeaders({ Authorization: `Bearer ${freshToken}` }),
-            body: JSON.stringify({
-                email: user.email ?? undefined,
-                first_name: firstName,
-                last_name: lastName,
-                metadata: { supabase_user_id: user.id },
-            }),
-            cache: 'no-store',
-        });
-        if (!createRes.ok) {
-            console.error(
-                `[medusa-customer] customer create failed (${createRes.status}) for member ${uid ?? 'unknown'} after relink — refusing to proceed.`,
-            );
-            return null;
-        }
-    } catch {
-        return null;
-    }
-
-    // 6. Re-exchange again → actor-scoped customer token now that the link exists.
-    const actorToken = await authExchange(accessToken);
-    if (!actorToken) return null;
-
-    // 7. Verify before handing it back.
-    const ok = await verifyMedusaToken(actorToken);
-    if (!ok) {
-        console.error(
-            `[medusa-customer] post-relink token still does not resolve to a live actor for member ${uid ?? 'unknown'} — refusing to proceed.`,
-        );
-        return null;
-    }
-    console.log(`[medusa-customer] relink+create succeeded for member ${uid ?? 'unknown'}.`);
-    return actorToken;
+    const outcome = await relinkCustomer(token);
+    return handleRelinkOutcome(outcome, accessToken, token, user, uid);
 }
 
 /**
