@@ -1606,6 +1606,42 @@ export async function refundEventTicketShare(
     return { ok: true, refundId };
 }
 
+/**
+ * Multi-ticket packages (feature-gated): best-effort notification to the
+ * backend AFTER cancel_ticket has already succeeded, so it can do whatever
+ * follow-up it owns (e.g. the attendee-cancelled email) for that one ticket.
+ * Called from exactly one place — the per-ticket cancel-refund API route,
+ * after the ticket is actually released — never speculatively and never
+ * before the cancellation is confirmed.
+ *
+ * Deliberately swallows every failure: a bounded 5s timeout (AbortController)
+ * plus a catch-all around the whole call, so a slow or down backend endpoint
+ * can never fail or delay the response the member is waiting on. Logs via
+ * console.warn only — there is nothing actionable to surface to the caller,
+ * the refund and the ticket cancellation already happened.
+ */
+export async function notifyEventTicketCancelled(ticketId: string): Promise<void> {
+    if (!ticketId) return;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+    try {
+        const res = await adminFetch('/admin/event-tickets/cancel-notice', {
+            method: 'POST',
+            body: JSON.stringify({ ticket_id: ticketId }),
+            signal: controller.signal,
+        });
+        if (!res || !res.ok) {
+            console.warn(
+                `[event-tickets] cancel-notice best-effort call failed for ${ticketId}: ${res ? res.status : 'no response'}`,
+            );
+        }
+    } catch (e: any) {
+        console.warn(`[event-tickets] cancel-notice best-effort call threw for ${ticketId}:`, e?.message ?? e);
+    } finally {
+        clearTimeout(timeout);
+    }
+}
+
 /** Cancel an order. Vendor-scoped; re-verified before acting. */
 export async function cancelVendorOrder(
     vendorKey: string,

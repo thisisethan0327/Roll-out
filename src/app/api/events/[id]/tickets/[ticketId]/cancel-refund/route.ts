@@ -18,7 +18,14 @@
  *      reports WHICH phase a failure happened in).
  *   4. cancel_ticket(ticket, refund_ref) — idempotent on refund_ref, frees
  *      the seat, promotes the waitlist.
+ *   5. Best-effort POST /admin/event-tickets/cancel-notice {ticket_id} —
+ *      AFTER cancel_ticket has already succeeded, so the backend can run
+ *      whatever follow-up it owns for this one ticket. Never awaited into
+ *      the response's success/failure — see notifyEventTicketCancelled in
+ *      medusa-admin.ts, which swallows every failure itself (bounded
+ *      timeout + catch-all). Called from exactly this one place.
  *
+
  * Lock release: abortTicketRefund() is called ONLY when refundEventTicketShare
  * reports phase 'refused' or 'refund_failed' — i.e. nothing was ever POSTed
  * to Medusa, or the POST itself came back non-2xx, so it's certain no money
@@ -34,7 +41,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getConsumerProfile } from '@/lib/consumer';
 import { multiTicketsEnabled, beginTicketRefund, abortTicketRefund, cancelTicket } from '@/lib/event-tickets';
-import { refundEventTicketShare } from '@/lib/medusa-admin';
+import { refundEventTicketShare, notifyEventTicketCancelled } from '@/lib/medusa-admin';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -100,6 +107,10 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
             { status: 200 },
         );
     }
+
+    // Best-effort, AFTER the cancellation is confirmed — never lets a slow
+    // or down backend endpoint fail or delay this response.
+    await notifyEventTicketCancelled(ticketId);
 
     return NextResponse.json({ ok: true }, { status: 200 });
 }
