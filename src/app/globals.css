@@ -256,6 +256,63 @@ h4 { font-size: 16px; letter-spacing: var(--track-wide); }
   font-size: 13px;
 }
 
+/* App download pills, shown in place of AppStoreBadges' real store badges
+   while APP_STORE_URL / PLAY_STORE_URL (src/lib/app-links.ts) are still null.
+   Two-line HUD pill: mono "PLATFORM · BETA TEST ONLY" label over a quieter
+   body-font sub-label. iOS is a live TestFlight link (gold, like .eyebrow-gold
+   + .corner-wrap); Android has no build yet so .beta-pill-disabled renders it
+   inert until ANDROID_BETA_URL is set. */
+.beta-pill {
+  display: inline-flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  min-height: 44px;
+  max-width: 260px;
+  padding: 9px 16px;
+  border: 1px solid var(--gold);
+  background: var(--gold-glow);
+  text-decoration: none;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+.beta-pill:hover {
+  background: var(--gold-dim);
+  text-decoration: none;
+}
+.beta-pill-lg { padding: 11px 20px; }
+.beta-pill-md { padding: 8px 14px; }
+
+.beta-pill-label {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: var(--track-wider);
+  text-transform: uppercase;
+  color: var(--gold);
+  white-space: nowrap;
+}
+.beta-pill-sep { color: var(--text-3); }
+
+.beta-pill-sub {
+  font-family: var(--font-body);
+  font-size: 10.5px;
+  font-weight: 400;
+  letter-spacing: 0.2px;
+  color: var(--text-3);
+  text-transform: none;
+  white-space: normal;
+  line-height: 1.35;
+}
+
+.beta-pill-disabled {
+  border-color: var(--line-mid);
+  background: transparent;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+.beta-pill-disabled:hover { background: transparent; }
+.beta-pill-disabled .beta-pill-label { color: var(--text-2); }
+
 /* ── Layout ────────────────────────────────────────────────────────────── */
 
 .container {
