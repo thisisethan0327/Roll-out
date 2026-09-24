@@ -20,7 +20,6 @@ const bebasNeue = Bebas_Neue({
     weight: '400',
     subsets: ['latin'],
     display: 'swap',
-    variable: '--font-masthead',
 });
 
 export type HostChip = { name: string; handle: string | null };
@@ -107,7 +106,11 @@ export function EventCoverHero({
 
                         <h1
                             className={`${styles.mastheadTitle} ${bebasNeue.className}`}
-                            style={{ fontFamily: 'var(--font-masthead), Impact, "Arial Narrow", sans-serif' }}
+                            // Inline on purpose: globals.css's `h1, h2, h3, h4` rule sets the
+                            // site font on every h1, and the earlier var(--font-masthead)
+                            // reference was undefined (only .variable defines it), so the
+                            // title fell back to Inter. next/font's own family string wins.
+                            style={{ fontFamily: `${bebasNeue.style.fontFamily}, Impact, 'Arial Narrow', sans-serif`, fontWeight: 400 }}
                         >
                             {title}
                         </h1>
