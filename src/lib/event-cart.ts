@@ -113,11 +113,12 @@ async function eventMedusaFetch<T = any>(
 
     // A member-scoped call that comes back 401 can mean the Medusa auth
     // identity's link went stale between when eventAuthHeader() fetched the
-    // token and now (e.g. deleted-actor identity — see the KNOWN GAP note in
-    // ensureMedusaCustomerToken). ensureMedusaCustomerToken() is idempotent
-    // and re-runs its full validate→create→re-exchange sequence on every
-    // call, so simply calling it again IS the relink attempt. Bounded to one
-    // retry via _retryOn401 — this never loops.
+    // token and now (a dangling actor — see ensureMedusaCustomerToken in
+    // medusa-customer.ts, which now asks the backend's relink route to clear
+    // it). ensureMedusaCustomerToken() re-runs its full
+    // verify→relink→create→re-exchange sequence on every call, so simply
+    // calling it again IS the relink attempt. Bounded to one retry via
+    // _retryOn401 — this never loops.
     if (res.status === 401 && _retryOn401 && auth.Authorization) {
         const uid = await getSessionUserId();
         console.warn(
