@@ -27,6 +27,7 @@ import { CheckoutClient } from '../../../store/checkout/CheckoutClient';
 import { ConfirmPoll } from './ConfirmPoll';
 import { getRsvpSnapshot } from '../actions';
 import { formatClock } from '@/lib/event-time';
+import { refundPolicyShortLine, REFUND_POLICY_PATH } from '@/lib/refund-policy';
 
 export const dynamic = 'force-dynamic';
 
@@ -52,7 +53,7 @@ export default async function EventCheckoutPage({
     const admin = getSupabaseAdmin();
     const { data: ev } = await admin
         .from('events')
-        .select('id, title, visibility, time_zone')
+        .select('id, title, visibility, time_zone, start_at, reservation_policy')
         .eq('id', id)
         .maybeSingle();
     if (!ev || (ev as any).visibility !== 'public') notFound();
@@ -113,6 +114,12 @@ export default async function EventCheckoutPage({
     const hold = await getRsvpSnapshot(id);
     const holdUntil = hold.state === 'held' && hold.holdExpiresAt ? formatClock(hold.holdExpiresAt, (ev as { time_zone?: string | null }).time_zone) : null;
 
+    const policyLine = refundPolicyShortLine(
+        (ev as any).start_at,
+        (ev as any).time_zone,
+        (ev as any).reservation_policy,
+    );
+
     return (
         <section className="section" style={{ padding: '40px 0 72px' }}>
             <div className="container">
@@ -120,10 +127,16 @@ export default async function EventCheckoutPage({
                 <h1 style={{ letterSpacing: 1, margin: '0 0 10px' }}>
                     {((ev as any).title ?? 'EVENT PACKAGE').toUpperCase()}
                 </h1>
-                <p className="text-dim" style={{ fontSize: 13, margin: '0 0 28px' }}>
+                <p className="text-dim" style={{ fontSize: 13, margin: '0 0 12px' }}>
                     Your spot is held while you pay — complete payment before the hold
                     expires{holdUntil ? <> at <strong style={{ color: 'var(--text)' }}>{holdUntil}</strong></> : null} to
                     lock it in.
+                </p>
+                <p className="text-muted" style={{ fontSize: 12, margin: '0 0 28px', lineHeight: 1.6 }}>
+                    {policyLine}{' '}
+                    <Link href={REFUND_POLICY_PATH} className="text-link">
+                        Full refund & cancellation policy ›
+                    </Link>
                 </p>
                 <CheckoutClient
                     initialCart={eventCart.cart}
@@ -137,6 +150,17 @@ export default async function EventCheckoutPage({
                         completeCart: completeEventCart,
                     }}
                     successPathPrefix={`/event/${id}/checkout?done=`}
+                    agreement={{
+                        label: (
+                            <>
+                                I agree to the{' '}
+                                <Link href={REFUND_POLICY_PATH} target="_blank" className="text-link" style={{ color: 'inherit', textDecoration: 'underline' }}>
+                                    refund & cancellation policy
+                                </Link>{' '}
+                                — no refunds within 72 hours of the start, tickets are non-transferable.
+                            </>
+                        ),
+                    }}
                 />
             </div>
         </section>

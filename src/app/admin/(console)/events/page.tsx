@@ -11,7 +11,7 @@ async function loadEvents() {
         .from('events')
         .select(
             `id, code, type, title, location_name, start_at, attending_count, capacity,
-             is_official, visibility, cancelled_at,
+             is_official, visibility, cancelled_at, rsvp_mode,
              host:profiles!events_host_id_fkey(id, handle, display_name, kind),
              shop:shops!events_shop_id_fkey(id, slug, name)`,
         )
@@ -100,7 +100,13 @@ export default async function EventsPage() {
                                         </div>
                                     </td>
                                     <td style={{ textAlign: 'right' }}>
-                                        {!e.cancelled_at && <EventActions eventId={e.id} />}
+                                        {!e.cancelled_at && (
+                                            <EventActions
+                                                eventId={e.id}
+                                                eventTitle={e.title ?? ''}
+                                                isPaid={e.rsvp_mode === 'tiered' || e.rsvp_mode === 'paid'}
+                                            />
+                                        )}
                                     </td>
                                 </tr>
                             ))

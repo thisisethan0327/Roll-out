@@ -9,10 +9,12 @@
  * from the client — so a caller cannot act across vendors by forging a param.
  */
 import { revalidatePath } from 'next/cache';
-import { requireShopMember } from '@/lib/auth-guard';
+import { requireShopMember, getPlatformAdmin } from '@/lib/auth-guard';
 import { resolveShopSlug } from '@/lib/auth-guard';
 import { getShopVendorBySlug } from '@/lib/store-shops';
 import { SHOPS_WITH_OWN_ADMIN } from '@/lib/tenant-hosts';
+import { eventOrderRefundGuard } from '@/lib/event-refund';
+import { REFUND_POLICY_PATH } from '@/lib/refund-policy';
 import {
     createFulfillmentWithTracking,
     markFulfillmentDelivered,
@@ -23,6 +25,29 @@ import {
     completeVendorOrder,
     type ActionResult,
 } from '@/lib/medusa-admin';
+
+/**
+ * Belt-and-suspenders event-order guard (077).
+ *
+ * Event-package orders carry NO `metadata.vendor` stamp (see event-cart.ts —
+ * "an event package belongs to the event, not a selling shop"), so they never
+ * match a shop's vendor key and cannot actually be listed or acted on through
+ * this vendor-scoped console today: `orderHasVendorLine` is false for them,
+ * and every vendor-scoped read/write below already answers "order not found
+ * for this shop." This check runs BEFORE that lookup anyway, so a future
+ * change that starts attributing event orders to a shop does not accidentally
+ * let a shop refund a still-in-window paid ticket outside this policy.
+ */
+async function refuseIfClosedEventOrder(orderId: string): Promise<ActionResult | null> {
+    const guard = await eventOrderRefundGuard(orderId);
+    if (!guard.isEventOrder || guard.windowOpen) return null;
+    const admin = await getPlatformAdmin();
+    if (admin) return null;
+    return {
+        ok: false,
+        error: `This is a paid-event ticket, past its refund cutoff — see ${REFUND_POLICY_PATH}. Only a platform admin can override.`,
+    };
+}
 
 /**
  * Two tiers, by Ethan's ruling of 2026-09-08.
@@ -215,6 +240,8 @@ export async function cancelOrderAction(
 ): Promise<ActionResult> {
     const g = await guard(slug, 'money', 'cancel orders');
     if (denied(g)) return g.denied;
+    const refused = await refuseIfClosedEventOrder(orderId);
+    if (refused) return refused;
     const { vendorKey } = g;
     const result = await cancelVendorOrder(vendorKey, orderId);
     if (result.ok) revalidate(slug, orderId);
@@ -228,6 +255,8 @@ export async function refundOrderAction(
 ): Promise<ActionResult> {
     const g = await guard(slug, 'money', 'refund orders');
     if (denied(g)) return g.denied;
+    const refused = await refuseIfClosedEventOrder(orderId);
+    if (refused) return refused;
     const { vendorKey } = g;
     const result = await refundVendorOrder(vendorKey, orderId, amountCents);
     if (result.ok) revalidate(slug, orderId);

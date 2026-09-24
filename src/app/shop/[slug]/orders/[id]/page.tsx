@@ -12,6 +12,8 @@ import { notFound } from 'next/navigation';
 import { requireShopMemberBySlug } from '@/lib/auth-guard';
 import { getShopVendorBySlug } from '@/lib/store-shops';
 import { getVendorOrder } from '@/lib/medusa-admin';
+import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { refundPolicyShortLine, REFUND_POLICY_PATH } from '@/lib/refund-policy';
 import { fmtMoney, fmtDate, maskEmail, StatusChip } from '../ui';
 import { OrderActions } from './OrderActions';
 import { SHOPS_WITH_OWN_ADMIN } from '@/lib/tenant-hosts';
@@ -78,6 +80,30 @@ export default async function OrderDetailPage({
     const tracking = o.fulfillments
         .filter((f) => !f.canceled_at)
         .flatMap((f) => f.trackingNumbers);
+
+    // Paid-event ticket (077) — see refuseIfClosedEventOrder's comment in
+    // ../actions.ts for why an event order cannot actually reach this page
+    // today; wired through anyway so nothing has to change here if that does.
+    let refundPolicyLine: string | null = null;
+    if (o.eventId) {
+        try {
+            const admin = getSupabaseAdmin();
+            const { data: ev } = await admin
+                .from('events')
+                .select('start_at, time_zone, reservation_policy')
+                .eq('id', o.eventId)
+                .maybeSingle();
+            if (ev) {
+                refundPolicyLine = refundPolicyShortLine(
+                    (ev as any).start_at,
+                    (ev as any).time_zone,
+                    (ev as any).reservation_policy,
+                );
+            }
+        } catch (e) {
+            console.error('[shop orders/[id]] refund policy lookup failed:', (e as any)?.message ?? e);
+        }
+    }
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
@@ -149,6 +175,18 @@ export default async function OrderDetailPage({
                     Viewing only — your role has no order actions on this shop.
                 </div>
             )}
+
+            {refundPolicyLine ? (
+                <section style={SECTION}>
+                    <div style={SECTION_TITLE}>REFUND & CANCELLATION POLICY (PAID EVENT)</div>
+                    <p style={{ fontSize: 13, margin: 0, color: 'var(--text-2)', lineHeight: 1.6 }}>
+                        {refundPolicyLine}{' '}
+                        <Link href={REFUND_POLICY_PATH} className="text-link">
+                            Full policy ›
+                        </Link>
+                    </p>
+                </section>
+            ) : null}
 
             {/* ITEMS + TOTALS */}
             <section style={SECTION}>

@@ -4,10 +4,12 @@
 // one side, also update the other — the mobile app links here as a
 // fallback for users who tap from email.
 
+import { refundPolicyDoc } from './refund-policy';
+
 export type LegalSection = { heading: string; paragraphs: string[] };
 export type LegalDoc = { title: string; updated: string; body: LegalSection[] };
 
-export const LEGAL: Record<'terms' | 'privacy' | 'guidelines', LegalDoc> = {
+export const LEGAL: Record<'terms' | 'privacy' | 'guidelines' | 'refunds', LegalDoc> = {
     terms: {
         title: 'TERMS OF SERVICE',
         updated: '2026-05-25',
@@ -79,7 +81,13 @@ export const LEGAL: Record<'terms' | 'privacy' | 'guidelines', LegalDoc> = {
                 ],
             },
             {
-                heading: '11. Contact',
+                heading: '11. Paid events',
+                paragraphs: [
+                    'Paid event tickets and RSVP tiers are covered by our Refund & Cancellation Policy at rollout.club/policies/refunds, not by these Terms.',
+                ],
+            },
+            {
+                heading: '12. Contact',
                 paragraphs: ['Questions? Email team@rollout.club. Abuse reports: support@rollout.club.'],
             },
         ],
@@ -223,4 +231,10 @@ export const LEGAL: Record<'terms' | 'privacy' | 'guidelines', LegalDoc> = {
             },
         ],
     },
+
+    // Single source of truth for the refund/cancellation rule lives in
+    // refund-policy.ts (it also drives the short line on tier cards,
+    // checkout, and order pages) — mirrored here only so /policies/refunds
+    // renders through the same LegalPage shell as terms/privacy/guidelines.
+    refunds: refundPolicyDoc(),
 };

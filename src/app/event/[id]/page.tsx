@@ -52,6 +52,8 @@ type EventRow = {
     tags: string[] | null;
     /** 'free' (default — every pre-E2 event) | 'paid' | 'tiered'. */
     rsvp_mode: string | null;
+    /** Refund policy overrides (077) — {refund_cutoff_hours}; null = 72h default. */
+    reservation_policy: { refund_cutoff_hours?: number | string | null } | null;
     host: { handle: string | null; display_name: string | null; is_verified: boolean | null } | null;
     shop: { slug: string | null } | null;
     /** Host-planned itinerary (migration 20260921_076_event_route_plan.sql) —
@@ -82,7 +84,7 @@ async function loadEvent(
         .select(
             `id, shop_id, host_id, code, type, title, description, location_name, location_detail,
              lat, lng, sector_code, hero_image_url, start_at, time_zone, capacity, attending_count,
-             visibility, is_official, cancelled_at, tags, rsvp_mode,
+             visibility, is_official, cancelled_at, tags, rsvp_mode, reservation_policy,
              route_plan, destination_name, destination_lat, destination_lng,
              host:profiles!events_host_id_fkey(handle, display_name, is_verified),
              shop:shops!events_shop_id_fkey(slug)`,
@@ -710,6 +712,9 @@ export default async function PublicEventPage({
                             <TiersSection
                                 eventId={ev.id}
                                 tiers={tiers}
+                                eventStartAt={ev.start_at}
+                                eventTimeZone={ev.time_zone}
+                                reservationPolicy={ev.reservation_policy}
                                 isLoggedIn={isLoggedIn}
                                 initialState={myState}
                                 initialTierId={myRsvp.tierId}

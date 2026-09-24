@@ -18,6 +18,7 @@ import { redirect } from 'next/navigation';
 import { requireVerifiedHost } from '@/lib/me-guard';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { getRolloutMemberClient } from '@/lib/consumer';
+import { eventHasPaidExposure } from '@/lib/event-refund';
 import { sendPlatformNotification } from '@/lib/platform-notify';
 import { parseDestinationName, parseHeroUrl } from '@/lib/host-event-parse';
 import {
@@ -311,6 +312,21 @@ export async function setEventRoutePlan(
 
 export async function cancelHostEvent(eventId: string, cancel: boolean) {
     const profile = await requireVerifiedHost('/me/events');
+
+    // 077: a paid event can never be cancelled without refunding its ticket
+    // holders. Individual-host events (/me/events) do not expose paid tiers
+    // in today's UI, so this should be unreachable in practice — kept as a
+    // hard guard rather than trusting that to stay true. Use "Cancel event &
+    // refund everyone" instead, which cancels AND refunds atomically.
+    if (cancel) {
+        const paid = await eventHasPaidExposure(eventId);
+        if (paid) {
+            throw new Error(
+                'This event has paid tickets — use "Cancel event & refund everyone" so ticket holders are refunded.',
+            );
+        }
+    }
+
     const admin = getSupabaseAdmin();
     const { error } = await admin
         .from('events')

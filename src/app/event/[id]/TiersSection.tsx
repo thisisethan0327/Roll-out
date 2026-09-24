@@ -15,15 +15,22 @@
  *
  * Styling is inline to match the hand-rolled HUD look of the event page.
  */
-import { useEffect, useState, useTransition } from 'react';
+import { useEffect, useMemo, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
     setRsvp,
     startPackageCheckout,
+    cancelPaidRsvp,
     type RsvpError,
     type RsvpState,
 } from './actions';
+import {
+    refundPolicyShortLine,
+    refundWindowOpen,
+    REFUND_POLICY_PATH,
+    type ReservationPolicy,
+} from '@/lib/refund-policy';
 
 export type TierView = {
     id: string;
@@ -45,6 +52,11 @@ export type TierView = {
 type Props = {
     eventId: string;
     tiers: TierView[];
+    /** Event start (UTC) + zone + refund-policy overrides — for the refund
+     *  cutoff line on paid tiers and the Cancel & refund control (077). */
+    eventStartAt: string | null;
+    eventTimeZone: string | null;
+    reservationPolicy: ReservationPolicy;
     isLoggedIn: boolean;
     initialState: RsvpState;
     initialTierId: string | null;
@@ -65,6 +77,9 @@ const ERROR_COPY: Record<RsvpError | 'config', string> = {
     tier: 'That tier is not available. Refresh and try again.',
     write: "Couldn't save your RSVP. Try again.",
     config: "Couldn't start checkout — your spot is held, try again in a moment.",
+    // The UI routes a paid confirmed spot to PaidCancelControl instead of
+    // this plain cancel, so this should be unreachable — kept for the union.
+    paid_spot: 'Paid spots are cancelled through the refund flow, not this button.',
 };
 
 function formatPrice(cents: number, currency: string): string {
@@ -85,6 +100,9 @@ function formatRemaining(deadline: string, now: number): string {
 export function TiersSection({
     eventId,
     tiers,
+    eventStartAt,
+    eventTimeZone,
+    reservationPolicy,
     isLoggedIn,
     initialState,
     initialTierId,
@@ -95,6 +113,17 @@ export function TiersSection({
     inviteToken,
 }: Props) {
     const router = useRouter();
+    // Client-side estimate (TS fallback per lib/refund-policy.ts) — good
+    // enough to decide which button to show; cancelPaidRsvp always re-checks
+    // the live window server-side (preferring the RPC) before refunding.
+    const refundOpen = useMemo(
+        () => refundWindowOpen(eventStartAt, reservationPolicy),
+        [eventStartAt, reservationPolicy],
+    );
+    const policyLine = useMemo(
+        () => refundPolicyShortLine(eventStartAt, eventTimeZone, reservationPolicy),
+        [eventStartAt, eventTimeZone, reservationPolicy],
+    );
     const [state, setState] = useState<RsvpState>(initialState);
     const [tierId, setTierId] = useState<string | null>(initialTierId);
     const [spotNo, setSpotNo] = useState<number | null>(initialSpotNo);
@@ -200,7 +229,12 @@ export function TiersSection({
         });
     };
 
-    const myTierName = tierId ? tiers.find((t) => t.id === tierId)?.name ?? null : null;
+    const myTier = tierId ? tiers.find((t) => t.id === tierId) ?? null : null;
+    const myTierName = myTier?.name ?? null;
+    // Safe-by-default: an unmatched tier (e.g. retired after purchase) is
+    // treated as paid so cancelling routes through the refund flow rather
+    // than risking a silent free release of a spot that was paid for.
+    const myTierIsPaid = tierId != null && (myTier == null || myTier.priceCents > 0);
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 18, width: '100%' }}>
@@ -266,28 +300,32 @@ export function TiersSection({
                         ✓ YOU&apos;RE IN{spotNo != null ? ` · SPOT #${String(spotNo).padStart(3, '0')}` : ''}
                         {myTierName ? ` · ${myTierName.toUpperCase()}` : ''}
                     </div>
-                    <button
-                        type="button"
-                        onClick={cancel}
-                        disabled={pending}
-                        className="font-display"
-                        style={{
-                            background: 'none',
-                            border: 'none',
-                            color: 'var(--text-3)',
-                            fontSize: 10,
-                            letterSpacing: 'var(--track-wider)',
-                            cursor: pending ? 'wait' : 'pointer',
-                            textDecoration: 'underline',
-                            // This is the ONLY exit from a tiered RSVP and it
-                            // was 119x13 — under half the 44px minimum. The
-                            // text stays small; the target does not.
-                            minHeight: 44,
-                            padding: '0 16px',
-                        }}
-                    >
-                        CANCEL MY RSVP
-                    </button>
+                    {myTierIsPaid ? (
+                        <PaidCancelControl eventId={eventId} refundOpen={refundOpen} policyLine={policyLine} />
+                    ) : (
+                        <button
+                            type="button"
+                            onClick={cancel}
+                            disabled={pending}
+                            className="font-display"
+                            style={{
+                                background: 'none',
+                                border: 'none',
+                                color: 'var(--text-3)',
+                                fontSize: 10,
+                                letterSpacing: 'var(--track-wider)',
+                                cursor: pending ? 'wait' : 'pointer',
+                                textDecoration: 'underline',
+                                // This is the ONLY exit from a tiered RSVP and it
+                                // was 119x13 — under half the 44px minimum. The
+                                // text stays small; the target does not.
+                                minHeight: 44,
+                                padding: '0 16px',
+                            }}
+                        >
+                            CANCEL MY RSVP
+                        </button>
+                    )}
                 </div>
             ) : state === 'waitlisted' ? (
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
@@ -412,6 +450,18 @@ export function TiersSection({
                                     </div>
                                 ) : null}
 
+                                {!isFree ? (
+                                    <p
+                                        className="text-muted"
+                                        style={{ fontSize: 10, lineHeight: 1.5, margin: 0 }}
+                                    >
+                                        {policyLine}{' '}
+                                        <Link href={REFUND_POLICY_PATH} className="text-link" style={{ color: 'inherit', textDecoration: 'underline' }}>
+                                            Full policy ›
+                                        </Link>
+                                    </p>
+                                ) : null}
+
                                 <button
                                     type="button"
                                     disabled={pending || !buyable}
@@ -464,6 +514,114 @@ export function TiersSection({
                             ? 'PICK A TIER TO RSVP'
                             : ''}
             </p>
+        </div>
+    );
+}
+
+/**
+ * "Cancel & get a full refund" for a confirmed PAID spot (077) — replaces the
+ * plain "CANCEL MY RSVP" toggle, which must never silently release a paid
+ * spot (cancel_rsvp itself now refuses that with a P0001 'paid_spot' error).
+ * Two-click "armed" confirmation rather than window.confirm(), matching the
+ * pattern the rest of the console uses for money-moving actions.
+ */
+function PaidCancelControl({
+    eventId,
+    refundOpen,
+    policyLine,
+}: {
+    eventId: string;
+    refundOpen: boolean;
+    policyLine: string;
+}) {
+    const router = useRouter();
+    const [armed, setArmed] = useState(false);
+    const [pending, startTransition] = useTransition();
+    const [err, setErr] = useState<string | null>(null);
+
+    if (!refundOpen) {
+        return (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+                <span
+                    className="font-display"
+                    style={{ fontSize: 10, letterSpacing: 'var(--track-wider)', color: 'var(--text-3)' }}
+                >
+                    NON-REFUNDABLE WITHIN 72 HOURS OF THE START
+                </span>
+                <p className="text-muted" style={{ fontSize: 10, margin: 0, textAlign: 'center', maxWidth: 320 }}>
+                    {policyLine}{' '}
+                    <Link href={REFUND_POLICY_PATH} className="text-link" style={{ color: 'inherit', textDecoration: 'underline' }}>
+                        Full policy ›
+                    </Link>
+                </p>
+            </div>
+        );
+    }
+
+    const confirm = () => {
+        setErr(null);
+        startTransition(async () => {
+            const res = await cancelPaidRsvp(eventId);
+            setArmed(false);
+            if (res.ok) {
+                router.refresh();
+            } else {
+                setErr(res.error);
+            }
+        });
+    };
+
+    return (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+            {armed ? (
+                <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'center' }}>
+                    <button
+                        type="button"
+                        onClick={confirm}
+                        disabled={pending}
+                        className="font-display"
+                        style={{
+                            padding: '10px 16px',
+                            border: '1px solid var(--warn, #ff6b6b)',
+                            background: 'transparent',
+                            color: 'var(--warn, #ff6b6b)',
+                            fontSize: 10,
+                            letterSpacing: 'var(--track-wider)',
+                            cursor: pending ? 'wait' : 'pointer',
+                        }}
+                    >
+                        {pending ? 'REFUNDING…' : 'CONFIRM — CANCEL & REFUND'}
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setArmed(false)}
+                        disabled={pending}
+                        className="font-display"
+                        style={{ background: 'none', border: 'none', color: 'var(--text-3)', fontSize: 10, letterSpacing: 'var(--track-wider)', cursor: pending ? 'wait' : 'pointer', textDecoration: 'underline' }}
+                    >
+                        KEEP MY SPOT
+                    </button>
+                </div>
+            ) : (
+                <button
+                    type="button"
+                    onClick={() => setArmed(true)}
+                    disabled={pending}
+                    className="font-display"
+                    style={{ background: 'none', border: 'none', color: 'var(--text-3)', fontSize: 10, letterSpacing: 'var(--track-wider)', cursor: 'pointer', textDecoration: 'underline', minHeight: 44, padding: '0 16px' }}
+                >
+                    CANCEL & GET A FULL REFUND
+                </button>
+            )}
+            <p className="text-muted" style={{ fontSize: 10, margin: 0, textAlign: 'center', maxWidth: 320 }}>
+                Your spot is released immediately. {policyLine}{' '}
+                <Link href={REFUND_POLICY_PATH} className="text-link" style={{ color: 'inherit', textDecoration: 'underline' }}>
+                    Full policy ›
+                </Link>
+            </p>
+            {err ? (
+                <span style={{ color: 'var(--warn, #ff6b6b)', fontSize: 11 }}>{err}</span>
+            ) : null}
         </div>
     );
 }

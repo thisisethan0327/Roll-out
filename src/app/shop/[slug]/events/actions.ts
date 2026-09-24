@@ -4,6 +4,7 @@ import { EVENT_TZ_FIELD, resolveFormZone, zonedWallClockToUtc } from '@/lib/even
 import { redirect } from 'next/navigation';
 import { requireShopMember } from '@/lib/auth-guard';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { eventHasPaidExposure } from '@/lib/event-refund';
 
 const MANAGER_ROLES = new Set(['owner', 'admin', 'manager']);
 const OWNER_ROLES = new Set(['owner', 'admin']);
@@ -407,6 +408,18 @@ export async function updateEvent(
 
 export async function cancelEvent(eventId: string, shopId: number) {
     await requireManager(shopId);
+
+    // 077: a paid event can never be cancelled without refunding its ticket
+    // holders. "Cancel event & refund everyone" (EventEditForm) is what a
+    // paid event's edit page offers instead of this plain cancel — refuse
+    // here too so a stale UI / direct call can't skip the refunds.
+    const paid = await eventHasPaidExposure(eventId);
+    if (paid) {
+        throw new Error(
+            'This event has paid tickets — use "Cancel event & refund everyone" so ticket holders are refunded.',
+        );
+    }
+
     const admin = getSupabaseAdmin();
     const { error } = await admin
         .from('events')

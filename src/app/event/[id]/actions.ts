@@ -25,6 +25,7 @@ import { revalidatePath } from 'next/cache';
 import { getConsumerProfile, getRolloutMemberClient } from '@/lib/consumer';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { createEventPackageCart } from '@/lib/event-cart';
+import { cancelPaidRsvpAndRefund, getRefundWindowOpen } from '@/lib/event-refund';
 
 export type RsvpChoice = 'going' | 'maybe' | 'declined';
 
@@ -37,7 +38,7 @@ export type RsvpChoice = 'going' | 'maybe' | 'declined';
 export type InviteRsvpStatus = RsvpChoice | 'waitlist';
 /** The member's resolved RSVP state after a write (or as loaded for the page). */
 export type RsvpState = 'confirmed' | 'held' | 'waitlisted' | 'maybe' | 'declined' | null;
-export type RsvpError = 'auth' | 'full' | 'closed' | 'invalid' | 'tier' | 'write';
+export type RsvpError = 'auth' | 'full' | 'closed' | 'invalid' | 'tier' | 'write' | 'paid_spot';
 export type RsvpResult =
     | {
           ok: true;
@@ -99,7 +100,14 @@ export async function setRsvp(
     // ── Clearing the RSVP → cancel_rsvp (frees the spot + promotes waitlist). ──
     if (status === null) {
         const { error } = await member.rpc('cancel_rsvp', { p_event: eventId });
-        if (error) return { ok: false, error: 'write' };
+        if (error) {
+            // 077: a confirmed PAID spot raises P0001 'paid_spot: …' instead of
+            // releasing — the UI should never reach this for a paid tier (it
+            // shows the Cancel & refund control instead of this plain cancel),
+            // but a race or another caller could still land here.
+            if (/paid_spot/i.test(error.message)) return { ok: false, error: 'paid_spot' };
+            return { ok: false, error: 'write' };
+        }
         await refreshAttributedInvite(admin, eventId, me.profileId, null);
         revalidatePath(`/event/${eventId}`);
         return { ok: true, state: null };
@@ -230,6 +238,36 @@ export async function startPackageCheckout(
 
     revalidatePath(`/event/${eventId}`);
     return { ok: true, redirect: `/event/${eventId}/checkout` };
+}
+
+/** Result shape for cancelPaidRsvp — the error is a free-form human message
+ *  (window closed, missing payment_ref, Medusa failure), unlike RsvpError's
+ *  fixed enum, so it gets its own type rather than overloading RsvpResult. */
+export type CancelPaidRsvpActionResult = { ok: true } | { ok: false; error: string };
+
+/**
+ * Member self-service "Cancel & get a full refund" for a confirmed PAID spot
+ * (077). Only offered in the UI before the refund cutoff;
+ * cancelPaidRsvpAndRefund re-checks the window server-side regardless of what
+ * the button's disabled state showed, and refunds through the Medusa order —
+ * cancel_rsvp itself refuses to release a paid spot (see 077).
+ */
+export async function cancelPaidRsvp(eventId: string): Promise<CancelPaidRsvpActionResult> {
+    if (!UUID_RE.test(eventId)) return { ok: false, error: 'Invalid event.' };
+    const me = await getConsumerProfile();
+    if (!me) return { ok: false, error: 'Sign in required.' };
+
+    const result = await cancelPaidRsvpAndRefund(eventId, me.profileId);
+    if (!result.ok) return result;
+    revalidatePath(`/event/${eventId}`);
+    return { ok: true };
+}
+
+/** Whether the refund window is still open for this event (for the UI's
+ *  disabled/enabled state on the Cancel & refund control). */
+export async function checkRefundWindowOpen(eventId: string): Promise<boolean> {
+    if (!UUID_RE.test(eventId)) return false;
+    return getRefundWindowOpen(eventId);
 }
 
 /**

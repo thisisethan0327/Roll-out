@@ -52,6 +52,7 @@ export function SiteFooter() {
                         <Link href="/terms">Terms of Service</Link>
                         <Link href="/privacy">Privacy Policy</Link>
                         <Link href="/guidelines">Community Guidelines</Link>
+                        <Link href="/policies/refunds">Refund & Cancellation Policy</Link>
                     </FooterColumn>
                 </div>
 

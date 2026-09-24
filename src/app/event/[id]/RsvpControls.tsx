@@ -39,6 +39,9 @@ const ERROR_COPY: Record<RsvpError, string> = {
     // 'tier' can't occur on a free event's strip, but the union includes it.
     tier: 'This meet uses tiers — refresh and pick one.',
     write: "Couldn't save your RSVP. Try again.",
+    // 'paid_spot' (077) can't occur on a free event's strip either — a paid
+    // confirmed spot only exists on the tiered path, handled in TiersSection.
+    paid_spot: 'Paid spots are cancelled through a refund, not this button.',
 };
 
 /** Is this state the "going" choice (either confirmed or on the waitlist)? */
