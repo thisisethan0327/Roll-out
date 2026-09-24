@@ -169,8 +169,10 @@ async function loadSponsors(
             .filter((s): s is Record<string, unknown> => !!s && typeof s === 'object')
             .map((s) => ({
                 name: typeof s.name === 'string' ? s.name : '',
-                logo_url: typeof s.logo_url === 'string' ? s.logo_url : '',
-                url: typeof s.url === 'string' ? s.url : null,
+                // Hosts can write this column directly (events_update is row-scoped),
+                // so only same-site paths and http(s) URLs ever reach src/href.
+                logo_url: typeof s.logo_url === 'string' && /^(https:\/\/|\/(?!\/))/i.test(s.logo_url) ? s.logo_url : '',
+                url: typeof s.url === 'string' && /^https?:\/\//i.test(s.url) ? s.url : null,
                 role: typeof s.role === 'string' ? s.role : null,
                 note: typeof s.note === 'string' ? s.note : null,
             }))
