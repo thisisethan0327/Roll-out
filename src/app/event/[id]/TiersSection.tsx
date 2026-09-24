@@ -179,7 +179,7 @@ function TierMedia({ image, name }: { image: TierView['image']; name: string }) 
                             inset: 0,
                             width: '100%',
                             height: '100%',
-                            objectFit: 'cover',
+                            objectFit: 'contain',
                             opacity: loaded ? 1 : 0,
                             transition: 'opacity 160ms ease',
                         }}
@@ -225,7 +225,7 @@ function TierMedia({ image, name }: { image: TierView['image']; name: string }) 
                                         const el = e.currentTarget;
                                         if (thumbFallback && el.src !== thumbFallback) el.src = thumbFallback;
                                     }}
-                                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                    style={{ width: '100%', height: '100%', objectFit: 'contain' }}
                                 />
                             </button>
                         );
