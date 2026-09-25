@@ -2,30 +2,28 @@
  * POST /api/app/event-checkout/resume — the mobile app's "Pay now" entry
  * point for an EXISTING unpaid hold (EventDetailScreen's HELD sticky CTA).
  * See docs/IN_APP_PAYMENT_PLAN_2026-09-25.md's "API contract" (this route was
- * added after that doc was written — the app never persisted a cartId of its
- * own, e.g. the app was killed between `/start` and payment, or the buyer
- * started the hold on a different device, so there is nothing to resume from
- * client-side state).
+ * added after that doc was written).
  *
- * Body: `{ eventId }`. Auth: `Authorization: Bearer <Supabase access token>`,
- * same as every other route here.
+ * Body: `{ eventId, cartId }`. Auth: `Authorization: Bearer <Supabase access
+ * token>`, same as every other route here.
  *
- * There is no cookie (the app never had one) and no stored cart id anywhere
- * in `rollout`'s schema — a Medusa cart is only ever addressable by its own
- * id or by querying Medusa itself. So this finds the caller's cart via the
- * ADMIN api (medusa-admin.ts's findLiveEventCartForCustomer — see that
- * function's doc comment) filtered to THIS event and THIS caller's own
- * `event_profile_id` stamp, matching the ownership rule /complete and
- * /release already enforce. When no live cart is found (expired, already
- * completed, never existed, or the admin lookup itself is unavailable) this
- * returns `{ ok:false, code:'no_hold' }` — the app falls back to "Pay on
- * web" for that case, never a client-code error.
+ * There is no cookie (the app never had one) and — unlike the web — no admin
+ * cart-list endpoint to fall back on (Medusa v2 has no `GET /admin/carts`;
+ * confirmed 404 against production). So the app itself persists `cartId`
+ * locally the moment `/start` returns a `held` result (AsyncStorage, keyed
+ * per user+event — see appCheckout.ts/EventDetailScreen on the mobile side)
+ * and sends it back here. Ownership is verified exactly like /complete does:
+ * read the cart with the CALLER's own Medusa token and require its stamped
+ * `event_profile_id`/`event_id` metadata to match — the client-supplied
+ * cartId is never trusted on its own. When the cart can't be found, isn't
+ * this caller's, is for a different event, or is already completed, this
+ * returns `{ ok:false, code:'no_hold' }` and the app falls back to "Pay on
+ * web" rather than surfacing a raw error.
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { bearerTokenFrom, resolveAppCaller } from '@/lib/app-auth';
 import { STRIPE_PUBLISHABLE_KEY } from '@/lib/medusa';
-import { ensureMedusaCustomerTokenForUser, getMedusaCustomerId } from '@/lib/medusa-customer';
-import { findLiveEventCartForCustomer } from '@/lib/medusa-admin';
+import { ensureMedusaCustomerTokenForUser } from '@/lib/medusa-customer';
 import { getRsvpSnapshotForProfile } from '@/app/event/[id]/actions';
 import {
     getEventCartCore,
@@ -56,7 +54,9 @@ export async function POST(req: NextRequest) {
         return bad('Invalid request body.');
     }
     const eventId = typeof body?.eventId === 'string' ? body.eventId : '';
+    const cartId = typeof body?.cartId === 'string' ? body.cartId : '';
     if (!UUID_RE.test(eventId)) return bad('Invalid event.');
+    if (!cartId) return bad('No hold to resume.', 'no_hold');
 
     // Resolved ONCE per request — see /start's doc comment for why.
     const tokenP = ensureMedusaCustomerTokenForUser(caller.accessToken, caller.user);
@@ -68,20 +68,14 @@ export async function POST(req: NextRequest) {
         getUid: async () => caller.user.id,
     };
 
-    const medusaToken = await tokenP;
-    if (!medusaToken) return bad('No hold to resume.', 'no_hold');
-
-    const customerId = await getMedusaCustomerId(medusaToken);
-    if (!customerId) return bad('No hold to resume.', 'no_hold');
-
-    const cartId = await findLiveEventCartForCustomer(customerId, eventId, caller.profile.profileId);
-    if (!cartId) return bad('No hold to resume.', 'no_hold');
-
-    // Re-verify ownership from the cart's OWN metadata — never trust the
-    // admin lookup's filter alone (same defense-in-depth /complete and
-    // /release use for a client-supplied cartId).
+    // Ownership, exactly like /complete: read the cart with the CALLER's own
+    // token and re-verify its stamped metadata — never trust the client's
+    // cartId alone. A mismatch (foreign cart, wrong event, or the cart is
+    // gone/expired/already completed) all collapse to the same 'no_hold'
+    // outcome so the app can't distinguish "not yours" from "gone".
     const existing = await getEventCartCore(authCtx, cartId);
-    if (!existing || existing.meta.profileId !== caller.profile.profileId) {
+    if (!existing) return bad('No hold to resume.', 'no_hold');
+    if (existing.meta.profileId !== caller.profile.profileId || existing.meta.eventId !== eventId) {
         return bad('No hold to resume.', 'no_hold');
     }
 
@@ -96,7 +90,8 @@ export async function POST(req: NextRequest) {
     // Best-effort — event_rsvps.hold_expires_at covers the single-spot path;
     // a multi-ticket hold's own expiry isn't exposed through this snapshot,
     // so this can come back null there. The app already tracks its own
-    // countdown from the RSVP snapshot it polls independently of this call.
+    // countdown from the RSVP snapshot it polls independently of this call,
+    // and from the holdExpiresAt it persisted alongside this cartId.
     const snap = await getRsvpSnapshotForProfile(eventId, caller.profile.profileId);
 
     return NextResponse.json({

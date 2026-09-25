@@ -98,29 +98,6 @@ async function exchangeForMedusaToken(): Promise<string | null> {
 }
 
 /**
- * The Medusa customer id (`cus_…`) behind an already-resolved store token —
- * used by /api/app/event-checkout/resume to look up the caller's own carts
- * via the ADMIN api (the store API has no "list my carts" endpoint). Returns
- * null on 401/404/network error, exactly like verifyMedusaToken below; never
- * throws.
- */
-export async function getMedusaCustomerId(token: string): Promise<string | null> {
-    try {
-        const res = await fetch(`${MEDUSA_URL}/store/customers/me`, {
-            method: 'GET',
-            headers: pkHeaders({ Authorization: `Bearer ${token}` }),
-            cache: 'no-store',
-        });
-        if (!res.ok) return null;
-        const json = await res.json().catch(() => null as any);
-        const id = json?.customer?.id;
-        return typeof id === 'string' && id ? id : null;
-    } catch {
-        return null;
-    }
-}
-
-/**
  * True when a Medusa token resolves to a live, readable actor (GET
  * /store/customers/me succeeds). False on 401/404 AND on a network error —
  * callers that need to tell "not linked" apart from "network hiccup" use the

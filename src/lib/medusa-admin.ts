@@ -92,48 +92,6 @@ async function adminFetch(
     return res;
 }
 
-/**
- * Admin lookup: the caller's own live (incomplete) event cart for one event —
- * used by /api/app/event-checkout/resume when the mobile app lost track of a
- * cart id it never persisted (killed mid-checkout, reinstalled, etc.). The
- * store API has no "list my carts" endpoint, so this goes through the admin
- * API instead, exactly the same reasoning listVendorOrders above documents
- * for orders: the admin list endpoint can't filter reliably on arbitrary
- * metadata, so it pages the customer's own recent carts (bounded — a member
- * has at most a handful) and filters server-side for the event contract.
- *
- * Best-effort: ANY failure (admin unavailable, unexpected shape, endpoint not
- * supported on this Medusa version) returns null — exactly like "no cart
- * found". Callers must treat null as `code: 'no_hold'`, never surface an
- * admin-side error to the buyer.
- */
-export async function findLiveEventCartForCustomer(
-    customerId: string,
-    eventId: string,
-    profileId: string,
-): Promise<string | null> {
-    try {
-        const url = new URL(`${MEDUSA_URL}/admin/carts`);
-        url.searchParams.set('customer_id', customerId);
-        url.searchParams.set('limit', '20');
-        url.searchParams.set('order', '-created_at');
-        url.searchParams.set('fields', 'id,metadata,completed_at,created_at');
-        const res = await adminFetch(url.pathname + url.search);
-        if (!res || !res.ok) return null;
-        const json = await res.json().catch(() => null as any);
-        const carts: any[] = Array.isArray(json?.carts) ? json.carts : [];
-        const hit = carts.find((c) => {
-            if (c?.completed_at) return false;
-            const m = (c?.metadata ?? {}) as Record<string, unknown>;
-            return m.event_id === eventId && m.event_profile_id === profileId;
-        });
-        return typeof hit?.id === 'string' ? hit.id : null;
-    } catch (e: any) {
-        console.error('[medusa-admin] findLiveEventCartForCustomer failed:', e?.message ?? e);
-        return null;
-    }
-}
-
 async function errorMessage(res: Response | null): Promise<string> {
     if (!res) return 'Store admin is unavailable right now.';
     try {
