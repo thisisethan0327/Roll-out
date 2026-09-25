@@ -83,6 +83,12 @@ type Props = {
      *  keeps every paid-tier button on today's single-seat reserve_spot path
      *  — this prop is the ONLY thing that changes tier-card behaviour. */
     ticketsEnabled?: boolean;
+    /** The viewer has a multi-ticket order with seats still live/pending for
+     *  this event: MyTicketsPanel (rendered beside this) then owns the
+     *  "you're in" state and the per-seat cancel, so the single-ticket
+     *  confirmed block below is not rendered — one cancel path, not two.
+     *  False (every single-ticket buyer) keeps that block exactly as before. */
+    hasTicketOrder?: boolean;
 };
 
 const MAX_TICKETS = 5;
@@ -258,6 +264,7 @@ export function TiersSection({
     nextPath,
     inviteToken,
     ticketsEnabled = false,
+    hasTicketOrder = false,
 }: Props) {
     const router = useRouter();
     // Per-tier quantity stepper (multi-ticket packages only) — 1..min(5, spots left).
@@ -455,7 +462,7 @@ export function TiersSection({
                         </button>
                     </div>
                 </div>
-            ) : state === 'confirmed' ? (
+            ) : state === 'confirmed' && hasTicketOrder ? null : state === 'confirmed' ? (
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
                     <div
                         style={{

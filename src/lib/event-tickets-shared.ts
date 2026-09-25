@@ -27,3 +27,10 @@ export function sizeLabel(size: string | null | undefined): string {
 export function formatCents(cents: number): string {
     return `$${(cents / 100).toFixed(2)}`;
 }
+
+/** A ticket that no longer holds a seat (cancelled/refunded, or a hold that
+ *  expired unpaid). 'confirmed' is the only LIVE status; anything else
+ *  (e.g. a still-unpaid hold) is pending. */
+export function isDeadTicketStatus(status: string | null | undefined): boolean {
+    return status === 'cancelled' || status === 'refunded' || status === 'expired';
+}

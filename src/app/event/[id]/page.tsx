@@ -36,6 +36,7 @@ import { TiersSection, type TierView } from './TiersSection';
 import { MyTicketsPanel } from './MyTicketsPanel';
 import type { RsvpState } from './actions';
 import { multiTicketsEnabled, myTicketsForEvent } from '@/lib/event-tickets';
+import { isDeadTicketStatus } from '@/lib/event-tickets-shared';
 import { parseRoutePlan, buildRoutePoints, buildGoogleMapsDirUrl } from '@/lib/route-plan';
 import { fetchDrivingPolyline, type LatLng } from './route-osrm';
 import { EventCoverHero } from './EventCoverHero';
@@ -758,6 +759,7 @@ export default async function PublicEventPage({
                                         nextPath={rsvpReturnPath}
                                         inviteToken={inviteToken}
                                         ticketsEnabled={ticketsEnabled}
+                                        hasTicketOrder={myTickets.some((t) => !isDeadTicketStatus(t.status))}
                                     />
                                     {myTickets.length > 0 ? (
                                         <MyTicketsPanel eventId={ev.id} tickets={myTickets} reservationPolicy={ev.reservation_policy} eventStartAt={ev.start_at} eventTimeZone={ev.time_zone} />
