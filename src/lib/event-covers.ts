@@ -50,6 +50,14 @@ export function isDefaultCoverUrl(url: string | null | undefined): boolean {
     );
 }
 
+/** background-position for a cover in a cropped card/thumbnail. Custom pinned
+ * art (usually a portrait flyer/poster) keeps its top in frame, where the title
+ * and faces sit; our default landscape covers stay centred. */
+export function coverFocus(heroImageUrl: string | null | undefined): string {
+    const pinned = heroImageUrl && heroImageUrl.trim().length > 0 ? heroImageUrl.trim() : null;
+    return pinned && !isDefaultCoverUrl(pinned) ? "center 4%" : "center";
+}
+
 export const EVENT_COVER_TYPES = [
     'CAR_MEET',
     'NIGHT_RUN',

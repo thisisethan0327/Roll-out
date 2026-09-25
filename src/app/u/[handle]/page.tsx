@@ -6,7 +6,7 @@ import { formatEventStamp } from '@/lib/event-time';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
-import { resolveCover } from '@/lib/event-covers';
+import { resolveCover, coverFocus } from '@/lib/event-covers';
 import { getSellingShops } from '@/lib/store-shops';
 import { fetchCatalogByHandles, type MedusaProduct } from '@/lib/medusa';
 import { ProductCard } from '@/components/ProductCard';
@@ -749,7 +749,7 @@ export default async function HandlePage({
                                                         height: 56,
                                                         borderRadius: 4,
                                                         border: '1px solid var(--line)',
-                                                        background: `url(${resolveCover(ev.hero_image_url, ev.type, ev.id)}) center/cover no-repeat`,
+                                                        background: `url(${resolveCover(ev.hero_image_url, ev.type, ev.id)}) ${coverFocus(ev.hero_image_url)}/cover no-repeat`,
                                                     }}
                                                 />
                                                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6, minWidth: 0 }}>

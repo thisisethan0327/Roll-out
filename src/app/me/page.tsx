@@ -11,7 +11,7 @@ import {
     loadMyAppointments,
     loadMyUpcomingRsvps,
 } from '@/lib/me-data';
-import { resolveCover } from '@/lib/event-covers';
+import { resolveCover, coverFocus } from '@/lib/event-covers';
 import { fmtDate, StatusPill, Panel, EmptyRow } from './ui';
 import { HostPanel } from './HostPanel';
 
@@ -153,7 +153,7 @@ export default async function MeOverview({ searchParams }: { searchParams: Promi
                                             height: 34,
                                             borderRadius: 3,
                                             border: '1px solid var(--line)',
-                                            background: `url(${resolveCover(r.hero_image_url, r.type, r.event_id)}) center/cover no-repeat`,
+                                            background: `url(${resolveCover(r.hero_image_url, r.type, r.event_id)}) ${coverFocus(r.hero_image_url)}/cover no-repeat`,
                                         }}
                                     />
                                     <div style={{ minWidth: 0 }}>

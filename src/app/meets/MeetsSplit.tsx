@@ -16,7 +16,7 @@
 import Link from 'next/link';
 import { formatEventTime } from '@/lib/event-time';
 import { useEffect, useRef, useState } from 'react';
-import { resolveCover } from '@/lib/event-covers';
+import { resolveCover, coverFocus } from '@/lib/event-covers';
 import { MeetsMap, type MapEvent, type MapShop } from './map/MeetsMap';
 
 export type SplitMeet = {
@@ -97,7 +97,7 @@ export function MeetsSplit({
                     >
                         <div
                             className="meets-split-thumb"
-                            style={{ backgroundImage: `url(${resolveCover(m.hero_image_url, m.type, m.id, '4x5')})` }}
+                            style={{ backgroundImage: `url(${resolveCover(m.hero_image_url, m.type, m.id, '4x5')})`, backgroundPosition: coverFocus(m.hero_image_url) }}
                         />
                         <div className="meets-split-body">
                             <div className="mono-row" style={{ fontSize: 10 }}>

@@ -7,7 +7,7 @@ import { EmptyRow } from '../ui';
 import { formatEventTime } from '@/lib/event-time';
 import { requireVerifiedHost } from '@/lib/me-guard';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
-import { resolveCover } from '@/lib/event-covers';
+import { resolveCover, coverFocus } from '@/lib/event-covers';
 
 export const metadata = { title: 'My Events' };
 export const dynamic = 'force-dynamic';
@@ -73,7 +73,7 @@ export default async function MyEventsPage() {
                                 style={{
                                     width: '100%',
                                     aspectRatio: '16 / 9',
-                                    background: `url(${resolveCover(e.hero_image_url, e.type, e.id)}) center/cover no-repeat`,
+                                    background: `url(${resolveCover(e.hero_image_url, e.type, e.id)}) ${coverFocus(e.hero_image_url)}/cover no-repeat`,
                                     borderBottom: '1px solid var(--line)',
                                     filter: e.cancelled_at ? 'grayscale(0.6)' : undefined,
                                     opacity: e.cancelled_at ? 0.6 : 1,

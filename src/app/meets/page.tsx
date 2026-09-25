@@ -11,7 +11,7 @@ import { formatEventTime } from '@/lib/event-time';
 import Link from 'next/link';
 import { BandReveal } from '@/components/motion/BandReveal';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
-import { resolveCover } from '@/lib/event-covers';
+import { resolveCover, coverFocus } from '@/lib/event-covers';
 import { loadMapData } from './mapData';
 import { MeetsSplit } from './MeetsSplit';
 
@@ -242,7 +242,7 @@ function MeetTile({ m, past = false }: { m: MeetCard; past?: boolean }) {
                     style={{
                         width: '100%',
                         aspectRatio: '16 / 9',
-                        background: `url(${resolveCover(m.hero_image_url, m.type, m.id)}) center/cover no-repeat`,
+                        background: `url(${resolveCover(m.hero_image_url, m.type, m.id)}) ${coverFocus(m.hero_image_url)}/cover no-repeat`,
                         borderBottom: '1px solid var(--line)',
                         filter: past ? 'grayscale(0.4)' : undefined,
                     }}
