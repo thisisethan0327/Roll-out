@@ -612,14 +612,18 @@
 /* ============ route / feature spread ============ */
 .routeGrid {
     display: grid;
-    grid-template-columns: minmax(220px, 340px) 1fr;
+    grid-template-columns: minmax(0, 1.5fr) minmax(260px, 1fr);
     gap: 26px;
     align-items: start;
 }
+/* The map (MapLibre) fills 100% of its parent, so the stage needs a real
+   height — without one it collapses to 0 and the map disappears. */
 .routeStage {
+    position: relative;
     background: var(--bg-2);
     border: 1px solid var(--line);
-    padding: 14px;
+    height: clamp(380px, 62vh, 600px);
+    overflow: hidden;
 }
 .routeList {
     list-style: none;
@@ -802,6 +806,9 @@
     }
     .routeGrid {
         grid-template-columns: 1fr;
+    }
+    .routeStage {
+        height: clamp(320px, 70vw, 460px);
     }
 }
 @media (max-width: 460px) {
