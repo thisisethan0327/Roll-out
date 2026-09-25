@@ -1,14 +1,17 @@
 /**
- * Cover Story B — full-bleed cover hero with a masthead-style title + an
- * "issue bar", replacing the old plain-h1 hero markup. Pure presentation:
- * every prop is data the page already computed (or a purely derived label,
- * e.g. the issue line from the event's own code/date) — no event-specific
- * copy is hardcoded, so this renders correctly for any event.
+ * Cover Story B — the event cover hero, modelled on mix-cover-B.html.
  *
- * Bebas Neue is loaded here via next/font/google and used ONLY for the
- * masthead title — scoped to this component (a CSS variable applied to the
- * title element), never touching the site's global JetBrains Mono / Inter
- * type system.
+ * One DOM tree, two layouts:
+ *  - Phone (≤900px), for EVERY event: the cover (poster or default art) is a
+ *    full-bleed <img> BEHIND the copy (object-fit: cover, 18% from the top),
+ *    under the mockup's scrim, with the copy aligned to the bottom.
+ *  - Desktop (≥901px): a default/landscape cover stays the full-bleed
+ *    parallax hero; a custom portrait poster (posterUrl) is shown WHOLE beside
+ *    the title block over a blurred copy of itself. PosterModeSwitch drops to
+ *    the full-bleed variant if the poster turns out landscape.
+ *
+ * All copy is event data (or labels derived from it) — nothing event-specific
+ * is hardcoded. Bebas Neue (next/font, scoped here) is used only for the title.
  */
 import Link from 'next/link';
 import { Bebas_Neue } from 'next/font/google';
@@ -27,6 +30,10 @@ function posterSrcSet(url: string): string | undefined {
     return m ? `${m[1]}cover-900.webp 900w, ${url} 1520w` : undefined;
 }
 
+/** Both hero <img>s share one `sizes`, so a browser picks the SAME candidate
+ *  for each and the file is only fetched once. */
+const HERO_SIZES = '(min-width: 901px) 460px, 100vw';
+
 const bebasNeue = Bebas_Neue({
     weight: '400',
     subsets: ['latin'],
@@ -35,37 +42,17 @@ const bebasNeue = Bebas_Neue({
 
 export type HostChip = { name: string; handle: string | null };
 
-export function EventCoverHero({
-    title,
-    code,
-    isOfficial,
-    sectorCode,
-    lat,
-    lng,
-    coverUrl,
-    isCancelled,
-    dateLabel,
-    locationName,
-    hostName,
-    hostHandle,
-    hostVerified,
-    coHostChips,
-    tags,
-    startAt,
-    rsvpOpen,
-    issueLine,
-    posterUrl,
-}: {
+type Props = {
     title: string;
     code: string | null;
     isOfficial: boolean;
-    sectorCode: string | null;
-    lat: number | null;
-    lng: number | null;
     coverUrl: string;
     isCancelled: boolean;
+    /** Full date · time with zone, e.g. "Sat, Oct 10, 2026 · 9:00 AM PDT". */
     dateLabel: string;
     locationName: string;
+    /** events.location_detail — rendered as ADDRESS only when present. */
+    address: string | null;
     hostName: string;
     hostHandle: string;
     hostVerified: boolean;
@@ -73,165 +60,202 @@ export function EventCoverHero({
     tags: string[];
     startAt: string | null;
     rsvpOpen: boolean;
-    /** e.g. "ISSUE · MEET · 10.10.2026" — derived from real fields, never fabricated. */
+    /** Issue bar line 1, e.g. "VOL. 01 · NO. 10 — OCT 2026 ISSUE" (derived). */
     issueLine: string;
+    /** Issue bar line 2, e.g. "ROLLOUT.CLUB / EVENTS / NAC-RUN" (derived). */
+    issuePath: string;
     /** A custom pinned hero image (never one of our default covers) → poster
-     *  mode; null keeps the full-bleed hero. Decided by the page. */
+     *  mode on desktop; null keeps the full-bleed hero. Decided by the page. */
     posterUrl: string | null;
-}) {
-    const heroBg = `linear-gradient(180deg, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.94) 100%), url(${coverUrl}) center/cover no-repeat`;
+};
 
-    const titleBlock = (
-        <>
-                    <div className={styles.mastheadBar}>
-                        <span className={styles.issueLine}>{issueLine}</span>
-                        <span className={styles.barcode}>ROLLOUT ／ロールアウト</span>
-                    </div>
+/** Title with the mockup's gold underscore when it starts with "_". */
+function MastheadTitle({ title }: { title: string }) {
+    return (
+        <h1
+            className={`${styles.mastheadTitle} ${bebasNeue.className}`}
+            // Inline on purpose: globals.css's `h1, h2, h3, h4` rule sets the
+            // site font on every h1; next/font's own family string wins here.
+            style={{ fontFamily: `${bebasNeue.style.fontFamily}, Impact, 'Arial Narrow', sans-serif`, fontWeight: 400 }}
+        >
+            {title.startsWith('_') ? (
+                <>
+                    <span className={styles.underscore}>_</span>
+                    {title.slice(1)}
+                </>
+            ) : (
+                title
+            )}
+        </h1>
+    );
+}
 
-                    <div className={styles.heroContent} style={{ marginTop: 28 }}>
-                        <div className={styles.kickerRow}>
-                            <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, letterSpacing: 'var(--track-wide)', textTransform: 'uppercase', color: 'var(--gold)', fontSize: 12 }}>
-                                {code ?? 'MEET'} · {isOfficial ? 'OFFICIAL' : 'COMMUNITY MEET'}
-                            </span>
-                            {sectorCode ? (
-                                <span style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: 'var(--track-wide)', color: 'var(--text-2)', textTransform: 'uppercase' }}>
-                                    ■ {sectorCode}
-                                    {lat != null && lng != null
-                                        ? ` · ${Math.abs(lat).toFixed(3)}°${lat >= 0 ? 'N' : 'S'} · ${Math.abs(lng).toFixed(3)}°${lng >= 0 ? 'E' : 'W'}`
-                                        : ''}
-                                </span>
-                            ) : null}
-                        </div>
+export function EventCoverHero(props: Props) {
+    const { coverUrl, posterUrl } = props;
+    const srcSet = posterUrl ? posterSrcSet(posterUrl) : undefined;
 
-                        <h1
-                            className={`${styles.mastheadTitle} ${bebasNeue.className}`}
-                            // Inline on purpose: globals.css's `h1, h2, h3, h4` rule sets the
-                            // site font on every h1, and the earlier var(--font-masthead)
-                            // reference was undefined (only .variable defines it), so the
-                            // title fell back to Inter. next/font's own family string wins.
-                            style={{ fontFamily: `${bebasNeue.style.fontFamily}, Impact, 'Arial Narrow', sans-serif`, fontWeight: 400 }}
-                        >
-                            {title}
-                        </h1>
-
-                        <div className={styles.coverDeck}>
-                            {dateLabel} · {locationName}
-                        </div>
-
-                        {hostName ? (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                                <span style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: 'var(--track-wide)', color: 'var(--text-2)', textTransform: 'uppercase' }}>
-                                    HOSTED BY
-                                </span>
-                                {hostVerified ? (
-                                    <span className={styles.verifiedPill}>
-                                        {hostHandle ? (
-                                            <Link href={`/u/${hostHandle}`} style={{ color: 'inherit', textDecoration: 'none' }}>
-                                                @{hostHandle}
-                                            </Link>
-                                        ) : (
-                                            hostName
-                                        )}
-                                        <span className={styles.checkDot}>✓</span>
-                                    </span>
-                                ) : hostHandle ? (
-                                    <Link href={`/u/${hostHandle}`} className="accent" style={{ textDecoration: 'none', fontFamily: 'var(--font-display)', fontSize: 12 }}>
-                                        @{hostHandle}
-                                    </Link>
-                                ) : (
-                                    <span className="accent" style={{ fontFamily: 'var(--font-display)', fontSize: 12 }}>{hostName}</span>
-                                )}
-                                {coHostChips.map((c) => (
-                                    <span key={c.name} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: 'var(--font-display)', fontSize: 12 }}>
-                                        <span style={{ opacity: 0.6 }}>×</span>
-                                        {c.handle ? (
-                                            <Link href={`/u/${c.handle}`} className="accent" style={{ textDecoration: 'none' }}>
-                                                @{c.handle}
-                                            </Link>
-                                        ) : (
-                                            <span className="accent">{c.name}</span>
-                                        )}
-                                    </span>
-                                ))}
-                            </div>
-                        ) : null}
-
-                        {tags.length > 0 ? (
-                            <div className={styles.tagRow}>
-                                {tags.slice(0, 8).map((tag) => (
-                                    <span key={tag} className={styles.tagChip}>
-                                        {tag}
-                                    </span>
-                                ))}
-                            </div>
-                        ) : null}
-
-                        {startAt && rsvpOpen ? (
-                            <div style={{ marginTop: 6 }}>
-                                <Countdown startAt={startAt} />
-                            </div>
-                        ) : null}
-                    </div>
-        </>
+    const masthead = (
+        <div className="container" style={{ maxWidth: 1100 }}>
+            <div className={styles.mastheadBar}>
+                <span className={styles.issueLine}>{props.issueLine}</span>
+                <span className={styles.barcode}>{props.issuePath}</span>
+            </div>
+        </div>
     );
 
     const fullBleed = (
-        <HeroParallax>
-            <section
-                className={`corner-wrap on-dark ${styles.page}`}
-                style={{
-                    position: 'relative',
-                    minHeight: 520,
-                    overflow: 'hidden',
-                    background: '#050505',
-                    borderBottom: '1px solid var(--line)',
-                    filter: isCancelled ? 'grayscale(0.5)' : undefined,
-                }}
-            >
-                <div data-parallax style={{ position: 'absolute', zIndex: 0, background: heroBg, inset: '0 0 -12% 0' }} />
-                <span className="corner-bottom-left" />
-                <span className="corner-bottom-right" />
-
-                <div className="container" style={{ position: 'relative', zIndex: 1, paddingTop: 28, paddingBottom: 40, maxWidth: 1100 }}>
-                    {titleBlock}
-                </div>
-            </section>
-        </HeroParallax>
+        <>
+            {masthead}
+            <HeroParallax>
+                <HeroSection {...props} heroSrc={posterUrl ?? coverUrl} srcSet={srcSet} poster={false} />
+            </HeroParallax>
+        </>
     );
 
     if (!posterUrl) return fullBleed;
 
-    // POSTER MODE — a custom pinned image (usually a flyer/poster) is shown
-    // WHOLE, never cropped, framed like a magazine on a stand, over a blurred
-    // + darkened copy of itself. PosterModeSwitch falls back to the
-    // full-bleed hero above if the image turns out to be landscape.
-    const srcSet = posterSrcSet(posterUrl);
-    // The blurred backdrop only needs a small source: reuse the 900w twin
-    // when there is one, so phones don't fetch the full-size file twice.
-    const backdropUrl = srcSet ? posterUrl.replace(/cover\.webp$/, 'cover-900.webp') : posterUrl;
     const poster = (
-        <section
-            className={`on-dark ${styles.page} ${styles.posterHero}`}
-            style={{ filter: isCancelled ? 'grayscale(0.5)' : undefined }}
-        >
-            <div aria-hidden="true" className={styles.posterBackdrop} style={{ backgroundImage: `url(${backdropUrl})` }} />
-            <div className={`container ${styles.posterGrid}`} style={{ maxWidth: 1100 }}>
-                <figure className={styles.posterFigure}>
-                    {/* eslint-disable-next-line @next/next/no-img-element -- host-pinned art, same plain-<img> approach as the rest of this page */}
-                    <img
-                        data-poster
-                        src={posterUrl}
-                        srcSet={srcSet}
-                        sizes={srcSet ? '(min-width: 901px) 460px, calc(100vw - 32px)' : undefined}
-                        alt={`${title} poster`}
-                        className={styles.posterImg}
-                        fetchPriority="high"
-                    />
-                </figure>
-                <div className={styles.posterCopy}>{titleBlock}</div>
-            </div>
-        </section>
+        <>
+            {masthead}
+            <HeroParallax>
+                <HeroSection {...props} heroSrc={posterUrl} srcSet={srcSet} poster />
+            </HeroParallax>
+        </>
     );
 
     return <PosterModeSwitch poster={poster} fallback={fullBleed} />;
+}
+
+function HeroSection({
+    title,
+    code,
+    isOfficial,
+    isCancelled,
+    dateLabel,
+    locationName,
+    address,
+    hostName,
+    hostHandle,
+    hostVerified,
+    coHostChips,
+    tags,
+    startAt,
+    rsvpOpen,
+    heroSrc,
+    srcSet,
+    poster,
+}: Props & { heroSrc: string; srcSet: string | undefined; poster: boolean }) {
+    // The blurred desktop backdrop only needs a small source: reuse the 900w
+    // twin when there is one. (A display:none element's background is never
+    // fetched, so phones don't load it at all.)
+    const backdropUrl = srcSet ? heroSrc.replace(/cover\.webp$/, 'cover-900.webp') : heroSrc;
+
+    return (
+        <section
+            className={`on-dark ${styles.page} ${styles.hero} ${poster ? styles.heroPoster : ''}`}
+            aria-label={`${title} event cover`}
+            style={{ filter: isCancelled ? 'grayscale(0.5)' : undefined }}
+        >
+            {/* Full-bleed cover (all phones; default/landscape covers on desktop). */}
+            <div data-parallax className={styles.heroImgLayer}>
+                {/* eslint-disable-next-line @next/next/no-img-element -- same plain-<img> approach as the rest of this page */}
+                <img
+                    className={styles.heroImg}
+                    src={heroSrc}
+                    srcSet={srcSet}
+                    sizes={srcSet ? HERO_SIZES : undefined}
+                    alt=""
+                    // PosterModeSwitch reads this one's natural size: it is
+                    // the image that loads at every width.
+                    data-poster={poster ? '' : undefined}
+                    fetchPriority="high"
+                />
+            </div>
+            <div className={styles.scrim} aria-hidden="true" />
+            {poster ? (
+                <div aria-hidden="true" className={styles.posterBackdrop} style={{ backgroundImage: `url(${backdropUrl})` }} />
+            ) : null}
+
+            <div className={`container ${styles.heroInner}`} style={{ maxWidth: 1100 }}>
+                {poster ? (
+                    <figure className={styles.posterFigure}>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                            className={styles.posterImg}
+                            src={heroSrc}
+                            srcSet={srcSet}
+                            sizes={srcSet ? HERO_SIZES : undefined}
+                            alt={`${title} poster`}
+                        />
+                    </figure>
+                ) : null}
+
+                <div className={styles.heroContent}>
+                    <div className={styles.kickerRow}>
+                        <span className={styles.kicker}>A Rollout Cover Story</span>
+                        {hostName ? (
+                            <span className={styles.verifiedPill}>
+                                {hostVerified ? <span className={styles.checkDot}>✓</span> : null}
+                                HOSTED BY{' '}
+                                {hostHandle ? (
+                                    <Link href={`/u/${hostHandle}`} className={styles.pillLink}>
+                                        @{hostHandle}
+                                    </Link>
+                                ) : (
+                                    hostName
+                                )}
+                            </span>
+                        ) : null}
+                        {coHostChips.map((c) => (
+                            <span key={c.name} className={styles.verifiedPill}>
+                                ×{' '}
+                                {c.handle ? (
+                                    <Link href={`/u/${c.handle}`} className={styles.pillLink}>
+                                        @{c.handle}
+                                    </Link>
+                                ) : (
+                                    c.name
+                                )}
+                            </span>
+                        ))}
+                    </div>
+
+                    <MastheadTitle title={title} />
+
+                    <div className={styles.coverDeck}>
+                        {code ?? 'MEET'} · {isOfficial ? 'OFFICIAL' : 'COMMUNITY MEET'}
+                    </div>
+
+                    <div className={styles.heroMeta}>
+                        <div className={styles.heroMetaItem}>
+                            <span className={styles.heroMetaLabel}>Date</span>
+                            <span className={styles.heroMetaValue}>{dateLabel}</span>
+                        </div>
+                        <div className={styles.heroMetaItem}>
+                            <span className={styles.heroMetaLabel}>Meet</span>
+                            <span className={styles.heroMetaValue}>{locationName}</span>
+                        </div>
+                        {address ? (
+                            <div className={styles.heroMetaItem}>
+                                <span className={styles.heroMetaLabel}>Address</span>
+                                <span className={styles.heroMetaValue}>{address}</span>
+                            </div>
+                        ) : null}
+                    </div>
+
+                    {tags.length > 0 ? (
+                        <div className={styles.tagRow} role="list" aria-label="Event tags">
+                            {tags.slice(0, 8).map((tag) => (
+                                <span key={tag} className={styles.tagChip} role="listitem">
+                                    {tag}
+                                </span>
+                            ))}
+                        </div>
+                    ) : null}
+
+                    {startAt && rsvpOpen ? <Countdown startAt={startAt} variant="sticker" /> : null}
+                </div>
+            </div>
+        </section>
+    );
 }

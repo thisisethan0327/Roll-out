@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import styles from './cover-story.module.css';
 
 /**
  * Live T-minus countdown to a future ISO timestamp.
@@ -7,7 +8,15 @@ import { useEffect, useState } from 'react';
  * and "PAST EVENT" after. Server-side first paint shows a static initial value
  * to avoid layout shift; the client effect upgrades to ticking.
  */
-export function Countdown({ startAt }: { startAt: string }) {
+export function Countdown({
+    startAt,
+    variant = 'boxes',
+}: {
+    startAt: string;
+    /** 'sticker' = the Cover Story hero's "T-MINUS — ON THE STANDS IN" box.
+     *  Presentation only; the timing logic below is shared and unchanged. */
+    variant?: 'boxes' | 'sticker';
+}) {
     const [now, setNow] = useState<number>(() => new Date(startAt).getTime() - 1000);
     useEffect(() => {
         // Sync once on mount so SSR/client diff doesn't matter.
@@ -40,6 +49,26 @@ export function Countdown({ startAt }: { startAt: string }) {
             { value: String(s).padStart(2, '0'), label: 'SEC' },
         ];
         label = 'T-MINUS';
+    }
+
+    if (variant === 'sticker') {
+        return (
+            <div className={styles.countdownSticker} aria-live="off">
+                <span className={styles.cdLabel}>
+                    {cells.length > 0 ? 'T-MINUS — ON THE STANDS IN' : label}
+                </span>
+                {cells.length > 0 ? (
+                    <div className={styles.countdownGrid}>
+                        {cells.map((c) => (
+                            <div key={c.label} className={styles.cdUnit}>
+                                <span className={styles.cdNum}>{c.value}</span>
+                                <span className={styles.cdUnitLabel}>{c.label}</span>
+                            </div>
+                        ))}
+                    </div>
+                ) : null}
+            </div>
+        );
     }
 
     if (cells.length === 0) {

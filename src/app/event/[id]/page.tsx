@@ -594,22 +594,40 @@ export default async function PublicEventPage({
     const shareUrl = `https://rollout.club/event/${ev.id}`;
     const shareTitle = ev.title ?? 'Car meet on Rollout';
 
-    // Cover Story B masthead "issue bar" line — derived from the event's own
-    // code/date, never fabricated copy. Falls back gracefully with no date.
-    const issueDateLabel = (() => {
-        if (!ev.start_at) return 'DATE TBA';
+    // Cover Story B masthead "issue bar" — both lines derived from event data:
+    //   "VOL. 01 · NO. <month> — <MON YYYY> ISSUE"  (event month, in its zone)
+    //   "ROLLOUT.CLUB / EVENTS / <title slug, or short id>"
+    const issueMonth = (() => {
+        if (!ev.start_at) return null;
         try {
-            return new Intl.DateTimeFormat('en-US', {
+            const parts = new Intl.DateTimeFormat('en-US', {
                 timeZone: ev.time_zone ?? undefined,
-                month: '2-digit',
-                day: '2-digit',
+                month: 'numeric',
                 year: 'numeric',
-            }).format(new Date(ev.start_at));
+            }).formatToParts(new Date(ev.start_at));
+            const month = Number(parts.find((p) => p.type === 'month')?.value);
+            const year = parts.find((p) => p.type === 'year')?.value;
+            if (!month || !year) return null;
+            const mon = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'][month - 1];
+            return { no: String(month).padStart(2, '0'), label: `${mon} ${year}` };
         } catch {
-            return 'DATE TBA';
+            return null;
         }
     })();
-    const issueLine = `ISSUE · ${(ev.code ?? ev.type ?? 'MEET').toUpperCase()} · ${issueDateLabel}`;
+    const issueLine = issueMonth
+        ? `VOL. 01 · NO. ${issueMonth.no} — ${issueMonth.label} ISSUE`
+        : 'VOL. 01 · SPECIAL ISSUE';
+    // Whole words only, up to ~28 chars (never cut mid-word).
+    const titleSlug = (() => {
+        let slug = '';
+        for (const w of (ev.title ?? '').toUpperCase().split(/[^A-Z0-9]+/).filter(Boolean)) {
+            const next = slug ? `${slug}-${w}` : w;
+            if (next.length > 28) break;
+            slug = next;
+        }
+        return slug;
+    })();
+    const issuePath = `ROLLOUT.CLUB / EVENTS / ${titleSlug || ev.id.slice(0, 8).toUpperCase()}`;
 
     const jsonLd = {
         '@context': 'https://schema.org',
@@ -675,13 +693,11 @@ export default async function PublicEventPage({
                 title={(ev.title ?? 'Car meet').toUpperCase()}
                 code={ev.code}
                 isOfficial={!!ev.is_official}
-                sectorCode={ev.sector_code}
-                lat={ev.lat}
-                lng={ev.lng}
                 coverUrl={coverUrl}
                 isCancelled={isCancelled}
                 dateLabel={formatDate(ev.start_at, ev.time_zone)}
                 locationName={ev.location_name ?? 'Location TBA'}
+                address={ev.location_detail}
                 hostName={hostName}
                 hostHandle={hostHandle}
                 hostVerified={hostVerified}
@@ -690,6 +706,7 @@ export default async function PublicEventPage({
                 startAt={ev.start_at}
                 rsvpOpen={rsvpOpen}
                 issueLine={issueLine}
+                issuePath={issuePath}
                 posterUrl={posterUrl}
             />
 
