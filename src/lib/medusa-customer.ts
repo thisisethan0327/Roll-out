@@ -267,7 +267,7 @@ async function createAndLink(
     return actorToken ?? token;
 }
 
-type StoreUser = { id: string; email?: string | null; user_metadata?: Record<string, unknown> | null };
+export type StoreUser = { id: string; email?: string | null; user_metadata?: Record<string, unknown> | null };
 
 /**
  * POST /store/customers with `tokenForCreate`, then re-exchange and verify
@@ -442,14 +442,17 @@ async function handleRelinkOutcome(
  *
  * Any step failing → fail closed (null). Logs the member id + outcome only,
  * never a token.
+ *
+ * COOKIE-FREE CORE: ensureMedusaCustomerTokenForUser below takes the platform
+ * access token + user explicitly (no SSR cookie read) so it can run from a
+ * mobile bearer-token API route (resolveAppCaller in lib/app-auth.ts) as well
+ * as from ensureMedusaCustomerToken()'s cookie session — both call this same
+ * function, so the app and the web get identical link/relink behaviour.
  */
-export async function ensureMedusaCustomerToken(): Promise<string | null> {
-    const supabase = await getSupabaseServer();
-    const {
-        data: { session },
-    } = await supabase.auth.getSession();
-    const accessToken = session?.access_token;
-    const user = session?.user;
+export async function ensureMedusaCustomerTokenForUser(
+    accessToken: string,
+    user: StoreUser,
+): Promise<string | null> {
     if (!accessToken || !user) return null;
 
     // 1. Platform JWT → Medusa token (unregistered or actor — whichever the
@@ -467,10 +470,28 @@ export async function ensureMedusaCustomerToken(): Promise<string | null> {
     if (linked) return token;
 
     // 3. 401/404 → ask the backend to relink (bounded to one call) and
-    //    branch on what it reports.
-    const uid = await getSessionUserId();
+    //    branch on what it reports. `user.id` IS the session's uid here (the
+    //    caller resolved `user` from the same session/token), so this needs
+    //    no extra cookie read for the log line.
     const outcome = await relinkCustomer(token);
-    return handleRelinkOutcome(outcome, accessToken, token, user, uid);
+    return handleRelinkOutcome(outcome, accessToken, token, user, user.id);
+}
+
+/**
+ * Cookie-session wrapper around ensureMedusaCustomerTokenForUser — reads the
+ * SSR cookie session and delegates. See that function's doc comment for the
+ * full find-or-create/relink sequence; this is unchanged in behaviour from
+ * before the core was extracted.
+ */
+export async function ensureMedusaCustomerToken(): Promise<string | null> {
+    const supabase = await getSupabaseServer();
+    const {
+        data: { session },
+    } = await supabase.auth.getSession();
+    const accessToken = session?.access_token;
+    const user = session?.user;
+    if (!accessToken || !user) return null;
+    return ensureMedusaCustomerTokenForUser(accessToken, user);
 }
 
 /**

@@ -18,46 +18,32 @@
  *    the held RSVP to confirmed after payment — omit the stamp and completion
  *    fails closed.
  *
- * medusa-cart.ts keeps its internals module-private (medusaFetch, cookie
- * helpers, normalizeCart), so the minimal pieces are duplicated here rather
- * than restructuring the proven store flow. Vendor attribution is intentionally
- * absent: event packages belong to the event, not a selling shop.
+ * COOKIE-FREE CORE: every function below is a thin wrapper — it resolves the
+ * member's Medusa token + the `rollout_event_cart_id` cookie, then delegates
+ * to lib/event-cart-core.ts's cookie-free equivalents (a plain module,
+ * without 'use server', since its functions take a closure-typed `EventAuthCtx`
+ * argument that a 'use server' export cannot carry). The mobile app's
+ * /api/app/event-checkout/* routes call those SAME core functions directly
+ * with a bearer-token-derived ctx + an explicit cartId instead of a cookie —
+ * see docs/IN_APP_PAYMENT_PLAN_2026-09-25.md. Web behaviour is unchanged.
  */
 import { cookies } from 'next/headers';
-import { MEDUSA_URL, MEDUSA_REGION_ID } from './medusa';
 import { ensureMedusaCustomerToken, getSessionUserId } from './medusa-customer';
-import type {
-    ActionResult,
-    AddressInput,
-    Cart,
-    CartLine,
-    EventCartMeta,
-    ShippingOption,
-} from './medusa-types';
+import {
+    type EventAuthCtx,
+    completeEventCartCore,
+    createEventPackageCartCore,
+    createEventTicketsCartCore,
+    eventsConfigured,
+    getEventCartCore,
+    initEventStripePaymentSessionCore,
+    listEventShippingOptionsCore,
+    setEventCheckoutContactCore,
+    setEventShippingMethodCore,
+} from './event-cart-core';
+import type { ActionResult, AddressInput, Cart, EventCartMeta, ShippingOption } from './medusa-types';
 
 const EVENT_CART_COOKIE = 'rollout_event_cart_id';
-const PROVIDER_ID = process.env.MEDUSA_STRIPE_PROVIDER_ID || 'pp_stripe_stripe';
-
-// Server-side-only Events channel credentials. NO in-code fallback: unset env
-// → event checkout refuses loudly instead of leaking onto the public channel.
-const EVENTS_SALES_CHANNEL_ID = process.env.EVENTS_SALES_CHANNEL_ID || '';
-const EVENTS_MEDUSA_PUBLISHABLE_KEY = process.env.EVENTS_MEDUSA_PUBLISHABLE_KEY || '';
-
-const CART_FIELDS =
-    '*items,*items.variant,*items.product,+items.total,+items.unit_price,+items.metadata,' +
-    '*shipping_methods,*shipping_address,*payment_collection,+metadata,' +
-    '*payment_collection.payment_sessions,+subtotal,+item_subtotal,+shipping_total,+tax_total,+total,+item_total';
-
-function eventsConfigured(): boolean {
-    return Boolean(EVENTS_SALES_CHANNEL_ID && EVENTS_MEDUSA_PUBLISHABLE_KEY);
-}
-
-function eventMedusaHeaders(): Record<string, string> {
-    return {
-        'x-publishable-api-key': EVENTS_MEDUSA_PUBLISHABLE_KEY,
-        'Content-Type': 'application/json',
-    };
-}
 
 /**
  * The member's Medusa token, REQUIRED for every event request.
@@ -76,69 +62,17 @@ function eventMedusaHeaders(): Record<string, string> {
  * nothing to refuse. It also puts event orders on /me/orders, which they never
  * reached as guest orders.
  *
- * Returns null when there is no session; callers refuse BEFORE taking money.
+ * Returns {} (no Authorization) when there is no session; callers refuse
+ * BEFORE taking money.
  */
 async function eventAuthHeader(): Promise<Record<string, string>> {
     const token = await ensureMedusaCustomerToken();
     return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
-// ── low-level fetch (duplicated from medusa-cart.ts — its copy is private) ──
-/**
- * `_retryOn401` is internal — callers never pass it. It bounds the
- * relink-and-retry below to exactly one attempt so a still-broken identity
- * fails fast instead of looping.
- */
-async function eventMedusaFetch<T = any>(
-    path: string,
-    init?: RequestInit & { query?: Record<string, string | string[]> },
-    _retryOn401 = true,
-): Promise<T> {
-    const url = new URL(`${MEDUSA_URL}${path}`);
-    if (init?.query) {
-        for (const [k, v] of Object.entries(init.query)) {
-            if (Array.isArray(v)) v.forEach((x) => url.searchParams.append(k, x));
-            else url.searchParams.set(k, v);
-        }
-    }
-    // The member's token goes on EVERY event request: once the cart belongs to
-    // a customer, an unauthenticated read of it 404s (measured at R12), so a
-    // half-authenticated flow is worse than none.
-    const auth = await eventAuthHeader();
-    const res = await fetch(url.toString(), {
-        ...init,
-        headers: { ...eventMedusaHeaders(), ...auth, ...(init?.headers || {}) },
-        cache: 'no-store',
-    });
-
-    // A member-scoped call that comes back 401 can mean the Medusa auth
-    // identity's link went stale between when eventAuthHeader() fetched the
-    // token and now (a dangling actor — see ensureMedusaCustomerToken in
-    // medusa-customer.ts, which now asks the backend's relink route to clear
-    // it). ensureMedusaCustomerToken() re-runs its full
-    // verify→relink→create→re-exchange sequence on every call, so simply
-    // calling it again IS the relink attempt. Bounded to one retry via
-    // _retryOn401 — this never loops.
-    if (res.status === 401 && _retryOn401 && auth.Authorization) {
-        const uid = await getSessionUserId();
-        console.warn(
-            `[event-cart] 401 on ${path} for member ${uid ?? 'unknown'} — attempting one relink + retry (no token logged).`,
-        );
-        return eventMedusaFetch<T>(path, init, false);
-    }
-
-    const text = await res.text();
-    let json: any = {};
-    try {
-        json = text ? JSON.parse(text) : {};
-    } catch {
-        json = { raw: text };
-    }
-    if (!res.ok) {
-        const msg = json?.message || json?.error || `Medusa ${res.status}`;
-        throw new Error(typeof msg === 'string' ? msg : `Medusa ${res.status}`);
-    }
-    return json as T;
+/** The cookie-session ctx every web action below builds ONCE and passes to the core. */
+function cookieSessionCtx(): EventAuthCtx {
+    return { getAuthHeader: eventAuthHeader, getUid: getSessionUserId };
 }
 
 async function getCartIdCookie(): Promise<string | null> {
@@ -162,75 +96,6 @@ async function clearCartIdCookie(): Promise<void> {
     store.delete(EVENT_CART_COOKIE);
 }
 
-// ── normalization ───────────────────────────────────────────────────────────
-function num(v: any): number {
-    const n = Number(v);
-    return Number.isFinite(n) ? n : 0;
-}
-
-/** The event contract stamped on the cart at creation (null if missing). */
-function metaOf(raw: any): EventCartMeta | null {
-    const m = (raw?.metadata ?? {}) as Record<string, any>;
-    const eventId = typeof m.event_id === 'string' ? m.event_id : null;
-    const tierId = typeof m.event_tier_id === 'string' ? m.event_tier_id : null;
-    const profileId = typeof m.event_profile_id === 'string' ? m.event_profile_id : null;
-    if (!eventId || !tierId || !profileId) return null;
-    const ticketHoldId = typeof m.ticket_hold_id === 'string' ? m.ticket_hold_id : null;
-    return { eventId, tierId, profileId, ticketHoldId };
-}
-
-/**
- * Same Cart shape the store checkout renders — vendor fields stay empty (an
- * event package belongs to the event, not a selling shop).
- */
-function normalizeEventCart(raw: any): Cart {
-    const items: CartLine[] = (Array.isArray(raw?.items) ? raw.items : []).map((it: any) => ({
-        id: it.id,
-        productTitle: it.product_title ?? it.title ?? 'Event package',
-        variantTitle: it.variant_title ?? it.variant?.title ?? null,
-        productHandle: it.product_handle ?? it.product?.handle ?? null,
-        thumbnail: it.thumbnail ?? it.product?.thumbnail ?? null,
-        quantity: num(it.quantity),
-        unitPrice: num(it.unit_price),
-        total: num(it.total ?? it.unit_price * it.quantity),
-        vendor: null,
-        shopName: null,
-        shopHandle: null,
-    }));
-
-    return {
-        id: raw.id,
-        email: raw.email ?? null,
-        currencyCode: raw.currency_code ?? 'usd',
-        items,
-        itemCount: items.reduce((s, i) => s + i.quantity, 0),
-        // items-only: Medusa's `subtotal` includes any attached shipping method
-        subtotal: num(raw.item_subtotal ?? raw.item_total ?? raw.subtotal),
-        shippingTotal: num(raw.shipping_total),
-        taxTotal: num(raw.tax_total),
-        total: num(raw.total),
-        // Event carts are pickup-only; no saved address to prefill.
-        shippingAddress: null,
-        hasShippingAddress: Boolean(raw.shipping_address?.address_1),
-        shippingOptionId: raw.shipping_methods?.[0]?.shipping_option_id ?? null,
-        vendor: { shopId: null, slug: null, name: null, handle: null },
-        vendors: [],
-        isMultiVendor: false,
-    };
-}
-
-async function fetchRawCart(id: string): Promise<any | null> {
-    try {
-        const { cart } = await eventMedusaFetch<{ cart: any }>(`/store/carts/${id}`, {
-            method: 'GET',
-            query: { fields: CART_FIELDS },
-        });
-        return cart ?? null;
-    } catch {
-        return null;
-    }
-}
-
 // ── public reads ────────────────────────────────────────────────────────────
 /**
  * The member's current event cart, with the event contract it was stamped
@@ -241,20 +106,14 @@ export async function getEventCart(): Promise<{ cart: Cart; meta: EventCartMeta 
     if (!eventsConfigured()) return null;
     const id = await getCartIdCookie();
     if (!id) return null;
-    const raw = await fetchRawCart(id);
-    if (!raw) return null;
-    const meta = metaOf(raw);
-    if (!meta) return null;
-    return { cart: normalizeEventCart(raw), meta };
+    return getEventCartCore(cookieSessionCtx(), id);
 }
 
 // ── cart creation ───────────────────────────────────────────────────────────
 /**
- * Create (or reuse) the one-package event cart for a reserved tier: Events
- * channel, contract metadata, the tier product's first variant × 1. Reuses an
- * existing cart only when it matches the SAME event + tier and still has its
- * line — anything else is torn down and replaced so the cart can never carry
- * a stale package for a different event.
+ * Create (or reuse) the one-package event cart for a reserved tier. See
+ * event-cart-core.ts's createEventPackageCartCore for the actual logic; this
+ * wrapper only adds the cookie read/write/clear around it.
  */
 export async function createEventPackageCart(input: {
     eventId: string;
@@ -262,114 +121,18 @@ export async function createEventPackageCart(input: {
     profileId: string;
     medusaProductId: string;
 }): Promise<ActionResult<{ cartId: string }>> {
-    if (!eventsConfigured()) {
-        return { ok: false, error: 'Event checkout is not configured.' };
-    }
-    const { eventId, tierId, profileId, medusaProductId } = input;
-    if (!eventId || !tierId || !profileId || !medusaProductId) {
-        return { ok: false, error: 'Missing event package details.' };
-    }
-
-    // Refuse BEFORE any money moves. Without a Medusa customer the completion
-    // gate rejects the order — and at R12 it did so only after Stripe had
-    // captured. A member who cannot be identified must be turned away at the
-    // door, not at the till.
-    const token = await ensureMedusaCustomerToken();
-    if (!token) {
-        return {
-            ok: false,
-            error: 'Sign in to reserve a paid spot — an event package is tied to your account.',
-        };
-    }
-
-    // Retry-friendly: a cart already stamped for this exact event+tier with its
-    // package line intact is simply reused (e.g. member bounced off checkout).
-    const existingId = await getCartIdCookie();
-    if (existingId) {
-        const raw = await fetchRawCart(existingId);
-        const meta = raw ? metaOf(raw) : null;
-        if (
-            meta &&
-            meta.eventId === eventId &&
-            meta.tierId === tierId &&
-            meta.profileId === profileId &&
-            Array.isArray(raw.items) &&
-            raw.items.length > 0
-        ) {
-            return { ok: true, data: { cartId: existingId } };
-        }
-        await clearCartIdCookie();
-    }
-
-    try {
-        // The tier's Medusa product → first variant, quantity 1 (the contract).
-        const { products } = await eventMedusaFetch<{ products: any[] }>(`/store/products`, {
-            method: 'GET',
-            query: {
-                'id[]': [medusaProductId],
-                region_id: MEDUSA_REGION_ID,
-                fields: 'id,*variants',
-                limit: '1',
-            },
-        });
-        const variantId: string | undefined = products?.[0]?.variants?.[0]?.id;
-        if (!variantId) {
-            return { ok: false, error: 'This package is not available right now.' };
-        }
-
-        const { cart } = await eventMedusaFetch<{ cart: any }>(`/store/carts`, {
-            method: 'POST',
-            body: JSON.stringify({
-                region_id: MEDUSA_REGION_ID,
-                sales_channel_id: EVENTS_SALES_CHANNEL_ID,
-                metadata: {
-                    event_id: eventId,
-                    event_tier_id: tierId,
-                    event_profile_id: profileId,
-                },
-            }),
-        });
-
-        // Bind the customer explicitly rather than trusting the bearer alone,
-        // then CHECK it. Reaching Stripe on a cart Medusa still considers a
-        // guest is the R12 failure exactly: the charge captures and the order
-        // is refused afterwards. Failing here costs the member a retry; failing
-        // later costs them a charge and a refund.
-        await eventMedusaFetch(`/store/carts/${cart.id}/customer`, { method: 'POST' });
-
-        const bound = await fetchRawCart(cart.id);
-        if (!bound?.customer_id) {
-            await clearCartIdCookie();
-            return {
-                ok: false,
-                error: 'Could not tie this package to your account — sign in again and retry. Nothing has been charged.',
-            };
-        }
-
-        await eventMedusaFetch(`/store/carts/${cart.id}/line-items`, {
-            method: 'POST',
-            body: JSON.stringify({ variant_id: variantId, quantity: 1 }),
-        });
-
-        await setCartIdCookie(cart.id);
-        return { ok: true, data: { cartId: cart.id } };
-    } catch (e: any) {
-        return { ok: false, error: e?.message ?? 'Could not start event checkout.' };
-    }
+    const existingCartId = await getCartIdCookie();
+    const result = await createEventPackageCartCore(cookieSessionCtx(), input, existingCartId);
+    if (result.staleCartId) await clearCartIdCookie();
+    if (!result.ok) return { ok: false, error: result.error };
+    await setCartIdCookie(result.cartId);
+    return { ok: true, data: { cartId: result.cartId } };
 }
 
 /**
  * Multi-ticket packages (feature-gated — see lib/event-tickets.ts's
- * multiTicketsEnabled). Same shape as createEventPackageCart but the line
- * quantity is N (one per reserved seat) and the cart metadata additionally
- * carries `ticket_hold_id` so Medusa's completion gate / order.placed
- * subscriber can find the matching event_tickets hold group. Callers MUST
- * have already reserved the hold via reserveTickets() in event-tickets.ts —
- * this function only ever wires up the cart, never reserves spots itself.
- *
- * Reuses an existing cart only when it matches the SAME hold id (not just
- * the same event+tier — a member who abandons one hold and starts a fresh
- * one must never resume paying for the stale hold's line).
+ * multiTicketsEnabled). See event-cart-core.ts's createEventTicketsCartCore
+ * for the actual logic; this wrapper only adds the cookie handling.
  */
 export async function createEventTicketsCart(input: {
     eventId: string;
@@ -379,90 +142,12 @@ export async function createEventTicketsCart(input: {
     holdId: string;
     quantity: number;
 }): Promise<ActionResult<{ cartId: string }>> {
-    if (!eventsConfigured()) {
-        return { ok: false, error: 'Event checkout is not configured.' };
-    }
-    const { eventId, tierId, profileId, medusaProductId, holdId, quantity } = input;
-    if (!eventId || !tierId || !profileId || !medusaProductId || !holdId || quantity < 1) {
-        return { ok: false, error: 'Missing event ticket details.' };
-    }
-
-    const token = await ensureMedusaCustomerToken();
-    if (!token) {
-        return {
-            ok: false,
-            error: 'Sign in to reserve tickets — an event package is tied to your account.',
-        };
-    }
-
-    const existingId = await getCartIdCookie();
-    if (existingId) {
-        const raw = await fetchRawCart(existingId);
-        const meta = raw ? metaOf(raw) : null;
-        if (
-            meta &&
-            meta.eventId === eventId &&
-            meta.tierId === tierId &&
-            meta.profileId === profileId &&
-            meta.ticketHoldId === holdId &&
-            Array.isArray(raw.items) &&
-            raw.items.length > 0
-        ) {
-            return { ok: true, data: { cartId: existingId } };
-        }
-        await clearCartIdCookie();
-    }
-
-    try {
-        const { products } = await eventMedusaFetch<{ products: any[] }>(`/store/products`, {
-            method: 'GET',
-            query: {
-                'id[]': [medusaProductId],
-                region_id: MEDUSA_REGION_ID,
-                fields: 'id,*variants',
-                limit: '1',
-            },
-        });
-        const variantId: string | undefined = products?.[0]?.variants?.[0]?.id;
-        if (!variantId) {
-            return { ok: false, error: 'This package is not available right now.' };
-        }
-
-        const { cart } = await eventMedusaFetch<{ cart: any }>(`/store/carts`, {
-            method: 'POST',
-            body: JSON.stringify({
-                region_id: MEDUSA_REGION_ID,
-                sales_channel_id: EVENTS_SALES_CHANNEL_ID,
-                metadata: {
-                    event_id: eventId,
-                    event_tier_id: tierId,
-                    event_profile_id: profileId,
-                    ticket_hold_id: holdId,
-                },
-            }),
-        });
-
-        await eventMedusaFetch(`/store/carts/${cart.id}/customer`, { method: 'POST' });
-
-        const bound = await fetchRawCart(cart.id);
-        if (!bound?.customer_id) {
-            await clearCartIdCookie();
-            return {
-                ok: false,
-                error: 'Could not tie these tickets to your account — sign in again and retry. Nothing has been charged.',
-            };
-        }
-
-        await eventMedusaFetch(`/store/carts/${cart.id}/line-items`, {
-            method: 'POST',
-            body: JSON.stringify({ variant_id: variantId, quantity }),
-        });
-
-        await setCartIdCookie(cart.id);
-        return { ok: true, data: { cartId: cart.id } };
-    } catch (e: any) {
-        return { ok: false, error: e?.message ?? 'Could not start ticket checkout.' };
-    }
+    const existingCartId = await getCartIdCookie();
+    const result = await createEventTicketsCartCore(cookieSessionCtx(), input, existingCartId);
+    if (result.staleCartId) await clearCartIdCookie();
+    if (!result.ok) return { ok: false, error: result.error };
+    await setCartIdCookie(result.cartId);
+    return { ok: true, data: { cartId: result.cartId } };
 }
 
 // ── checkout (same endpoints as the store flow, events key + event cookie) ──
@@ -472,69 +157,19 @@ export async function setEventCheckoutContact(
 ): Promise<ActionResult<Cart>> {
     const cartId = await getCartIdCookie();
     if (!cartId) return { ok: false, error: 'No cart.' };
-    const shipping = {
-        first_name: address.firstName,
-        last_name: address.lastName,
-        address_1: address.address1,
-        address_2: address.address2 || '',
-        city: address.city,
-        province: address.province,
-        postal_code: address.postalCode,
-        country_code: address.countryCode.toLowerCase(),
-        phone: address.phone || '',
-    };
-    try {
-        await eventMedusaFetch(`/store/carts/${cartId}`, {
-            method: 'POST',
-            body: JSON.stringify({
-                email,
-                shipping_address: shipping,
-                billing_address: shipping,
-            }),
-        });
-    } catch (e: any) {
-        return { ok: false, error: e?.message ?? 'Could not save your details.' };
-    }
-    const raw = await fetchRawCart(cartId);
-    return { ok: true, data: raw ? normalizeEventCart(raw) : undefined };
+    return setEventCheckoutContactCore(cookieSessionCtx(), cartId, email, address);
 }
 
 export async function listEventShippingOptions(): Promise<ShippingOption[]> {
     const cartId = await getCartIdCookie();
     if (!cartId) return [];
-    try {
-        const json = await eventMedusaFetch<{ shipping_options: any[] }>(
-            `/store/shipping-options`,
-            { method: 'GET', query: { cart_id: cartId } },
-        );
-        // Event lane: pickup options only (flat, event-pickup profile).
-        return (json.shipping_options ?? []).map((o) => ({
-            id: o.id,
-            name: o.name,
-            amount: num(o.amount ?? o.calculated_price?.calculated_amount),
-            profileId: (o.shipping_profile_id as string | null) ?? 'default',
-            priceType: (o.price_type === 'calculated' ? 'calculated' : 'flat') as 'flat' | 'calculated',
-            dataId: (o.data?.id as string | undefined) ?? null,
-            dataTenant: (o.data?.tenant as string | undefined) ?? null,
-        }));
-    } catch {
-        return [];
-    }
+    return listEventShippingOptionsCore(cookieSessionCtx(), cartId);
 }
 
 export async function setEventShippingMethod(optionId: string): Promise<ActionResult<Cart>> {
     const cartId = await getCartIdCookie();
     if (!cartId) return { ok: false, error: 'No cart.' };
-    try {
-        await eventMedusaFetch(`/store/carts/${cartId}/shipping-methods`, {
-            method: 'POST',
-            body: JSON.stringify({ option_id: optionId }),
-        });
-    } catch (e: any) {
-        return { ok: false, error: e?.message ?? 'Could not set shipping.' };
-    }
-    const raw = await fetchRawCart(cartId);
-    return { ok: true, data: raw ? normalizeEventCart(raw) : undefined };
+    return setEventShippingMethodCore(cookieSessionCtx(), cartId, optionId);
 }
 
 /**
@@ -546,35 +181,7 @@ export async function initEventStripePaymentSession(): Promise<
 > {
     const cartId = await getCartIdCookie();
     if (!cartId) return { ok: false, error: 'No cart.' };
-    try {
-        const raw = await fetchRawCart(cartId);
-        let collectionId: string | undefined = raw?.payment_collection?.id;
-
-        if (!collectionId) {
-            const { payment_collection } = await eventMedusaFetch<{ payment_collection: any }>(
-                `/store/payment-collections`,
-                { method: 'POST', body: JSON.stringify({ cart_id: cartId }) },
-            );
-            collectionId = payment_collection?.id;
-        }
-        if (!collectionId) return { ok: false, error: 'Could not start payment.' };
-
-        const { payment_collection } = await eventMedusaFetch<{ payment_collection: any }>(
-            `/store/payment-collections/${collectionId}/payment-sessions`,
-            { method: 'POST', body: JSON.stringify({ provider_id: PROVIDER_ID }) },
-        );
-
-        const sessions = payment_collection?.payment_sessions ?? [];
-        const stripeSession =
-            sessions.find((s: any) => s.provider_id === PROVIDER_ID) ?? sessions[0];
-        const clientSecret = stripeSession?.data?.client_secret;
-        if (!clientSecret) {
-            return { ok: false, error: 'Stripe did not return a client secret.' };
-        }
-        return { ok: true, data: { clientSecret: String(clientSecret) } };
-    } catch (e: any) {
-        return { ok: false, error: e?.message ?? 'Could not start payment.' };
-    }
+    return initEventStripePaymentSessionCore(cookieSessionCtx(), cartId);
 }
 
 /**
@@ -586,16 +193,7 @@ export async function initEventStripePaymentSession(): Promise<
 export async function completeEventCart(): Promise<ActionResult<{ orderId: string }>> {
     const cartId = await getCartIdCookie();
     if (!cartId) return { ok: false, error: 'No cart.' };
-    try {
-        const res = await eventMedusaFetch<any>(`/store/carts/${cartId}/complete`, {
-            method: 'POST',
-        });
-        if (res?.type === 'order' && res.order?.id) {
-            await clearCartIdCookie();
-            return { ok: true, data: { orderId: res.order.id } };
-        }
-        return { ok: false, error: res?.error?.message || 'Order could not be completed.' };
-    } catch (e: any) {
-        return { ok: false, error: e?.message ?? 'Order could not be completed.' };
-    }
+    const result = await completeEventCartCore(cookieSessionCtx(), cartId);
+    if (result.ok) await clearCartIdCookie();
+    return result;
 }

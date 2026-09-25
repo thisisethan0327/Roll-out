@@ -119,9 +119,13 @@ export async function deleteShippingAddress(id: string): Promise<{ ok: true } | 
     }
 }
 
-/** The customer's default shipping address (or the first one), as checkout's AddressInput. Null when none / not linked. */
-export async function loadDefaultShippingAddress(): Promise<AddressInput | null> {
-    const token = await ensureMedusaCustomerToken();
+/**
+ * Cookie-free core of loadDefaultShippingAddress: takes an already-resolved
+ * Medusa customer token directly (the mobile app's /api/app/event-checkout/
+ * start route already has one via ensureMedusaCustomerTokenForUser) instead
+ * of reading the SSR cookie session.
+ */
+export async function loadDefaultShippingAddressForToken(token: string): Promise<AddressInput | null> {
     if (!token) return null;
     try {
         const res = await fetch(`${MEDUSA_URL}/store/customers/me?fields=*addresses`, { headers: auth(token), cache: 'no-store' });
@@ -144,4 +148,11 @@ export async function loadDefaultShippingAddress(): Promise<AddressInput | null>
     } catch {
         return null;
     }
+}
+
+/** The customer's default shipping address (or the first one), as checkout's AddressInput. Null when none / not linked. */
+export async function loadDefaultShippingAddress(): Promise<AddressInput | null> {
+    const token = await ensureMedusaCustomerToken();
+    if (!token) return null;
+    return loadDefaultShippingAddressForToken(token);
 }

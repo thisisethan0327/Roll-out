@@ -153,3 +153,28 @@ export async function getRolloutMemberClient() {
     const supabase = await getSupabaseServer();
     return supabase.schema('rollout');
 }
+
+/**
+ * Cookie-free equivalent of getRolloutMemberClient(): a rollout-schema-scoped
+ * anon client whose every request carries the caller's OWN Supabase access
+ * token (the mobile app's `Authorization: Bearer <jwt>`), so RLS's auth.uid()
+ * resolves to that member exactly as it does for the cookie-session client.
+ * Passing the token via `global.headers.Authorization` means supabase-js
+ * never substitutes its own (anon-key) Authorization header — see
+ * SupabaseClient's per-request header merge, which only fills Authorization
+ * when the caller hasn't already set one.
+ *
+ * Used by the mobile app's /api/app/event-checkout/* routes (via
+ * lib/event-tickets.ts's *ForToken cores) instead of getRolloutMemberClient().
+ */
+export function getRolloutMemberClientForToken(accessToken: string) {
+    const client = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+            auth: { autoRefreshToken: false, persistSession: false },
+            global: { headers: { Authorization: `Bearer ${accessToken}` } },
+        },
+    );
+    return client.schema('rollout');
+}

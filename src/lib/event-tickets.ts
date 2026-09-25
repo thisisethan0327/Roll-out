@@ -136,7 +136,18 @@ export type ReserveTicketsResult =
           tierId: string | null;
           tickets: ReserveTicketsTicket[];
       }
-    | { ok: false; error: string };
+    | {
+          ok: false;
+          error: string;
+          /** The RPC's raw {state} — 'full' | 'tier_full' | 'duplicate_email' |
+           *  'closed' | 'auth' | 'invalid', when the RPC itself returned a
+           *  recognized failure (absent on an RPC/network error). Lets a
+           *  caller (e.g. the app's /api/app/event-checkout/start route) map
+           *  onto the documented error codes without re-parsing `error`. */
+          state?: string;
+          /** Present only on state:'duplicate_email' — the 1-based seat. */
+          seat?: number;
+      };
 
 export type TicketRefundQuote = {
     amountCents: number;
@@ -328,12 +339,18 @@ function describeReserveFailure(data: any, attendees: TicketAttendeeInput[]): st
 }
 
 /**
- * Reserve N seats (1..5) for a tiered/paid event. Seat 1's email is stamped
- * to the caller's own account email here (defence in depth — the RPC forces
- * it server-side regardless) so a client-tampered seat 1 can never reach the
- * RPC with a different address.
+ * Cookie-free core of reserveTickets: takes the rollout-member client
+ * explicitly (RLS-scoped either to the SSR cookie session or, for the mobile
+ * app, to a bearer token via getRolloutMemberClientForToken in lib/consumer.ts)
+ * instead of resolving one from cookies itself. reserveTickets() below is the
+ * cookie-session wrapper every existing web caller keeps using unchanged.
  */
-export async function reserveTickets(
+export async function reserveTicketsWithClient(
+    // Loosely typed on purpose — the caller may be either
+    // getRolloutMemberClient()'s cookie-scoped client or
+    // getRolloutMemberClientForToken()'s bearer-scoped one (lib/consumer.ts);
+    // both are `rollout`-schema-scoped anon clients, just resolved differently.
+    member: any,
     eventId: string,
     tierId: string,
     attendees: TicketAttendeeInput[],
@@ -341,7 +358,6 @@ export async function reserveTickets(
     if (attendees.length < 1 || attendees.length > MAX_TICKETS_PER_ORDER) {
         return { ok: false, error: `Between 1 and ${MAX_TICKETS_PER_ORDER} tickets.` };
     }
-    const member = await getRolloutMemberClient();
     const { data, error } = await member.rpc('reserve_tickets', {
         p_event: eventId,
         p_tier: tierId,
@@ -370,7 +386,25 @@ export async function reserveTickets(
             })),
         };
     }
-    return { ok: false, error: describeReserveFailure(data, attendees) };
+    const failState = (data as any)?.state as string | undefined;
+    const failSeat = typeof (data as any)?.detail?.seat === 'number' ? (data as any).detail.seat : undefined;
+    return { ok: false, error: describeReserveFailure(data, attendees), state: failState, seat: failSeat };
+}
+
+/**
+ * Reserve N seats (1..5) for a tiered/paid event. Seat 1's email is stamped
+ * to the caller's own account email here (defence in depth — the RPC forces
+ * it server-side regardless) so a client-tampered seat 1 can never reach the
+ * RPC with a different address. Cookie-session wrapper around
+ * reserveTicketsWithClient — see that function for the actual RPC call.
+ */
+export async function reserveTickets(
+    eventId: string,
+    tierId: string,
+    attendees: TicketAttendeeInput[],
+): Promise<ReserveTicketsResult> {
+    const member = await getRolloutMemberClient();
+    return reserveTicketsWithClient(member, eventId, tierId, attendees);
 }
 
 const REFUND_STATE_MESSAGES: Record<string, string> = {
@@ -551,16 +585,25 @@ function mapMyTicketRow(r: any): MyTicketRow {
     };
 }
 
-/** Every ticket the caller can see — as buyer (one row per seat in their order, with `attendees` on the seat-1 row) or as a claimed attendee (their own row + buyer name only). */
-export async function myTickets(): Promise<MyTicketRow[]> {
+/**
+ * Cookie-free core of myTickets: takes the rollout-member client explicitly
+ * (see reserveTicketsWithClient's doc comment for why) instead of resolving
+ * one from cookies itself.
+ */
+export async function myTicketsWithClient(member: any): Promise<MyTicketRow[]> {
     if (!(await multiTicketsEnabled())) return [];
-    const member = await getRolloutMemberClient();
     const { data, error } = await member.rpc('my_tickets');
     if (error) {
         console.error('[event-tickets] my_tickets RPC failed:', error.message);
         return [];
     }
     return ((data as any[]) ?? []).map(mapMyTicketRow);
+}
+
+/** Every ticket the caller can see — as buyer (one row per seat in their order, with `attendees` on the seat-1 row) or as a claimed attendee (their own row + buyer name only). Cookie-session wrapper around myTicketsWithClient. */
+export async function myTickets(): Promise<MyTicketRow[]> {
+    const member = await getRolloutMemberClient();
+    return myTicketsWithClient(member);
 }
 
 /** Tickets for one order — used by /me/orders/[id]'s ATTENDEES table. Buyer-only (my_tickets already scopes to the caller; filtered client-side to this order). */
@@ -573,5 +616,13 @@ export async function ticketsForOrder(orderId: string): Promise<MyTicketRow[]> {
 /** Tickets the signed-in member holds/bought/claimed for one event — feeds the "YOU'RE IN · N TICKETS" list on the public event page. */
 export async function myTicketsForEvent(eventId: string): Promise<MyTicketRow[]> {
     const rows = await myTickets();
+    return rows.filter((r) => r.eventId === eventId);
+}
+
+/** Cookie-free equivalent of myTicketsForEvent, for the mobile app's
+ *  /api/app/event-checkout/complete route (RLS-scoped to the caller's bearer
+ *  token via getRolloutMemberClientForToken). */
+export async function myTicketsForEventWithClient(member: any, eventId: string): Promise<MyTicketRow[]> {
+    const rows = await myTicketsWithClient(member);
     return rows.filter((r) => r.eventId === eventId);
 }
