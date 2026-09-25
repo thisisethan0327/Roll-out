@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { loadStripe, type Stripe } from '@stripe/stripe-js';
+import { loadStripe, type Stripe, type ExpressCheckoutPaymentMethodsOption } from '@stripe/stripe-js';
 import { Elements, CardElement, ExpressCheckoutElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import {
     setCheckoutContact,
@@ -739,7 +739,8 @@ function ExpressPayInner(props: ExpressPayProps) {
                     // PayPal, Klarna) would return to checkout with the cart never
                     // completed; Klarna has no option in these typings, so onClick
                     // also refuses anything outside IN_PLACE_WALLETS.
-                    paymentMethods: { amazonPay: 'never', paypal: 'never' },
+                    // klarna is accepted by Stripe.js at runtime but missing from these typings.
+                    paymentMethods: { amazonPay: 'never', paypal: 'never', klarna: 'never' } as ExpressCheckoutPaymentMethodsOption,
                 }}
                 onReady={(e) => {
                     const m = e.availablePaymentMethods as Record<string, boolean> | undefined;
