@@ -818,7 +818,7 @@ export default async function PublicEventPage({
                                 />
                             </div>
                         ) : null}
-                        {hasRoutePlan ? (
+                        {hasRoutePlan && ev.lat != null && ev.lng != null ? (
                             <p className="text-dim" style={{ fontSize: 12, margin: "4px 0 0", fontFamily: "var(--font-display)", letterSpacing: "var(--track-wider)" }}>
                                 MEET POINT = S ON THE ROUTE MAP BELOW
                             </p>
