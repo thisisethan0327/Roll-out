@@ -8,10 +8,10 @@
  * out of a single-spot hold is exactly what setRsvp(eventId, null) already
  * does (cancel_rsvp frees the spot + promotes the waitlist), so this route
  * calls that SAME RPC, bearer-scoped to the caller instead of their cookie
- * session. A multi-ticket hold (reserve_tickets) has no early-release RPC in
- * the migration-080 contract — re-calling reserve_tickets with different
- * seats replaces it, and otherwise it simply expires — so that case is a
- * documented no-op here (still `ok:true`; nothing to release early).
+ * session. A multi-ticket hold (reserve_tickets) is released with rollout
+ * 082's release_ticket_hold, also as the caller. Response: `{ ok:true,
+ * released }` — released=false means there was nothing left to free (already
+ * paid, expired or replaced).
  *
  * Auth + ownership: same as /complete — the cart's `event_profile_id` must
  * match the caller.
@@ -59,13 +59,29 @@ export async function POST(req: NextRequest) {
         );
     }
 
+    const member = getRolloutMemberClientForToken(caller.accessToken);
+
     if (existing.meta.ticketHoldId) {
-        // Multi-ticket hold — no early-release RPC exists; it expires on its
-        // own TTL. Nothing more to do.
-        return NextResponse.json({ ok: true });
+        // Multi-ticket hold — rollout 082 release_ticket_hold, called AS the
+        // caller: it only releases the caller's own hold (else 'forbidden'),
+        // expires its held tickets, drops the unpaid held rsvp row and promotes
+        // the waitlist. A hold already paid, expired or replaced is a 'noop'.
+        const { data, error } = await member.rpc('release_ticket_hold', { p_hold_id: existing.meta.ticketHoldId });
+        if (error) {
+            console.error('[event-checkout/release] release_ticket_hold failed:', error.message);
+            return NextResponse.json({ ok: false, error: 'Could not release the hold.' });
+        }
+        const state = (data as any)?.state as string | undefined;
+        if (state === 'forbidden' || state === 'auth') {
+            return NextResponse.json(
+                { ok: false, error: 'This hold does not belong to you.', code: 'auth' },
+                { status: 403 },
+            );
+        }
+        // released | noop | not_found: either freed now, or nothing left to free.
+        return NextResponse.json({ ok: true, released: state === 'released' });
     }
 
-    const member = getRolloutMemberClientForToken(caller.accessToken);
     const { error } = await member.rpc('cancel_rsvp', { p_event: existing.meta.eventId });
     if (error) {
         // 077: a confirmed PAID spot raises P0001 'paid_spot: …' instead of
