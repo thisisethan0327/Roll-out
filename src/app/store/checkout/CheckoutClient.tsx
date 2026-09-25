@@ -721,6 +721,8 @@ function ExpressPay(props: ExpressPayProps) {
     );
 }
 
+const IN_PLACE_WALLETS: string[] = ['apple_pay', 'google_pay', 'link'];
+
 function ExpressPayInner(props: ExpressPayProps) {
     const stripe = useStripe();
     const elements = useElements();
@@ -728,11 +730,24 @@ function ExpressPayInner(props: ExpressPayProps) {
     return (
         <div style={{ display: available ? 'flex' : 'none', flexDirection: 'column', gap: 12 }}>
             <ExpressCheckoutElement
-                options={{ buttonHeight: 48, buttonType: { applePay: 'buy', googlePay: 'buy' } }}
-                onReady={(e) =>
-                    setAvailable(!!e.availablePaymentMethods && Object.values(e.availablePaymentMethods).some(Boolean))
-                }
+                options={{
+                    buttonHeight: 48,
+                    buttonType: { applePay: 'buy', googlePay: 'buy' },
+                    // Only wallets that confirm in place. Redirect flows (Amazon Pay,
+                    // PayPal, Klarna) would return to checkout with the cart never
+                    // completed; Klarna has no option in these typings, so onClick
+                    // also refuses anything outside IN_PLACE_WALLETS.
+                    paymentMethods: { amazonPay: 'never', paypal: 'never' },
+                }}
+                onReady={(e) => {
+                    const m = e.availablePaymentMethods as Record<string, boolean> | undefined;
+                    setAvailable(!!m && IN_PLACE_WALLETS.some((k) => m[k.replace(/_(w)/g, (_, c) => c.toUpperCase())]));
+                }}
                 onClick={(e) => {
+                    if (!IN_PLACE_WALLETS.includes(e.expressPaymentType)) {
+                        props.onFail('Use Apple Pay, Google Pay, Link or a card for this order.');
+                        return;
+                    }
                     if (props.canPay()) e.resolve();
                 }}
                 onConfirm={async () => {
