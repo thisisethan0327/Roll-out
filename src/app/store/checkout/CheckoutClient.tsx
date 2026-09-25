@@ -501,9 +501,11 @@ function CheckoutInner({
                                     </div>
                                 )}
                             </div>
-                            <p className="text-muted" style={{ fontSize: 11, margin: 0 }}>
-                                TEST MODE — use 4242 4242 4242 4242, any future date + CVC.
-                            </p>
+                            {(process.env.NEXT_PUBLIC_STRIPE_KEY ?? "").startsWith("pk_test_") ? (
+                                <p className="text-muted" style={{ fontSize: 11, margin: 0 }}>
+                                    TEST MODE — use 4242 4242 4242 4242, any future date + CVC.
+                                </p>
+                            ) : null}
                             {agreement ? (
                                 <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 12, color: 'var(--text-2)', cursor: 'pointer' }}>
                                     <input
