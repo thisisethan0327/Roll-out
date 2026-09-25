@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { loadStripe, type Stripe } from '@stripe/stripe-js';
-import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
+import { Elements, CardElement, ExpressCheckoutElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import {
     setCheckoutContact,
     listShippingOptions,
@@ -166,6 +166,7 @@ export function CheckoutClient({
     return (
         <Elements stripe={stripePromise}>
             <CheckoutInner
+                stripePromise={stripePromise}
                 initialCart={initialCart}
                 signedInEmail={signedInEmail ?? null}
                 initialAddress={initialAddress ?? null}
@@ -178,6 +179,7 @@ export function CheckoutClient({
 }
 
 function CheckoutInner({
+    stripePromise,
     initialCart,
     signedInEmail,
     initialAddress,
@@ -185,6 +187,7 @@ function CheckoutInner({
     successPathPrefix,
     agreement,
 }: {
+    stripePromise: Promise<Stripe | null>;
     initialCart: Cart;
     signedInEmail: string | null;
     initialAddress: AddressInput | null;
@@ -341,6 +344,17 @@ function CheckoutInner({
                 return setError(stripeErr?.message || 'Card was not authorized.');
             }
 
+            await finishOrder();
+        } catch (err: any) {
+            setPlacing(false);
+            setError(err?.message ?? 'Something went wrong placing your order.');
+        }
+    };
+
+    // After Stripe has authorized the payment (card form OR express wallet):
+    // complete the Medusa cart and go to the success page.
+    const finishOrder = async () => {
+        {
             let complete = await actions.completeCart();
             if (!complete.ok && /payment session/i.test(complete.error ?? '')) {
                 // A declined attempt can leave the cart without a usable session
@@ -353,9 +367,6 @@ function CheckoutInner({
                 return setError(complete.ok ? 'Could not place order.' : complete.error);
             }
             router.push(`${successPathPrefix}${complete.data.orderId}`);
-        } catch (err: any) {
-            setPlacing(false);
-            setError(err?.message ?? 'Something went wrong placing your order.');
         }
     };
 
@@ -473,6 +484,35 @@ function CheckoutInner({
                 <StepBlock n={3} title="PAYMENT" active={step === 'payment'} done={false}>
                     {step === 'payment' ? (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                            <ExpressPay
+                                stripePromise={stripePromise}
+                                amountMinor={Math.round(cart.total * 100)}
+                                currency={currency}
+                                theme={cardColors.theme}
+                                canPay={() => {
+                                    if (placing) return false;
+                                    if (!agreed) {
+                                        setError('Tick the box to agree to the refund & cancellation policy first.');
+                                        return false;
+                                    }
+                                    setError(null);
+                                    return true;
+                                }}
+                                initSession={actions.initStripePaymentSession}
+                                onStart={() => setPlacing(true)}
+                                onFail={(msg) => {
+                                    setPlacing(false);
+                                    setError(msg);
+                                }}
+                                onAuthorized={async () => {
+                                    try {
+                                        await finishOrder();
+                                    } catch (err: any) {
+                                        setPlacing(false);
+                                        setError(err?.message ?? 'Something went wrong placing your order.');
+                                    }
+                                }}
+                            />
                             <div style={{ padding: '14px 14px', border: '1px solid var(--line)', background: 'var(--bg-2)' }}>
                                 {stripe ? (
                                     <CardElement
@@ -637,6 +677,93 @@ function SumRow({ label, value, strong }: { label: string; value: string; strong
         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: strong ? 16 : 13 }}>
             <span className="text-dim">{label}</span>
             <span style={{ color: 'var(--text)', fontWeight: strong ? 700 : 400 }}>{value}</span>
+        </div>
+    );
+}
+
+
+/**
+ * One-tap wallets (Apple Pay, Google Pay, Link) above the card form, via
+ * Stripe's Express Checkout Element. It lives in its own deferred-mode
+ * <Elements> (amount/currency known up front); on confirm it creates the same
+ * Medusa payment session the card form uses and confirms that PaymentIntent
+ * with the wallet. Which wallets appear is decided by the Stripe account's
+ * payment-method settings and the device; with none available it renders
+ * nothing and the card form works as before.
+ */
+type ExpressPayProps = {
+    stripePromise: Promise<Stripe | null>;
+    amountMinor: number;
+    currency: string;
+    theme: string;
+    canPay: () => boolean;
+    initSession: CheckoutActions['initStripePaymentSession'];
+    onStart: () => void;
+    onFail: (msg: string) => void;
+    onAuthorized: () => Promise<void>;
+};
+
+function ExpressPay(props: ExpressPayProps) {
+    if (!(props.amountMinor > 0)) return null;
+    return (
+        <Elements
+            key={`${props.amountMinor}-${props.theme}`}
+            stripe={props.stripePromise}
+            options={{
+                mode: 'payment',
+                amount: props.amountMinor,
+                currency: props.currency.toLowerCase(),
+                appearance: { theme: props.theme === 'light' ? 'stripe' : 'night' },
+            }}
+        >
+            <ExpressPayInner {...props} />
+        </Elements>
+    );
+}
+
+function ExpressPayInner(props: ExpressPayProps) {
+    const stripe = useStripe();
+    const elements = useElements();
+    const [available, setAvailable] = useState(false);
+    return (
+        <div style={{ display: available ? 'flex' : 'none', flexDirection: 'column', gap: 12 }}>
+            <ExpressCheckoutElement
+                options={{ buttonHeight: 48, buttonType: { applePay: 'buy', googlePay: 'buy' } }}
+                onReady={(e) =>
+                    setAvailable(!!e.availablePaymentMethods && Object.values(e.availablePaymentMethods).some(Boolean))
+                }
+                onClick={(e) => {
+                    if (props.canPay()) e.resolve();
+                }}
+                onConfirm={async () => {
+                    if (!stripe || !elements) return props.onFail('Payment is still loading. One sec…');
+                    props.onStart();
+                    const { error: submitErr } = await elements.submit();
+                    if (submitErr) return props.onFail(submitErr.message ?? 'Payment was not completed.');
+                    const initRes = await props.initSession();
+                    if (!initRes.ok || !initRes.data) return props.onFail(initRes.ok ? 'Could not start payment.' : initRes.error);
+                    const { error, paymentIntent } = await stripe.confirmPayment({
+                        elements,
+                        clientSecret: initRes.data.clientSecret,
+                        confirmParams: { return_url: window.location.href },
+                        redirect: 'if_required',
+                    });
+                    const ok =
+                        !error &&
+                        paymentIntent &&
+                        (paymentIntent.status === 'succeeded' || paymentIntent.status === 'requires_capture');
+                    if (!ok) return props.onFail(error?.message || 'Payment was not authorized.');
+                    await props.onAuthorized();
+                }}
+            />
+            <div
+                className="text-dim"
+                style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 11, letterSpacing: 'var(--track-wider)' }}
+            >
+                <span style={{ flex: 1, height: 1, background: 'var(--line)' }} />
+                OR PAY WITH CARD
+                <span style={{ flex: 1, height: 1, background: 'var(--line)' }} />
+            </div>
         </div>
     );
 }
