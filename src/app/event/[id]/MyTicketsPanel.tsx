@@ -15,6 +15,7 @@ import Link from 'next/link';
 import type { MyTicketRow } from '@/lib/event-tickets';
 import { cancelPaidRsvp } from './actions';
 import { refundWindowOpen, refundPolicyShortLine, REFUND_POLICY_PATH, type ReservationPolicy } from '@/lib/refund-policy';
+import { isDeadTicketStatus } from '@/lib/event-tickets-shared';
 
 export function MyTicketsPanel({
     eventId,
@@ -34,6 +35,28 @@ export function MyTicketsPanel({
     const refundOpen = refundWindowOpen(eventStartAt, reservationPolicy);
     const policyLine = refundPolicyShortLine(eventStartAt, eventTimeZone, reservationPolicy);
 
+    // Header counts only LIVE (confirmed) seats. With none left it must not
+    // say "YOU'RE IN": a fully cancelled order reads CANCELLED, and says
+    // REFUNDED only when every seat is cancelled with a refund recorded and
+    // none is still in flight (mixed states just say TICKETS CANCELLED).
+    const live = sorted.filter((t) => t.status === 'confirmed').length;
+    const allDead = sorted.length > 0 && sorted.every((t) => isDeadTicketStatus(t.status));
+    const allRefunded =
+        allDead &&
+        sorted.every(
+            (t) =>
+                !t.refundInProgress &&
+                (t.status === 'refunded' || (t.status === 'cancelled' && (t.refundCents ?? 0) > 0)),
+        );
+    const header =
+        live > 0
+            ? `✓ YOU'RE IN · ${live} TICKET${live === 1 ? '' : 'S'}`
+            : allDead
+                ? allRefunded
+                    ? 'ORDER CANCELLED · REFUNDED'
+                    : 'TICKETS CANCELLED'
+                : `● TICKETS PENDING · ${sorted.length}`;
+
     return (
         <div
             style={{
@@ -52,10 +75,10 @@ export function MyTicketsPanel({
                     fontFamily: 'var(--font-display)',
                     fontSize: 12,
                     letterSpacing: 'var(--track-wider)',
-                    color: 'var(--gold)',
+                    color: live > 0 ? 'var(--gold)' : 'var(--text-2)',
                 }}
             >
-                ✓ YOU&apos;RE IN · {sorted.length} TICKET{sorted.length === 1 ? '' : 'S'}
+                {header}
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -70,7 +93,13 @@ export function MyTicketsPanel({
                 ))}
             </div>
 
-            {isBuyer && sorted.length > 0 ? (
+            {allDead ? (
+                <p className="text-muted" style={{ fontSize: 11, margin: 0, lineHeight: 1.5 }}>
+                    You can reserve again above while spots are open.
+                </p>
+            ) : null}
+
+            {isBuyer && sorted.length > 0 && !allDead ? (
                 <p className="text-muted" style={{ fontSize: 10, margin: 0, lineHeight: 1.5 }}>
                     {policyLine}{' '}
                     <Link href={REFUND_POLICY_PATH} className="text-link" style={{ color: 'inherit', textDecoration: 'underline' }}>
@@ -149,6 +178,7 @@ function TicketRow({
                 flexWrap: 'wrap',
                 padding: '8px 0',
                 borderTop: '1px solid var(--line)',
+                opacity: isDeadTicketStatus(ticket.status) ? 0.5 : 1,
             }}
         >
             <div style={{ minWidth: 0 }}>
