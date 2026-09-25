@@ -629,6 +629,11 @@ export default async function PublicEventPage({
     })();
     const issuePath = `ROLLOUT.CLUB / EVENTS / ${titleSlug || ev.id.slice(0, 8).toUpperCase()}`;
 
+    // Hero ADDRESS shows only the address itself: location_detail often
+    // carries notes after it ("… — parking lot. Meet 9:00 …"), so cut at the
+    // first " — " or ". ". The LOCATION section below still shows it in full.
+    const heroAddress = ev.location_detail?.split(/ — |\. /)[0].trim() || null;
+
     const jsonLd = {
         '@context': 'https://schema.org',
         '@type': 'Event',
@@ -697,7 +702,7 @@ export default async function PublicEventPage({
                 isCancelled={isCancelled}
                 dateLabel={formatDate(ev.start_at, ev.time_zone)}
                 locationName={ev.location_name ?? 'Location TBA'}
-                address={ev.location_detail}
+                address={heroAddress}
                 hostName={hostName}
                 hostHandle={hostHandle}
                 hostVerified={hostVerified}
