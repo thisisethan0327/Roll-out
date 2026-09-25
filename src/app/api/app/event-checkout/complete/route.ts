@@ -36,9 +36,12 @@ export async function POST(req: NextRequest) {
     const cartId = typeof body?.cartId === 'string' ? body.cartId : '';
     if (!cartId) return NextResponse.json({ ok: false, error: 'Missing cartId.' });
 
+    // Resolved ONCE per request — every core call below awaits this SAME
+    // promise instead of re-running the full token exchange itself.
+    const tokenP = ensureMedusaCustomerTokenForUser(caller.accessToken, caller.user);
     const authCtx: EventAuthCtx = {
         getAuthHeader: async () => {
-            const t = await ensureMedusaCustomerTokenForUser(caller.accessToken, caller.user);
+            const t = await tokenP;
             return (t ? { Authorization: `Bearer ${t}` } : {}) as Record<string, string>;
         },
         getUid: async () => caller.user.id,

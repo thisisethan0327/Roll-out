@@ -5,21 +5,31 @@
  * Does exactly what the web does, end to end, against the SAME core
  * functions the server actions call (event/[id]/actions.ts's
  * startPackageCheckoutCore / reserveEventTicketsCore, lib/event-cart-core.ts):
- *   1. reserve — reserve_tickets (multi-ticket packages, when enabled: ALWAYS
+ *   1. resolve + validate the email and shipping address BEFORE touching a
+ *      hold or a cart — an address/email failure must leave no hold and no
+ *      orphan cart (platform review, 2026-09-25).
+ *   2. reserve — reserve_tickets (multi-ticket packages, when enabled: ALWAYS
  *      used once the feature flag is on, exactly like the web's
  *      TiersSection.tsx routing every tier card through it regardless of
- *      quantity) or the single-spot reserve_spot path (flag off).
- *   2. create the Events-channel Medusa cart with the event contract stamped
- *      on its metadata.
- *   3. contact (member email) + address (body address, else the member's
- *      saved default Medusa address).
+ *      quantity) or the single-spot reserve_spot path (flag off). This also
+ *      creates the Events-channel Medusa cart with the event contract
+ *      stamped on its metadata (bundled inside those same core functions).
+ *   3. contact (resolved email + address) on the cart.
  *   4. the event-pickup shipping method (event carts are pickup-only — one
  *      method per shipping profile, mirroring CheckoutClient.tsx's
  *      submitShipping loop).
  *   5. init the Stripe payment session and hand back its client secret.
  *
  * Auth: `Authorization: Bearer <Supabase access token>`, verified server-side
- * via resolveAppCaller (lib/app-auth.ts) — never a user id from the body.
+ * via resolveAppCaller (lib/app-auth.ts) — never a user id from the body,
+ * and never an order email from the body either (see the email resolution
+ * below — only the caller's OWN verified auth/profile email is ever used).
+ *
+ * The Medusa customer token is resolved ONCE per request (`tokenP`, below)
+ * and awaited by every core call's `getAuthHeader` — previously each of the
+ * ~10 core calls a single /start ran re-invoked the full
+ * verify→relink→create→re-exchange sequence, so a transient hiccup partway
+ * through a request could re-trigger a relink attempt several times over.
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { bearerTokenFrom, resolveAppCaller } from '@/lib/app-auth';
@@ -135,6 +145,36 @@ export async function POST(req: NextRequest) {
         return bad(`Between 1 and ${MAX_TICKETS_PER_ORDER} tickets.`);
     }
 
+    // The order email is ALWAYS the caller's own verified identity — never
+    // something the client sent in the body (the body's `address` may carry
+    // an `email` field for a DIFFERENT purpose entirely — shipping contact —
+    // but it must never become the account-of-record email on the order).
+    const email = caller.user.email ?? caller.profile.email;
+    if (!email) {
+        return bad('Add an email to your account first.', 'email_required');
+    }
+
+    // Resolve the Medusa customer token exactly ONCE for this request — every
+    // core call below awaits this SAME promise instead of re-running the
+    // verify→relink→create→re-exchange sequence itself.
+    const tokenP = ensureMedusaCustomerTokenForUser(caller.accessToken, caller.user);
+    const authCtx: EventAuthCtx = {
+        getAuthHeader: async () => {
+            const t = await tokenP;
+            return (t ? { Authorization: `Bearer ${t}` } : {}) as Record<string, string>;
+        },
+        getUid: async () => caller.user.id,
+    };
+
+    const medusaToken = await tokenP;
+    if (!medusaToken) return bad('Could not connect your account to the store right now.');
+
+    // Resolve + validate the address BEFORE any hold or cart exists — an
+    // address_required answer here must leave nothing behind to clean up.
+    let address = normalizeBodyAddress(body?.address);
+    if (!address) address = await loadDefaultShippingAddressForToken(medusaToken);
+    if (!address) return bad('An address is required to check out.', 'address_required');
+
     const ctx: EventActionUserCtx = {
         profileId: caller.profile.profileId,
         displayName: caller.profile.displayName,
@@ -161,12 +201,12 @@ export async function POST(req: NextRequest) {
         for (let i = 0; i < rawAttendees.length; i++) {
             const a = rawAttendees[i] ?? {};
             const name = typeof a.name === 'string' ? a.name.trim() : '';
-            const email = typeof a.email === 'string' ? a.email.trim() : '';
+            const seatEmail = typeof a.email === 'string' ? a.email.trim() : '';
             const size = typeof a.size === 'string' ? a.size.toUpperCase() : '';
             if (i > 0 && !name) return bad(`Seat ${i + 1}'s name is required.`, 'invalid');
-            if (i > 0 && !email) return bad(`Seat ${i + 1}'s email doesn't look right.`, 'invalid');
+            if (i > 0 && !seatEmail) return bad(`Seat ${i + 1}'s email doesn't look right.`, 'invalid');
             if (!SIZE_SET.has(size)) return bad(`Seat ${i + 1}'s sweater size is required.`, 'invalid');
-            attendees.push({ name, email, size: size as SweaterSize });
+            attendees.push({ name, email: seatEmail, size: size as SweaterSize });
         }
         // Seat 1 = caller — reserveEventTicketsCore re-stamps it server-side
         // regardless, but an empty placeholder here (the app prefills it from
@@ -201,23 +241,7 @@ export async function POST(req: NextRequest) {
         holdExpiresAt = result.holdExpiresAt;
     }
 
-    // ── contact + address ──────────────────────────────────────────────────
-    const authCtx: EventAuthCtx = {
-        getAuthHeader: async () => {
-            const t = await ensureMedusaCustomerTokenForUser(caller.accessToken, caller.user);
-            return (t ? { Authorization: `Bearer ${t}` } : {}) as Record<string, string>;
-        },
-        getUid: async () => caller.user.id,
-    };
-
-    const medusaToken = await ensureMedusaCustomerTokenForUser(caller.accessToken, caller.user);
-    if (!medusaToken) return bad('Could not connect your account to the store right now.');
-
-    let address = normalizeBodyAddress(body?.address);
-    if (!address) address = await loadDefaultShippingAddressForToken(medusaToken);
-    if (!address) return bad('An address is required to check out.', 'address_required');
-
-    const email = caller.profile.email || body?.address?.email || '';
+    // ── contact (resolved email + address, already validated above) ─────────
     const contact = await setEventCheckoutContactCore(authCtx, cartId, email, address);
     if (!contact.ok) return bad(contact.error);
 
