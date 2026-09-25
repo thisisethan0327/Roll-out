@@ -36,25 +36,16 @@ export function MyTicketsPanel({
     const policyLine = refundPolicyShortLine(eventStartAt, eventTimeZone, reservationPolicy);
 
     // Header counts only LIVE (confirmed) seats. With none left it must not
-    // say "YOU'RE IN": a fully cancelled order reads CANCELLED, and says
-    // REFUNDED only when every seat is cancelled with a refund recorded and
-    // none is still in flight (mixed states just say TICKETS CANCELLED).
+    // say "YOU'RE IN": a fully cancelled order reads ORDER CANCELLED (refund
+    // emails and /me/orders carry the money story — a whole-order cancel
+    // doesn't stamp refund_cents per seat, so we can't claim REFUNDED here).
     const live = sorted.filter((t) => t.status === 'confirmed').length;
     const allDead = sorted.length > 0 && sorted.every((t) => isDeadTicketStatus(t.status));
-    const allRefunded =
-        allDead &&
-        sorted.every(
-            (t) =>
-                !t.refundInProgress &&
-                (t.status === 'refunded' || (t.status === 'cancelled' && (t.refundCents ?? 0) > 0)),
-        );
     const header =
         live > 0
             ? `✓ YOU'RE IN · ${live} TICKET${live === 1 ? '' : 'S'}`
             : allDead
-                ? allRefunded
-                    ? 'ORDER CANCELLED · REFUNDED'
-                    : 'TICKETS CANCELLED'
+                ? 'ORDER CANCELLED'
                 : `● TICKETS PENDING · ${sorted.length}`;
 
     return (
