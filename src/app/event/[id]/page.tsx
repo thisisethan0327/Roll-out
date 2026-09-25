@@ -44,6 +44,7 @@ import { StatBand } from './StatBand';
 import { CoverStoryBrief } from './CoverStoryBrief';
 import { TicketCard } from './TicketCard';
 import { RouteSection } from './RouteSection';
+import RouteMapLoader from './RouteMapLoader';
 import { SponsorsSection } from './SponsorsSection';
 import { HostBlock } from './HostBlock';
 import { ActionsToolbar } from './ActionsToolbar';
@@ -580,14 +581,6 @@ export default async function PublicEventPage({
     const posterUrl = pinnedHero && !isDefaultCoverUrl(pinnedHero) ? pinnedHero : null;
     const heroBg = `linear-gradient(180deg, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.92) 100%), url(${coverUrl}) center/cover no-repeat`;
 
-    const mapEmbedUrl =
-        ev.lat != null && ev.lng != null
-            ? (() => {
-                  const d = 0.006;
-                  const bbox = [ev.lng - d, ev.lat - d, ev.lng + d, ev.lat + d].join(',');
-                  return `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${ev.lat},${ev.lng}`;
-              })()
-            : null;
     const mapsUrl = ev.lat != null && ev.lng != null ? `https://www.google.com/maps?q=${ev.lat},${ev.lng}` : null;
 
     const calUrl = rsvpOpen ? googleCalUrl(ev) : null;
@@ -811,18 +804,24 @@ export default async function PublicEventPage({
                         <h2 className={styles.sectionTitle}>{(ev.location_name ?? 'TBA').toUpperCase()}</h2>
                         {ev.location_detail ? <p className="text-dim" style={{ fontSize: 14, margin: '0 0 18px' }}>{ev.location_detail}</p> : null}
 
-                        {mapEmbedUrl ? (
-                            <div className="corner-wrap" style={{ position: 'relative', marginTop: 12, aspectRatio: '16 / 7', background: 'var(--bg-2)', border: '1px solid var(--line)', overflow: 'hidden' }}>
+                        {/* One map style everywhere: a planned route already shows the
+                            meet point (S) on the ROUTE map below, so no second map here;
+                            otherwise the same dark MapLibre map with one gold meet pin. */}
+                        {ev.lat != null && ev.lng != null && !hasRoutePlan ? (
+                            <div className="corner-wrap" style={{ position: "relative", marginTop: 12, aspectRatio: "16 / 7", minHeight: 260, maxWidth: "100%", background: "var(--bg-2)", border: "1px solid var(--line)", overflow: "hidden" }}>
                                 <span className="corner-bottom-left" />
                                 <span className="corner-bottom-right" />
-                                <iframe
-                                    src={mapEmbedUrl}
-                                    title="Event location map"
-                                    className="map-embed"
-                                    loading="lazy"
-                                    referrerPolicy="no-referrer-when-downgrade"
+                                <RouteMapLoader
+                                    meetOnly
+                                    points={[{ kind: "start", label: "", name: ev.location_name ?? "Meet point", lat: ev.lat, lng: ev.lng }]}
+                                    polyline={[]}
                                 />
                             </div>
+                        ) : null}
+                        {hasRoutePlan ? (
+                            <p className="text-dim" style={{ fontSize: 12, margin: "4px 0 0", fontFamily: "var(--font-display)", letterSpacing: "var(--track-wider)" }}>
+                                MEET POINT = S ON THE ROUTE MAP BELOW
+                            </p>
                         ) : null}
 
                         {hasDrawnRoute(ev) ? (

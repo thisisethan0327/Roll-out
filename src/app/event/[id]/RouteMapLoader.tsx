@@ -32,9 +32,11 @@ const RouteMap = dynamic(() => import('./RouteMap'), {
 export default function RouteMapLoader({
     points,
     polyline,
+    meetOnly,
 }: {
+    meetOnly?: boolean;
     points: RoutePoint[];
     polyline: [number, number][];
 }) {
-    return <RouteMap points={points} polyline={polyline} />;
+    return <RouteMap points={points} polyline={polyline} meetOnly={meetOnly} />;
 }

@@ -78,7 +78,10 @@ function pinLabel(p: RoutePoint): string {
 export default function RouteMap({
     points,
     polyline,
+    meetOnly = false,
 }: {
+    /** LOCATION map: one plain gold meet pin (no S/F lettering), closer zoom. */
+    meetOnly?: boolean;
     points: RoutePoint[];
     /** [lat, lng] pairs in travel order — OSRM's geometry, or the straight-line
      * fallback through the same points (route-osrm.ts). */
@@ -178,15 +181,15 @@ export default function RouteMap({
                 const bounds = new maplibregl.LngLatBounds();
                 for (const p of points) {
                     const el = document.createElement('div');
-                    el.className = `rl-route-pin rl-route-pin-${p.kind}`;
-                    el.textContent = pinLabel(p);
+                    el.className = meetOnly ? "rl-route-pin rl-route-pin-pick" : `rl-route-pin rl-route-pin-${p.kind}`;
+                    el.textContent = meetOnly ? "" : pinLabel(p);
                     el.title = p.name;
                     new maplibregl.Marker({ element: el, anchor: 'center' }).setLngLat([p.lng, p.lat]).addTo(map);
                     bounds.extend([p.lng, p.lat]);
                 }
                 for (const [lat, lng] of polyline) bounds.extend([lng, lat]);
                 if (!bounds.isEmpty()) {
-                    map.fitBounds(bounds, { padding: 44, maxZoom: 15, duration: 0 });
+                    map.fitBounds(bounds, { padding: 44, maxZoom: meetOnly ? 14 : 15, duration: 0 });
                 }
 
                 // Sticky/grid containers can measure 0 on first paint; correct it.
@@ -209,7 +212,7 @@ export default function RouteMap({
                 mapRef.current = null;
             }
         };
-    }, [points, polyline]);
+    }, [points, polyline, meetOnly]);
 
     return (
         <div style={{ position: 'relative', width: '100%', height: '100%', background: 'var(--bg-2)' }}>
