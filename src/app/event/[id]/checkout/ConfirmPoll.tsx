@@ -19,10 +19,13 @@ export function ConfirmPoll({
     eventId,
     initialState,
     initialSpotNo,
+    seats = [],
 }: {
     eventId: string;
     initialState: RsvpState;
     initialSpotNo: number | null;
+    /** Multi-ticket order: the buyer's seats (2+). Empty = single-ticket copy. */
+    seats?: { seat: number; name: string; size: string | null }[];
 }) {
     const [state, setState] = useState<RsvpState>(initialState);
     const [spotNo, setSpotNo] = useState<number | null>(initialSpotNo);
@@ -47,6 +50,46 @@ export function ConfirmPoll({
         }, POLL_MS);
         return () => clearInterval(t);
     }, [eventId, state]);
+
+    if (state === 'confirmed' && seats.length > 1) {
+        return (
+            <>
+                <div style={{ fontSize: 44, color: 'var(--gold)', marginBottom: 12 }}>✓</div>
+                <h1 style={{ letterSpacing: 1, margin: '0 0 14px' }}>
+                    YOU&apos;RE IN — {seats.length} TICKETS
+                </h1>
+                <p style={{ color: 'var(--text-2)', fontSize: 16, lineHeight: 1.6, maxWidth: 460, margin: '0 auto 18px' }}>
+                    Payment received — every seat is locked in. Each attendee gets their ticket by email now
+                    that payment has gone through.
+                </p>
+                <ul
+                    style={{
+                        listStyle: 'none',
+                        margin: '0 auto',
+                        padding: 0,
+                        maxWidth: 420,
+                        textAlign: 'left',
+                        borderTop: '1px solid var(--line)',
+                    }}
+                >
+                    {seats.map((s) => (
+                        <li
+                            key={s.seat}
+                            style={{ display: 'flex', gap: 12, padding: '10px 0', borderBottom: '1px solid var(--line)', fontSize: 14 }}
+                        >
+                            <span className="font-display" style={{ color: 'var(--gold)', fontSize: 11, letterSpacing: 'var(--track-wider)', minWidth: 56 }}>
+                                SEAT {s.seat}
+                            </span>
+                            <span style={{ color: 'var(--text)' }}>
+                                {s.name || '—'}
+                                {s.size ? <span style={{ color: 'var(--text-2)' }}> · {s.size.toUpperCase()}</span> : null}
+                            </span>
+                        </li>
+                    ))}
+                </ul>
+            </>
+        );
+    }
 
     if (state === 'confirmed') {
         return (

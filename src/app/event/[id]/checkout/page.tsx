@@ -29,7 +29,8 @@ import { TicketAttendeesForm } from './TicketAttendeesForm';
 import { getRsvpSnapshot } from '../actions';
 import { formatClock } from '@/lib/event-time';
 import { refundPolicyShortLine, REFUND_POLICY_PATH } from '@/lib/refund-policy';
-import { multiTicketsEnabled, MAX_TICKETS_PER_ORDER } from '@/lib/event-tickets';
+import { multiTicketsEnabled, MAX_TICKETS_PER_ORDER, myTicketsForEvent } from '@/lib/event-tickets';
+import { isDeadTicketStatus } from '@/lib/event-tickets-shared';
 
 export const dynamic = 'force-dynamic';
 
@@ -66,13 +67,25 @@ export default async function EventCheckoutPage({
     // ── Post-payment confirmation state ─────────────────────────────────────
     if (done) {
         const snap = await getRsvpSnapshot(id);
+        // Multi-ticket order (feature-gated; [] when off): the buyer's own
+        // seats that are live or still settling, for the success screen's
+        // "N TICKETS" + seat list. One seat (or none) keeps the single copy.
+        const orderSeats = (await myTicketsForEvent(id))
+            .filter((t) => t.isBuyer && !isDeadTicketStatus(t.status))
+            .sort((a, b) => a.seat - b.seat)
+            .map((t) => ({ seat: t.seat, name: t.attendeeName, size: t.sweaterSize }));
         return (
             <section className="section" style={{ padding: '72px 0' }}>
                 <div className="container container-narrow" style={{ textAlign: 'center' }}>
                     <div className="eyebrow eyebrow-gold mb-4" style={{ justifyContent: 'center' }}>
                         ／ SPOT SECURED
                     </div>
-                    <ConfirmPoll eventId={id} initialState={snap.state} initialSpotNo={snap.spotNo} />
+                    <ConfirmPoll
+                        eventId={id}
+                        initialState={snap.state}
+                        initialSpotNo={snap.spotNo}
+                        seats={orderSeats.length > 1 ? orderSeats : []}
+                    />
                     <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap', marginTop: 32 }}>
                         <Link href={`/event/${id}`} className="btn btn-lg">
                             BACK TO EVENT
