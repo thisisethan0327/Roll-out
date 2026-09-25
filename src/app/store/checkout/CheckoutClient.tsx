@@ -722,6 +722,8 @@ function ExpressPay(props: ExpressPayProps) {
 }
 
 const IN_PLACE_WALLETS: string[] = ['apple_pay', 'google_pay', 'link'];
+// onReady reports availability in camelCase; click events use snake_case.
+const WALLET_READY_KEY: Record<string, string> = { apple_pay: 'applePay', google_pay: 'googlePay', link: 'link' };
 
 function ExpressPayInner(props: ExpressPayProps) {
     const stripe = useStripe();
@@ -741,7 +743,7 @@ function ExpressPayInner(props: ExpressPayProps) {
                 }}
                 onReady={(e) => {
                     const m = e.availablePaymentMethods as Record<string, boolean> | undefined;
-                    setAvailable(!!m && IN_PLACE_WALLETS.some((k) => m[k.replace(/_(w)/g, (_, c) => c.toUpperCase())]));
+                    setAvailable(!!m && IN_PLACE_WALLETS.some((k) => m[WALLET_READY_KEY[k]]));
                 }}
                 onClick={(e) => {
                     if (!IN_PLACE_WALLETS.includes(e.expressPaymentType)) {
