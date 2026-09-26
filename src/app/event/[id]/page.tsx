@@ -142,6 +142,7 @@ async function loadEvent(
         .select('profile_id, rsvped_at, profile:profiles!event_rsvps_profile_id_fkey(handle, display_name, avatar_url)')
         .eq('event_id', id)
         .eq('status', 'going')
+        .eq('hold_state', 'confirmed') // paid (or free) only — no unpaid 15-min holds (085)
         .order('rsvped_at', { ascending: false })
         .limit(12);
     if (rsvpError) console.error('[event/[id]] attendees load failed:', rsvpError.message);
@@ -155,8 +156,15 @@ async function loadEvent(
         }))
         .filter((a) => a.handle);
 
-    const spotsLeft =
-        ev.capacity != null ? Math.max(ev.capacity - (ev.attending_count ?? 0), 0) : null;
+    // attending_count is PAID/confirmed only (085); spots left must also
+    // subtract live 15-minute holds, which event_cards.spots_left computes.
+    // Falls back to the old math if the card row is missing.
+    let spotsLeft: number | null = null;
+    if (ev.capacity != null) {
+        const { data: card } = await supabase.from('event_cards').select('spots_left').eq('id', id).maybeSingle();
+        const live = (card as { spots_left?: number | null } | null)?.spots_left;
+        spotsLeft = typeof live === 'number' ? Math.max(live, 0) : Math.max(ev.capacity - (ev.attending_count ?? 0), 0);
+    }
 
     const sponsors = await loadSponsors(supabase, id);
 

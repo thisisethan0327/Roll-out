@@ -79,7 +79,8 @@ export async function NextRunBand() {
         if (p && !shopPins.some((q) => q.x === p.x && q.y === p.y)) shopPins.push({ x: p.x + 38, y: p.y + 36 });
     }
 
-    const spots = featured.capacity != null ? Math.max(featured.capacity - (featured.attending_count ?? 0), 0) : null;
+    // spots_left (event_cards) also subtracts live holds; attending_count is paid only.
+    const spots = featured.capacity != null ? Math.max(featured.spots_left ?? featured.capacity - (featured.attending_count ?? 0), 0) : null;
     const fill = featured.capacity ? Math.min(100, Math.round(((featured.attending_count ?? 0) / featured.capacity) * 100)) : 0;
     const dest = route ? 'Whidbey Island' : null;
     const popX = site ? (site.x / 1440) * 100 : 65;
