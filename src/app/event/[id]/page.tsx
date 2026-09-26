@@ -318,6 +318,23 @@ async function loadTiers(eventId: string): Promise<TierView[]> {
     const tiers = (data as any[]) ?? [];
     if (tiers.length === 0) return [];
 
+    // 087 "not included" note, fetched separately so the card still renders if
+    // the column isn't there yet (a missing column would fail the query above).
+    const notIncluded = new Map<string, string>();
+    try {
+        const { data: notes, error: notesErr } = await supabase
+            .from('event_tiers')
+            .select('id, not_included')
+            .in('id', tiers.map((t) => t.id));
+        if (!notesErr) {
+            for (const n of (notes as any[]) ?? []) {
+                if (typeof n.not_included === 'string' && n.not_included.trim()) notIncluded.set(n.id, n.not_included.trim());
+            }
+        }
+    } catch {
+        /* no note */
+    }
+
     // Product photos for paid tiers (best-effort — see event-tier-images.ts).
     // A tier with no medusa_product_id or whose product fetch failed simply
     // gets `image: null` and the card renders without one.
@@ -377,6 +394,7 @@ async function loadTiers(eventId: string): Promise<TierView[]> {
                 : null,
         reservedSpot: Boolean(t.reserved_spot),
         includes: Array.isArray(t.includes) ? t.includes.filter(Boolean) : [],
+        notIncluded: notIncluded.get(t.id) ?? null,
         packageMode: (t.package_mode ?? 'none') as TierView['packageMode'],
         packagePriceCents: t.package_price_cents != null ? Number(t.package_price_cents) : null,
         purchasable: Boolean(t.medusa_product_id),

@@ -44,6 +44,8 @@ export type TierView = {
     remaining: number | null;
     reservedSpot: boolean;
     includes: string[];
+    /** 087: plain-text "not included" note shown under the includes list. */
+    notIncluded?: string | null;
     packageMode: 'none' | 'included' | 'addon';
     packagePriceCents: number | null;
     /** True when the tier has a Medusa product to sell (paid tiers need one). */
@@ -616,6 +618,13 @@ export function TiersSection({
                                             <li key={inc}>{inc}</li>
                                         ))}
                                     </ul>
+                                ) : null}
+
+                                {tier.notIncluded ? (
+                                    <div className={styles.notIncluded}>
+                                        <span className={styles.notIncludedLabel}>NOT INCLUDED</span>
+                                        {tier.notIncluded}
+                                    </div>
                                 ) : null}
 
                                 {!isLoggedIn ? (
