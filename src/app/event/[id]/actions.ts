@@ -26,6 +26,7 @@ import { getConsumerProfile, getRolloutMemberClient, getRolloutMemberClientForTo
 import { getSupabaseServer } from '@/lib/supabase/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { createEventPackageCart, createEventTicketsCart } from '@/lib/event-cart';
+import { rememberEventCartId } from '@/lib/event-cart-cookie';
 import { createEventPackageCartCore, createEventTicketsCartCore, type EventAuthCtx } from '@/lib/event-cart-core';
 import { ensureMedusaCustomerTokenForUser, type StoreUser } from '@/lib/medusa-customer';
 import { cancelPaidRsvpAndRefund, getRefundWindowOpen } from '@/lib/event-refund';
@@ -376,6 +377,8 @@ export async function startPackageCheckout(
         return { ok: true, state: 'confirmed', spotNo: result.spotNo };
     }
     // held, or confirmed (retry: already holds this spot) → cart is ready.
+    // The core never writes cookies; the checkout page finds the cart by it.
+    await rememberEventCartId(result.cartId);
     return { ok: true, redirect: `/event/${eventId}/checkout` };
 }
 
@@ -532,6 +535,7 @@ export async function reserveEventTicketsAction(
     });
     if (!result.ok) return { ok: false, error: result.error };
 
+    await rememberEventCartId(result.cartId);
     revalidatePath(`/event/${eventId}`);
     return { ok: true, redirect: `/event/${eventId}/checkout` };
 }
