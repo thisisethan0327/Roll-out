@@ -22,7 +22,14 @@ function reloadedRecently(path: string): boolean {
         const { p, t } = JSON.parse(raw) as { p?: string; t?: number };
         return p === path && typeof t === 'number' && Date.now() - t < RELOAD_WINDOW_MS;
     } catch {
-        return false;
+        // Storage blocked (private mode / some in-app browsers): fall back to
+        // "was this load itself a reload?" so a real error can never loop.
+        try {
+            const nav = performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming | undefined;
+            return nav?.type === "reload";
+        } catch {
+            return true;
+        }
     }
 }
 
