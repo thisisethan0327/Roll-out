@@ -689,11 +689,11 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    height: 44px;
+    height: 56px;
     width: 100%;
 }
 .sponsorMark img {
-    height: 28px;
+    height: 38px;
     width: auto;
     max-width: 100%;
     object-fit: contain;
