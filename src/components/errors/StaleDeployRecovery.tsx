@@ -71,20 +71,25 @@ export function StaleDeployRecovery({ error }: { error: Error & { digest?: strin
                 fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
             }}
         >
-            <div style={{ fontSize: 12, letterSpacing: '0.2em', color: '#e8a845' }}>
+            <div style={{ fontSize: 12, letterSpacing: '0.2em', color: '#ffb733' }}>
                 {showRetry ? '／ SOMETHING WENT WRONG' : '／ UPDATING'}
             </div>
             <p style={{ margin: 0, fontSize: 14, lineHeight: 1.6, maxWidth: 420, color: '#b5b5b5' }}>
                 {showRetry
-                    ? 'That didn’t load. Your reservation and payment are safe — try again.'
+                    ? 'That didn’t load. If you were paying, check your tickets before trying again, so you don’t pay twice.'
                     : 'Loading the latest version of this page…'}
             </p>
+            {showRetry ? (
+                <a href="/me/event-tickets" style={{ color: "#ffb733", fontSize: 12, letterSpacing: "0.2em" }}>
+                    MY TICKETS ›
+                </a>
+            ) : null}
             {showRetry ? (
                 <button
                     type="button"
                     onClick={() => window.location.reload()}
                     style={{
-                        background: '#e8a845',
+                        background: '#ffb733',
                         color: '#050505',
                         border: 'none',
                         padding: '14px 28px',
