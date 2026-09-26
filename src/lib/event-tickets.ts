@@ -316,6 +316,14 @@ function describeReserveFailure(data: any, attendees: TicketAttendeeInput[]): st
                 return 'Check the attendee details and try again.';
         }
     }
+    if (state === 'size_sold_out') {
+        // 086: per-size sweater stock on the tier.
+        const size = typeof detail.size === 'string' ? detail.size : 'That size';
+        const left = typeof detail.remaining === 'number' ? detail.remaining : 0;
+        return left > 0
+            ? `Only ${left} ${size} left — change ${seat != null ? `seat ${seat}'s` : 'a'} size.`
+            : `${size} is sold out — pick another size${seat != null ? ` for seat ${seat}` : ''}.`;
+    }
     if (state === 'duplicate_email') {
         const label = seat === 1 ? 'Your email' : seatEmail ?? who + ' email';
         const reason = detail.reason;

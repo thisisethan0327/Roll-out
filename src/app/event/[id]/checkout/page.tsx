@@ -123,6 +123,16 @@ export default async function EventCheckoutPage({
             if (!tier || (tier as any).event_id !== id || !(tier as any).active) {
                 redirect(`/event/${id}`);
             }
+            // 086: remaining sweaters per size (null = no per-size limit, or the
+            // RPC isn't deployed yet — the form then offers every size and
+            // reserve_tickets stays the source of truth).
+            let sizeAvailability: Record<string, number> | null = null;
+            try {
+                const { data: avail, error: availErr } = await admin.rpc('tier_size_availability', { p_tier: tierParam });
+                if (!availErr && avail && typeof avail === 'object') sizeAvailability = avail as Record<string, number>;
+            } catch {
+                /* treat as unlimited */
+            }
             const policyLine = refundPolicyShortLine(
                 (ev as any).start_at,
                 (ev as any).time_zone,
@@ -149,6 +159,7 @@ export default async function EventCheckoutPage({
                             currency={(tier as any).currency ?? 'usd'}
                             signedInName={me.displayName || ''}
                             signedInEmail={me.email || ''}
+                            sizeAvailability={sizeAvailability}
                         />
                     </div>
                 </section>

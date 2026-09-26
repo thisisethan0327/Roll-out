@@ -29,6 +29,7 @@ export function TicketAttendeesForm({
     currency,
     signedInName,
     signedInEmail,
+    sizeAvailability = null,
 }: {
     eventId: string;
     tierId: string;
@@ -37,6 +38,8 @@ export function TicketAttendeesForm({
     currency: string;
     signedInName: string;
     signedInEmail: string;
+    /** Remaining sweaters per size (086 tier_size_availability); null = unlimited. */
+    sizeAvailability?: Record<string, number> | null;
 }) {
     const router = useRouter();
     const [pending, startTransition] = useTransition();
@@ -156,9 +159,17 @@ export function TicketAttendeesForm({
                                     style={inputStyle(false)}
                                 >
                                     <option value="">Select…</option>
-                                    {SWEATER_SIZES.map((sz) => (
-                                        <option key={sz} value={sz}>{sz}</option>
-                                    ))}
+                                    {SWEATER_SIZES.map((sz) => {
+                                        // Sizes already picked on OTHER seats in this order count too.
+                                        const left = sizeAvailability ? (sizeAvailability[sz] ?? 0) : null;
+                                        const takenHere = seats.filter((o, j) => j !== i && o.size === sz).length;
+                                        const out = left != null && left - takenHere <= 0;
+                                        return (
+                                            <option key={sz} value={sz} disabled={out && seat.size !== sz}>
+                                                {out ? `${sz} — sold out` : sz}
+                                            </option>
+                                        );
+                                    })}
                                 </select>
                             </label>
                         </div>
