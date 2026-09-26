@@ -62,7 +62,15 @@ export default async function EventCheckoutPage({
     if (!ev || (ev as any).visibility !== 'public') notFound();
 
     const me = await getConsumerProfile();
-    if (!me) redirect(`/login?next=${encodeURIComponent(`/event/${id}/checkout`)}&error=rsvp`);
+    if (!me) {
+        // Keep ?tier=&tickets= so a signed-out rider who tapped RESERVE N + PAY
+        // lands back on the WHO'S GOING form for N riders after signing in.
+        const keep = new URLSearchParams();
+        if (tierParam && UUID_RE.test(tierParam)) keep.set("tier", tierParam);
+        if (ticketsParam && /^\d+$/.test(ticketsParam)) keep.set("tickets", ticketsParam);
+        const qs = keep.toString();
+        redirect(`/login?next=${encodeURIComponent(`/event/${id}/checkout${qs ? `?${qs}` : ""}`)}&error=rsvp`);
+    }
 
     // ── Post-payment confirmation state ─────────────────────────────────────
     if (done) {
