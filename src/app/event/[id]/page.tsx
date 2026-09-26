@@ -717,12 +717,12 @@ export default async function PublicEventPage({
                     </div>
                 </section>
 
-                {/* THE COVER STORY — event brief */}
-                {ev.description ? (
+                {/* SPONSORS */}
+                {sponsors.length > 0 ? (
                     <section className={`section ${styles.section}`}>
-                        <div className="container container-narrow">
-                            <div className={styles.sectionEyebrow}>／ THE COVER STORY</div>
-                            <CoverStoryBrief description={ev.description} />
+                        <div className="container">
+                            <div className={styles.sectionEyebrow}>／ SPONSORS</div>
+                            <SponsorsSection sponsors={sponsors} />
                         </div>
                     </section>
                 ) : null}
@@ -782,6 +782,16 @@ export default async function PublicEventPage({
                         <ShareBar url={shareUrl} title={shareTitle} />
                     </div>
                 </section>
+
+                {/* THE COVER STORY — event brief */}
+                {ev.description ? (
+                    <section className={`section ${styles.section}`}>
+                        <div className="container container-narrow">
+                            <div className={styles.sectionEyebrow}>／ THE COVER STORY</div>
+                            <CoverStoryBrief description={ev.description} />
+                        </div>
+                    </section>
+                ) : null}
 
                 {/* CONVOY — attendee preview (existing feature, not in the mockup's
                     section list; placed right after the ticket card) */}
@@ -882,16 +892,6 @@ export default async function PublicEventPage({
                                 hasDestination={routePoints.some((p) => p.kind === 'destination')}
                                 googleMapsUrl={routeGoogleMaps?.url ?? null}
                             />
-                        </div>
-                    </section>
-                ) : null}
-
-                {/* SPONSORS */}
-                {sponsors.length > 0 ? (
-                    <section className={`section ${styles.section}`}>
-                        <div className="container">
-                            <div className={styles.sectionEyebrow}>／ SPONSORS</div>
-                            <SponsorsSection sponsors={sponsors} />
                         </div>
                     </section>
                 ) : null}
