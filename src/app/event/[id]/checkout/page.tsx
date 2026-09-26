@@ -104,7 +104,13 @@ export default async function EventCheckoutPage({
         eventCart.meta.profileId === me.profileId &&
         eventCart.cart.items.length > 0;
 
-    if (!hasMatchingCart) {
+    // "RESERVE N + PAY" always arrives with ?tier=&tickets=N and means a NEW
+    // reservation: show the WHO'S GOING form (names + sweater sizes) even if
+    // a cart from an earlier reservation is still remembered — otherwise the
+    // member jumps straight to paying for that old cart and never picks sizes.
+    // "COMPLETE PAYMENT" (no params) still goes to payment for the live hold.
+    const wantsNewReservation = !!tierParam && UUID_RE.test(tierParam) && Number(ticketsParam ?? "0") > 0;
+    if (!hasMatchingCart || wantsNewReservation) {
         // Multi-ticket packages (feature-gated): the tier card navigates here
         // with ?tier=&tickets=N BEFORE any hold exists (reserve_tickets needs
         // attendee name/email/size per seat, which the tier card doesn't
