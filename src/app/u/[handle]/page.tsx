@@ -380,7 +380,6 @@ export default async function HandlePage({
 
     return (
         <>
-            {shopLd ? <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(shopLd) }} /> : null}
             {/* ── HERO ─────────────────────────────────────────────────── */}
             {/* on-dark: the banner is a photo under a black scrim, or a gradient
                 that ends in #000 — dark in BOTH themes by construction, so its
@@ -924,6 +923,10 @@ export default async function HandlePage({
                     </div>
                 </div>
             </section>
+            {/* Structured data LAST: Next picks the segment's FIRST element to decide
+                whether to scroll to the top on navigation, and an invisible <script>
+                always reads as "already in view", so the page kept the previous scroll. */}
+            {shopLd ? <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(shopLd) }} /> : null}
         </>
     );
 }

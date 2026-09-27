@@ -677,8 +677,6 @@ export default async function PublicEventPage({
 
     return (
         <>
-            <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
-
             {/* STATUS BANNER — cancelled or past */}
             {isCancelled ? (
                 <div
@@ -946,6 +944,11 @@ export default async function PublicEventPage({
                     </div>
                 </section>
             </div>
+            {/* Structured data LAST: Next picks the segment's FIRST element to decide
+                whether to scroll to the top on navigation, and an invisible <script>
+                always reads as "already in view", so the page kept the previous scroll. */}
+            <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+
         </>
     );
 }

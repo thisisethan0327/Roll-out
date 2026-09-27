@@ -1,6 +1,7 @@
 import './globals.css';
 import { RevealController } from '@/components/motion/RevealController';
 import { SmoothScroll } from '@/components/motion/SmoothScroll';
+import { RouteScrollReset } from '@/components/motion/RouteScrollReset';
 import type { Metadata } from 'next';
 import { JetBrains_Mono, Inter, Noto_Sans_JP } from 'next/font/google';
 import { MarketingChrome } from '@/components/MarketingChrome';
@@ -71,6 +72,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                     ScrollTrigger, and the .rv reveal observer. Both no-ops under
                     reduced motion. */}
                 <SmoothScroll />
+                <RouteScrollReset />
                 <RevealController />
                 <MarketingChrome tenantHost={onTenantHost}>{children}</MarketingChrome>
             </body>
