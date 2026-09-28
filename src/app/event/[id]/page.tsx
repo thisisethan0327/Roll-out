@@ -535,7 +535,7 @@ export async function generateMetadata({
         title,
         description: desc,
         // Non-public events are only reachable by an authorised viewer (see
-        // viewerCanSeeNonPublicEvent above) — keep them out of search results
+        // viewerCanViewEvent) — keep them out of search results
         // and link previews all the same. sitemap.ts already excludes them.
         ...(ev.visibility !== 'public' ? { robots: { index: false, follow: false } } : {}),
         openGraph: { title: socialTitle, description: desc, images, type: 'website' },
