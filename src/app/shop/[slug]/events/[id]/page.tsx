@@ -5,6 +5,7 @@ import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { formatEventTime } from '@/lib/event-time';
 import type { InviteBranding, InviteEvent } from '@/lib/event-invites';
 import { EventEditForm } from './EventEditForm';
+import { loadEventAreaLabel } from '@/lib/event-area-label';
 import type { TierDraft } from '../TierRowsEditor';
 import { InviteSection } from './InviteSection';
 import { CoHostSection, type CoHostRow } from './CoHostSection';
@@ -54,7 +55,9 @@ async function loadEvent(eventId: string) {
         )
         .eq('id', eventId)
         .maybeSingle();
-    return data as any;
+    if (!data) return null;
+    // area_label (089) read separately so the page still loads before it exists.
+    return { ...(data as any), area_label: await loadEventAreaLabel(admin, eventId) };
 }
 
 /**

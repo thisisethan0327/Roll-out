@@ -51,6 +51,12 @@ export function NewHostEventForm() {
             <label className="admin-form-label">LOCATION DETAIL (OPTIONAL)</label>
             <input name="location_detail" className="admin-form-input" placeholder="North lot by the coffee stand" disabled={pending} />
 
+            <label className="admin-form-label">GENERAL AREA (SHOWN ON PRIVATE LISTINGS)</label>
+            <input name="area_label" className="admin-form-input" maxLength={60} placeholder="e.g. Edmonds, WA" disabled={pending} />
+            <div className="admin-form-hint" style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 4 }}>
+                Shown instead of the venue when the event is private or followers-only. Leave blank to show &ldquo;Location shared with invitees&rdquo;.
+            </div>
+
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <div>
                     <label className="admin-form-label">LAT (OPTIONAL)</label>

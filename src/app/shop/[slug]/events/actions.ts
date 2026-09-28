@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 import { requireShopMember } from '@/lib/auth-guard';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { eventHasPaidExposure } from '@/lib/event-refund';
+import { AREA_LABEL_FIELD, parseAreaLabel, writeWithAreaLabel } from '@/lib/event-area-label';
 
 const MANAGER_ROLES = new Set(['owner', 'admin', 'manager']);
 const OWNER_ROLES = new Set(['owner', 'admin']);
@@ -261,6 +262,10 @@ export async function createEvent(shopId: number, formData: FormData) {
     const hero_image_url = parseHeroUrl(formData.get('hero_image_url'));
     const rsvp_mode = parseRsvpMode(formData.get('rsvp_mode'));
     const tiers = rsvp_mode === 'tiered' ? parseTiers(formData.get('tiers_json')) : [];
+    // General area for private listings (089) — optional, fail-soft write.
+    const areaResult = parseAreaLabel(formData.get(AREA_LABEL_FIELD));
+    if (!areaResult.ok) throw new Error(areaResult.error);
+    const area_label = areaResult.value;
 
     const allowedTypes = new Set(['NIGHT_RUN', 'CAR_MEET', 'TRACK_DAY', 'CRUISE', 'SHOW']);
     const allowedVis = new Set(['public', 'followers', 'private']);
@@ -289,30 +294,35 @@ export async function createEvent(shopId: number, formData: FormData) {
     if (!hostId) throw new Error('Shop page profile not found. Contact support.');
 
     const admin = getSupabaseAdmin();
-    const { data, error } = await admin
-        .from('events')
-        .insert({
-            shop_id: shopId,
-            host_id: hostId,
-            code: generateCode(type),
-            type,
-            title,
-            description: description || null,
-            location_name,
-            location_detail: location_detail || null,
-            lat,
-            lng,
-            start_at: start_at.toISOString(),
-            capacity,
-            visibility,
-            tags,
-            hero_image_url,
-            rsvp_mode,
-            is_official: true,
-            attending_count: 0,
-        })
-        .select('id')
-        .single();
+    const insertRow: Record<string, unknown> = {
+        shop_id: shopId,
+        host_id: hostId,
+        code: generateCode(type),
+        type,
+        title,
+        description: description || null,
+        location_name,
+        location_detail: location_detail || null,
+        lat,
+        lng,
+        start_at: start_at.toISOString(),
+        capacity,
+        visibility,
+        tags,
+        hero_image_url,
+        rsvp_mode,
+        is_official: true,
+        attending_count: 0,
+    };
+    // area_label only when given, and dropped on a retry if the column isn't
+    // there yet (pre-089) — see lib/event-area-label.ts.
+    const { data, error } = await writeWithAreaLabel((withArea) =>
+        admin
+            .from('events')
+            .insert(withArea && area_label ? { ...insertRow, area_label } : insertRow)
+            .select('id')
+            .single(),
+    );
     if (error) throw new Error(error.message);
 
     const newId = (data as any).id as string;
@@ -342,6 +352,10 @@ export async function updateEvent(
     const hero_image_url = parseHeroUrl(formData.get('hero_image_url'));
     const rsvp_mode = parseRsvpMode(formData.get('rsvp_mode'));
     const tiers = rsvp_mode === 'tiered' ? parseTiers(formData.get('tiers_json')) : [];
+    // General area for private listings (089); empty clears it to null.
+    const areaResult = parseAreaLabel(formData.get(AREA_LABEL_FIELD));
+    if (!areaResult.ok) throw new Error(areaResult.error);
+    const area_label = areaResult.value;
 
     const allowedVis = new Set(['public', 'followers', 'private']);
 
@@ -376,25 +390,30 @@ export async function updateEvent(
         .maybeSingle();
     if (!owned) throw new Error('Event not found for this shop.');
 
-    const { error } = await admin
-        .from('events')
-        .update({
-            title,
-            description: description || null,
-            location_name,
-            location_detail: location_detail || null,
-            lat,
-            lng,
-            start_at: start_at.toISOString(),
-            capacity,
-            visibility,
-            tags,
-            hero_image_url,
-            rsvp_mode,
-            updated_at: new Date().toISOString(),
-        })
-        .eq('id', eventId)
-        .eq('shop_id', shopId);
+    const updateRow = {
+        title,
+        description: description || null,
+        location_name,
+        location_detail: location_detail || null,
+        lat,
+        lng,
+        start_at: start_at.toISOString(),
+        capacity,
+        visibility,
+        tags,
+        hero_image_url,
+        rsvp_mode,
+        updated_at: new Date().toISOString(),
+    };
+    // area_label is written (null clears it), and dropped on a retry if the
+    // column isn't there yet (pre-089) — see lib/event-area-label.ts.
+    const { error } = await writeWithAreaLabel((withArea) =>
+        admin
+            .from('events')
+            .update(withArea ? { ...updateRow, area_label } : updateRow)
+            .eq('id', eventId)
+            .eq('shop_id', shopId),
+    );
     if (error) throw new Error(error.message);
 
     // Tier sync runs even when flipping BACK to free: the payload is [] then,

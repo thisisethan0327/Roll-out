@@ -10,6 +10,7 @@ import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { eventHasPaidExposure } from '@/lib/event-refund';
 import type { InviteBranding, InviteEvent } from '@/lib/event-invites';
 import { HostEventEditForm } from './HostEventEditForm';
+import { loadEventAreaLabel } from '@/lib/event-area-label';
 import { HostInviteSection } from './HostInviteSection';
 
 export const metadata = { title: 'Edit Event' };
@@ -45,6 +46,8 @@ export default async function HostEventDetail({
     if (error) console.error('[me/events/[id]] event load failed:', error.message);
     const event = data as any;
     if (!event || event.host_id !== profile.profileId || event.shop_id != null) notFound();
+    // area_label (089) read separately so the page still loads before it exists.
+    event.area_label = await loadEventAreaLabel(admin, id);
 
     // Paid-exposure check (077) — gates which cancel control the edit form
     // shows: "CANCEL EVENT & REFUND EVERYONE" (paid) vs the plain cancel

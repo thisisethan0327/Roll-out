@@ -21,6 +21,7 @@ import { getRolloutMemberClient } from '@/lib/consumer';
 import { eventHasPaidExposure } from '@/lib/event-refund';
 import { sendPlatformNotification } from '@/lib/platform-notify';
 import { parseDestinationName, parseHeroUrl } from '@/lib/host-event-parse';
+import { AREA_LABEL_FIELD, parseAreaLabel, writeWithAreaLabel } from '@/lib/event-area-label';
 import {
     renderInvite,
     type InviteBranding,
@@ -111,6 +112,11 @@ export async function createHostEvent(
     const destination_lat = parseNumber(formData.get('destination_lat'));
     const destination_lng = parseNumber(formData.get('destination_lng'));
 
+    // General area for private listings (089) — optional, fail-soft write.
+    const areaResult = parseAreaLabel(formData.get(AREA_LABEL_FIELD));
+    if (!areaResult.ok) return { ok: false, error: areaResult.error };
+    const area_label = areaResult.value;
+
     if (!ALLOWED_TYPES.has(type)) return { ok: false, error: 'Invalid event type.' };
     if (title.length < 4) return { ok: false, error: 'Title must be at least 4 characters.' };
     if (description.length > 400) return { ok: false, error: 'Description must be 400 chars or fewer.' };
@@ -128,32 +134,37 @@ export async function createHostEvent(
     if (!start_at) return { ok: false, error: 'Invalid start time.' };
 
     const admin = getSupabaseAdmin();
-    const { data, error } = await admin
-        .from('events')
-        .insert({
-            shop_id: null,
-            host_id: profile.profileId,
-            code: generateCode(type),
-            type,
-            title,
-            description: description || null,
-            location_name,
-            location_detail: location_detail || null,
-            lat,
-            lng,
-            start_at: start_at.toISOString(),
-            capacity,
-            visibility,
-            tags,
-            hero_image_url,
-            destination_name,
-            destination_lat,
-            destination_lng,
-            is_official: false,
-            attending_count: 0,
-        })
-        .select('id')
-        .single();
+    const insertRow: Record<string, unknown> = {
+        shop_id: null,
+        host_id: profile.profileId,
+        code: generateCode(type),
+        type,
+        title,
+        description: description || null,
+        location_name,
+        location_detail: location_detail || null,
+        lat,
+        lng,
+        start_at: start_at.toISOString(),
+        capacity,
+        visibility,
+        tags,
+        hero_image_url,
+        destination_name,
+        destination_lat,
+        destination_lng,
+        is_official: false,
+        attending_count: 0,
+    };
+    // area_label only when given, and dropped on a retry if the column isn't
+    // there yet (pre-089) — see lib/event-area-label.ts.
+    const { data, error } = await writeWithAreaLabel((withArea) =>
+        admin
+            .from('events')
+            .insert(withArea && area_label ? { ...insertRow, area_label } : insertRow)
+            .select('id')
+            .single(),
+    );
     if (error) return { ok: false, error: error.message };
 
     const newId = (data as any).id as string;
@@ -195,6 +206,11 @@ export async function updateHostEvent(
     const destination_lat = parseNumber(formData.get('destination_lat'));
     const destination_lng = parseNumber(formData.get('destination_lng'));
 
+    // General area for private listings (089); empty clears it to null.
+    const areaResult = parseAreaLabel(formData.get(AREA_LABEL_FIELD));
+    if (!areaResult.ok) return { ok: false, error: areaResult.error };
+    const area_label = areaResult.value;
+
     if (title.length < 4) return { ok: false, error: 'Title must be at least 4 characters.' };
     if (description.length > 400) return { ok: false, error: 'Description must be 400 chars or fewer.' };
     if (location_name.length < 2) return { ok: false, error: 'Location name is required.' };
@@ -211,28 +227,33 @@ export async function updateHostEvent(
     if (!start_at) return { ok: false, error: 'Invalid start time.' };
 
     const admin = getSupabaseAdmin();
-    const { error } = await admin
-        .from('events')
-        .update({
-            title,
-            description: description || null,
-            location_name,
-            location_detail: location_detail || null,
-            lat,
-            lng,
-            start_at: start_at.toISOString(),
-            capacity,
-            visibility,
-            tags,
-            hero_image_url,
-            destination_name,
-            destination_lat,
-            destination_lng,
-            updated_at: new Date().toISOString(),
-        })
-        .eq('id', eventId)
-        .eq('host_id', profile.profileId)
-        .is('shop_id', null);
+    const updateRow = {
+        title,
+        description: description || null,
+        location_name,
+        location_detail: location_detail || null,
+        lat,
+        lng,
+        start_at: start_at.toISOString(),
+        capacity,
+        visibility,
+        tags,
+        hero_image_url,
+        destination_name,
+        destination_lat,
+        destination_lng,
+        updated_at: new Date().toISOString(),
+    };
+    // area_label is written (null clears it), and dropped on a retry if the
+    // column isn't there yet (pre-089) — see lib/event-area-label.ts.
+    const { error } = await writeWithAreaLabel((withArea) =>
+        admin
+            .from('events')
+            .update(withArea ? { ...updateRow, area_label } : updateRow)
+            .eq('id', eventId)
+            .eq('host_id', profile.profileId)
+            .is('shop_id', null),
+    );
     if (error) return { ok: false, error: error.message };
 
     revalidatePath('/me/events');
