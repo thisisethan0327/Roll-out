@@ -8,7 +8,7 @@
  * the send-auth-email Auth Hook (anything containing rollout.club routes to
  * the Rollout branding).
  */
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 /**
  * Supabase's throttle message is written for a developer reading a log, not a
@@ -43,6 +43,7 @@ function signInErrorCopy(e: { message?: string; code?: string } | null | undefin
 import { useRouter } from 'next/navigation';
 import { getSupabaseBrowser, isSupabaseConfigured } from '@/lib/supabase/browser';
 import { PendingButton } from '@/components/feedback';
+import { usesPasswordLogin } from '@/lib/auth/password-login';
 
 type Phase = 'email' | 'otp';
 
@@ -89,6 +90,27 @@ export function OtpLoginForm({
     const [busy, setBusy] = useState(false);
     const [err, setErr] = useState<string | null>(null);
     const [resendIn, setResendIn] = useState(0);
+    /** A few accounts (App Store reviewer, the owner) sign in with a password —
+     *  see lib/auth/password-login.ts. Decided server-side as the email is typed. */
+    const [passwordMode, setPasswordMode] = useState(false);
+    const [password, setPassword] = useState('');
+    useEffect(() => {
+        const e = email.trim().toLowerCase();
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e)) {
+            setPasswordMode(false);
+            return;
+        }
+        let alive = true;
+        const id = setTimeout(() => {
+            usesPasswordLogin(e)
+                .then((yes) => alive && setPasswordMode(yes))
+                .catch(() => alive && setPasswordMode(false));
+        }, 250);
+        return () => {
+            alive = false;
+            clearTimeout(id);
+        };
+    }, [email]);
     const otpInputRef = useRef<HTMLInputElement>(null);
     // Guards against a double verify when the auto-submit (6th digit) and a
     // manual button press or Enter land in the same tick.
@@ -119,6 +141,32 @@ export function OtpLoginForm({
             </div>
         );
     }
+
+    const signInWithPassword = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setErr(null);
+        if (!email.trim() || !password) return;
+        setBusy(true);
+        try {
+            const supabase = getSupabaseBrowser();
+            const { error } = await supabase.auth.signInWithPassword({
+                email: email.trim().toLowerCase(),
+                password,
+            });
+            if (error) {
+                setErr('That email and password didn’t match. Try again.');
+                return;
+            }
+            // Same hop as the code door: /auth/landing decides onboarding.
+            router.push(`/auth/landing?next=${encodeURIComponent(successPath)}`);
+            router.refresh();
+        } catch (ex: any) {
+            setErr(ex?.message ?? 'Unexpected error signing in.');
+        } finally {
+            setBusy(false);
+            setPassword('');
+        }
+    };
 
     const sendCode = async (e?: React.FormEvent) => {
         e?.preventDefault();
@@ -271,7 +319,7 @@ export function OtpLoginForm({
 
     if (phase === 'email') {
         return (
-            <form onSubmit={sendCode} className="admin-login-form">
+            <form onSubmit={passwordMode ? signInWithPassword : sendCode} className="admin-login-form">
                 {noticeBanner}
                 <label className="admin-login-label">EMAIL</label>
                 <input
@@ -283,14 +331,28 @@ export function OtpLoginForm({
                     className="admin-login-input"
                     required
                 />
+                {passwordMode ? (
+                    <>
+                        <label className="admin-login-label">PASSWORD</label>
+                        <input
+                            type="password"
+                            autoComplete="current-password"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            placeholder="Password"
+                            className="admin-login-input"
+                            required
+                        />
+                    </>
+                ) : null}
                 {err && <div className="admin-login-error">{err}</div>}
                 <PendingButton
                     type="submit"
                     pending={busy}
-                    pendingLabel="SENDING"
+                    pendingLabel={passwordMode ? 'SIGNING IN' : 'SENDING'}
                     className="admin-login-btn"
                 >
-                    SEND CODE ›
+                    {passwordMode ? 'SIGN IN ›' : 'SEND CODE ›'}
                 </PendingButton>
             </form>
         );
