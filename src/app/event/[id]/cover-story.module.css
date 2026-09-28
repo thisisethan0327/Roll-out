@@ -931,3 +931,58 @@
         font-size: clamp(52px, 17vw, 78px);
     }
 }
+
+/* ============ locked (private / followers-only) teaser ============
+   "Visible but locked" /event/[id] (LockedEvent.tsx). No cover image on
+   purpose — a dark ground with the gold rule, same masthead type. */
+.lockedHero {
+    position: relative;
+    background:
+        radial-gradient(120% 80% at 50% 0%, rgba(255, 183, 51, 0.07) 0%, rgba(0, 0, 0, 0) 60%),
+        var(--bg-0, #000);
+    border-bottom: 1px solid var(--line);
+    padding: 72px 0 64px;
+}
+.lockedInner {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    max-width: 760px;
+}
+.lockedBadge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 12px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--gold);
+    border: 1px solid var(--gold);
+    padding: 6px 12px 5px;
+    border-radius: 2px;
+}
+.lockedTitle {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: clamp(32px, 7vw, 64px);
+    line-height: 0.95;
+    letter-spacing: 0.01em;
+    margin: 0;
+    color: var(--text);
+    overflow-wrap: anywhere;
+}
+.lockedCopy {
+    color: var(--text-2);
+    font-size: 15px;
+    line-height: 1.6;
+    margin: 8px 0 0;
+    max-width: 560px;
+}
+.lockedActions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 8px;
+}

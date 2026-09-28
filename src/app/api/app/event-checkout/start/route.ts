@@ -79,6 +79,10 @@ function codeForTicketState(state: string | undefined): string | undefined {
         case 'closed':
         case 'auth':
             return state;
+        // 088/089: reserveEventTicketsCore's up-front can-view refusal for a
+        // private / followers-only event (reserve_tickets itself says 'closed').
+        case 'invite_only':
+            return state;
         default:
             return undefined;
     }
@@ -92,6 +96,8 @@ function codeForRsvpError(error: string): { code?: string; status: number } {
             return { code: 'closed', status: 200 };
         case 'full':
             return { code: 'full', status: 200 };
+        case 'invite_only':
+            return { code: 'invite_only', status: 200 };
         default:
             return { status: 200 };
     }
@@ -303,6 +309,8 @@ function errorMessageForRsvp(error: string): string {
             return 'Invalid event.';
         case 'paid_spot':
             return 'That spot is already paid for.';
+        case 'invite_only':
+            return 'This event is invite-only.';
         default:
             return "Couldn't reserve that spot — try again.";
     }

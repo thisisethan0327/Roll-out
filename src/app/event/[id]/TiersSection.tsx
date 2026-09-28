@@ -106,6 +106,8 @@ const ERROR_COPY: Record<RsvpError | 'config', string> = {
     // The UI routes a paid confirmed spot to PaidCancelControl instead of
     // this plain cancel, so this should be unreachable — kept for the union.
     paid_spot: 'Paid spots are cancelled through the refund flow, not this button.',
+    // 088: a private / followers-only event this member isn't invited to.
+    invite_only: 'This event is invite-only.',
 };
 
 function formatPrice(cents: number, currency: string): string {

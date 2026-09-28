@@ -13,6 +13,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { viewerCanViewEvent } from '@/lib/event-viewer';
 import { getConsumerProfile } from '@/lib/consumer';
 import {
     getEventCart,
@@ -52,14 +53,16 @@ export default async function EventCheckoutPage({
     const { done, tier: tierParam, tickets: ticketsParam } = await searchParams;
     if (!UUID_RE.test(id)) notFound();
 
-    // Only public events have a member checkout surface.
+    // Public events, and (088) private / followers-only events this viewer may
+    // open, have a member checkout surface. viewerCanViewEvent falls back to
+    // the legacy rule before _can_view_event is deployed.
     const admin = getSupabaseAdmin();
     const { data: ev } = await admin
         .from('events')
-        .select('id, title, visibility, time_zone, start_at, reservation_policy')
+        .select('id, title, visibility, host_id, shop_id, time_zone, start_at, reservation_policy')
         .eq('id', id)
         .maybeSingle();
-    if (!ev || (ev as any).visibility !== 'public') notFound();
+    if (!ev || !(await viewerCanViewEvent(ev as any))) notFound();
 
     const me = await getConsumerProfile();
     if (!me) {

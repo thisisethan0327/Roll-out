@@ -10,6 +10,10 @@
  *               its list card is hovered/selected (`activeId`).
  *   - Shops   — a divIcon with a small gold dot wrapped in animated beacon rings
  *               (CSS keyframes, transform/opacity only, reduced-motion aware).
+ *   - Locked  — private / followers-only meets the viewer can't open (088/089):
+ *               a hollow dark pin with a lock at the FUZZED approx location, and
+ *               a teaser popup (title · invite only · general area · date) —
+ *               never a venue or attendee count.
  *
  * Popups are dark-themed branded cards (Leaflet chrome overridden in globals.css
  * via the `rl-popup` className). Shop popups reuse the /shops directory data —
@@ -29,6 +33,7 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import { formatEventTime } from '@/lib/event-time';
+import { teaserPopupLine, type TeaserVisibility } from '@/lib/event-teaser-format';
 
 export type MapEvent = {
     id: string;
@@ -43,6 +48,12 @@ export type MapEvent = {
     attending_count: number;
     host_handle: string | null;
     is_official: boolean;
+    /** Locked teaser pin: lat/lng are the view's fuzzed approx coords. */
+    locked?: boolean;
+    /** Set for private / followers-only meets (locked or not). */
+    privacy?: TeaserVisibility | null;
+    /** Locked pins only — the host's general area, if any. */
+    general_area?: string | null;
 };
 
 export type MapShop = {
@@ -205,13 +216,30 @@ function starStr(rating: number): string {
     return '★'.repeat(r) + '☆'.repeat(5 - r);
 }
 
+function buildLockedPopup(e: MapEvent): string {
+    const line = teaserPopupLine(e.title, e.privacy ?? 'private', e.general_area, fmtDate(e.start_at, e.time_zone));
+    return `
+        <div class="rl-pop rl-pop-event rl-pop-locked">
+          <div class="rl-pop-kicker">
+            <span class="rl-pop-tag rl-pop-tag-gold">${e.privacy === 'followers' ? 'FOLLOWERS ONLY' : 'PRIVATE'}</span>
+          </div>
+          <div class="rl-pop-name">${esc(line)}</div>
+          ${e.host_handle ? `<div class="rl-pop-sub">@${esc(e.host_handle)}</div>` : ''}
+          <div class="rl-pop-actions">
+            <a class="rl-pop-btn" href="/event/${esc(e.id)}">View event →</a>
+          </div>
+        </div>`;
+}
+
 function buildEventPopup(e: MapEvent): string {
+    if (e.locked) return buildLockedPopup(e);
     const meta = [fmtDate(e.start_at, e.time_zone), e.location_name].filter(Boolean).map(esc).join(' · ');
     return `
         <div class="rl-pop rl-pop-event">
           <div class="rl-pop-kicker">
             <span class="rl-pop-tag rl-pop-tag-gold">${esc(e.code || e.type || 'MEET')}</span>
             ${e.is_official ? '<span class="rl-pop-badge">OFFICIAL</span>' : ''}
+            ${e.privacy ? '<span class="rl-pop-badge">PRIVATE</span>' : ''}
           </div>
           <div class="rl-pop-name">${esc(e.title)}</div>
           <div class="rl-pop-meta">${meta}</div>
@@ -399,9 +427,17 @@ export function MeetsMap({
                     iconAnchor: [11, 11],
                     popupAnchor: [0, -12],
                 });
+                // Locked teaser — hollow dark pin with a lock, visibly NOT a venue.
+                const lockedIcon = L.divIcon({
+                    className: '',
+                    html: '<div class="rl-pin rl-pin-event rl-pin-locked"><span class="rl-pin-dot">🔒</span></div>',
+                    iconSize: [22, 22],
+                    iconAnchor: [11, 11],
+                    popupAnchor: [0, -12],
+                });
                 eventMarkersRef.current.clear();
                 for (const e of events) {
-                    const marker = L.marker([e.lat, e.lng], { icon: eventIcon, riseOnHover: true }).addTo(map);
+                    const marker = L.marker([e.lat, e.lng], { icon: e.locked ? lockedIcon : eventIcon, riseOnHover: true }).addTo(map);
                     marker.bindPopup(buildEventPopup(e), { className: 'rl-popup', maxWidth: 300, minWidth: 210 });
                     marker.on('click', () => onSelectRef.current?.(e.id));
                     eventMarkersRef.current.set(e.id, marker);

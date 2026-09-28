@@ -42,6 +42,8 @@ const ERROR_COPY: Record<RsvpError, string> = {
     // 'paid_spot' (077) can't occur on a free event's strip either — a paid
     // confirmed spot only exists on the tiered path, handled in TiersSection.
     paid_spot: 'Paid spots are cancelled through a refund, not this button.',
+    // 088: a private / followers-only event this member isn't invited to.
+    invite_only: 'This event is invite-only.',
 };
 
 /** Is this state the "going" choice (either confirmed or on the waitlist)? */

@@ -18,6 +18,7 @@ import { formatEventTime } from '@/lib/event-time';
 import { useEffect, useRef, useState } from 'react';
 import { resolveCover, coverFocus } from '@/lib/event-covers';
 import { MeetsMap, type MapEvent, type MapShop } from './map/MeetsMap';
+import { teaserAreaLabel, teaserShortBadge, type LockedMeet, type TeaserVisibility } from '@/lib/event-teaser-format';
 
 export type SplitMeet = {
     id: string;
@@ -33,7 +34,13 @@ export type SplitMeet = {
     spots_left: number | null;
     is_official: boolean | null;
     host_handle: string | null;
+    /** Set on a private / followers-only meet this viewer may open. */
+    privacy?: TeaserVisibility | null;
 };
+
+function isLocked(m: SplitMeet | LockedMeet): m is LockedMeet {
+    return (m as LockedMeet).locked === true;
+}
 
 function formatDate(iso: string | null, tz?: string | null): string {
     if (!iso) return 'TBA';
@@ -51,7 +58,8 @@ export function MeetsSplit({
     events,
     shops,
 }: {
-    meets: SplitMeet[];
+    /** Public meets, merged by date with locked private / followers-only teasers. */
+    meets: Array<SplitMeet | LockedMeet>;
     events: MapEvent[];
     shops: MapShop[];
 }) {
@@ -84,7 +92,51 @@ export function MeetsSplit({
     return (
         <div className="meets-split">
             <div className="meets-split-list" ref={listRef}>
-                {meets.map((m) => (
+                {meets.map((m) => isLocked(m) ? (
+                    <Link
+                        key={m.id}
+                        href={`/event/${m.id}`}
+                        data-meet={m.id}
+                        className={`meets-split-card${activeId === m.id ? ' is-active' : ''}`}
+                        onMouseEnter={() => plottable.has(m.id) && setActiveId(m.id)}
+                        onMouseLeave={() => setActiveId((cur) => (cur === m.id ? null : cur))}
+                        onFocus={() => plottable.has(m.id) && setActiveId(m.id)}
+                        onBlur={() => setActiveId((cur) => (cur === m.id ? null : cur))}
+                    >
+                        {/* Locked teaser: no photo, no venue, no attendee count. */}
+                        <div
+                            className="meets-split-thumb"
+                            aria-hidden="true"
+                            style={{ background: 'var(--bg-2)', display: 'grid', placeItems: 'center', fontSize: 26 }}
+                        >
+                            🔒
+                        </div>
+                        <div className="meets-split-body">
+                            <div className="mono-row" style={{ fontSize: 10 }}>
+                                <span className="accent">🔒 {teaserShortBadge(m.visibility).toUpperCase()}</span>
+                                {plottable.has(m.id) ? (
+                                    <>
+                                        <span className="sep" />
+                                        <span className="meets-split-pin" aria-label="Approximate area on the map">◌ AREA</span>
+                                    </>
+                                ) : null}
+                            </div>
+                            <h3 className="meets-split-title">{(m.title ?? 'Private event').toUpperCase()}</h3>
+                            <div className="text-dim" style={{ fontSize: 12.5 }}>
+                                {formatDate(m.start_at, m.time_zone)} · {teaserAreaLabel(m.general_area)}
+                            </div>
+                            <div className="mono-row" style={{ fontSize: 10, marginTop: 'auto', paddingTop: 8 }}>
+                                {m.viewer_can_view ? <span className="accent">YOU&apos;RE INVITED ›</span> : <span>INVITE ONLY</span>}
+                                {m.host_handle ? (
+                                    <>
+                                        <span className="sep" />
+                                        <span>@{m.host_handle}</span>
+                                    </>
+                                ) : null}
+                            </div>
+                        </div>
+                    </Link>
+                ) : (
                     <Link
                         key={m.id}
                         href={`/event/${m.id}`}
@@ -106,6 +158,12 @@ export function MeetsSplit({
                                     <>
                                         <span className="sep" />
                                         <span className="accent">OFFICIAL</span>
+                                    </>
+                                ) : null}
+                                {m.privacy ? (
+                                    <>
+                                        <span className="sep" />
+                                        <span className="accent">🔒 PRIVATE</span>
                                     </>
                                 ) : null}
                                 {m.sector_code ? (

@@ -4,6 +4,13 @@
  * Lists every public, non-cancelled, upcoming event from event_cards (cross-shop
  * now that migration 020 opened up the RLS). SEO-targeted so search engines can
  * index the meets index page and individual /event/[id] pages.
+ *
+ * Private / followers-only meets are "visible but locked" (migrations
+ * 088/089): upcoming rows from rollout.event_teasers join the same date
+ * ordering. A viewer who may open one sees its normal card with a PRIVATE
+ * badge; everyone else a locked card — date, title, badge, general area and
+ * host only (no photo, no venue, no attendee count). Fails soft: no view →
+ * no extra cards.
  */
 import type { Metadata } from 'next';
 import { EmptyRow } from '@/app/me/ui';
@@ -12,6 +19,15 @@ import Link from 'next/link';
 import { BandReveal } from '@/components/motion/BandReveal';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { resolveCover, coverFocus } from '@/lib/event-covers';
+import { loadUpcomingTeasers } from '@/lib/event-teasers';
+import {
+    mergeByStartAt,
+    teaserAreaLabel,
+    teaserShortBadge,
+    toLockedMeet,
+    type LockedMeet,
+    type TeaserVisibility,
+} from '@/lib/event-teaser-format';
 import { loadMapData } from './mapData';
 import { MeetsSplit } from './MeetsSplit';
 
@@ -46,7 +62,15 @@ type MeetCard = {
     is_official: boolean | null;
     host_handle: string | null;
     host_name: string | null;
+    /** Set on a private / followers-only meet this viewer may open. */
+    privacy?: TeaserVisibility | null;
 };
+
+type UpcomingItem = MeetCard | LockedMeet;
+
+function isLocked(m: UpcomingItem): m is LockedMeet {
+    return (m as LockedMeet).locked === true;
+}
 
 function isValidType(t: string | undefined): t is EventType {
     return !!t && (EVENT_TYPES as readonly string[]).includes(t);
@@ -57,7 +81,7 @@ const CARD_COLS =
 
 async function loadMeets(
     type: EventType | null,
-): Promise<{ upcoming: MeetCard[]; past: MeetCard[] }> {
+): Promise<{ upcoming: UpcomingItem[]; past: MeetCard[] }> {
     const supabase = getSupabaseAdmin();
     const nowIso = new Date().toISOString();
 
@@ -79,11 +103,34 @@ async function loadMeets(
         .limit(24);
     if (type) pastQ = pastQ.eq('type', type);
 
-    const [upcomingRes, pastRes] = await Promise.all([upcomingQ, pastQ]);
+    const [upcomingRes, pastRes, privateItems] = await Promise.all([upcomingQ, pastQ, loadPrivateUpcoming(type)]);
+    const publicUpcoming = ((upcomingRes.data as any[]) ?? []) as MeetCard[];
     return {
-        upcoming: ((upcomingRes.data as any[]) ?? []) as MeetCard[],
+        upcoming: mergeByStartAt(publicUpcoming, privateItems),
         past: ((pastRes.data as any[]) ?? []) as MeetCard[],
     };
+}
+
+/**
+ * Upcoming private / followers-only meets as list items. Ids the view says
+ * this viewer can open get their full event_cards row (service role, those
+ * ids only) with a PRIVATE badge; the rest — and any allowed id without a
+ * card row — become locked teaser cards built from the view alone.
+ */
+async function loadPrivateUpcoming(type: EventType | null): Promise<UpcomingItem[]> {
+    const teasers = await loadUpcomingTeasers(type);
+    if (teasers.length === 0) return [];
+    const allowedIds = teasers.filter((t) => t.viewer_can_view).map((t) => t.id);
+    const cards = new Map<string, MeetCard>();
+    if (allowedIds.length > 0) {
+        const { data, error } = await getSupabaseAdmin().from('event_cards').select(CARD_COLS).in('id', allowedIds);
+        if (error) console.error('[meets] private event cards load failed:', error.message);
+        for (const c of (data as any[]) ?? []) cards.set(c.id, c as MeetCard);
+    }
+    return teasers.map((t) => {
+        const card = t.viewer_can_view ? cards.get(t.id) : undefined;
+        return card ? { ...card, privacy: t.visibility } : toLockedMeet(t);
+    });
 }
 
 function formatDate(iso: string | null, tz?: string | null): string {
@@ -203,9 +250,9 @@ export default async function MeetsDirectoryPage({
                             </div>
                             {/* Mobile/tablet (<1024): classic grid; the map lives at /meets/map. */}
                             <div className="meets-grid-mobile">
-                                {upcoming.map((m) => (
-                                    <MeetTile key={m.id} m={m} />
-                                ))}
+                                {upcoming.map((m) =>
+                                    isLocked(m) ? <LockedTile key={m.id} m={m} /> : <MeetTile key={m.id} m={m} />,
+                                )}
                             </div>
                         </>
                     )}
@@ -261,6 +308,12 @@ function MeetTile({ m, past = false }: { m: MeetCard; past?: boolean }) {
                                 <span className="accent">OFFICIAL</span>
                             </>
                         ) : null}
+                        {m.privacy ? (
+                            <>
+                                <span className="sep" />
+                                <span className="accent">🔒 PRIVATE</span>
+                            </>
+                        ) : null}
                         {m.sector_code ? (
                             <>
                                 <span className="sep" />
@@ -287,6 +340,60 @@ function MeetTile({ m, past = false }: { m: MeetCard; past?: boolean }) {
                                 <span>{m.spots_left} SPOTS</span>
                             </>
                         ) : null}
+                        {m.host_handle ? (
+                            <>
+                                <span className="sep" />
+                                <span>@{m.host_handle}</span>
+                            </>
+                        ) : null}
+                    </div>
+                </div>
+            </article>
+        </Link>
+    );
+}
+
+/**
+ * A locked private / followers-only meet: date, title, badge, general area and
+ * host — built from event_teasers only. No photo (a dark lock placeholder), no
+ * venue, no attendee count. Still links to /event/[id], which shows the same
+ * locked teaser (or the full page, for a viewer who may open it).
+ */
+function LockedTile({ m }: { m: LockedMeet }) {
+    return (
+        <Link href={`/event/${m.id}`} style={{ textDecoration: 'none', display: 'block' }}>
+            <article
+                className="feature-card corner-wrap"
+                style={{ padding: 0, overflow: 'hidden', height: '100%', display: 'flex', flexDirection: 'column' }}
+            >
+                <span className="corner-bottom-left" />
+                <span className="corner-bottom-right" />
+                <div
+                    aria-hidden="true"
+                    style={{
+                        width: '100%',
+                        aspectRatio: '16 / 9',
+                        background: 'radial-gradient(circle at 50% 45%, rgba(255,183,51,0.08), rgba(0,0,0,0) 60%), var(--bg-2)',
+                        borderBottom: '1px solid var(--line)',
+                        display: 'grid',
+                        placeItems: 'center',
+                        fontSize: 34,
+                    }}
+                >
+                    🔒
+                </div>
+                <div style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 8, flex: 1 }}>
+                    <div className="mono-row" style={{ fontSize: 10 }}>
+                        <span className="accent">🔒 {teaserShortBadge(m.visibility).toUpperCase()}</span>
+                    </div>
+                    <h3 style={{ fontSize: 18, letterSpacing: 0.8, margin: 0, color: 'var(--text)' }}>
+                        {(m.title ?? 'Private event').toUpperCase()}
+                    </h3>
+                    <div className="text-dim" style={{ fontSize: 13 }}>
+                        {formatDate(m.start_at, m.time_zone)} · {teaserAreaLabel(m.general_area)}
+                    </div>
+                    <div className="mono-row" style={{ fontSize: 10, marginTop: 'auto', paddingTop: 8 }}>
+                        {m.viewer_can_view ? <span className="accent">YOU&apos;RE INVITED ›</span> : <span>INVITE ONLY</span>}
                         {m.host_handle ? (
                             <>
                                 <span className="sep" />

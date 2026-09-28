@@ -6,14 +6,17 @@
  * event_cards view hides cancelled rows, which is wrong for a shareable link.
  *
  * A public event renders for anyone. A non-public event (followers/private)
- * only renders for a signed-in viewer who is the host, a manager+ of the
- * hosting shop, a platform admin, or who already has an RSVP row for it — see
- * lib/event-visibility.ts's canViewEvent (pure, unit-checkable) for the rule.
- * Everyone else, including signed-out visitors, gets notFound() same as a
- * bad id. This does not change who may RSVP — the RSVP RPCs enforce that on
- * their own regardless of what this page renders. Non-public events also
- * carry `robots: noindex` (see generateMetadata) and are already excluded
- * from sitemap.ts, which only lists visibility='public' rows.
+ * renders in full only for a viewer rollout._can_view_event() lets in (host,
+ * shop staff, platform admin, invitee, follower for followers-only) — see
+ * lib/event-viewer.ts's resolveEventAccess, which falls back to the legacy
+ * rule in lib/event-visibility.ts until migration 088 is deployed. Everyone
+ * else gets the LOCKED teaser (LockedEvent.tsx, built only from
+ * rollout.event_teasers) when the event is upcoming, or notFound() otherwise
+ * (the layout owns that 404 status). ?invite=<token> is claimed BEFORE that
+ * decision for a signed-in viewer, so the invite unlocks the page on the same
+ * request. The RSVP RPCs still enforce who may RSVP on their own. Non-public
+ * events carry `robots: noindex` (see generateMetadata) and are excluded from
+ * sitemap.ts, which only lists visibility='public' rows.
  *
  * Logged-in members RSVP inline (RLS-enforced writes); signed-out members get
  * a sign-in CTA that returns here. JSON-LD Event structured data keeps public
@@ -27,7 +30,8 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { getConsumerProfile } from '@/lib/consumer';
-import { viewerCanSeeNonPublicEvent } from '@/lib/event-viewer';
+import { resolveEventAccess } from '@/lib/event-viewer';
+import { lockedSignInHref, safeInviteToken } from '@/lib/event-teaser-format';
 import { resolveCover, isDefaultCoverUrl } from '@/lib/event-covers';
 import { fetchEventTierProductImages } from '@/lib/event-tier-images';
 import { RsvpControls } from './RsvpControls';
@@ -49,6 +53,7 @@ import { SponsorsSection } from './SponsorsSection';
 import { HostBlock } from './HostBlock';
 import { ActionsToolbar } from './ActionsToolbar';
 import { ConvoySection } from './ConvoySection';
+import { LockedEvent } from './LockedEvent';
 import styles from './cover-story.module.css';
 
 type EventRow = {
@@ -111,6 +116,10 @@ type Sponsor = {
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+/**
+ * The FULL event row + attendees. Only ever called after resolveEventAccess()
+ * returned 'full' for this viewer — it no longer re-checks visibility itself.
+ */
 async function loadEvent(
     id: string,
 ): Promise<{ event: EventRow; attendees: Attendee[]; spotsLeft: number | null; sponsors: Sponsor[] } | null> {
@@ -132,10 +141,6 @@ async function loadEvent(
 
     const ev = evRaw as EventRow | null;
     if (!ev) return null;
-    if (ev.visibility !== 'public') {
-        const canSee = await viewerCanSeeNonPublicEvent(ev);
-        if (!canSee) return null;
-    }
 
     const { data: rsvpRaw, error: rsvpError } = await supabase
         .from('event_rsvps')
@@ -486,10 +491,27 @@ function googleCalUrl(ev: EventRow): string | null {
 
 export async function generateMetadata({
     params,
+    searchParams,
 }: {
     params: Promise<{ id: string }>;
+    searchParams: Promise<{ invite?: string }>;
 }): Promise<Metadata> {
     const { id } = await params;
+    const { invite } = await searchParams;
+    const access = await resolveEventAccess(id, safeInviteToken(invite));
+    if (access.kind === 'missing') return { title: 'Event not found' };
+    if (access.kind === 'locked') {
+        // Nothing about a locked event goes into metadata — no title, venue or
+        // description in the tab, search results or link previews.
+        const lockedTitle = 'Private event';
+        return {
+            title: lockedTitle,
+            description: 'An invite-only event on Rollout.',
+            robots: { index: false, follow: false },
+            openGraph: { title: `${lockedTitle} · Rollout`, description: 'An invite-only event on Rollout.', type: 'website' },
+            twitter: { card: 'summary', title: `${lockedTitle} · Rollout`, description: 'An invite-only event on Rollout.' },
+        };
+    }
     const data = await loadEvent(id);
     if (!data) return { title: 'Event not found' };
     const { event: ev, sponsors } = data;
@@ -531,6 +553,18 @@ export default async function PublicEventPage({
     const { id } = await params;
     const { invite } = await searchParams;
     const inviteToken = typeof invite === 'string' && invite.trim() ? invite.trim() : null;
+    // Claim ?invite (signed in) THEN decide full / locked / 404 — see header.
+    const access = await resolveEventAccess(id, safeInviteToken(inviteToken));
+    if (access.kind === 'missing') notFound();
+    if (access.kind === 'locked') {
+        return (
+            <LockedEvent
+                teaser={access.teaser}
+                signedIn={access.signedIn}
+                signInHref={lockedSignInHref(id, safeInviteToken(inviteToken))}
+            />
+        );
+    }
     const data = await loadEvent(id);
     if (!data) notFound();
     const { event: ev, attendees, spotsLeft, sponsors } = data;

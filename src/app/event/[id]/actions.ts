@@ -30,6 +30,7 @@ import { rememberEventCartId } from '@/lib/event-cart-cookie';
 import { createEventPackageCartCore, createEventTicketsCartCore, type EventAuthCtx } from '@/lib/event-cart-core';
 import { ensureMedusaCustomerTokenForUser, type StoreUser } from '@/lib/medusa-customer';
 import { cancelPaidRsvpAndRefund, getRefundWindowOpen } from '@/lib/event-refund';
+import { rpcCanViewEvent } from '@/lib/event-viewer';
 import {
     multiTicketsEnabled,
     reserveTickets,
@@ -55,7 +56,9 @@ export type InviteRsvpStatus = RsvpChoice | 'waitlist';
  * until that resolves, so their own reserve attempt just reports the wait.
  */
 export type RsvpState = 'confirmed' | 'held' | 'waitlisted' | 'maybe' | 'declined' | 'ticket_pending' | null;
-export type RsvpError = 'auth' | 'full' | 'closed' | 'invalid' | 'tier' | 'write' | 'paid_spot';
+/** 'invite_only': a private / followers-only event this member may not open
+ *  (rollout._can_view_event false, or reserve_spot said 'not_found'). */
+export type RsvpError = 'auth' | 'full' | 'closed' | 'invalid' | 'tier' | 'write' | 'paid_spot' | 'invite_only';
 export type RsvpResult =
     | {
           ok: true;
@@ -107,7 +110,7 @@ export async function setRsvp(
     if (!me) return { ok: false, error: 'auth' };
 
     // Load the event with the service-role client to validate state (past /
-    // cancelled / non-public) up front for every path. reserve_spot re-checks
+    // cancelled / not viewable) up front for every path. reserve_spot re-checks
     // this atomically; the pre-check keeps the soft/clear paths consistent.
     const admin = getSupabaseAdmin();
     const { data: ev } = await admin
@@ -116,7 +119,16 @@ export async function setRsvp(
         .eq('id', eventId)
         .maybeSingle();
 
-    if (!ev || (ev as any).visibility !== 'public') return { ok: false, error: 'invalid' };
+    if (!ev) return { ok: false, error: 'invalid' };
+    const isPublic = (ev as any).visibility === 'public';
+    if (!isPublic) {
+        // Private / followers-only (088): whoever may VIEW it may RSVP.
+        // Before _can_view_event is deployed (null) keep today's rule —
+        // non-public events take no web RSVPs at all.
+        const canView = await rpcCanViewEvent(eventId, me.profileId);
+        if (canView === null) return { ok: false, error: 'invalid' };
+        if (!canView) return { ok: false, error: 'invite_only' };
+    }
     if ((ev as any).cancelled_at) return { ok: false, error: 'closed' };
     if ((ev as any).start_at && new Date((ev as any).start_at).getTime() < Date.now()) {
         return { ok: false, error: 'closed' };
@@ -149,6 +161,9 @@ export async function setRsvp(
         if (error) return { ok: false, error: 'write' };
         const state = (data as any)?.state as string | undefined;
         if (state === 'auth') return { ok: false, error: 'auth' };
+        // 088: reserve_spot answers 'not_found' when the caller can't view a
+        // non-public event — that is an invitation problem, not a closed meet.
+        if (state === 'not_found' && !isPublic) return { ok: false, error: 'invite_only' };
         if (state === 'closed' || state === 'not_found') return { ok: false, error: 'closed' };
         if (state === 'tier_required' || state === 'invalid_tier') {
             return { ok: false, error: 'tier' };
@@ -275,6 +290,11 @@ export async function startPackageCheckoutCore(
     const medusaProductId = (tier as any).medusa_product_id as string | null;
     if (!medusaProductId) return { ok: false, error: 'tier' };
 
+    // Private / followers-only (088/089): refuse up front for a caller who may
+    // not view the event, so they get 'invite_only' rather than whatever the
+    // RPC's refusal maps to. Unknown (RPC not deployed) → carry on as today.
+    if (await isInviteOnlyFor(admin, eventId, ctx.profileId)) return { ok: false, error: 'invite_only' };
+
     // Reserve atomically — reserve_spot re-validates event state (closed /
     // cancelled / full) so no separate pre-check is needed here.
     const member = getRolloutMemberClientForToken(ctx.accessToken);
@@ -286,6 +306,11 @@ export async function startPackageCheckoutCore(
     const state = (data as any)?.state as string | undefined;
 
     if (state === 'auth') return { ok: false, error: 'auth' };
+    if (state === 'not_found' && (await isNonPublicEvent(admin, eventId))) {
+        // 088: reserve_spot's answer for a private / followers-only event the
+        // caller may not view.
+        return { ok: false, error: 'invite_only' };
+    }
     if (state === 'closed' || state === 'not_found') return { ok: false, error: 'closed' };
     if (state === 'tier_required' || state === 'invalid_tier') return { ok: false, error: 'tier' };
     if (state === 'waitlisted') {
@@ -327,6 +352,26 @@ export async function startPackageCheckoutCore(
         spotNo: (data as any)?.spot_no ?? null,
         holdExpiresAt: (data as any)?.hold_expires_at ?? null,
     };
+}
+
+/** Is this event private / followers-only? (false on lookup failure → 'closed' copy as before.) */
+async function isNonPublicEvent(admin: ReturnType<typeof getSupabaseAdmin>, eventId: string): Promise<boolean> {
+    const { data } = await admin.from('events').select('visibility').eq('id', eventId).maybeSingle();
+    return !!data && (data as any).visibility !== 'public';
+}
+
+/**
+ * True only when the event is non-public AND rollout._can_view_event says
+ * this profile may NOT view it. Public, lookup failure, or the RPC not being
+ * deployed yet (null) all return false — i.e. today's behaviour.
+ */
+async function isInviteOnlyFor(
+    admin: ReturnType<typeof getSupabaseAdmin>,
+    eventId: string,
+    profileId: string,
+): Promise<boolean> {
+    if (!(await isNonPublicEvent(admin, eventId))) return false;
+    return (await rpcCanViewEvent(eventId, profileId)) === false;
 }
 
 /** Resolves the cookie session's access token + auth user (for
@@ -469,6 +514,13 @@ export async function reserveEventTicketsCore(
     }
     const medusaProductId = (tier as any).medusa_product_id as string | null;
     if (!medusaProductId) return { ok: false, error: 'That tier is not available. Refresh and try again.' };
+
+    // Private / followers-only (088/089): reserve_tickets answers a caller who
+    // can't view the event with its generic 'closed' — decide up front so they
+    // are told it is invite-only instead.
+    if (await isInviteOnlyFor(admin, eventId, ctx.profileId)) {
+        return { ok: false, error: 'This event is invite-only.', state: 'invite_only' };
+    }
 
     const member = getRolloutMemberClientForToken(ctx.accessToken);
     const result = await reserveTicketsWithClient(member, eventId, tierId, stamped);

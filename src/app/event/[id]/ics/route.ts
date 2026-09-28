@@ -2,11 +2,14 @@
  * /event/[id]/ics — downloadable iCalendar (.ics) file for a public event.
  *
  * No client JS, no external service. Emits a single VEVENT with a 3-hour
- * default duration (events schema has no end time). Only public, non-cancelled
- * events are served; anything else 404s.
+ * default duration (events schema has no end time). Only non-cancelled events
+ * the caller may view are served — public ones, plus (088) private /
+ * followers-only ones rollout._can_view_event lets this viewer open (legacy
+ * rule until it is deployed); anything else 404s.
  */
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { viewerCanViewEvent } from '@/lib/event-viewer';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -44,13 +47,13 @@ export async function GET(
     const admin = getSupabaseAdmin();
     const { data, error } = await admin
         .from('events')
-        .select('id, title, description, location_name, location_detail, start_at, visibility, cancelled_at')
+        .select('id, title, description, location_name, location_detail, start_at, visibility, host_id, shop_id, cancelled_at')
         .eq('id', id)
         .maybeSingle();
     if (error) console.error('[event/[id]/ics] event load failed:', error.message);
 
     const ev = data as any;
-    if (!ev || ev.visibility !== 'public' || ev.cancelled_at || !ev.start_at) {
+    if (!ev || ev.cancelled_at || !ev.start_at || !(await viewerCanViewEvent(ev))) {
         return new NextResponse('Not found', { status: 404 });
     }
 
