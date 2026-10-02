@@ -155,16 +155,19 @@ function streetKey(line: string | null | undefined): string {
 }
 
 /**
- * True when another listed (verified) shop carries the same street line (and
- * the same ZIP, when both have one). A failed read counts as shared: the
- * markup then just falls back to the city.
+ * True when another listed (verified) shop PUBLISHES the same street line (and
+ * the same ZIP, when both have one). A shop that never shows its street — on
+ * 'area' or 'off' precision, or UNITY USA, whose profile shows only its city
+ * (see HandlePage) — does not count: a registry row nobody sees must not
+ * take another business's own address out of its markup. A failed read counts
+ * as shared: the markup then just falls back to the city.
  */
 async function streetSharedWithAnotherShop(shop: Shop): Promise<boolean> {
     const key = streetKey(shop.address_line);
     if (!key) return false;
     const { data, error } = await getSupabaseAdmin()
         .from('shops')
-        .select('address_line, postal')
+        .select('slug, address_line, postal, location_precision, show_on_map')
         .eq('status', 'verified')
         .neq('id', shop.id)
         .not('address_line', 'is', null)
@@ -172,8 +175,18 @@ async function streetSharedWithAnotherShop(shop: Shop): Promise<boolean> {
     if (error) return true;
     const zip = (shop.postal ?? '').trim();
     return (data ?? []).some(
-        (s: { address_line: string | null; postal: string | null }) =>
-            streetKey(s.address_line) === key && (!zip || !s.postal?.trim() || s.postal.trim() === zip),
+        (s: {
+            slug: string | null;
+            address_line: string | null;
+            postal: string | null;
+            location_precision: string | null;
+            show_on_map: boolean | null;
+        }) =>
+            s.slug !== 'unityusa' &&
+            (s.location_precision ?? 'exact') === 'exact' &&
+            s.show_on_map !== false &&
+            streetKey(s.address_line) === key &&
+            (!zip || !s.postal?.trim() || s.postal.trim() === zip),
     );
 }
 
@@ -407,8 +420,8 @@ export default async function HandlePage({
     //  · UNITY USA operates Rollout and already has one node, the home page's
     //    @id https://unityusa.co/#organization. Its own profile points at that
     //    node instead of minting a second UNITY USA with different facts.
-    //  · A street address another listed shop also carries is left out of the
-    //    markup (city only), so two businesses are never published as one
+    //  · A street address another listed shop also publishes is left out of
+    //    the markup (city only), so two businesses are never published as one
     //    LocalBusiness location.
     //  · UNITY USA's public location is "Seattle, WA" and nothing finer (owner
     //    decision 2026-10-01), so its profile has no FIND US street line or
