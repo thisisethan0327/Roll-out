@@ -23,6 +23,8 @@ export type SellingShop = {
     categoryHandles: string[];
     tier: number;
     primaryColor: string | null;
+    /** The business's own website (shops.website_url), when the registry has one. */
+    websiteUrl: string | null;
 };
 
 let cache: { at: number; shops: SellingShop[] } | null = null;
@@ -34,7 +36,7 @@ export async function getSellingShops(): Promise<SellingShop[]> {
     const admin = getSupabaseAdmin();
     const { data: shopsRaw, error: shopsError } = await admin
         .from('shops')
-        .select('id, slug, name, commerce_tier, medusa_category_handles, primary_color')
+        .select('id, slug, name, commerce_tier, medusa_category_handles, primary_color, website_url')
         .eq('sells_products', true)
         // Gate the storefront on BOTH listing verification and commerce clearance:
         // a shop only sells publicly once it is listed (status=verified) and its
@@ -71,6 +73,7 @@ export async function getSellingShops(): Promise<SellingShop[]> {
             : [],
         tier: Number(s.commerce_tier ?? 1),
         primaryColor: s.primary_color ?? null,
+        websiteUrl: typeof s.website_url === 'string' && /^https?:\/\//i.test(s.website_url.trim()) ? s.website_url.trim() : null,
     }));
 
     cache = { at: Date.now(), shops };
@@ -142,6 +145,53 @@ export function resolveShopVendorKey(
         }
     }
     return null;
+}
+
+/**
+ * Where each vendor's products OFFICIALLY live. Rollout's /store is a
+ * marketplace: like a listing on Amazon, its product pages stand on their own
+ * (self-canonical, indexable) but credit the real seller and point at the
+ * maker's own page (owner decision 2026-10-01). NeferStock sells its own lines
+ * and its tenants' (divine DESIGN WHEELS) on neferstock.com; UNITY USA sells on
+ * unityusa.co. Each storefront serves a product at /us/products/<handle>,
+ * the same handle it carries here (checked live 2026-10-01: all 77 listings
+ * then on Rollout answered 200 at these URLs; configuratorUrl in lib/medusa
+ * already sends UNITY kits there).
+ * Keyed by the vendor key above — a vendor without an entry gets no link.
+ */
+const OFFICIAL_STOREFRONTS: Record<string, { label: string; site: string; productBase: string }> = {
+    neferstock: { label: 'neferstock.com', site: 'https://neferstock.com', productBase: 'https://neferstock.com/us/products/' },
+    divine: { label: 'neferstock.com', site: 'https://neferstock.com/us/divine', productBase: 'https://neferstock.com/us/products/' },
+    unityusa: { label: 'unityusa.co', site: 'https://unityusa.co', productBase: 'https://unityusa.co/us/products/' },
+};
+
+export type OfficialListing = {
+    /** The product's own page on the seller's site, when the vendor has a known storefront. */
+    productUrl: string | null;
+    /** The seller's site: its registry website, else its storefront. */
+    siteUrl: string | null;
+    /** Short host label for link text ("neferstock.com"). */
+    label: string | null;
+};
+
+/** The official page for a product sold on Rollout by `shop`. Pure. */
+export function officialListing(shop: SellingShop, productHandle: string | null | undefined): OfficialListing {
+    const vendorKey = resolveShopVendorKey(shop);
+    const store = vendorKey ? OFFICIAL_STOREFRONTS[vendorKey] : undefined;
+    const siteUrl = shop.websiteUrl ?? store?.site ?? null;
+    let label = store?.label ?? null;
+    if (!label && siteUrl) {
+        try {
+            label = new URL(siteUrl).hostname.replace(/^www\./, '');
+        } catch {
+            label = null;
+        }
+    }
+    return {
+        productUrl: store && productHandle ? `${store.productBase}${encodeURIComponent(productHandle)}` : null,
+        siteUrl,
+        label,
+    };
 }
 
 /**

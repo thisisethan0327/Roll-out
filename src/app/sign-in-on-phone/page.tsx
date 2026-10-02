@@ -3,6 +3,7 @@ import { AppStoreBadges } from '@/components/AppStoreBadges';
 import Link from 'next/link';
 
 export const metadata: Metadata = {
+    alternates: { canonical: '/sign-in-on-phone' },
     title: 'Sign in on your phone',
     description: 'Rollout magic links open the mobile app. Forward this email to your phone or enter the 6-digit code in the app.',
 };

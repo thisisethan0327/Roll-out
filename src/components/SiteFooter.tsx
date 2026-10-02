@@ -46,6 +46,9 @@ export function SiteFooter() {
                         <Link href="/help">Help center</Link>
                         <a href="mailto:team@rollout.club">Contact</a>
                         <a href="mailto:support@rollout.club">Report a problem</a>
+                        {/* The operator's own site — the same company as the
+                            legal line below, nothing more. */}
+                        <a href="https://unityusa.co">A UNITY USA platform</a>
                     </FooterColumn>
 
                     <FooterColumn title="Legal">

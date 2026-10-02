@@ -54,6 +54,9 @@ import { HostBlock } from './HostBlock';
 import { ActionsToolbar } from './ActionsToolbar';
 import { ConvoySection } from './ConvoySection';
 import { LockedEvent } from './LockedEvent';
+import { ROLLOUT_ORIGIN } from '@/lib/tenant-hosts';
+import { absoluteUrl, jsonLdHtml, postalAddressFromText } from '@/lib/structured-data';
+import { isSeedEvent } from '@/lib/seed-content';
 import styles from './cover-story.module.css';
 
 type EventRow = {
@@ -83,7 +86,7 @@ type EventRow = {
     rsvp_mode: string | null;
     /** Refund policy overrides (077) — {refund_cutoff_hours}; null = 72h default. */
     reservation_policy: { refund_cutoff_hours?: number | string | null } | null;
-    host: { handle: string | null; display_name: string | null; is_verified: boolean | null } | null;
+    host: { handle: string | null; display_name: string | null; is_verified: boolean | null; kind: string | null } | null;
     shop: { slug: string | null } | null;
     /** Host-planned itinerary (migration 20260921_076_event_route_plan.sql) —
      * jsonb array of {seq, kind, name, lat, lng, eta_local?, dwell_min?, note?}
@@ -132,7 +135,7 @@ async function loadEvent(
              lat, lng, sector_code, hero_image_url, start_at, time_zone, capacity, attending_count,
              visibility, is_official, cancelled_at, tags, rsvp_mode, reservation_policy,
              route_plan, destination_name, destination_lat, destination_lng,
-             host:profiles!events_host_id_fkey(handle, display_name, is_verified),
+             host:profiles!events_host_id_fkey(handle, display_name, is_verified, kind),
              shop:shops!events_shop_id_fkey(slug)`,
         )
         .eq('id', id)
@@ -537,7 +540,10 @@ export async function generateMetadata({
         // Non-public events are only reachable by an authorised viewer (see
         // viewerCanViewEvent) — keep them out of search results
         // and link previews all the same. sitemap.ts already excludes them.
-        ...(ev.visibility !== 'public' ? { robots: { index: false, follow: false } } : {}),
+        // Preview seed meets (lib/seed-content) are not real events: out of search too.
+        ...(ev.visibility !== 'public' || isSeedEvent(ev) ? { robots: { index: false, follow: false } } : {}),
+        // Self-canonical without ?invite: an invite link is the same page.
+        alternates: { canonical: `/event/${ev.id}` },
         openGraph: { title: socialTitle, description: desc, images, type: 'website' },
         twitter: { card: 'summary_large_image', title: socialTitle, description: desc, images },
     };
@@ -688,26 +694,68 @@ export default async function PublicEventPage({
     // first " — " or ". ". The LOCATION section below still shows it in full.
     const heroAddress = ev.location_detail?.split(/ — |\. /)[0].trim() || null;
 
-    const jsonLd = {
-        '@context': 'https://schema.org',
-        '@type': 'Event',
-        name: ev.title ?? 'Car meet',
-        startDate: ev.start_at ?? undefined,
-        eventStatus: isCancelled
-            ? 'https://schema.org/EventCancelled'
-            : 'https://schema.org/EventScheduled',
-        eventAttendanceMode: 'https://schema.org/OfflineEventAttendanceMode',
-        location: {
-            '@type': 'Place',
-            name: ev.location_name ?? 'TBA',
-            ...(ev.lat != null && ev.lng != null
-                ? { geo: { '@type': 'GeoCoordinates', latitude: ev.lat, longitude: ev.lng } }
-                : {}),
-        },
-        image: [coverUrl],
-        ...(ev.description ? { description: ev.description } : {}),
-        ...(hostName ? { organizer: { '@type': 'Organization', name: hostName } } : {}),
-    };
+    // Event structured data — PUBLIC, real events only. A followers-only or
+    // private event renders here for the host, an invitee or a follower, and
+    // its page is noindex already; the markup must not describe it either. A
+    // preview seed meet (lib/seed-content) is not a real event, so it gets none.
+    //
+    // Everything below comes from the event's own row: the address is the same
+    // first segment of location_detail the hero shows; offers are the tiers a
+    // visitor can actually take (free, or paid with a product behind it — the
+    // tier cards' own rule), only while RSVPs are open. There is no end time on
+    // an event, so there is no endDate (the calendar links' 3-hour block is a
+    // default, not data).
+    const address = postalAddressFromText(heroAddress);
+    const offers = rsvpOpen
+        ? tiers
+              .filter((t) => t.priceCents === 0 || t.purchasable)
+              .map((t) => ({
+                  '@type': 'Offer',
+                  name: t.name,
+                  price: (t.priceCents / 100).toFixed(2),
+                  priceCurrency: t.currency.toUpperCase(),
+                  url: shareUrl,
+                  availability:
+                      (t.remaining != null && t.remaining <= 0) || spotsLeft === 0
+                          ? 'https://schema.org/SoldOut'
+                          : 'https://schema.org/InStock',
+              }))
+        : [];
+    const coverAbs = absoluteUrl(coverUrl);
+    const jsonLd =
+        ev.visibility === 'public' && !isSeedEvent(ev)
+            ? {
+                  '@context': 'https://schema.org',
+                  '@type': 'Event',
+                  name: ev.title ?? 'Car meet',
+                  url: shareUrl,
+                  startDate: ev.start_at ?? undefined,
+                  eventStatus: isCancelled
+                      ? 'https://schema.org/EventCancelled'
+                      : 'https://schema.org/EventScheduled',
+                  eventAttendanceMode: 'https://schema.org/OfflineEventAttendanceMode',
+                  location: {
+                      '@type': 'Place',
+                      name: ev.location_name ?? 'TBA',
+                      ...(address ? { address } : {}),
+                      ...(ev.lat != null && ev.lng != null
+                          ? { geo: { '@type': 'GeoCoordinates', latitude: ev.lat, longitude: ev.lng } }
+                          : {}),
+                  },
+                  ...(coverAbs ? { image: [coverAbs] } : {}),
+                  ...(ev.description ? { description: ev.description } : {}),
+                  ...(hostName
+                      ? {
+                            organizer: {
+                                '@type': ev.host?.kind === 'shop_page' ? 'Organization' : 'Person',
+                                name: hostName,
+                                ...(hostHandle ? { url: `${ROLLOUT_ORIGIN}/u/${hostHandle}` } : {}),
+                            },
+                        }
+                      : {}),
+                  ...(offers.length > 0 ? { offers } : {}),
+              }
+            : null;
 
     return (
         <>
@@ -981,7 +1029,7 @@ export default async function PublicEventPage({
             {/* Structured data LAST: Next picks the segment's FIRST element to decide
                 whether to scroll to the top on navigation, and an invisible <script>
                 always reads as "already in view", so the page kept the previous scroll. */}
-            <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+            {jsonLd ? <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdHtml(jsonLd) }} /> : null}
 
         </>
     );

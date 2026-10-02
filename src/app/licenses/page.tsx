@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 
 export const metadata: Metadata = {
+    alternates: { canonical: '/licenses' },
     title: 'Open-Source Licenses',
     description: 'Third-party libraries used in Rollout.',
 };

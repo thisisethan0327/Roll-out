@@ -17,6 +17,8 @@ export const dynamic = 'force-dynamic';
 export const metadata: Metadata = {
     title: 'Apply — Put your shop on Rollout',
     description: 'Apply to list your shop on Rollout. Get on the map, take bookings, message customers, and sell.',
+    // Behind sign-in (a visitor lands on /login): crawlable, never a search result.
+    robots: { index: false, follow: true },
 };
 
 export default async function ShopApplyPage({

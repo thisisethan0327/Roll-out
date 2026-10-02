@@ -1,5 +1,5 @@
 /**
- * Two jobs, in this order.
+ * Three jobs, in this order.
  *
  * 1. TENANT HOST GATING. A tenant admin host (admin.unityusa.co) serves the
  *    same console code as rollout.club/shop/<slug>, but at its own root and
@@ -13,14 +13,46 @@
  *    return allowlist points at "/" on this origin, and the URL somebody lands
  *    on has to stay the one the broker was told about.
  *
- * 2. SUPABASE COOKIE REFRESH, so Server Components always see a valid session.
+ * 2. ONE INDEXABLE HOST. The same app also answers on www.rollout.club and on
+ *    Coolify's default rollout.<ip>.sslip.io name, and both served full 200
+ *    pages (SEO audit 2026-10-01). They now 308 to https://rollout.club with
+ *    the path and query kept. Any other host that still reaches a page — a
+ *    branch preview on another sslip.io name, localhost — is answered with
+ *    X-Robots-Tag: noindex instead, so a preview can keep working without
+ *    competing with the real site.
+ *
+ * 3. SUPABASE COOKIE REFRESH, so Server Components always see a valid session.
  *    Only for the auth-gated trees, exactly as before — the marketing site
  *    stays cookie-free, which is why this runs after the gating and only for
  *    those paths.
  */
 import { type NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
-import { tenantForHost } from '@/lib/tenant-hosts';
+import { ROLLOUT_ORIGIN, tenantForHost } from '@/lib/tenant-hosts';
+
+/** The only host search engines should index. */
+const CANONICAL_HOST = new URL(ROLLOUT_ORIGIN).hostname;
+
+/** Hostname from a Host header, without the port, lower-cased. */
+function hostName(host: string | null | undefined): string {
+    return (host ?? '').split(':')[0].trim().toLowerCase();
+}
+
+/**
+ * Aliases of the canonical site that redirect to it: www, and this app's own
+ * Coolify default name (rollout.<server-ip>.sslip.io — matched by shape, so a
+ * server move does not reopen it). Previews run on other sslip.io names
+ * (restyle.<ip>.sslip.io) and are deliberately not in here.
+ */
+function isCanonicalAlias(host: string): boolean {
+    return host === `www.${CANONICAL_HOST}` || (host.startsWith('rollout.') && host.endsWith('.sslip.io'));
+}
+
+/** Mark a response from a non-canonical host as not for search engines. */
+function withHostPolicy(response: NextResponse, noindex: boolean): NextResponse {
+    if (noindex) response.headers.set('X-Robots-Tag', 'noindex');
+    return response;
+}
 
 /** Paths that must work on a tenant host regardless of the shop gating. */
 function isAlwaysAllowed(pathname: string): boolean {
@@ -83,6 +115,16 @@ export async function middleware(request: NextRequest) {
         if (gated) return gated;
     }
 
+    // One indexable host: aliases redirect, anything else non-canonical is
+    // served but marked noindex. After the tenant gating, so a tenant door
+    // behaves exactly as before.
+    const host = hostName(request.headers.get('host'));
+    if (!tenant && isCanonicalAlias(host)) {
+        const target = new URL(`${request.nextUrl.pathname}${request.nextUrl.search}`, ROLLOUT_ORIGIN);
+        return NextResponse.redirect(target, 308);
+    }
+    const noindex = host !== CANONICAL_HOST;
+
     // Cookie refresh only for the auth-gated trees. On a tenant host "/" is the
     // console, so it needs a session too.
     const { pathname } = request.nextUrl;
@@ -94,7 +136,7 @@ export async function middleware(request: NextRequest) {
         pathname.startsWith('/admin/') ||
         pathname.startsWith('/shop/') ||
         pathname.startsWith('/me/');
-    if (!needsSession) return NextResponse.next({ request });
+    if (!needsSession) return withHostPolicy(NextResponse.next({ request }), noindex);
 
     let response = NextResponse.next({ request });
 
@@ -120,7 +162,7 @@ export async function middleware(request: NextRequest) {
     // Touch getUser to trigger token refresh if the access token expired.
     await supabase.auth.getUser();
 
-    return response;
+    return withHostPolicy(response, noindex);
 }
 
 /**

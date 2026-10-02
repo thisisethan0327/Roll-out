@@ -13,7 +13,8 @@
 import Link from 'next/link';
 import { OtpLoginForm } from '@/components/auth/OtpLoginForm';
 
-export const metadata = { title: 'Sign In' };
+// A sign-in / application door: crawlable, never a search result (no ?next= duplicates).
+export const metadata = { title: 'Sign In', robots: { index: false, follow: true } };
 
 /** Only allow same-origin absolute paths, never protocol-relative (`//evil`). */
 function safeNext(raw: string | undefined): string {

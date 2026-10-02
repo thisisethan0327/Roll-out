@@ -13,7 +13,7 @@ import { redirect } from 'next/navigation';
 import { getConsumerProfile } from '@/lib/consumer';
 import { OnboardingForm } from './OnboardingForm';
 
-export const metadata = { title: 'Set Up Your Profile' };
+export const metadata = { title: 'Set Up Your Profile', robots: { index: false, follow: false } };
 export const dynamic = 'force-dynamic';
 
 // The placeholder rule lives in lib/onboarding.ts — /auth/landing and

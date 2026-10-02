@@ -34,10 +34,13 @@ export const metadata: Metadata = {
     },
     description:
         'Rollout is the private network where builders, shops, and meets actually connect. Track builds, RSVP convoys, talk to your shops — no DM chaos.',
+    // No og:url and no canonical here: both are inherited by every page that
+    // does not set its own, and a site-wide canonical of "/" told search
+    // engines that every event, profile and product was a copy of the home
+    // page (SEO audit 2026-10-01). Each public page declares its own.
     openGraph: {
         title: 'Rollout',
         description: 'A private network for the cars you build.',
-        url: 'https://rollout.club',
         siteName: 'Rollout',
         images: ['/images/og-rollout.jpg'],
         type: 'website',
@@ -48,7 +51,6 @@ export const metadata: Metadata = {
         description: 'A private network for the cars you build.',
     },
     icons: { icon: [{ url: '/favicon.ico', sizes: 'any' }, { url: '/favicon.png', type: 'image/png' }], apple: '/apple-touch-icon.png' },
-    alternates: { canonical: '/' },
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {

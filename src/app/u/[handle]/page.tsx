@@ -10,6 +10,10 @@ import { resolveCover, coverFocus } from '@/lib/event-covers';
 import { getSellingShops } from '@/lib/store-shops';
 import { fetchCatalogByHandles, type MedusaProduct } from '@/lib/medusa';
 import { ProductCard } from '@/components/ProductCard';
+import { ROLLOUT_ORIGIN } from '@/lib/tenant-hosts';
+import { UNITY_ORG, WEBSITE_ID, jsonLdHtml, postalAddress } from '@/lib/structured-data';
+import { isSeedProfile } from '@/lib/seed-content';
+import { isTestShop } from '@/lib/test-shops';
 
 // ── Types (loose; rollout schema not codegen'd) ────────────────────────────
 type Profile = {
@@ -28,6 +32,12 @@ type Profile = {
 
 type Shop = {
     id: string;
+    slug: string | null;
+    name: string | null;
+    /** The business's own website (038) — the profile's sameAs. */
+    website_url: string | null;
+    /** exact | area | off (042): only 'exact' publishes a street address. */
+    location_precision: string | null;
     primary_color: string | null;
     secondary_color: string | null;
     from_name: string | null;
@@ -139,6 +149,34 @@ function formatEventDate(iso: string | null | undefined, tz?: string | null): st
     }
 }
 
+/** A street line reduced to letters and digits ("1900 Airport Way S #103" = "1900 airport way s, #103"). */
+function streetKey(line: string | null | undefined): string {
+    return (line ?? '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+}
+
+/**
+ * True when another listed (verified) shop carries the same street line (and
+ * the same ZIP, when both have one). A failed read counts as shared: the
+ * markup then just falls back to the city.
+ */
+async function streetSharedWithAnotherShop(shop: Shop): Promise<boolean> {
+    const key = streetKey(shop.address_line);
+    if (!key) return false;
+    const { data, error } = await getSupabaseAdmin()
+        .from('shops')
+        .select('address_line, postal')
+        .eq('status', 'verified')
+        .neq('id', shop.id)
+        .not('address_line', 'is', null)
+        .limit(1000);
+    if (error) return true;
+    const zip = (shop.postal ?? '').trim();
+    return (data ?? []).some(
+        (s: { address_line: string | null; postal: string | null }) =>
+            streetKey(s.address_line) === key && (!zip || !s.postal?.trim() || s.postal.trim() === zip),
+    );
+}
+
 // ── Data fetch ─────────────────────────────────────────────────────────────
 async function loadHandle(rawHandle: string) {
     const handle = stripAt(decodeURIComponent(rawHandle));
@@ -160,7 +198,7 @@ async function loadHandle(rawHandle: string) {
         p.shop_id
             ? supabase
                   .from('shops')
-                  .select('id, status, primary_color, secondary_color, from_name, email_logo_url, address_line, city, state_region, postal, lat, lng, show_on_map')
+                  .select('id, status, slug, name, website_url, location_precision, primary_color, secondary_color, from_name, email_logo_url, address_line, city, state_region, postal, lat, lng, show_on_map')
                   .eq('id', p.shop_id)
                   .maybeSingle()
             : Promise.resolve({ data: null }),
@@ -301,6 +339,11 @@ export async function generateMetadata({
     return {
         title,
         description: desc,
+        // The stored handle, so /u/NeferStock and /u/@neferstock name one URL.
+        alternates: { canonical: `/u/${cleanHandle}` },
+        // E2E harness shops are verified (so they render) but are not
+        // businesses; preview seed personas (lib/seed-content) are not members.
+        ...((isShop && isTestShop(data.shop)) || isSeedProfile(profile.id) ? { robots: { index: false, follow: false } } : {}),
         openGraph: {
             title: socialTitle,
             description: desc,
@@ -349,27 +392,85 @@ export default async function HandlePage({
     const ratingCount = reviewStats?.rating_count ?? 0;
     const ratingAvg = Number(reviewStats?.rating_avg ?? 0);
 
-    // LocalBusiness structured data for shop pages (name, page, city, rating).
-    const shopLd = isShop
-        ? {
-              '@context': 'https://schema.org',
-              '@type': 'LocalBusiness',
-              name: displayName,
-              url: `https://rollout.club/u/${cleanHandle}`,
-              ...(profile.avatar_url ? { image: profile.avatar_url } : {}),
-              ...(profile.bio ? { description: profile.bio } : {}),
-              ...(profile.location
-                  ? (() => {
-                        // "Seattle · WA" / "Seattle, WA" → locality + region
-                        const [locality, region] = profile.location.split(/\s*[·,]\s*/).map((x: string) => x.trim());
-                        return { address: { '@type': 'PostalAddress', addressLocality: locality, ...(region ? { addressRegion: region } : {}) } };
-                    })()
-                  : {}),
-              ...(ratingCount > 0
-                  ? { aggregateRating: { '@type': 'AggregateRating', ratingValue: ratingAvg.toFixed(1), reviewCount: ratingCount, bestRating: 5 } }
-                  : {}),
-          }
-        : null;
+    // Shop pages: a ProfilePage whose mainEntity is the business itself — a
+    // LocalBusiness only when the shop publishes a street address (address
+    // line, precision 'exact', on the map) that is ITS OWN, otherwise an
+    // Organization with just its city. sameAs is the business's OWN website
+    // from the registry, so search engines tie this listing to the company
+    // rather than treating rollout.club as its home. No aggregateRating/review:
+    // a few first-party ratings here would contradict the businesses' own
+    // Google profiles (owner decision 2026-10-01). No markup at all for E2E
+    // harness shops.
+    //
+    // Two companies on Rollout must never read as one (owner decision
+    // 2026-10-01):
+    //  · UNITY USA operates Rollout and already has one node, the home page's
+    //    @id https://unityusa.co/#organization. Its own profile points at that
+    //    node instead of minting a second UNITY USA with different facts.
+    //  · A street address another listed shop also carries is left out of the
+    //    markup (city only), so two businesses are never published as one
+    //    LocalBusiness location.
+    //  · UNITY USA's public location is "Seattle, WA" and nothing finer (owner
+    //    decision 2026-10-01), so its profile has no FIND US street line or
+    //    pin whatever its registry row holds. Any shop on 'area' precision
+    //    shows only its city and state there — the precision control promises
+    //    "no street".
+    const website = shop?.website_url && /^https?:\/\//i.test(shop.website_url.trim()) ? shop.website_url.trim() : null;
+    const isOperator = shop?.slug === 'unityusa';
+    const findUsLine = (
+        (shop?.location_precision ?? 'exact') === 'exact'
+            ? [shop?.address_line, shop?.city, shop?.state_region, shop?.postal]
+            : [shop?.city, shop?.state_region]
+    )
+        .filter(Boolean)
+        .join(', ');
+    const ownsStreet =
+        isShop &&
+        !!shop?.address_line?.trim() &&
+        (shop.location_precision ?? 'exact') === 'exact' &&
+        shop.show_on_map !== false &&
+        !(await streetSharedWithAnotherShop(shop));
+    const locality = shop?.city
+        ? { locality: shop.city, region: shop.state_region }
+        : profile.location
+          ? (() => {
+                // "Seattle · WA" / "Seattle, WA" → locality + region
+                const [loc, region] = profile.location.split(/\s*[·,]\s*/).map((x: string) => x.trim());
+                return { locality: loc, region: region ?? null };
+            })()
+          : null;
+    const shopLd =
+        isShop && !isTestShop(shop)
+            ? {
+                  '@context': 'https://schema.org',
+                  '@type': 'ProfilePage',
+                  url: `${ROLLOUT_ORIGIN}/u/${cleanHandle}`,
+                  name: `${displayName} on Rollout`,
+                  isPartOf: { '@id': WEBSITE_ID },
+                  mainEntity: isOperator
+                      ? UNITY_ORG
+                      : {
+                            '@type': ownsStreet ? 'LocalBusiness' : 'Organization',
+                            name: displayName,
+                            alternateName: `@${cleanHandle}`,
+                            ...(profile.avatar_url ? { image: profile.avatar_url } : {}),
+                            ...(profile.bio ? { description: profile.bio } : {}),
+                            ...(website ? { sameAs: [website] } : {}),
+                            ...(ownsStreet && shop
+                                ? {
+                                      address: postalAddress({
+                                          street: shop.address_line,
+                                          locality: shop.city,
+                                          region: shop.state_region,
+                                          postal: shop.postal,
+                                      }),
+                                  }
+                                : locality
+                                  ? { address: postalAddress(locality) }
+                                  : {}),
+                        },
+              }
+            : null;
 
     // No banner → one of three default plates (garage / detailing / workshop),
     // chosen by profile id so it is stable, under the same scrim as a real one.
@@ -843,13 +944,13 @@ export default async function HandlePage({
             ) : null}
 
             {/* ── LOCATION (shop only, with coords + opted in) ─────────── */}
-            {isShop && shop?.lat != null && shop?.lng != null && shop?.show_on_map !== false ? (
+            {isShop && !isOperator && shop?.lat != null && shop?.lng != null && shop?.show_on_map !== false ? (
                 <section className="section" style={{ padding: '56px 0', borderTop: '1px solid var(--line)' }}>
                     <div className="container">
                         <div className="eyebrow eyebrow-gold mb-4">／ LOCATION</div>
                         <h2 style={{ marginBottom: 8 }}>FIND US</h2>
                         <p className="text-dim" style={{ fontSize: 15, margin: '0 0 18px' }}>
-                            {[shop.address_line, shop.city, shop.state_region, shop.postal].filter(Boolean).join(', ') || 'Tap through for directions.'}
+                            {findUsLine || 'Tap through for directions.'}
                         </p>
                         <div
                             className="corner-wrap"
@@ -926,7 +1027,7 @@ export default async function HandlePage({
             {/* Structured data LAST: Next picks the segment's FIRST element to decide
                 whether to scroll to the top on navigation, and an invisible <script>
                 always reads as "already in view", so the page kept the previous scroll. */}
-            {shopLd ? <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(shopLd) }} /> : null}
+            {shopLd ? <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdHtml(shopLd) }} /> : null}
         </>
     );
 }

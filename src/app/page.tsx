@@ -5,6 +5,51 @@ import { HomeMotion } from '@/components/motion/HomeMotion';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { AppStoreBadges } from '@/components/AppStoreBadges';
 import Image, { getImageProps } from 'next/image';
+import type { Metadata } from 'next';
+import { ROLLOUT_ORIGIN } from '@/lib/tenant-hosts';
+import { APP_ID, UNITY_ORG, UNITY_ORG_ID, WEBSITE_ID, jsonLdHtml } from '@/lib/structured-data';
+
+// The root layout no longer carries a site-wide canonical; the home page
+// declares its own.
+export const metadata: Metadata = {
+    alternates: { canonical: '/' },
+};
+
+/**
+ * Who runs this site and what it is, for search engines and answer engines:
+ * the website, the company that operates it (UNITY USA, whose own node lives
+ * on unityusa.co — referenced by @id, never redefined with other facts), and
+ * the app. operatingSystem is iOS only because that is the only build there
+ * is (a public TestFlight beta — lib/app-links.ts); applicationCategory is the
+ * primary category in the App Store submission package (docs/
+ * APP_STORE_SUBMISSION_2026-09-25.md). No rating: the app has no store
+ * ratings yet, and a made-up one is a manual-action risk.
+ */
+const HOME_LD = {
+    '@context': 'https://schema.org',
+    '@graph': [
+        {
+            '@type': 'WebSite',
+            '@id': WEBSITE_ID,
+            url: ROLLOUT_ORIGIN,
+            name: 'Rollout',
+            description: 'A private network for the cars you build.',
+            inLanguage: 'en-US',
+            publisher: { '@id': UNITY_ORG_ID },
+        },
+        UNITY_ORG,
+        {
+            '@type': 'MobileApplication',
+            '@id': APP_ID,
+            name: 'Rollout',
+            url: ROLLOUT_ORIGIN,
+            description: 'A private network for the cars you build. Shops, meets and builds.',
+            operatingSystem: 'iOS',
+            applicationCategory: 'LifestyleApplication',
+            publisher: { '@id': UNITY_ORG_ID },
+        },
+    ],
+};
 
 /**
  * The stat band shows REAL platform counts (it was hardcoded 14 / 0042 with a
@@ -212,6 +257,9 @@ export default async function HomePage() {
           50% { opacity: 0.35; }
         }
       `}</style>
+            {/* Structured data LAST, as on /event and /u: an invisible <script>
+                as the segment's first element breaks scroll-to-top. */}
+            <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdHtml(HOME_LD) }} />
         </>
     );
 }

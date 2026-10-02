@@ -5,7 +5,9 @@ import type { MetadataRoute } from 'next';
  * catalogue, the shop application/login doors. Private: the consoles (/admin,
  * /shop/<slug>), the member portal (/me), auth plumbing, cart/checkout/orders.
  * The two /shop/ doors are allowed by a more specific rule than the console
- * block (most-specific match wins for Google and Bing).
+ * block (most-specific match wins for Google and Bing). Those doors and the
+ * sign-in/sign-up pages carry noindex themselves: crawlable, so the noindex is
+ * seen, but never a search result.
  */
 export default function robots(): MetadataRoute.Robots {
     return {

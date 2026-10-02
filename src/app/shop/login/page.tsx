@@ -6,7 +6,8 @@ import { BrokerHashSession } from '@/components/auth/BrokerHashSession';
 import { tenantForHost } from '@/lib/tenant-hosts';
 import { brandForSlug } from '@/lib/tenant-brand';
 
-export const metadata = { title: 'Shop · Sign In' };
+// A sign-in / application door: crawlable, never a search result (no ?next= duplicates).
+export const metadata = { title: 'Shop · Sign In', robots: { index: false, follow: true } };
 
 /**
  * Where the broker may send this host's visitors back to.

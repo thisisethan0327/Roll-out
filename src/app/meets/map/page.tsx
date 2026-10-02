@@ -24,6 +24,7 @@ const TYPE_LABEL: Record<EventType, string> = {
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
+    alternates: { canonical: '/meets/map' },
     title: 'Meets Map',
     description:
         'Map of upcoming car meets, night runs, track days, and shops on Rollout — find what is happening near you.',

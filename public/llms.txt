@@ -1,0 +1,28 @@
+# Rollout
+
+> Rollout (rollout.club) is a private network for the cars you build: car meets, shops and builds in one place. Drivers find meets and RSVP, keep a garage of their vehicles, and talk to and book the shops they use. Rollout is a UNITY USA platform, operated by UNITY USA LLC (https://unityusa.co).
+
+- Free for drivers: the account, garage, RSVPs and messages cost nothing. Some meets offer paid packages set by the host; the price is shown on the event page before checkout.
+- Everything works in the browser at rollout.club: finding meets, RSVPs and waitlists, paid packages, calendar export, booking a shop, the store and orders. An iOS app is in public beta (TestFlight); Android is not out yet.
+- Verified hosts create meets with a capacity, a waitlist, optional paid tiers and email invites. Shops apply to be listed; approved shops get a public page, services and appointments, and can sell products in the store.
+- The store carries film, parts and merch from the shops on Rollout. Each product is sold and shipped by the shop that sells it, and its page links to the official product page on that seller's own site.
+
+## Pages
+
+- [Meets](https://rollout.club/meets): upcoming public car meets, runs, track days, cruises and shows
+- [Meets map](https://rollout.club/meets/map): the same meets and shops on a map
+- [Shops](https://rollout.club/shops): the shop directory
+- [Store](https://rollout.club/store): products from the shops on Rollout
+- [Help center](https://rollout.club/help): common questions (cost, the app, RSVPs and packages, hosting, listing a shop, accounts)
+
+## Policies
+
+- [Terms of Service](https://rollout.club/terms)
+- [Privacy Policy](https://rollout.club/privacy)
+- [Community Guidelines](https://rollout.club/guidelines)
+- [Refund & Cancellation Policy](https://rollout.club/policies/refunds)
+
+## Contact
+
+- General: team@rollout.club
+- Support and reports: support@rollout.club
