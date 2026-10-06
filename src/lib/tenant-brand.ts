@@ -53,8 +53,23 @@ const UNITY_BRAND: ConsoleBrand = {
     house: 'UNITY USA',
 };
 
+/**
+ * Popeye Energy's palette (client site tokens.css): red #d7262e, yellow
+ * #ffd23f, sea blue #1d4f91. Red and blue are too dark to carry as an accent on
+ * the console's black; the yellow reads cleanly and is the brand's pop colour.
+ */
+const POPEYE_BRAND: ConsoleBrand = {
+    label: 'POPEYE ENERGY',
+    tagline: 'Strong To The Finish!',
+    accent: '#ffd23f',
+    accentDim: 'rgba(255, 210, 63, 0.18)',
+    accentGlow: 'rgba(255, 210, 63, 0.08)',
+    house: 'Popeye Energy',
+};
+
 const BRAND_BY_SLUG: Record<string, ConsoleBrand> = {
     unityusa: UNITY_BRAND,
+    popeye: POPEYE_BRAND,
 };
 
 /**

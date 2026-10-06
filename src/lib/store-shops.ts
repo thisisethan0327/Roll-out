@@ -127,6 +127,9 @@ const VENDOR_CATEGORY_ROOTS: Record<string, string[]> = {
     // (printable + pre-cut kits) are cross-listed in the rollout channel; the
     // dealer-only film never is. Same root as the backend registry.
     unityusa: ['unityusa'],
+    // Popeye Energy (King Features-licensed energy drink, own tenant): its
+    // catalog lives under the `popeye` root in the backend registry.
+    popeye: ['popeye'],
     // emwraps: no Medusa catalog yet → intentionally absent (no vendor key).
 };
 
