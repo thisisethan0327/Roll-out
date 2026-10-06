@@ -60,7 +60,7 @@ const UNITY_BRAND: ConsoleBrand = {
  */
 const POPEYE_BRAND: ConsoleBrand = {
     label: 'POPEYE ENERGY',
-    tagline: 'Strong To The Finish!',
+    tagline: 'POPEYE ENERGY · MANAGE YOUR SHOP',
     accent: '#ffd23f',
     accentDim: 'rgba(255, 210, 63, 0.18)',
     accentGlow: 'rgba(255, 210, 63, 0.08)',
