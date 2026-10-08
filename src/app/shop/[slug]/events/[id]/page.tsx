@@ -10,6 +10,8 @@ import type { TierDraft } from '../TierRowsEditor';
 import { InviteSection } from './InviteSection';
 import { CoHostSection, type CoHostRow } from './CoHostSection';
 import QRCode from 'qrcode';
+import { AnnouncementsSection } from './AnnouncementsSection';
+import { listEventAnnouncementsForConsole } from '@/lib/announcements-write';
 import { VerificationSection, type VerificationView } from './VerificationSection';
 
 export const metadata = { title: 'Event Detail' };
@@ -201,7 +203,7 @@ export default async function EventDetailPage({
 }) {
     const { slug, id } = await params;
     const { just_created } = await searchParams;
-    const { shop, role } = await requireShopMemberBySlug(slug);
+    const { shop, role, profile } = await requireShopMemberBySlug(slug);
 
     const event = await loadEvent(id);
     if (!event) notFound();
@@ -233,6 +235,9 @@ export default async function EventDetailPage({
         .eq('id', event.shop_id)
         .maybeSingle();
     const hostDisplayName = (hostShop as any)?.from_name ?? (hostShop as any)?.name ?? 'Host';
+    // Announcements: host shop only (managers / host); empty list if migration 090 is not applied yet.
+    const canAnnounce = isHost && (['owner', 'admin', 'manager'].includes(role) || event.host_id === profile.profileId);
+    const announcements = canAnnounce ? await listEventAnnouncementsForConsole(id) : [];
     const verification = isHost ? await loadVerificationView(event, rsvps) : null;
     const hostNames = computeHostNames(hostDisplayName, cohosts);
 
@@ -339,6 +344,9 @@ export default async function EventDetailPage({
             {isHost && verification && (
                 <VerificationSection eventId={event.id} shopId={shop.shopId} slug={slug} view={verification} />
             )}
+
+            {/* ANNOUNCEMENTS (host shop managers / host) */}
+            {canAnnounce && <AnnouncementsSection eventId={event.id} announcements={announcements} />}
 
             {/* CO-HOSTS */}
             <CoHostSection

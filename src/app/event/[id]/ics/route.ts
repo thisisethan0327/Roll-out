@@ -10,6 +10,7 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { viewerCanViewEvent } from '@/lib/event-viewer';
+import { getEventAnnouncements } from '@/lib/announcements';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -62,7 +63,9 @@ export async function GET(
     const now = toIcsDate(new Date().toISOString());
     const location = [ev.location_name, ev.location_detail].filter(Boolean).join(', ');
     const url = `https://rollout.club/event/${ev.id}`;
-    const desc = [ev.description, url].filter(Boolean).join('\n\n');
+    // Live announcements are prepended as "UPDATE: <title>" (no date changes here).
+    const updates = (await getEventAnnouncements(ev.id)).map((a) => `UPDATE: ${a.title}`);
+    const desc = [...updates, ev.description, url].filter(Boolean).join('\n\n');
 
     const lines = [
         'BEGIN:VCALENDAR',

@@ -18,6 +18,7 @@ const NAV: NavItem[] = [
     { href: '/admin/permissions',    label: 'PERMISSIONS',   section: 'CONSOLE' },
     { href: '/admin/appointments', label: 'APPOINTMENTS', section: 'MODERATION' },
     { href: '/admin/events',       label: 'EVENTS',       section: 'MODERATION' },
+    { href: '/admin/announcements', label: 'ANNOUNCEMENTS', section: 'MODERATION' },
     { href: '/admin/posts',        label: 'POSTS',        section: 'MODERATION' },
 ];
 
