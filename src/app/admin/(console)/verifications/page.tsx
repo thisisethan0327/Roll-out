@@ -9,6 +9,7 @@
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { VerificationRow, type VReq } from './VerificationRow';
 import { EventVerificationRow, type EventVReq } from './EventVerificationRow';
+import { loadUserFacts } from '@/lib/admin-user-facts';
 
 export const metadata = { title: 'Verifications' };
 export const dynamic = 'force-dynamic';
@@ -46,6 +47,11 @@ async function loadQueue(): Promise<VReq[]> {
     const profById = new Map<string, any>();
     for (const p of (profilesRes.data as any[]) ?? []) profById.set(p.id, p);
 
+    // Decision facts for host applicants (email, sign-in, activity counts), loaded
+    // for the whole queue at once -- no per-card queries.
+    const hostIds = reqs.filter((r) => r.kind === 'host').map((r) => r.profile_id as string);
+    const factsById = await loadUserFacts(hostIds);
+
     return reqs.map((r) => ({
         id: r.id,
         kind: r.kind,
@@ -54,6 +60,7 @@ async function loadQueue(): Promise<VReq[]> {
         payload: (r.payload ?? {}) as Record<string, unknown>,
         shop: r.shop_id != null ? (shopById.get(r.shop_id) ?? null) : null,
         applicant: profById.get(r.profile_id) ?? null,
+        facts: factsById.get(r.profile_id) ?? null,
         nominatedBy: r.nominated_by ? { handle: profById.get(r.nominated_by)?.handle ?? '—' } : null,
     }));
 }

@@ -150,9 +150,9 @@ async function searchUsers(t: string): Promise<JumpGroup> {
             title: p.display_name || p.handle,
             subtitle: `@${p.handle}`,
             badge: p.is_verified ? 'VERIFIED' : null,
-            href: `/u/${p.handle}`,
-            altHref: `/admin/users?q=${encodeURIComponent(p.handle)}`,
-            altLabel: 'ADMIN',
+            href: `/admin/users/${p.id}`,
+            altHref: `/u/${p.handle}`,
+            altLabel: 'PUBLIC',
         }));
     } catch (e: any) {
         base.error = e?.message ?? 'User search unavailable.';

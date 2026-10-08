@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { decideVerification, getKycDocuments, type CommerceRegistry } from './actions';
+import type { UserFacts } from '@/lib/admin-user-facts';
 
 type KycDoc = {
     id: string;
@@ -20,7 +21,9 @@ export type VReq = {
     origin_app: string | null;
     payload: Record<string, unknown>;
     shop: { id: number; slug: string; name: string | null; origin_app: string | null } | null;
-    applicant: { handle: string; display_name: string | null } | null;
+    applicant: { id: string; handle: string; display_name: string | null } | null;
+    /** Host requests only: account + activity facts for the decision. */
+    facts: UserFacts | null;
     nominatedBy: { handle: string } | null;
 };
 
@@ -77,10 +80,17 @@ export function VerificationRow({ req }: { req: VReq }) {
         });
     }
 
+    const applicantLink = req.applicant ? (
+        <a href={`/admin/users/${req.applicant.id}`} className="text-link">
+            @{req.applicant.handle}
+        </a>
+    ) : (
+        <>@—</>
+    );
     const title =
-        req.kind === 'host'
-            ? `@${req.applicant?.handle ?? '—'}`
-            : (req.shop?.name ?? req.shop?.slug ?? '—');
+        req.kind === 'host' ? applicantLink : (req.shop?.name ?? req.shop?.slug ?? '—');
+    const why = payloadLine(req.payload, 'why');
+    const facts = req.facts;
 
     return (
         <div className="feature-card vrow" style={{ padding: 16, display: 'grid', gap: 10 }}>
@@ -97,11 +107,25 @@ export function VerificationRow({ req }: { req: VReq }) {
             <div style={{ fontSize: 13, color: 'var(--text-2)', display: 'grid', gap: 3 }}>
                 {req.kind !== 'host' && req.shop ? (
                     <div>
-                        Owner @{req.applicant?.handle ?? '—'} · handle <b>{req.shop.slug}</b>
+                        Owner {applicantLink} · handle <b>{req.shop.slug}</b>
                     </div>
                 ) : null}
                 {req.kind === 'host' && req.nominatedBy ? (
                     <div>Nominated by @{req.nominatedBy.handle}</div>
+                ) : null}
+                {req.kind === 'host' ? (
+                    <>
+                        {req.applicant?.display_name ? <div>{req.applicant.display_name}</div> : null}
+                        <div>
+                            <span style={{ color: 'var(--text-3, var(--text-2))' }}>WHY: </span>
+                            {why ? (
+                                <span style={{ fontStyle: 'italic' }}>“{why}”</span>
+                            ) : (
+                                <span style={{ color: 'var(--text-3, var(--text-2))' }}>No reason given</span>
+                            )}
+                        </div>
+                        <FactsBlock facts={facts} />
+                    </>
                 ) : null}
                 {req.kind === 'shop' ? (
                     <>
@@ -218,6 +242,53 @@ export function VerificationRow({ req }: { req: VReq }) {
                 .vrow .admin-form-input { width: 100%; box-sizing: border-box; }
                 .vrow select.admin-form-input { appearance: none; -webkit-appearance: none; cursor: pointer; }
             `}</style>
+        </div>
+    );
+}
+
+function relative(iso: string | null | undefined): string {
+    if (!iso) return '—';
+    const days = Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000);
+    const rel = days <= 0 ? 'today' : days === 1 ? '1 day ago' : `${days} days ago`;
+    return `${rel} (${new Date(iso).toISOString().slice(0, 10)})`;
+}
+
+function FactsBlock({ facts }: { facts: UserFacts | null }) {
+    if (!facts) {
+        return <div style={{ color: 'var(--text-3, var(--text-2))' }}>No account details found.</div>;
+    }
+    const c = facts.counts;
+    const n = (v: number | null) => (v == null ? '—' : String(v));
+    const dim = { color: 'var(--text-3, var(--text-2))' } as const;
+    return (
+        <div
+            style={{
+                display: 'grid',
+                gap: 3,
+                border: '1px solid var(--line)',
+                background: 'var(--bg-1)',
+                padding: '8px 10px',
+                fontSize: 12,
+                marginTop: 4,
+            }}
+        >
+            <div>
+                <span style={dim}>EMAIL </span>
+                {facts.auth?.email ?? '—'}
+                {facts.auth && !facts.auth.emailConfirmedAt ? <span style={dim}> (unconfirmed)</span> : null}
+            </div>
+            <div>
+                <span style={dim}>JOINED </span>
+                {relative(facts.auth?.createdAt ?? facts.profileCreatedAt)}
+            </div>
+            <div>
+                <span style={dim}>LAST SIGN-IN </span>
+                {relative(facts.auth?.lastSignInAt)}
+            </div>
+            <div>
+                {n(c.posts)} posts · {n(c.vehicles)} vehicles · {n(c.followers)} followers · {n(c.rsvps)} RSVPs ·{' '}
+                {n(c.hosted)} hosted
+            </div>
         </div>
     );
 }
