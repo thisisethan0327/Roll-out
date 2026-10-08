@@ -95,8 +95,15 @@ import 'server-only';
  *     released automatically when the whole-order refund path runs. Never
  *     called from the web app directly.
  *
- *   host_check_in_ticket(p_ticket uuid) — host/door tooling, no web UI in
- *     this lane.
+ *   host_check_in_ticket(p_ticket uuid) — host/door tooling (see
+ *     hostCheckInTicket below). Host / host-shop manager only.
+ *     →   {already?:true, ticket_id, claimed, xp?, coin_serial?}
+ *
+ *   host_event_tickets(p_event uuid) — the door list: one row per CONFIRMED
+ *     ticket, {ticket_id, seat, spot_no, attendee_name, sweater_size,
+ *     claimed, attendee_handle, buyer_name, checked_in}. By design it
+ *     carries NO emails, no order id and no checked-in timestamp (see
+ *     hostEventTickets below).
  *
  * Ticket status vocabulary: held | confirmed | cancelled | expired.
  */
@@ -633,4 +640,87 @@ export async function myTicketsForEvent(eventId: string): Promise<MyTicketRow[]>
 export async function myTicketsForEventWithClient(member: any, eventId: string): Promise<MyTicketRow[]> {
     const rows = await myTicketsWithClient(member);
     return rows.filter((r) => r.eventId === eventId);
+}
+
+// ── Host door tools (migration 080 §10) ─────────────────────────────────
+
+export type HostTicketRow = {
+    ticketId: string;
+    seat: number;
+    spotNo: number | null;
+    attendeeName: string;
+    sweaterSize: string | null;
+    /** The seat is linked to a Rollout account. */
+    claimed: boolean;
+    attendeeHandle: string | null;
+    /** Purchaser's display name; the only order-level identifier the RPC exposes. */
+    buyerName: string | null;
+    checkedIn: boolean;
+};
+
+export type HostTicketsResult =
+    | { ok: true; rows: HostTicketRow[] }
+    /** `missing`: the RPC does not exist yet (migration 080 not applied) — callers hide the section. */
+    | { ok: false; error: string; missing?: boolean };
+
+export type HostCheckInResult =
+    | { ok: true; already: boolean; claimed: boolean }
+    | { ok: false; error: string };
+
+function isMissingRpc(error: { code?: string; message?: string }): boolean {
+    return error.code === 'PGRST202' || error.code === '42883' || /could not find the function/i.test(error.message ?? '');
+}
+
+/** RPC error → door-staff-friendly text (the RPCs raise short lowercase messages). */
+function describeDoorError(error: { code?: string; message?: string }): string {
+    const m = error.message ?? '';
+    if (error.code === '42501' || /not the host/i.test(m)) {
+        return 'Only the event host or a shop manager can use the door list.';
+    }
+    if (error.code === '28000' || /not signed in/i.test(m)) return 'Sign in again to continue.';
+    if (/ticket not confirmed/i.test(m)) return 'This ticket is not confirmed, so it cannot be checked in.';
+    if (/ticket not found/i.test(m)) return 'That ticket no longer exists.';
+    if (/event not found/i.test(m)) return 'This event was not found, or it has been cancelled.';
+    return 'Something went wrong. Try again in a moment.';
+}
+
+/**
+ * The door list (host_event_tickets), called with the member's own session —
+ * the RPC itself decides who may read it (host, host-shop manager, platform
+ * admin). Confirmed tickets only.
+ */
+export async function hostEventTickets(eventId: string): Promise<HostTicketsResult> {
+    const member = await getRolloutMemberClient();
+    const { data, error } = await member.rpc('host_event_tickets', { p_event: eventId });
+    if (error) {
+        if (isMissingRpc(error)) return { ok: false, error: 'Door list is not available yet.', missing: true };
+        console.error('[event-tickets] host_event_tickets RPC failed:', error.message);
+        return { ok: false, error: describeDoorError(error) };
+    }
+    const rows = ((data as any[]) ?? []).map(
+        (r): HostTicketRow => ({
+            ticketId: r.ticket_id,
+            seat: Number(r.seat),
+            spotNo: r.spot_no != null ? Number(r.spot_no) : null,
+            attendeeName: r.attendee_name ?? '',
+            sweaterSize: r.sweater_size ?? null,
+            claimed: Boolean(r.claimed),
+            attendeeHandle: r.attendee_handle ?? null,
+            buyerName: r.buyer_name ?? null,
+            checkedIn: Boolean(r.checked_in),
+        }),
+    );
+    return { ok: true, rows };
+}
+
+/** Host / host-shop manager checks one ticket in at the door (member session; the RPC enforces who). */
+export async function hostCheckInTicket(ticketId: string): Promise<HostCheckInResult> {
+    const member = await getRolloutMemberClient();
+    const { data, error } = await member.rpc('host_check_in_ticket', { p_ticket: ticketId });
+    if (error) {
+        if (isMissingRpc(error)) return { ok: false, error: 'Door check-in is not available yet.' };
+        return { ok: false, error: describeDoorError(error) };
+    }
+    const d = (data ?? {}) as { already?: boolean; claimed?: boolean };
+    return { ok: true, already: Boolean(d.already), claimed: Boolean(d.claimed) };
 }
