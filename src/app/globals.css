@@ -2861,3 +2861,48 @@ h4 { font-size: 16px; letter-spacing: var(--track-wide); }
     padding-right: 14px;
   }
 }
+
+/* ── ANNOUNCEMENTS (rollout.announcements) ─────────────────────────────────
+   info = gold, warning = orange, critical = red. Tints are translucent so the
+   same rules read on the dark default and on the light token set. */
+.ann-stack { --ann-c: var(--gold); }
+.ann-stack-band { border-bottom: 1px solid var(--line); background: var(--bg-1); padding: 10px 0; }
+.ann-stack-band:has(.ann-critical) { padding: 0; }
+.ann-stack-card { margin: 0 0 20px; }
+.ann {
+  --ann-c: var(--gold);
+  display: flex;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  position: relative;
+  padding: 12px 44px 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--ann-c) 45%, transparent);
+  border-left: 3px solid var(--ann-c);
+  background: color-mix(in srgb, var(--ann-c) 11%, transparent);
+  color: var(--text);
+}
+.ann + .ann { margin-top: 8px; }
+.ann-warning { --ann-c: #ff8a1f; }
+.ann-critical { --ann-c: var(--warn); }
+:root[data-theme='light'] .ann-warning { --ann-c: #b45309; }
+.ann-icon { color: var(--ann-c); font-size: 14px; line-height: 20px; flex: 0 0 auto; }
+.ann-main { flex: 1 1 240px; min-width: 0; }
+.ann-kicker { font-family: var(--font-display); font-size: 10px; letter-spacing: var(--track-wider); color: var(--ann-c); }
+.ann-title { font-weight: 700; font-size: 15px; line-height: 1.35; margin-top: 2px; overflow-wrap: anywhere; }
+.ann-body { margin: 6px 0 0; font-size: 14px; line-height: 1.5; color: var(--text-2); white-space: pre-line; overflow-wrap: anywhere; }
+.ann-cta { flex: 0 0 auto; min-height: 40px; align-self: center; font-size: 11px; }
+.ann-x {
+  position: absolute; top: 4px; right: 4px; width: 40px; height: 40px;
+  display: grid; place-items: center; background: transparent; border: 0;
+  color: var(--text-3); font-size: 13px; cursor: pointer;
+}
+.ann-x:hover { color: var(--text); }
+.ann-pill {
+  display: inline-block; padding: 2px 7px; border: 1px solid var(--gold); background: var(--gold-dim);
+  color: var(--gold); font-family: var(--font-display); font-size: 9px; letter-spacing: var(--track-wider); vertical-align: middle;
+}
+@media (max-width: 640px) {
+  .ann { padding: 12px 44px 12px 12px; }
+  .ann-cta { width: 100%; justify-content: center; }
+}

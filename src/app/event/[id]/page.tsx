@@ -57,6 +57,9 @@ import { LockedEvent } from './LockedEvent';
 import { ROLLOUT_ORIGIN } from '@/lib/tenant-hosts';
 import { absoluteUrl, jsonLdHtml, postalAddressFromText } from '@/lib/structured-data';
 import { isSeedEvent } from '@/lib/seed-content';
+import { AnnouncementBar } from '@/components/AnnouncementBar';
+import { getEventAnnouncements, getSiteAnnouncements } from '@/lib/announcements';
+import { sortAnnouncements } from '@/lib/announcements-core';
 import styles from './cover-story.module.css';
 
 type EventRow = {
@@ -531,7 +534,11 @@ export async function generateMetadata({
         : `${ev.type ?? 'Meet'} at ${ev.location_name ?? 'TBA'} — ${formatDate(ev.start_at, ev.time_zone)}. RSVP on Rollout.`;
     const sponsorSuffix =
         sponsors.length > 0 ? ` Sponsored by ${sponsors.map((s) => s.name).join(', ')}.` : '';
-    const desc = `${baseDesc}${sponsorSuffix}`;
+    // Only a CRITICAL live notice reaches link previews / search snippets
+    // (info and warning stay on the page itself) — keep SEO sane.
+    const critical = (await getEventAnnouncements(id)).find((a) => a.level === 'critical');
+    const updatePrefix = critical ? `[Update] ${truncate(critical.title, 90)}. ` : '';
+    const desc = `${updatePrefix}${baseDesc}${sponsorSuffix}`;
     const images = [resolveCover(ev.hero_image_url, ev.type, ev.id)];
 
     return {
@@ -574,6 +581,10 @@ export default async function PublicEventPage({
     const data = await loadEvent(id);
     if (!data) notFound();
     const { event: ev, attendees, spotsLeft, sponsors } = data;
+    // Live announcements: this event's, plus any site-wide CRITICAL one. The
+    // viewer was authorised above, so the per-event read uses the service role.
+    const [eventNotices, siteNotices] = await Promise.all([getEventAnnouncements(id), getSiteAnnouncements()]);
+    const notices = sortAnnouncements([...siteNotices.filter((a) => a.level === 'critical'), ...eventNotices]);
     // E2/E3: tiered/paid events swap the flat RSVP strip for the tier picker.
     // Every pre-E2 event is rsvp_mode='free' and renders exactly as before.
     const isTiered = ev.rsvp_mode === 'tiered' || ev.rsvp_mode === 'paid';
@@ -792,6 +803,9 @@ export default async function PublicEventPage({
                 </div>
             ) : null}
 
+
+            {/* ANNOUNCEMENTS — above the hero so a postponement is the first thing read */}
+            <AnnouncementBar announcements={notices} />
 
             {/* COVER HERO */}
             <EventCoverHero

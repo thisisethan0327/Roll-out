@@ -3,6 +3,8 @@ import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { formatEventTime } from '@/lib/event-time';
 import { hasDrawnRoute, snapToSite, ROUTE_ORIGIN } from '@/lib/map-sites';
 import { StylisedMap, type MapPin } from '@/components/map/StylisedMap';
+import { UpdatePill } from '@/components/AnnouncementBar';
+import { getEventIdsWithAnnouncements } from '@/lib/announcements';
 
 /**
  * "／ NEXT RUN" — the map band below the home hero (UI polish §6). The map is
@@ -63,6 +65,8 @@ export async function NextRunBand() {
     const data = await loadBand();
     if (!data) return null;
     const { featured, others, shops } = data;
+    // One extra query for the whole band: does the featured meet have a live update?
+    const hasUpdate = (await getEventIdsWithAnnouncements([featured.id])).has(featured.id);
 
     const route = hasDrawnRoute(featured);
     // When the route draws, the featured pin IS the route's origin.
@@ -89,7 +93,7 @@ export async function NextRunBand() {
     const head = (
         <div className="rv" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 24, flexWrap: 'wrap', marginBottom: 24 }}>
             <div>
-                <div className="eyebrow eyebrow-gold mb-4">／ NEXT RUN</div>
+                <div className="eyebrow eyebrow-gold mb-4">／ NEXT RUN{hasUpdate ? <> <UpdatePill /></> : null}</div>
                 <h2 style={{ margin: 0 }}>{(featured.title ?? 'NEXT MEET').toUpperCase()}</h2>
                 <p className="text-dim" style={{ marginTop: 10, fontSize: 15 }}>
                     {formatEventTime(featured.start_at, featured.time_zone)}
@@ -120,7 +124,7 @@ export async function NextRunBand() {
                                 {featured.host_name ? <><span className="sep" /><span>HOST · {featured.host_name.toUpperCase()}</span></> : null}
                                 {spots != null ? <><span className="sep" /><span>{spots} OF {featured.capacity} LEFT</span></> : null}
                             </div>
-                            <h3 style={{ margin: '10px 0 0' }}>{featured.title}</h3>
+                            <h3 style={{ margin: '10px 0 0' }}>{featured.title}{hasUpdate ? <> <UpdatePill /></> : null}</h3>
                             <p className="text-dim" style={{ margin: '6px 0 0', fontSize: 14 }}>{featured.location_name ?? 'Meet point TBA'}</p>
                         </div>
                         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
@@ -158,7 +162,7 @@ export async function NextRunBand() {
                                 <span className="accent">{TYPE_LABEL[featured.type ?? ''] ?? 'MEET'}</span>
                                 {featured.host_name ? <span>HOST · {featured.host_name.toUpperCase()}</span> : null}
                             </div>
-                            <h4>{featured.title}</h4>
+                            <h4>{featured.title}{hasUpdate ? <> <UpdatePill /></> : null}</h4>
                             <div className="pop-when">{formatEventTime(featured.start_at, featured.time_zone)}</div>
                             <div className="pop-where">
                                 {featured.location_name ?? 'Meet point TBA'}

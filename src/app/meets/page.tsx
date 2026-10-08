@@ -20,6 +20,8 @@ import { BandReveal } from '@/components/motion/BandReveal';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { resolveCover, coverFocus } from '@/lib/event-covers';
 import { loadUpcomingTeasers } from '@/lib/event-teasers';
+import { getEventIdsWithAnnouncements } from '@/lib/announcements';
+import { UpdatePill } from '@/components/AnnouncementBar';
 import {
     mergeByStartAt,
     teaserAreaLabel,
@@ -180,6 +182,8 @@ export default async function MeetsDirectoryPage({
     const { type: raw } = await searchParams;
     const type = isValidType(raw) ? raw : null;
     const [{ upcoming, past }, mapData] = await Promise.all([loadMeets(type), loadMapData(type)]);
+    // One query: which upcoming meets have a live announcement (UPDATE pill).
+    const updateIds = await getEventIdsWithAnnouncements(upcoming.filter((m) => !isLocked(m)).map((m) => m.id));
     const mapHref = type ? `/meets/map?type=${type}` : '/meets/map';
 
     return (
@@ -246,12 +250,12 @@ export default async function MeetsDirectoryPage({
                         <>
                             {/* Desktop (≥1024): list + live map side by side, cross-highlighting. */}
                             <div className="meets-split-desktop">
-                                <MeetsSplit meets={upcoming} events={mapData.events} shops={mapData.shops} />
+                                <MeetsSplit meets={upcoming} events={mapData.events} shops={mapData.shops} updateIds={Array.from(updateIds)} />
                             </div>
                             {/* Mobile/tablet (<1024): classic grid; the map lives at /meets/map. */}
                             <div className="meets-grid-mobile">
                                 {upcoming.map((m) =>
-                                    isLocked(m) ? <LockedTile key={m.id} m={m} /> : <MeetTile key={m.id} m={m} />,
+                                    isLocked(m) ? <LockedTile key={m.id} m={m} /> : <MeetTile key={m.id} m={m} hasUpdate={updateIds.has(m.id)} />,
                                 )}
                             </div>
                         </>
@@ -276,7 +280,7 @@ export default async function MeetsDirectoryPage({
     );
 }
 
-function MeetTile({ m, past = false }: { m: MeetCard; past?: boolean }) {
+function MeetTile({ m, past = false, hasUpdate = false }: { m: MeetCard; past?: boolean; hasUpdate?: boolean }) {
     return (
         <Link href={`/event/${m.id}`} style={{ textDecoration: 'none', display: 'block' }}>
             <article
@@ -322,7 +326,7 @@ function MeetTile({ m, past = false }: { m: MeetCard; past?: boolean }) {
                         ) : null}
                     </div>
                     <h3 style={{ fontSize: 18, letterSpacing: 0.8, margin: 0, color: 'var(--text)' }}>
-                        {(m.title ?? 'Untitled meet').toUpperCase()}
+                        {(m.title ?? 'Untitled meet').toUpperCase()}{hasUpdate ? <> <UpdatePill /></> : null}
                     </h3>
                     <div className="text-dim" style={{ fontSize: 13 }}>
                         {formatDate(m.start_at, m.time_zone)} · {m.location_name ?? 'TBA'}

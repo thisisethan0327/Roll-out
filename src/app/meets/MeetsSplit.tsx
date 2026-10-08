@@ -1,4 +1,5 @@
 'use client';
+import { UpdatePill } from '@/components/AnnouncementBar';
 /**
  * Desktop split view for /meets (≥1024px): the upcoming-meets list on the left,
  * the live map pinned on the right. Both are driven by the same server-loaded,
@@ -57,7 +58,10 @@ export function MeetsSplit({
     meets,
     events,
     shops,
+    updateIds = [],
 }: {
+    /** Event ids with a live announcement: get an UPDATE pill. */
+    updateIds?: string[];
     /** Public meets, merged by date with locked private / followers-only teasers. */
     meets: Array<SplitMeet | LockedMeet>;
     events: MapEvent[];
@@ -179,7 +183,7 @@ export function MeetsSplit({
                                     </>
                                 ) : null}
                             </div>
-                            <h3 className="meets-split-title">{(m.title ?? 'Untitled meet').toUpperCase()}</h3>
+                            <h3 className="meets-split-title">{(m.title ?? 'Untitled meet').toUpperCase()}{updateIds.includes(m.id) ? <> <UpdatePill /></> : null}</h3>
                             <div className="text-dim" style={{ fontSize: 12.5 }}>
                                 {formatDate(m.start_at, m.time_zone)} · {m.location_name ?? 'TBA'}
                             </div>

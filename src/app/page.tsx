@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import { HeroLoop } from '@/components/HeroLoop';
 import { NextRunBand } from './NextRunBand';
+import { AnnouncementBar } from '@/components/AnnouncementBar';
+import { getSiteAnnouncements } from '@/lib/announcements';
 import { HomeMotion } from '@/components/motion/HomeMotion';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { AppStoreBadges } from '@/components/AppStoreBadges';
@@ -56,7 +58,7 @@ const HOME_LD = {
  * "PNW 06" sector cell). Read with the admin client, revalidated every five
  * minutes; a failed read shows a dash rather than a made-up number.
  */
-export const revalidate = 300;
+export const revalidate = 60; // 60s so a posted announcement reaches the home page quickly (counts are cheap head queries)
 
 async function platformCounts(): Promise<{ meets: string; shops: string; members: string }> {
     const dash = { meets: '—', shops: '—', members: '—' };
@@ -76,7 +78,7 @@ async function platformCounts(): Promise<{ meets: string; shops: string; members
 }
 
 export default async function HomePage() {
-    const counts = await platformCounts();
+    const [counts, announcements] = await Promise.all([platformCounts(), getSiteAnnouncements()]);
     // The hero pair as plain <img> props so a <picture> can art-direct them:
     // 21:9 on desktop, 9:16 on phones, exactly one plate requested per width.
     const { props: desktopPlate } = getImageProps({
@@ -89,6 +91,8 @@ export default async function HomePage() {
     const { props: portraitPlate } = getImageProps({ alt: '', src: '/images/polish/hero-night-9x16.webp', fill: true, sizes: '100vw' });
     return (
         <>
+            {/* Site announcements: directly under the header, above the hero. */}
+            <AnnouncementBar announcements={announcements} />
             {/* ── HERO ─────────────────────────────────────────────────────── */}
             {/* on-dark: a night photo at 0.55 brightness is dark in BOTH themes.
                 Measured on production (run R12, RG): in light the wordmark was
