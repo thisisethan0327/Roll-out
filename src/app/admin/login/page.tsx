@@ -37,6 +37,11 @@ export default async function AdminLoginPage({
                         No Rollout profile for that account. Sign up via the mobile app first.
                     </div>
                 )}
+                {error === 'suspended' && (
+                    <div className="admin-login-error">
+                        This Rollout account is suspended. The console is closed to it.
+                    </div>
+                )}
                 {error === 'verify_failed' && (
                     <div className="admin-login-error">
                         Code rejected. Try again.

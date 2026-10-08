@@ -16,6 +16,7 @@ import { sendPlatformNotification } from '@/lib/platform-notify';
 import { listKycDocsForShop, type KycDocView } from '@/lib/verification-docs';
 import { raiseShopUnmapped, resolveShopUnmapped } from '@/lib/action-items';
 import { buildGeocodeQuery, geocode } from '@/lib/geocode';
+import { isProfileIdBanned } from '@/lib/ban-server';
 
 export type CommerceRegistry = {
     sells_products?: boolean;
@@ -39,6 +40,12 @@ export async function decideVerification(input: {
         .select('kind, shop_id, profile_id')
         .eq('id', input.requestId)
         .maybeSingle();
+
+    // Rollout ban (migration 091): a suspended applicant cannot be approved
+    // (rejecting is still allowed). Read from the DB here, never from the client.
+    if (input.approve && (reqRow as any)?.profile_id && (await isProfileIdBanned((reqRow as any).profile_id))) {
+        return { ok: false, error: 'This applicant is banned. Lift the ban before approving.' };
+    }
 
     const supabase = await getSupabaseServer();
     const { error } = await supabase.schema('rollout').rpc('decide_verification', {

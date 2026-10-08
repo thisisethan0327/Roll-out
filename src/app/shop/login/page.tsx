@@ -83,6 +83,11 @@ export default async function ShopLoginPage({
                         )}
                     </div>
                 )}
+                {error === 'suspended' && (
+                    <div className="admin-login-error">
+                        This Rollout account is suspended. The shop console is closed to it.
+                    </div>
+                )}
                 {error === 'no_profile' && (
                     <div className="admin-login-error">
                         {/* Name the shop. The card header says UNITY USA while

@@ -17,7 +17,7 @@
  * match the caller.
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { bearerTokenFrom, resolveAppCaller } from '@/lib/app-auth';
+import { bearerTokenFrom, resolveAppCaller, suspendedAppResponse } from '@/lib/app-auth';
 import { getRolloutMemberClientForToken } from '@/lib/consumer';
 import { ensureMedusaCustomerTokenForUser } from '@/lib/medusa-customer';
 import { getEventCartCore, type EventAuthCtx } from '@/lib/event-cart-core';
@@ -27,6 +27,8 @@ export async function POST(req: NextRequest) {
     if (!caller) {
         return NextResponse.json({ ok: false, error: 'Sign in required.', code: 'auth' }, { status: 401 });
     }
+    const suspended = suspendedAppResponse(caller);
+    if (suspended) return suspended;
 
     let body: any;
     try {

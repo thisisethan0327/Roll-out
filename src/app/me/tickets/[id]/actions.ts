@@ -9,6 +9,7 @@
 import { revalidatePath } from 'next/cache';
 import { getSupabaseServer } from '@/lib/supabase/server';
 import { getConsumerProfile } from '@/lib/consumer';
+import { SUSPENDED_MESSAGE, isProfileBanned } from '@/lib/ban';
 
 export async function sendCustomerMessage(
     ticketId: string,
@@ -20,6 +21,7 @@ export async function sendCustomerMessage(
 
     const profile = await getConsumerProfile();
     if (!profile) return { ok: false, error: 'Not signed in.' };
+    if (isProfileBanned(profile)) return { ok: false, error: SUSPENDED_MESSAGE };
 
     const supabase = await getSupabaseServer(); // anon — RLS enforces ownership
     const { error } = await supabase.from('ticket_messages').insert({

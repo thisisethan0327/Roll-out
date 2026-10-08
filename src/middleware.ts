@@ -135,7 +135,8 @@ export async function middleware(request: NextRequest) {
         (tenant && pathname === '/') ||
         pathname.startsWith('/admin/') ||
         pathname.startsWith('/shop/') ||
-        pathname.startsWith('/me/');
+        pathname.startsWith('/me/') ||
+        pathname === '/suspended';
     if (!needsSession) return withHostPolicy(NextResponse.next({ request }), noindex);
 
     let response = NextResponse.next({ request });

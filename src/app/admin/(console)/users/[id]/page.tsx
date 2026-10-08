@@ -1,7 +1,9 @@
 /**
  * /admin/users/[id] — platform-admin detail view of ONE member (id =
  * rollout.profiles.id): account, profile, activity, shops, events, RSVPs and
- * verification history. Read-only apart from the shared account actions.
+ * verification history. Read-only apart from the shared account actions and the
+ * Rollout ban controls (profiles.banned_until + rollout.user_bans, migration 091;
+ * every ban read here tolerates 091 not being applied yet).
  *
  * Authorization: requirePlatformAdmin() (the console layout checks too).
  * Service-role reads only.
@@ -13,6 +15,7 @@ import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { UUID_RE, loadUserFacts, relativeTime } from '@/lib/admin-user-facts';
 import { MEDUSA_URL } from '@/lib/medusa';
 import { UserActions } from './UserActions';
+import { isBanSchemaMissing, isBannedUntil, describeBanEnd } from '@/lib/ban';
 
 export const metadata = { title: 'User · Detail' };
 export const dynamic = 'force-dynamic';
@@ -103,6 +106,32 @@ async function loadAll(id: string) {
         for (const e of (evs as any[]) ?? []) eventById.set(e.id, e);
     }
 
+    // Rollout ban history (migration 091). A missing table = 091 not applied.
+    let bans: any[] = [];
+    let banHistoryReady = true;
+    const banRes = await admin
+        .from('user_bans')
+        .select('id, action, banned_until, reason, public_note, actor_profile_id, created_at')
+        .eq('profile_id', id)
+        .order('created_at', { ascending: false })
+        .limit(100);
+    if (banRes.error) {
+        banHistoryReady = false;
+        if (!isBanSchemaMissing(banRes.error)) {
+            console.error('[admin/users/[id]] ban history load failed:', banRes.error.message);
+        }
+    } else {
+        bans = (banRes.data as any[]) ?? [];
+    }
+    const actorHandles = new Map<string, string>();
+    const actorIds = [...new Set(bans.map((b) => b.actor_profile_id).filter(Boolean))] as string[];
+    if (actorIds.length) {
+        const { data: actors } = await admin.from('profiles').select('id, handle').in('id', actorIds);
+        for (const a of (actors as any[]) ?? []) actorHandles.set(a.id, a.handle);
+    }
+    // select('*') returns banned_until whenever the column exists (null included).
+    const banColumnPresent = Object.prototype.hasOwnProperty.call(profile, 'banned_until');
+
     if (memberships.error) console.error('[admin/users/[id]] memberships load failed:', memberships.error.message);
     if (hosted.error) console.error('[admin/users/[id]] hosted load failed:', hosted.error.message);
     if (verifs.error) console.error('[admin/users/[id]] verifications load failed:', verifs.error.message);
@@ -117,6 +146,9 @@ async function loadAll(id: string) {
         verifs: ((verifs.data as any[]) ?? []) as any[],
         rsvps,
         eventById,
+        bans,
+        actorHandles,
+        banReady: banColumnPresent && banHistoryReady,
     };
 }
 
@@ -141,7 +173,24 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
     const auth = facts?.auth ?? null;
     const counts = facts?.counts;
     const n = (v: number | null | undefined) => (v == null ? '—' : String(v));
-    const banned = !!auth?.bannedUntil && new Date(auth.bannedUntil).getTime() > Date.now();
+    // Two different locks: `banned` is the ROLLOUT ban (profiles.banned_until);
+    // `authLocked` is Supabase auth's own banned_until (blocks sign-in on every app).
+    const banned = isBannedUntil(p.banned_until);
+    const authLocked = !!auth?.bannedUntil && new Date(auth.bannedUntil).getTime() > Date.now();
+    const { bans, actorHandles, banReady } = data;
+    const latestBan = bans.find((b) => b.action === 'ban') ?? null;
+    const nowMs = Date.now();
+    const upcomingRsvps = rsvps.filter((r) => {
+        const ev = eventById.get(r.event_id);
+        return (
+            (r.status === 'going' || r.status === 'waitlist') &&
+            ev &&
+            !ev.cancelled_at &&
+            ev.start_at &&
+            new Date(ev.start_at).getTime() > nowMs
+        );
+    });
+    const upcomingHosted = hosted.filter((e) => !e.cancelled_at && e.start_at && new Date(e.start_at).getTime() > nowMs);
     const hostStatus: string = p.host_status ?? 'none';
 
     return (
@@ -175,6 +224,7 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
                 {p.deleted_at && <span className="admin-pill warn">DELETED</span>}
                 {p.deactivated_at && <span className="admin-pill warn">DEACTIVATED</span>}
                 {banned && <span className="admin-pill warn">BANNED</span>}
+                {authLocked && <span className="admin-pill warn">AUTH LOCKED</span>}
                 {auth && !auth.emailConfirmedAt && <span className="admin-pill">EMAIL UNCONFIRMED</span>}
             </div>
 
@@ -186,7 +236,63 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
                 isPlatformAdmin={data.isPlatformAdmin}
                 isMeetCoordinator={data.isMeetCoordinator}
                 adminProfileId={me.profileId}
+                isBanned={banned}
+                banReady={banReady}
             />
+
+            {banned && (
+                <div className="admin-login-error" style={{ marginTop: 12 }}>
+                    BANNED {describeBanEnd(p.banned_until).toUpperCase()}
+                    {latestBan?.actor_profile_id
+                        ? ` · by @${actorHandles.get(latestBan.actor_profile_id) ?? 'unknown'}`
+                        : ''}
+                    {latestBan?.reason ? ` · ${latestBan.reason}` : ''}
+                </div>
+            )}
+
+            {p.kind === 'user' && (upcomingRsvps.length > 0 || upcomingHosted.length > 0) && (
+                <div style={{ border: '1px solid var(--line)', padding: '12px 16px', marginTop: 12, fontSize: 13 }}>
+                    <div className="admin-page-sub" style={{ marginBottom: 8 }}>
+                        UPCOMING COMMITMENTS · A BAN DOES NOT CANCEL OR REFUND ANYTHING
+                    </div>
+                    <div style={{ color: 'var(--text-2)', marginBottom: 8 }}>
+                        This member&rsquo;s RSVPs, paid tickets and hosted events stay as they are. Handle any of these with
+                        the event tools.
+                    </div>
+                    {upcomingHosted.length > 0 && (
+                        <div style={{ marginBottom: 6 }}>
+                            <b>HOSTING ({upcomingHosted.length}):</b>{' '}
+                            {upcomingHosted.map((e, i) => (
+                                <span key={e.id}>
+                                    {i > 0 ? ' · ' : ''}
+                                    <Link href={`/admin/events/${e.id}`} className="text-link">
+                                        {e.title}
+                                    </Link>{' '}
+                                    ({stamp(e.start_at).slice(0, 10)})
+                                </span>
+                            ))}
+                        </div>
+                    )}
+                    {upcomingRsvps.length > 0 && (
+                        <div>
+                            <b>RSVPED ({upcomingRsvps.length}):</b>{' '}
+                            {upcomingRsvps.map((r, i) => {
+                                const ev = eventById.get(r.event_id);
+                                return (
+                                    <span key={r.event_id}>
+                                        {i > 0 ? ' · ' : ''}
+                                        <Link href={`/admin/events/${r.event_id}`} className="text-link">
+                                            {ev?.title ?? r.event_id}
+                                        </Link>{' '}
+                                        ({stamp(ev?.start_at).slice(0, 10)}
+                                        {r.payment_ref ? ', PAID' : ''})
+                                    </span>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
+            )}
 
             <div className="admin-stat-grid" style={{ marginTop: 20 }}>
                 <Stat label="POSTS" value={n(counts?.posts)} />
@@ -212,7 +318,14 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
                             {auth && auth.providers.length > 1 ? ` (${auth.providers.join(', ')})` : ''}
                         </Row>
                         <Row label="APP TAG">{auth?.appTag ?? '—'}</Row>
-                        <Row label="BANNED UNTIL">{auth?.bannedUntil ? stamp(auth.bannedUntil) : '—'}</Row>
+                        <Row label="AUTH LOCKED UNTIL">{auth?.bannedUntil ? stamp(auth.bannedUntil) : '—'}</Row>
+                        <Row label="ROLLOUT BAN">
+                            {!banReady
+                                ? 'Needs migration 091'
+                                : banned
+                                  ? `Banned ${describeBanEnd(p.banned_until)}`
+                                  : '—'}
+                        </Row>
                         <Row label="IDS">
                             <span style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: 11, color: 'var(--text-3)', wordBreak: 'break-all' }}>
                                 profile {p.id}
@@ -412,6 +525,57 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
                                     </tr>
                                 );
                             })
+                        )}
+                    </tbody>
+                </table>
+            </div>
+
+            <SectionHead
+                title="BAN HISTORY"
+                sub={banReady ? `${bans.length} ENTRIES · ROLLOUT ONLY` : 'NEEDS MIGRATION 091'}
+            />
+            <div className="admin-table-wrap">
+                <table className="admin-table">
+                    <thead>
+                        <tr>
+                            <th>WHEN</th>
+                            <th>ACTION</th>
+                            <th>UNTIL</th>
+                            <th>BY</th>
+                            <th>REASON</th>
+                            <th>NOTE</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {bans.length === 0 ? (
+                            <tr>
+                                <td colSpan={6}>
+                                    <div className="admin-empty">
+                                        {banReady ? 'NO BANS ON RECORD' : 'NEEDS MIGRATION 091'}
+                                    </div>
+                                </td>
+                            </tr>
+                        ) : (
+                            bans.map((b) => (
+                                <tr key={b.id}>
+                                    <td>{stamp(b.created_at)}</td>
+                                    <td>
+                                        <span className={b.action === 'ban' ? 'admin-pill warn' : 'admin-pill neon'}>
+                                            {String(b.action).toUpperCase()}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        {b.action === 'ban'
+                                            ? describeBanEnd(b.banned_until) === 'permanently'
+                                                ? 'PERMANENT'
+                                                : stamp(b.banned_until)
+                                            : '—'}
+                                    </td>
+                                    <td>{b.actor_profile_id ? `@${actorHandles.get(b.actor_profile_id) ?? '—'}` : '—'}</td>
+                                    <td style={{ maxWidth: 280, whiteSpace: 'pre-wrap' }}>{b.reason || '—'}</td>
+                                    <td style={{ maxWidth: 280, whiteSpace: 'pre-wrap' }}>{b.public_note || '—'}</td>
+                                </tr>
+                            ))
                         )}
                     </tbody>
                 </table>

@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react';
 import { decideVerification, getKycDocuments, type CommerceRegistry } from './actions';
 import type { UserFacts } from '@/lib/admin-user-facts';
+import { isBannedUntil } from '@/lib/ban';
 
 type KycDoc = {
     id: string;
@@ -272,6 +273,12 @@ function FactsBlock({ facts }: { facts: UserFacts | null }) {
                 marginTop: 4,
             }}
         >
+            {isBannedUntil(facts.profileBannedUntil) ? (
+                <div>
+                    <span className="admin-pill warn">BANNED</span>
+                    <span style={dim}> Rollout-suspended: approving is refused until the ban is lifted.</span>
+                </div>
+            ) : null}
             <div>
                 <span style={dim}>EMAIL </span>
                 {facts.auth?.email ?? '—'}

@@ -16,6 +16,7 @@ import 'server-only';
 import { createClient } from '@supabase/supabase-js';
 import { getSupabaseServer } from './supabase/server';
 import { getSupabaseAdmin, getSupabasePublicAdmin } from './supabase/admin';
+import { selectWithBan } from './ban-server';
 
 export type ConsumerProfile = {
     authUserId: string;
@@ -28,6 +29,13 @@ export type ConsumerProfile = {
     hostStatus: 'none' | 'pending' | 'verified';
     /** If a shop nominated this member as a host, that shop's id. */
     hostAppointedByShopId: number | null;
+    /**
+     * rollout.profiles.banned_until (migration 091). null = never banned, or the
+     * column does not exist yet; a FUTURE timestamp = banned (isProfileBanned()
+     * in lib/ban.ts). Read server-side with the service role on every call, so
+     * it is never a client claim.
+     */
+    bannedUntil: string | null;
 };
 
 /**
@@ -45,11 +53,10 @@ export async function getConsumerProfile(): Promise<ConsumerProfile | null> {
     const admin = getSupabaseAdmin();
 
     // Fast path: profile already linked.
-    const { data: existing, error: existingError } = await admin
-        .from('profiles')
-        .select('id, handle, display_name, avatar_url, host_status, host_appointed_by_shop_id')
-        .eq('auth_user_id', user.id)
-        .maybeSingle();
+    const { data: existing, error: existingError } = await selectWithBan(
+        'id, handle, display_name, avatar_url, host_status, host_appointed_by_shop_id',
+        (cols) => admin.from('profiles').select(cols).eq('auth_user_id', user.id).maybeSingle(),
+    );
     if (existingError) console.error('[lib/consumer] profile lookup failed:', existingError.message);
 
     if (existing) {
@@ -62,6 +69,7 @@ export async function getConsumerProfile(): Promise<ConsumerProfile | null> {
             avatarUrl: (existing as any).avatar_url ?? null,
             hostStatus: ((existing as any).host_status ?? 'none') as ConsumerProfile['hostStatus'],
             hostAppointedByShopId: (existing as any).host_appointed_by_shop_id ?? null,
+            bannedUntil: ((existing as any).banned_until ?? null) as string | null,
         };
     }
 
@@ -74,11 +82,10 @@ export async function getConsumerProfile(): Promise<ConsumerProfile | null> {
     });
     if (rpcErr || !newId) return null;
 
-    const { data: created, error: createdError } = await admin
-        .from('profiles')
-        .select('id, handle, display_name, avatar_url, host_status, host_appointed_by_shop_id')
-        .eq('id', newId as string)
-        .maybeSingle();
+    const { data: created, error: createdError } = await selectWithBan(
+        'id, handle, display_name, avatar_url, host_status, host_appointed_by_shop_id',
+        (cols) => admin.from('profiles').select(cols).eq('id', newId as string).maybeSingle(),
+    );
     if (createdError) console.error('[lib/consumer] created-profile fetch failed:', createdError.message);
     if (!created) return null;
 
@@ -91,6 +98,7 @@ export async function getConsumerProfile(): Promise<ConsumerProfile | null> {
         avatarUrl: (created as any).avatar_url ?? null,
         hostStatus: ((created as any).host_status ?? 'none') as ConsumerProfile['hostStatus'],
         hostAppointedByShopId: (created as any).host_appointed_by_shop_id ?? null,
+        bannedUntil: ((created as any).banned_until ?? null) as string | null,
     };
 }
 
@@ -121,11 +129,10 @@ export async function getConsumerProfileFromBearer(token: string): Promise<Consu
         if (error || !user) return null;
 
         const admin = getSupabaseAdmin();
-        const { data: existing } = await admin
-            .from('profiles')
-            .select('id, handle, display_name, avatar_url, host_status, host_appointed_by_shop_id')
-            .eq('auth_user_id', user.id)
-            .maybeSingle();
+        const { data: existing } = await selectWithBan(
+            'id, handle, display_name, avatar_url, host_status, host_appointed_by_shop_id',
+            (cols) => admin.from('profiles').select(cols).eq('auth_user_id', user.id).maybeSingle(),
+        );
         if (!existing) return null;
 
         return {
@@ -137,6 +144,7 @@ export async function getConsumerProfileFromBearer(token: string): Promise<Consu
             avatarUrl: (existing as any).avatar_url ?? null,
             hostStatus: ((existing as any).host_status ?? 'none') as ConsumerProfile['hostStatus'],
             hostAppointedByShopId: (existing as any).host_appointed_by_shop_id ?? null,
+            bannedUntil: ((existing as any).banned_until ?? null) as string | null,
         };
     } catch (e) {
         console.error('[lib/consumer] getConsumerProfileFromBearer failed:', (e as any)?.message ?? e);

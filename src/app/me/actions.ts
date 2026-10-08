@@ -8,6 +8,7 @@ import { getSupabaseServer } from '@/lib/supabase/server';
 import { requireConsumer } from '@/lib/me-guard';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { sendPlatformNotification } from '@/lib/platform-notify';
+import { SUSPENDED_MESSAGE, isSuspendedError } from '@/lib/ban';
 
 /** Sign the member out (clears the SSR cookie session) and return home. */
 export async function signOutAction(): Promise<void> {
@@ -36,6 +37,7 @@ export async function becomeHostAction(
         .schema('rollout')
         .rpc('become_host', { p_payload: { why: why || null } });
     if (error) {
+        if (isSuspendedError(error)) return { ok: false, error: SUSPENDED_MESSAGE };
         const msg = /already a verified host/i.test(error.message)
             ? 'You are already a verified host.'
             : `Couldn’t submit your host application: ${error.message}`;

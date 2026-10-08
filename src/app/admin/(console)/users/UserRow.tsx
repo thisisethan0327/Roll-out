@@ -1,5 +1,6 @@
 'use client';
 import { useTransition } from 'react';
+import { isBannedUntil } from '@/lib/ban';
 import {
     setVerified,
     grantPlatformAdmin,
@@ -20,6 +21,8 @@ export type UserRowData = {
     created_at: string;
     isPlatformAdmin: boolean;
     isMeetCoordinator: boolean;
+    /** Rollout ban end (migration 091); undefined/null before it is applied. */
+    banned_until?: string | null;
 };
 
 export function UserRow({
@@ -65,6 +68,7 @@ export function UserRow({
                     {user.is_verified && <span className="admin-pill gold">✓ VERIFIED</span>}
                     {user.isPlatformAdmin && <span className="admin-pill warn">GOD</span>}
                     {user.isMeetCoordinator && <span className="admin-pill neon">MEET COORD</span>}
+                    {isBannedUntil(user.banned_until) && <span className="admin-pill warn">BANNED</span>}
                 </div>
             </td>
             <td>

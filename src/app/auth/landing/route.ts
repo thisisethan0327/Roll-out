@@ -11,6 +11,7 @@
  * the token, after choosing a handle. Everyone else goes straight to next.
  */
 import { getConsumerProfile } from '@/lib/consumer';
+import { isProfileBanned } from '@/lib/ban';
 import { isPlaceholderHandle, onboardingUrl, safeNextPath } from '@/lib/onboarding';
 
 export const dynamic = 'force-dynamic';
@@ -38,12 +39,15 @@ export async function GET(req: Request) {
         return redirectTo(next);
     }
 
-    let profile: { handle: string } | null = null;
+    let profile: { handle: string; bannedUntil?: string | null } | null = null;
     try {
         profile = await getConsumerProfile();
     } catch (e) {
         console.error('[auth/landing] profile read failed:', e instanceof Error ? e.message : e);
     }
+
+    // A Rollout-banned member lands on the explanation page, not on next=.
+    if (isProfileBanned(profile)) return redirectTo('/suspended');
 
     const target = profile && isPlaceholderHandle(profile.handle) ? onboardingUrl(next) : next;
     return redirectTo(target);

@@ -31,6 +31,7 @@ import { createEventPackageCartCore, createEventTicketsCartCore, type EventAuthC
 import { ensureMedusaCustomerTokenForUser, type StoreUser } from '@/lib/medusa-customer';
 import { cancelPaidRsvpAndRefund, getRefundWindowOpen } from '@/lib/event-refund';
 import { rpcCanViewEvent } from '@/lib/event-viewer';
+import { SUSPENDED_MESSAGE, isProfileBanned, isSuspendedError } from '@/lib/ban';
 import {
     multiTicketsEnabled,
     reserveTickets,
@@ -58,7 +59,17 @@ export type InviteRsvpStatus = RsvpChoice | 'waitlist';
 export type RsvpState = 'confirmed' | 'held' | 'waitlisted' | 'maybe' | 'declined' | 'ticket_pending' | null;
 /** 'invite_only': a private / followers-only event this member may not open
  *  (rollout._can_view_event false, or reserve_spot said 'not_found'). */
-export type RsvpError = 'auth' | 'full' | 'closed' | 'invalid' | 'tier' | 'write' | 'paid_spot' | 'invite_only';
+/** 'suspended': the caller is Rollout-banned (migration 091) — see lib/ban.ts. */
+export type RsvpError =
+    | 'auth'
+    | 'full'
+    | 'closed'
+    | 'invalid'
+    | 'tier'
+    | 'write'
+    | 'paid_spot'
+    | 'invite_only'
+    | 'suspended';
 export type RsvpResult =
     | {
           ok: true;
@@ -108,6 +119,10 @@ export async function setRsvp(
 
     const me = await getConsumerProfile();
     if (!me) return { ok: false, error: 'auth' };
+    // Banned members take no RSVP changes at all (their existing RSVPs stay as
+    // they are; admins use the event tools). Checked from the DB row, here on
+    // the server, before the service-role reads below.
+    if (isProfileBanned(me)) return { ok: false, error: 'suspended' };
 
     // Load the event with the service-role client to validate state (past /
     // cancelled / not viewable) up front for every path. reserve_spot re-checks
@@ -145,6 +160,7 @@ export async function setRsvp(
             // shows the Cancel & refund control instead of this plain cancel),
             // but a race or another caller could still land here.
             if (/paid_spot/i.test(error.message)) return { ok: false, error: 'paid_spot' };
+            if (isSuspendedError(error)) return { ok: false, error: 'suspended' };
             return { ok: false, error: 'write' };
         }
         await refreshAttributedInvite(admin, eventId, me.profileId, null);
@@ -158,7 +174,7 @@ export async function setRsvp(
             p_event: eventId,
             p_tier: tierId ?? null,
         });
-        if (error) return { ok: false, error: 'write' };
+        if (error) return { ok: false, error: isSuspendedError(error) ? 'suspended' : 'write' };
         const state = (data as any)?.state as string | undefined;
         if (state === 'auth') return { ok: false, error: 'auth' };
         // 088: reserve_spot answers 'not_found' when the caller can't view a
@@ -217,7 +233,7 @@ export async function setRsvp(
             { event_id: eventId, profile_id: me.profileId, status },
             { onConflict: 'event_id,profile_id' },
         );
-    if (error) return { ok: false, error: 'write' };
+    if (error) return { ok: false, error: isSuspendedError(error) ? 'suspended' : 'write' };
 
     await attributeInvite(admin, inviteToken, eventId, me.profileId, status);
     await refreshAttributedInvite(admin, eventId, me.profileId, status);
@@ -302,7 +318,7 @@ export async function startPackageCheckoutCore(
         p_event: eventId,
         p_tier: tierId,
     });
-    if (error) return { ok: false, error: 'write' };
+    if (error) return { ok: false, error: isSuspendedError(error) ? 'suspended' : 'write' };
     const state = (data as any)?.state as string | undefined;
 
     if (state === 'auth') return { ok: false, error: 'auth' };
@@ -399,6 +415,7 @@ export async function startPackageCheckout(
 
     const me = await getConsumerProfile();
     if (!me) return { ok: false, error: 'auth' };
+    if (isProfileBanned(me)) return { ok: false, error: 'suspended' };
     const session = await cookieSessionForActions();
     if (!session) return { ok: false, error: 'auth' };
 
@@ -443,6 +460,7 @@ export async function cancelPaidRsvp(eventId: string): Promise<CancelPaidRsvpAct
     if (!UUID_RE.test(eventId)) return { ok: false, error: 'Invalid event.' };
     const me = await getConsumerProfile();
     if (!me) return { ok: false, error: 'Sign in required.' };
+    if (isProfileBanned(me)) return { ok: false, error: SUSPENDED_MESSAGE };
 
     const result = await cancelPaidRsvpAndRefund(eventId, me.profileId);
     if (!result.ok) return result;
@@ -575,6 +593,7 @@ export async function reserveEventTicketsAction(
 
     const me = await getConsumerProfile();
     if (!me) return { ok: false, error: 'Sign in to reserve tickets.' };
+    if (isProfileBanned(me)) return { ok: false, error: SUSPENDED_MESSAGE };
     const session = await cookieSessionForActions();
     if (!session) return { ok: false, error: 'Sign in to reserve tickets.' };
 

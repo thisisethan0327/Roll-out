@@ -32,7 +32,7 @@
  * through a request could re-trigger a relink attempt several times over.
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { bearerTokenFrom, resolveAppCaller } from '@/lib/app-auth';
+import { bearerTokenFrom, resolveAppCaller, suspendedAppResponse } from '@/lib/app-auth';
 import { STRIPE_PUBLISHABLE_KEY } from '@/lib/medusa';
 import {
     MAX_TICKETS_PER_ORDER,
@@ -131,6 +131,8 @@ export async function POST(req: NextRequest) {
     if (!caller) {
         return NextResponse.json({ ok: false, error: 'Sign in required.', code: 'auth' }, { status: 401 });
     }
+    const suspended = suspendedAppResponse(caller);
+    if (suspended) return suspended;
 
     if (!STRIPE_PUBLISHABLE_KEY) {
         return bad('Payments are not configured.');

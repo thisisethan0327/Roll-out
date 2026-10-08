@@ -15,12 +15,14 @@ import { getSupabaseServer } from '@/lib/supabase/server';
 import { saveProfileFields } from '@/lib/profile-handle';
 import { deleteShippingAddress, upsertShippingAddress } from '@/lib/medusa-address';
 import type { AddressInput } from '@/lib/medusa-types';
+import { SUSPENDED_MESSAGE, isProfileBanned } from '@/lib/ban';
 
 export type ActionResult = { ok: true; message?: string } | { ok: false; error: string };
 
 export async function saveProfileSettingsAction(input: { displayName: string; handle: string; bio: string; location: string }): Promise<ActionResult> {
     const me = await getConsumerProfile();
     if (!me) return { ok: false, error: 'Your session expired. Refresh and try again.' };
+    if (isProfileBanned(me)) return { ok: false, error: SUSPENDED_MESSAGE };
     const res = await saveProfileFields({ profileId: me.profileId, handle: input.handle, displayName: input.displayName, bio: input.bio, location: input.location });
     if (!res.ok) return { ok: false, error: res.error };
     revalidatePath('/me');
@@ -39,6 +41,7 @@ const KINDS = {
 export async function uploadProfileImageAction(formData: FormData): Promise<ActionResult> {
     const me = await getConsumerProfile();
     if (!me) return { ok: false, error: 'Your session expired. Refresh and try again.' };
+    if (isProfileBanned(me)) return { ok: false, error: SUSPENDED_MESSAGE };
     const kind = String(formData.get('kind') ?? '') as keyof typeof KINDS;
     const spec = KINDS[kind];
     if (!spec) return { ok: false, error: 'Unknown image slot.' };
@@ -74,6 +77,7 @@ export async function uploadProfileImageAction(formData: FormData): Promise<Acti
 export async function removeProfileImageAction(kind: 'avatar' | 'banner'): Promise<ActionResult> {
     const me = await getConsumerProfile();
     if (!me) return { ok: false, error: 'Your session expired. Refresh and try again.' };
+    if (isProfileBanned(me)) return { ok: false, error: SUSPENDED_MESSAGE };
     const admin = getSupabaseAdmin();
     const { error } = await admin.from('profiles').update({ [KINDS[kind].column]: null, updated_at: new Date().toISOString() }).eq('id', me.profileId);
     if (error) return { ok: false, error: error.message };
@@ -86,6 +90,7 @@ export async function removeProfileImageAction(kind: 'avatar' | 'banner'): Promi
 export async function saveAddressAction(input: AddressInput & { id?: string | null; isDefault: boolean }): Promise<ActionResult> {
     const me = await getConsumerProfile();
     if (!me) return { ok: false, error: 'Your session expired. Refresh and try again.' };
+    if (isProfileBanned(me)) return { ok: false, error: SUSPENDED_MESSAGE };
     const a: AddressInput = {
         firstName: input.firstName.trim(),
         lastName: input.lastName.trim(),
@@ -109,6 +114,7 @@ export async function saveAddressAction(input: AddressInput & { id?: string | nu
 export async function deleteAddressAction(id: string): Promise<ActionResult> {
     const me = await getConsumerProfile();
     if (!me) return { ok: false, error: 'Your session expired. Refresh and try again.' };
+    if (isProfileBanned(me)) return { ok: false, error: SUSPENDED_MESSAGE };
     const res = await deleteShippingAddress(id);
     if (!res.ok) return { ok: false, error: res.error };
     revalidatePath('/me/settings');
