@@ -6,7 +6,14 @@
  */
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { updateHostEvent, cancelHostEvent } from '../actions';
+import {
+    updateHostEvent,
+    cancelHostEvent,
+    setEventRoutePlan,
+    type HostEventActionResult,
+    type RoutePlanStopInput,
+    type SetRoutePlanResult,
+} from '../actions';
 import { EventCoverPicker } from '@/app/shop/[slug]/events/EventCoverPicker';
 import { EventStartAtField } from '@/components/EventStartAtField';
 import { RoutePlanEditor } from './RoutePlanEditor';
@@ -19,7 +26,29 @@ const VISIBILITY: { value: string; label: string }[] = [
     { value: 'private', label: 'PRIVATE' },
 ];
 
-export function HostEventEditForm({ event, isPaidEvent }: { event: any; isPaidEvent: boolean }) {
+/** The three writes this form performs. /me uses the host-scoped defaults;
+ *  the admin event page injects admin-scoped equivalents with the same shape. */
+export type HostEventFormActions = {
+    update: (eventId: string, formData: FormData) => Promise<HostEventActionResult>;
+    cancel: (eventId: string, cancel: boolean) => Promise<void>;
+    routePlan: (eventId: string, stops: RoutePlanStopInput[]) => Promise<SetRoutePlanResult>;
+};
+
+const HOST_ACTIONS: HostEventFormActions = {
+    update: updateHostEvent,
+    cancel: cancelHostEvent,
+    routePlan: setEventRoutePlan,
+};
+
+export function HostEventEditForm({
+    event,
+    isPaidEvent,
+    actions = HOST_ACTIONS,
+}: {
+    event: any;
+    isPaidEvent: boolean;
+    actions?: HostEventFormActions;
+}) {
     const router = useRouter();
     const [pending, start] = useTransition();
     const [savedFlash, setSavedFlash] = useState(false);
@@ -40,7 +69,7 @@ export function HostEventEditForm({ event, isPaidEvent }: { event: any; isPaidEv
         setErr(null);
         start(async () => {
             try {
-                const result = await updateHostEvent(event.id, formData);
+                const result = await actions.update(event.id, formData);
                 if (!result.ok) {
                     setErr(result.error);
                     return;
@@ -58,7 +87,7 @@ export function HostEventEditForm({ event, isPaidEvent }: { event: any; isPaidEv
         if (!confirm('Cancel this event? People who RSVP’d will see it as cancelled.')) return;
         start(async () => {
             try {
-                await cancelHostEvent(event.id, true);
+                await actions.cancel(event.id, true);
                 router.refresh();
             } catch (e: any) {
                 alert('Cancel failed: ' + (e?.message ?? 'unknown'));
@@ -69,7 +98,7 @@ export function HostEventEditForm({ event, isPaidEvent }: { event: any; isPaidEv
     const onUncancel = () => {
         start(async () => {
             try {
-                await cancelHostEvent(event.id, false);
+                await actions.cancel(event.id, false);
                 router.refresh();
             } catch (e: any) {
                 alert('Uncancel failed: ' + (e?.message ?? 'unknown'));
@@ -151,6 +180,7 @@ export function HostEventEditForm({ event, isPaidEvent }: { event: any; isPaidEv
                 }}
                 initialStops={initialStops}
                 disabled={pending}
+                saveAction={actions.routePlan}
             />
 
             <div style={{ marginTop: 18, display: 'flex', gap: 8, flexWrap: 'wrap' }}>

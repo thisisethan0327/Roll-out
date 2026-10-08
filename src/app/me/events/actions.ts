@@ -21,6 +21,7 @@ import { getRolloutMemberClient } from '@/lib/consumer';
 import { eventHasPaidExposure } from '@/lib/event-refund';
 import { sendPlatformNotification } from '@/lib/platform-notify';
 import { parseDestinationName, parseHeroUrl } from '@/lib/host-event-parse';
+import { parseHostEventUpdate, parseNumber, parseTags } from '@/lib/host-event-write';
 import { AREA_LABEL_FIELD, parseAreaLabel, writeWithAreaLabel } from '@/lib/event-area-label';
 import {
     renderInvite,
@@ -47,19 +48,6 @@ function generateCode(type: string): string {
     const label = TYPE_LABEL[type] ?? type.replace(/_/g, ' ');
     const n = Math.floor(1000 + Math.random() * 9000);
     return `${label} / ${n}`;
-}
-
-function parseNumber(raw: FormDataEntryValue | null): number | null {
-    if (raw == null) return null;
-    const s = String(raw).trim();
-    if (!s) return null;
-    const n = Number(s);
-    return Number.isFinite(n) ? n : null;
-}
-
-function parseTags(raw: string | null | undefined): string[] {
-    if (!raw) return [];
-    return raw.split(',').map((t) => t.trim()).filter(Boolean);
 }
 
 /** Load an event the caller owns (host_id = them, shop_id null). Null if not. */
@@ -181,69 +169,13 @@ export async function updateHostEvent(
     const ev = await loadOwnEvent(eventId, profile.profileId);
     if (!ev) return { ok: false, error: 'Event not found.' };
 
-    const title = String(formData.get('title') ?? '').trim();
-    const description = String(formData.get('description') ?? '').trim();
-    const location_name = String(formData.get('location_name') ?? '').trim();
-    const location_detail = String(formData.get('location_detail') ?? '').trim();
-    const lat = parseNumber(formData.get('lat'));
-    const lng = parseNumber(formData.get('lng'));
-    const start_at_raw = String(formData.get('start_at') ?? '').trim();
-    const capacity = parseNumber(formData.get('capacity'));
-    const visibility = String(formData.get('visibility') ?? 'public').trim();
-    const tags = parseTags(String(formData.get('tags') ?? ''));
-
-    const heroResult = parseHeroUrl(formData.get('hero_image_url'));
-    if (!heroResult.ok) return { ok: false, error: heroResult.error };
-    const hero_image_url = heroResult.value;
-
-    // Route destination (migration 076) — plain columns on events, updated
-    // through this same ownership-checked write path (not the route_plan
-    // RPC below, which only covers the jsonb stop array).
-    const destResult = parseDestinationName(formData.get('destination_name'));
-    if (!destResult.ok) return { ok: false, error: destResult.error };
-    const destination_name = destResult.value;
-
-    const destination_lat = parseNumber(formData.get('destination_lat'));
-    const destination_lng = parseNumber(formData.get('destination_lng'));
-
-    // General area for private listings (089); empty clears it to null.
-    const areaResult = parseAreaLabel(formData.get(AREA_LABEL_FIELD));
-    if (!areaResult.ok) return { ok: false, error: areaResult.error };
-    const area_label = areaResult.value;
-
-    if (title.length < 4) return { ok: false, error: 'Title must be at least 4 characters.' };
-    if (description.length > 400) return { ok: false, error: 'Description must be 400 chars or fewer.' };
-    if (location_name.length < 2) return { ok: false, error: 'Location name is required.' };
-    if (!start_at_raw) return { ok: false, error: 'Start time is required.' };
-    if (!ALLOWED_VIS.has(visibility)) return { ok: false, error: 'Invalid visibility.' };
-    // The wall clock is meaningless without the zone it was typed in; the form
-    // carries it. Parsing it with `new Date()` used the SERVER's zone (UTC),
-    // which is what moved every meet by the offset. See lib/event-time.ts.
-    const { timeZone, supplied } = resolveFormZone(formData.get(EVENT_TZ_FIELD));
-    if (!supplied) {
-        console.warn('[events] no %s on the form — reading the wall clock as UTC', EVENT_TZ_FIELD);
-    }
-    const start_at = zonedWallClockToUtc(start_at_raw, timeZone);
-    if (!start_at) return { ok: false, error: 'Invalid start time.' };
+    // Shared with the admin edit (lib/host-event-write.ts) so both validate
+    // and shape the row identically.
+    const parsed = parseHostEventUpdate(formData);
+    if (!parsed.ok) return { ok: false, error: parsed.error };
+    const { row: updateRow, area_label } = parsed;
 
     const admin = getSupabaseAdmin();
-    const updateRow = {
-        title,
-        description: description || null,
-        location_name,
-        location_detail: location_detail || null,
-        lat,
-        lng,
-        start_at: start_at.toISOString(),
-        capacity,
-        visibility,
-        tags,
-        hero_image_url,
-        destination_name,
-        destination_lat,
-        destination_lng,
-        updated_at: new Date().toISOString(),
-    };
     // area_label is written (null clears it), and dropped on a retry if the
     // column isn't there yet (pre-089) — see lib/event-area-label.ts.
     const { error } = await writeWithAreaLabel((withArea) =>

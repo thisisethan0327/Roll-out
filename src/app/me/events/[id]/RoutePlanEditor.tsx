@@ -30,7 +30,7 @@ import { useRouter } from 'next/navigation';
 import RoutePickerMapLoader from './RoutePickerMapLoader';
 import RouteMapLoader from '@/app/event/[id]/RouteMapLoader';
 import { buildRoutePoints, type RoutePlanStop } from '@/lib/route-plan';
-import { setEventRoutePlan, type RoutePlanStopInput } from '../actions';
+import { setEventRoutePlan, type RoutePlanStopInput, type SetRoutePlanResult } from '../actions';
 
 const KIND_OPTIONS: { value: string; label: string }[] = [
     { value: 'stop', label: 'STOP' },
@@ -84,6 +84,7 @@ export function RoutePlanEditor({
     onDestinationChange,
     initialStops,
     disabled = false,
+    saveAction = setEventRoutePlan,
 }: {
     eventId: string;
     startLat: number | null;
@@ -97,6 +98,9 @@ export function RoutePlanEditor({
     onDestinationChange: (next: { name?: string; lat?: number | null; lng?: number | null }) => void;
     initialStops: RoutePlanStop[];
     disabled?: boolean;
+    /** Defaults to the host's own setEventRoutePlan; the admin event page
+     *  passes its admin-scoped action. Same signature, same result. */
+    saveAction?: (eventId: string, stops: RoutePlanStopInput[]) => Promise<SetRoutePlanResult>;
 }) {
     const router = useRouter();
     const [stops, setStops] = useState<StopDraft[]>(() => initialStops.map(toDraft));
@@ -210,7 +214,7 @@ export function RoutePlanEditor({
             note: s.note.trim() || null,
         }));
         startSaving(async () => {
-            const result = await setEventRoutePlan(eventId, payload);
+            const result = await saveAction(eventId, payload);
             if (!result.ok) {
                 setSaveError(result.error);
                 const m = /^stop (\d+):/i.exec(result.error);
