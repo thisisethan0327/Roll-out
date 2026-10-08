@@ -40,6 +40,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { getConsumerProfile } from '@/lib/consumer';
+import { SUSPENDED_CODE, SUSPENDED_MESSAGE, isProfileBanned } from '@/lib/ban';
 import { multiTicketsEnabled, beginTicketRefund, abortTicketRefund, cancelTicket } from '@/lib/event-tickets';
 import { refundEventTicketShare, notifyEventTicketCancelled } from '@/lib/medusa-admin';
 
@@ -58,6 +59,10 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     const me = await getConsumerProfile();
     if (!me) {
         return NextResponse.json({ ok: false, error: 'Sign in required.' }, { status: 401 });
+    }
+    // Rollout-banned (migration 091): no money-moving self-service. Admins use the event tools.
+    if (isProfileBanned(me)) {
+        return NextResponse.json({ ok: false, error: SUSPENDED_MESSAGE, code: SUSPENDED_CODE }, { status: 403 });
     }
 
     const begun = await beginTicketRefund(ticketId);

@@ -109,6 +109,7 @@ import 'server-only';
  */
 import { getConsumerProfile, getRolloutMemberClient } from './consumer';
 import { getSupabaseAdmin } from './supabase/admin';
+import { SUSPENDED_MESSAGE, friendlyDbError, isProfileBanned, isSuspendedError } from './ban';
 import {
     MAX_TICKETS_PER_ORDER,
     SWEATER_SIZES,
@@ -380,7 +381,10 @@ export async function reserveTicketsWithClient(
     });
     if (error) {
         console.error('[event-tickets] reserve_tickets RPC failed:', error.message);
-        return { ok: false, error: "Couldn't reserve those tickets — try again." };
+        return {
+            ok: false,
+            error: isSuspendedError(error) ? SUSPENDED_MESSAGE : "Couldn't reserve those tickets — try again.",
+        };
     }
     const state = (data as any)?.state as string | undefined;
     if (state === 'held') {
@@ -481,7 +485,7 @@ function parseRefundQuoteLike(data: any, ticketId: string): TicketRefundQuoteRes
 export async function ticketRefundQuote(ticketId: string): Promise<TicketRefundQuoteResult> {
     const member = await getRolloutMemberClient();
     const { data, error } = await member.rpc('ticket_refund_quote', { p_ticket: ticketId });
-    if (error) return { ok: false, state: 'error', error: error.message };
+    if (error) return { ok: false, state: 'error', error: friendlyDbError(error, error.message) };
     return parseRefundQuoteLike(data, ticketId);
 }
 
@@ -497,7 +501,7 @@ export async function ticketRefundQuote(ticketId: string): Promise<TicketRefundQ
 export async function beginTicketRefund(ticketId: string): Promise<TicketRefundQuoteResult> {
     const member = await getRolloutMemberClient();
     const { data, error } = await member.rpc('ticket_refund_begin', { p_ticket: ticketId });
-    if (error) return { ok: false, state: 'error', error: error.message };
+    if (error) return { ok: false, state: 'error', error: friendlyDbError(error, error.message) };
     return parseRefundQuoteLike(data, ticketId);
 }
 
@@ -507,7 +511,7 @@ export async function abortTicketRefund(
 ): Promise<{ ok: true; state: 'released' | 'noop' } | { ok: false; error: string }> {
     const member = await getRolloutMemberClient();
     const { data, error } = await member.rpc('ticket_refund_abort', { p_ticket: ticketId });
-    if (error) return { ok: false, error: error.message };
+    if (error) return { ok: false, error: friendlyDbError(error, error.message) };
     const state = (data as any)?.state as string | undefined;
     if (state === 'released' || state === 'noop') return { ok: true, state };
     return { ok: false, error: state === 'forbidden' ? 'Only the buyer can release this refund lock.' : 'Could not release the refund lock.' };
@@ -528,7 +532,7 @@ export async function cancelTicket(ticketId: string, refundRef: string): Promise
         p_ticket: ticketId,
         p_refund_ref: refundRef,
     });
-    if (error) return { ok: false, error: error.message };
+    if (error) return { ok: false, error: friendlyDbError(error, error.message) };
     const state = (data as any)?.state as string | undefined;
     if (state === 'cancelled' || state === 'already') {
         const d = data as any;
@@ -557,6 +561,7 @@ export async function claimMyTicketsBestEffort(): Promise<void> {
     try {
         const me = await getConsumerProfile();
         if (!me) return;
+        if (isProfileBanned(me)) return; // a suspended member claims nothing
         const member = await getRolloutMemberClient();
         const { error } = await member.rpc('claim_my_tickets');
         if (error) console.error('[event-tickets] claim_my_tickets RPC failed:', error.message);

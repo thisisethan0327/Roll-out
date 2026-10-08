@@ -108,6 +108,7 @@ const ERROR_COPY: Record<RsvpError | 'config', string> = {
     paid_spot: 'Paid spots are cancelled through the refund flow, not this button.',
     // 088: a private / followers-only event this member isn't invited to.
     invite_only: 'This event is invite-only.',
+    suspended: 'Your account is suspended.',
 };
 
 function formatPrice(cents: number, currency: string): string {

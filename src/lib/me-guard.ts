@@ -16,6 +16,7 @@ import { redirect } from 'next/navigation';
 import { getConsumerProfile, type ConsumerProfile } from './consumer';
 import { isPlaceholderHandle, isOnboardingPath, onboardingUrl } from './onboarding';
 import { claimMyTicketsBestEffort } from './event-tickets';
+import { isProfileBanned } from './ban';
 
 /**
  * Ensure the caller is a signed-in member. Redirects to /login with a next=
@@ -26,6 +27,14 @@ export async function requireConsumer(nextPath: string = '/me'): Promise<Consume
     const profile = await getConsumerProfile();
     if (!profile) {
         redirect(`/login?next=${encodeURIComponent(nextPath)}`);
+    }
+    // Rollout-banned (migration 091): the whole member area is closed. This is
+    // the server-side gate, so a banned member is stopped here for every /me
+    // page AND every server action behind requireConsumer / requireVerifiedHost
+    // (host events, shop apply, become-host). /suspended explains why. Public
+    // pages stay browsable. Before 091 nobody is banned, so this never fires.
+    if (isProfileBanned(profile)) {
+        redirect('/suspended');
     }
     // Still on the minted placeholder handle: finish onboarding first, then
     // come back here. /auth/landing catches this at sign-in; this catches a

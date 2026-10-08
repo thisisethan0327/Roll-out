@@ -26,6 +26,10 @@ export async function POST(req: NextRequest) {
     if (!caller) {
         return NextResponse.json({ ok: false, error: 'Sign in required.', code: 'auth' }, { status: 401 });
     }
+    // DELIBERATELY not suspendedAppResponse(): this finalises a cart whose hold
+    // and payment were created BEFORE any ban, and paid tickets are kept
+    // (Ethan 2026-10-08). Blocking it could strand a captured payment. New
+    // holds are closed at /start; the ownership check below still applies.
 
     let body: any;
     try {

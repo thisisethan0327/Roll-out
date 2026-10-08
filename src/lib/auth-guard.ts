@@ -14,6 +14,8 @@ import 'server-only';
 import { redirect, notFound } from 'next/navigation';
 import { getSupabaseServer } from './supabase/server';
 import { getSupabaseAdmin, getSupabasePublicAdmin } from './supabase/admin';
+import { selectWithBan } from './ban-server';
+import { isBannedUntil } from './ban';
 import {
     assertModuleEnabled,
     isModuleEnabled,
@@ -34,6 +36,13 @@ export type GuardedProfile = {
  * Ensures the caller is signed in. Redirects to the supplied login route
  * (default `/admin/login`) when not. Returns the profile row and Supabase
  * server client for chained queries.
+ *
+ * A Rollout-banned profile (banned_until in the future, migration 091) is sent
+ * back to the login route with ?error=suspended: the admin and shop consoles
+ * are closed to them, which also closes every shop-console server action behind
+ * requireShopMember. The session is NOT ended here (sign-out is global, see
+ * AdminSidebar); the login page just explains. Before 091 the column is absent
+ * and nobody is banned.
  */
 export async function requireSession(loginPath: string = '/admin/login'): Promise<{
     profile: GuardedProfile;
@@ -45,16 +54,15 @@ export async function requireSession(loginPath: string = '/admin/login'): Promis
     if (!user) redirect(loginPath);
 
     const admin = getSupabaseAdmin();
-    const { data: profile, error } = await admin
-        .from('profiles')
-        .select('id, auth_user_id, handle, display_name')
-        .eq('auth_user_id', user.id)
-        .maybeSingle();
+    const { data: profile, error } = await selectWithBan('id, auth_user_id, handle, display_name', (cols) =>
+        admin.from('profiles').select(cols).eq('auth_user_id', user.id).maybeSingle(),
+    );
     if (error || !profile) {
         // Auth user exists but no rollout profile — sign them out + redirect.
         await supabase.auth.signOut({ scope: 'local' });
         redirect(loginPath + '?error=no_profile');
     }
+    if (isBannedUntil((profile as any).banned_until)) redirect(loginPath + '?error=suspended');
 
     return {
         profile: {
@@ -97,12 +105,11 @@ export async function getPlatformAdmin(): Promise<GuardedProfile | null> {
     if (!user) return null;
 
     const admin = getSupabaseAdmin();
-    const { data: profile } = await admin
-        .from('profiles')
-        .select('id, auth_user_id, handle, display_name')
-        .eq('auth_user_id', user.id)
-        .maybeSingle();
+    const { data: profile } = await selectWithBan('id, auth_user_id, handle, display_name', (cols) =>
+        admin.from('profiles').select(cols).eq('auth_user_id', user.id).maybeSingle(),
+    );
     if (!profile) return null;
+    if (isBannedUntil((profile as any).banned_until)) return null;
 
     const { data: padmin } = await admin
         .from('platform_admins')

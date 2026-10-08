@@ -14,6 +14,8 @@ import { ROLLOUT_ORIGIN } from '@/lib/tenant-hosts';
 import { UNITY_ORG, WEBSITE_ID, jsonLdHtml, postalAddress } from '@/lib/structured-data';
 import { isSeedProfile } from '@/lib/seed-content';
 import { isTestShop } from '@/lib/test-shops';
+import { selectWithBan } from '@/lib/ban-server';
+import { isBannedUntil } from '@/lib/ban';
 
 // ── Types (loose; rollout schema not codegen'd) ────────────────────────────
 type Profile = {
@@ -28,6 +30,8 @@ type Profile = {
     kind: 'user' | 'shop_page' | string;
     is_verified: boolean | null;
     shop_id: string | null;
+    /** Rollout ban (migration 091); absent before it is applied. */
+    banned_until?: string | null;
 };
 
 type Shop = {
@@ -195,16 +199,15 @@ async function loadHandle(rawHandle: string) {
     const handle = stripAt(decodeURIComponent(rawHandle));
     const supabase = getSupabaseAdmin();
 
-    const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('id, handle, display_name, bio, avatar_url, banner_url, location, sector_code, kind, is_verified, shop_id')
-        .ilike('handle', handle)
-        .maybeSingle();
+    const { data: profile, error: profileError } = await selectWithBan(
+        'id, handle, display_name, bio, avatar_url, banner_url, location, sector_code, kind, is_verified, shop_id',
+        (cols) => supabase.from('profiles').select(cols).ilike('handle', handle).maybeSingle(),
+    );
     if (profileError) console.error('[u/[handle]] profile load failed:', profileError.message);
 
     if (!profile) return null;
 
-    const p = profile as Profile;
+    const p = profile as unknown as Profile;
     const nowIso = new Date().toISOString();
 
     const [shopRes, cardRes, postsRes, eventsRes, eventsCountRes, vehiclesRes, reviewsRes, statsRes] = await Promise.all([
@@ -335,6 +338,12 @@ export async function generateMetadata({
     const displayName = profile.display_name || cleanHandle;
     const isShop = profile.kind === 'shop_page';
 
+    // A suspended member's page says nothing about them to search engines or
+    // link previews (the owner and admins still get the full page below).
+    if (isBannedUntil(profile.banned_until)) {
+        return { title: 'Account suspended', robots: { index: false, follow: false } };
+    }
+
     // The root layout's template appends ' · Rollout'; social titles carry it themselves.
     const title = isShop
         ? `${displayName} on Rollout — bookings & shop drops`
@@ -372,6 +381,29 @@ export async function generateMetadata({
     };
 }
 
+/** What anyone but the owner and admins sees for a suspended member. */
+function SuspendedProfileStub({ handle }: { handle: string }) {
+    return (
+        <div className="legal">
+            <div className="container container-narrow" style={{ textAlign: 'center', paddingTop: 80 }}>
+                <div className="eyebrow eyebrow-gold mb-4">／ ACCOUNT SUSPENDED</div>
+                <h1 style={{ marginBottom: 12 }}>@{handle}</h1>
+                <p className="text-dim" style={{ fontSize: 17, marginBottom: 40 }}>
+                    This account is suspended.
+                </p>
+                <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
+                    <Link href="/" className="btn">
+                        Back to base
+                    </Link>
+                    <Link href="/meets" className="btn btn-ghost">
+                        Find a meet
+                    </Link>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 // ── Page ───────────────────────────────────────────────────────────────────
 export default async function HandlePage({
     params,
@@ -389,6 +421,21 @@ export default async function HandlePage({
     // whether they already follow this profile) — for the web Follow button.
     const me = await getConsumerProfile();
     const viewer: 'anon' | 'self' | 'other' = !me ? 'anon' : me.profileId === profile.id ? 'self' : 'other';
+
+    // Rollout ban: everyone but the member themself and platform admins sees a
+    // stub instead of the profile (decided server-side from the DB row).
+    if (isBannedUntil(profile.banned_until) && viewer !== 'self') {
+        let viewerIsAdmin = false;
+        if (me) {
+            const { data: padmin } = await getSupabaseAdmin()
+                .from('platform_admins')
+                .select('profile_id')
+                .eq('profile_id', me.profileId)
+                .maybeSingle();
+            viewerIsAdmin = !!padmin;
+        }
+        if (!viewerIsAdmin) return <SuspendedProfileStub handle={stripAt(profile.handle)} />;
+    }
     let initialFollowing = false;
     if (viewer === 'other' && me) {
         const { data: f } = await getSupabaseAdmin()

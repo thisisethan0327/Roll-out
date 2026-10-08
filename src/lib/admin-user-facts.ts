@@ -10,6 +10,7 @@ import 'server-only';
  * user, run in parallel (the auth API has no batch-by-id endpoint).
  */
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { selectWithBan } from '@/lib/ban-server';
 
 export const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -41,6 +42,8 @@ export type AuthFacts = {
 export type UserFacts = {
     profileId: string;
     profileCreatedAt: string | null;
+    /** rollout.profiles.banned_until (Rollout ban, migration 091) — null when never banned or 091 is not applied. NOT the auth-level auth.bannedUntil. */
+    profileBannedUntil: string | null;
     auth: AuthFacts | null;
     counts: UserCounts;
 };
@@ -96,7 +99,7 @@ export async function loadUserFacts(profileIds: string[]): Promise<Map<string, U
     const admin = getSupabaseAdmin();
 
     const [profRes, posts, vehicles, followers, following, plates, coins, rsvps, hosted] = await Promise.all([
-        admin.from('profiles').select('id, auth_user_id, created_at').in('id', ids),
+        selectWithBan('id, auth_user_id, created_at', (cols) => admin.from('profiles').select(cols).in('id', ids)),
         countBy('posts', 'author_id', ids, (q) => q.is('deleted_at', null)),
         countBy('vehicles', 'owner_id', ids, (q) => q.is('deleted_at', null)),
         countBy('follows', 'followee_id', ids),
@@ -107,7 +110,12 @@ export async function loadUserFacts(profileIds: string[]): Promise<Map<string, U
         countBy('events', 'host_id', ids),
     ]);
     if (profRes.error) console.error('[admin-user-facts] profiles load failed:', profRes.error.message);
-    const profiles = ((profRes.data as any[]) ?? []) as { id: string; auth_user_id: string | null; created_at: string | null }[];
+    const profiles = ((profRes.data as any[]) ?? []) as {
+        id: string;
+        auth_user_id: string | null;
+        created_at: string | null;
+        banned_until?: string | null;
+    }[];
     const auths = await Promise.all(profiles.map((p) => loadAuth(p.auth_user_id)));
 
     const get = (m: Map<string, number> | null, id: string) => (m ? (m.get(id) ?? 0) : null);
@@ -115,6 +123,7 @@ export async function loadUserFacts(profileIds: string[]): Promise<Map<string, U
         out.set(p.id, {
             profileId: p.id,
             profileCreatedAt: p.created_at,
+            profileBannedUntil: p.banned_until ?? null,
             auth: auths[i],
             counts: {
                 posts: get(posts, p.id),

@@ -8,7 +8,7 @@
  * priming a payment sheet either.
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { bearerTokenFrom, resolveAppCaller } from '@/lib/app-auth';
+import { bearerTokenFrom, resolveAppCaller, suspendedAppResponse } from '@/lib/app-auth';
 import { STRIPE_PUBLISHABLE_KEY } from '@/lib/medusa';
 import { multiTicketsEnabled } from '@/lib/event-tickets';
 
@@ -17,6 +17,8 @@ export async function GET(req: NextRequest) {
     if (!caller) {
         return NextResponse.json({ ok: false, error: 'Sign in required.', code: 'auth' }, { status: 401 });
     }
+    const suspended = suspendedAppResponse(caller);
+    if (suspended) return suspended;
 
     if (!STRIPE_PUBLISHABLE_KEY) {
         // Same loud guard as the web checkout page — never silently point the

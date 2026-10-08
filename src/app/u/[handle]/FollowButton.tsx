@@ -7,6 +7,7 @@
 import Link from 'next/link';
 import { useState, useTransition } from 'react';
 import { toggleFollowAction } from './follow-actions';
+import { SUSPENDED_MESSAGE } from '@/lib/ban';
 
 export function FollowButton({
     targetProfileId,
@@ -51,7 +52,13 @@ export function FollowButton({
                         if (!res.ok) {
                             setFollowing(!next);
                             setCount((c) => Math.max(0, c + (next ? -1 : 1)));
-                            setErr(res.reason === 'signin' ? 'Sign in to follow.' : 'Could not update — try again.');
+                            setErr(
+                                res.reason === 'signin'
+                                    ? 'Sign in to follow.'
+                                    : res.reason === 'suspended'
+                                      ? SUSPENDED_MESSAGE
+                                      : 'Could not update — try again.',
+                            );
                         } else {
                             setFollowing(res.following);
                         }

@@ -14,6 +14,8 @@ import 'server-only';
  * find-or-create the Medusa customer link.
  */
 import { createClient } from '@supabase/supabase-js';
+import { NextResponse } from 'next/server';
+import { SUSPENDED_CODE, SUSPENDED_MESSAGE, isProfileBanned } from './ban';
 import { getConsumerProfileFromBearer, type ConsumerProfile } from './consumer';
 import type { StoreUser } from './medusa-customer';
 
@@ -68,4 +70,17 @@ export async function resolveAppCaller(token: string | null): Promise<AppCaller 
         console.error('[app-auth] resolveAppCaller failed:', (e as any)?.message ?? e);
         return null;
     }
+}
+
+/**
+ * 403 {code:'account_suspended'} when the verified caller is Rollout-banned
+ * (migration 091), else null. EVERY /api/app/** route calls this right after
+ * resolveAppCaller, so the mobile checkout is closed to a suspended member
+ * even though the routes write with the service role. A distinct code (not the
+ * 401 'auth' a missing token gets) so the app shows its suspended screen
+ * instead of signing the member out in a loop.
+ */
+export function suspendedAppResponse(caller: AppCaller): NextResponse | null {
+    if (!isProfileBanned(caller.profile)) return null;
+    return NextResponse.json({ ok: false, error: SUSPENDED_MESSAGE, code: SUSPENDED_CODE }, { status: 403 });
 }

@@ -44,6 +44,7 @@ const ERROR_COPY: Record<RsvpError, string> = {
     paid_spot: 'Paid spots are cancelled through a refund, not this button.',
     // 088: a private / followers-only event this member isn't invited to.
     invite_only: 'This event is invite-only.',
+    suspended: 'Your account is suspended.',
 };
 
 /** Is this state the "going" choice (either confirmed or on the waitlist)? */

@@ -8,6 +8,7 @@
 import { redirect } from 'next/navigation';
 import { getConsumerProfile } from '@/lib/consumer';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { SUSPENDED_MESSAGE, isProfileBanned } from '@/lib/ban';
 import { resolveFormZone, zonedWallClockToUtc } from '@/lib/event-time';
 import { SERVICE_TYPES } from './services';
 
@@ -16,6 +17,7 @@ export type BookResult = { ok: false; error: string };
 export async function requestAppointmentAction(formData: FormData): Promise<BookResult> {
     const me = await getConsumerProfile();
     if (!me) return { ok: false, error: 'Your session expired. Refresh and try again.' };
+    if (isProfileBanned(me)) return { ok: false, error: SUSPENDED_MESSAGE };
 
     const shopId = Number(formData.get('shop_id'));
     const handle = String(formData.get('handle') ?? '');

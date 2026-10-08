@@ -1,10 +1,12 @@
 'use client';
 /**
- * The same account actions the /admin/users row offers, for the detail page.
- * They call the existing server actions in ../actions.ts, each of which
- * re-checks requirePlatformAdmin() server-side.
+ * The same account actions the /admin/users row offers, for the detail page,
+ * plus the Rollout ban controls. They call the server actions in ../actions.ts,
+ * each of which re-checks requirePlatformAdmin() server-side (and banUser also
+ * re-checks self / platform admin / shop page against the DB) -- the disabled
+ * states here are convenience, not the gate.
  */
-import { useTransition } from 'react';
+import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import {
     setVerified,
@@ -12,7 +14,24 @@ import {
     revokePlatformAdmin,
     grantMeetCoordinator,
     revokeMeetCoordinator,
+    banUser,
+    unbanUser,
 } from '../actions';
+
+type Duration = '24h' | '7d' | '30d' | 'date' | 'permanent';
+const DURATION_LABEL: Record<Duration, string> = {
+    '24h': '24 HOURS',
+    '7d': '7 DAYS',
+    '30d': '30 DAYS',
+    date: 'UNTIL DATE',
+    permanent: 'PERMANENT',
+};
+const DURATION_MS: Partial<Record<Duration, number>> = {
+    '24h': 24 * 3600_000,
+    '7d': 7 * 24 * 3600_000,
+    '30d': 30 * 24 * 3600_000,
+};
+const NEEDS_091 = 'Needs migration 091';
 
 export function UserActions({
     profileId,
@@ -22,6 +41,8 @@ export function UserActions({
     isPlatformAdmin,
     isMeetCoordinator,
     adminProfileId,
+    isBanned,
+    banReady,
 }: {
     profileId: string;
     handle: string;
@@ -30,10 +51,58 @@ export function UserActions({
     isPlatformAdmin: boolean;
     isMeetCoordinator: boolean;
     adminProfileId: string;
+    /** profiles.banned_until is in the future. */
+    isBanned: boolean;
+    /** Migration 091 is applied (banned_until column and user_bans table both exist). */
+    banReady: boolean;
 }) {
     const router = useRouter();
     const [pending, start] = useTransition();
     const isMe = profileId === adminProfileId;
+
+    // Ban panel state
+    const [panelOpen, setPanelOpen] = useState(false);
+    const [reason, setReason] = useState('');
+    const [duration, setDuration] = useState<Duration>('7d');
+    const [untilDate, setUntilDate] = useState('');
+    const [publicNote, setPublicNote] = useState('');
+    const [banError, setBanError] = useState<string | null>(null);
+
+    const banDisabledWhy = !banReady
+        ? NEEDS_091
+        : isMe
+          ? "You can't ban yourself."
+          : isPlatformAdmin
+            ? "Platform admins can't be banned. Revoke god mode first."
+            : '';
+
+    const submitBan = () => {
+        setBanError(null);
+        if (!reason.trim()) return setBanError('A reason is required.');
+        let until: string;
+        if (duration === 'permanent') until = 'permanent';
+        else if (duration === 'date') {
+            if (!untilDate) return setBanError('Pick an end date.');
+            until = new Date(`${untilDate}T23:59:59Z`).toISOString();
+        } else until = new Date(Date.now() + (DURATION_MS[duration] ?? 0)).toISOString();
+        start(async () => {
+            const res = await banUser(profileId, { reason, until, publicNote });
+            if (!res.ok) return setBanError(res.error);
+            setPanelOpen(false);
+            setReason('');
+            setPublicNote('');
+            router.refresh();
+        });
+    };
+
+    const submitUnban = () => {
+        if (!confirm('Lift the Rollout ban on @' + handle + '?')) return;
+        start(async () => {
+            const res = await unbanUser(profileId);
+            if (!res.ok) return alert('Action failed: ' + res.error);
+            router.refresh();
+        });
+    };
 
     const run = (fn: () => Promise<void>) => {
         start(async () => {
@@ -95,6 +164,120 @@ export function UserActions({
                         + COORD
                     </button>
                 ))}
+            {kind === 'user' &&
+                (isBanned ? (
+                    <button
+                        className="admin-action-btn"
+                        disabled={pending || !banReady}
+                        onClick={submitUnban}
+                        title={!banReady ? NEEDS_091 : 'Lift the Rollout ban'}
+                    >
+                        UNBAN
+                    </button>
+                ) : (
+                    <button
+                        className="admin-action-btn danger"
+                        disabled={pending || !!banDisabledWhy}
+                        onClick={() => setPanelOpen((o) => !o)}
+                        title={banDisabledWhy || 'Ban this member from Rollout'}
+                    >
+                        BAN
+                    </button>
+                ))}
+            {kind === 'user' && (
+                <button
+                    className="admin-action-btn muted"
+                    disabled
+                    title="A later feature: locks the login on every app (Rollout, EMWRAPS, NeferStock, UNITY)."
+                >
+                    ACCOUNT-WIDE LOCK · ALL APPS — coming later
+                </button>
+            )}
+            {kind === 'user' && !banReady && (
+                <div style={{ flexBasis: '100%', fontSize: 11, color: 'var(--text-3)' }}>{NEEDS_091}</div>
+            )}
+
+            {panelOpen && !isBanned && !banDisabledWhy && (
+                <div
+                    style={{
+                        flexBasis: '100%',
+                        border: '1px solid var(--line)',
+                        padding: 14,
+                        display: 'grid',
+                        gap: 12,
+                        marginTop: 6,
+                    }}
+                >
+                    <div className="admin-page-sub">
+                        BAN @{handle} FROM ROLLOUT · POSTS AND COMMENTS HIDE WHILE BANNED · RSVPS, TICKETS AND HOSTED EVENTS STAY
+                    </div>
+                    <label style={{ display: 'grid', gap: 6 }}>
+                        <span className="admin-form-label">REASON (INTERNAL, REQUIRED)</span>
+                        <textarea
+                            className="admin-search-input"
+                            rows={3}
+                            maxLength={1000}
+                            value={reason}
+                            onChange={(e) => setReason(e.target.value)}
+                            disabled={pending}
+                        />
+                    </label>
+                    <div style={{ display: 'grid', gap: 6 }}>
+                        <span className="admin-form-label">DURATION</span>
+                        <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', fontSize: 12 }}>
+                            {(Object.keys(DURATION_LABEL) as Duration[]).map((d) => (
+                                <label key={d} style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                                    <input
+                                        type="radio"
+                                        name={`ban-duration-${profileId}`}
+                                        checked={duration === d}
+                                        onChange={() => setDuration(d)}
+                                        disabled={pending}
+                                    />
+                                    {DURATION_LABEL[d]}
+                                </label>
+                            ))}
+                        </div>
+                        {duration === 'date' && (
+                            <input
+                                type="date"
+                                className="admin-search-input"
+                                value={untilDate}
+                                min={new Date(Date.now() + 86_400_000).toISOString().slice(0, 10)}
+                                onChange={(e) => setUntilDate(e.target.value)}
+                                disabled={pending}
+                                style={{ maxWidth: 220 }}
+                            />
+                        )}
+                    </div>
+                    <label style={{ display: 'grid', gap: 6 }}>
+                        <span className="admin-form-label">NOTE SHOWN TO THE MEMBER (OPTIONAL, MAX 300)</span>
+                        <input
+                            className="admin-search-input"
+                            maxLength={300}
+                            value={publicNote}
+                            onChange={(e) => setPublicNote(e.target.value)}
+                            disabled={pending}
+                        />
+                    </label>
+                    {banError && <div className="admin-login-error">{banError}</div>}
+                    <div style={{ display: 'flex', gap: 6 }}>
+                        <button className="admin-action-btn danger" disabled={pending} onClick={submitBan}>
+                            {pending ? 'BANNING…' : 'CONFIRM BAN'}
+                        </button>
+                        <button
+                            className="admin-action-btn muted"
+                            disabled={pending}
+                            onClick={() => {
+                                setPanelOpen(false);
+                                setBanError(null);
+                            }}
+                        >
+                            CANCEL
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

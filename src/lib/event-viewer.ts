@@ -15,6 +15,7 @@ import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { getConsumerProfile, getRolloutMemberClient, type ConsumerProfile } from '@/lib/consumer';
 import { fetchEventTeaser } from '@/lib/event-teasers';
 import type { EventTeaser } from '@/lib/event-teaser-format';
+import { isProfileBanned } from '@/lib/ban';
 
 export type EventVisibilityRow = {
     id: string;
@@ -86,6 +87,8 @@ export const claimEventInvite = cache(
         if (!UUID_RE.test(token)) return null;
         const me = await currentViewer();
         if (!me) return null;
+        // A suspended member claims no invite (the claim is a write).
+        if (isProfileBanned(me)) return null;
         try {
             const member = await getRolloutMemberClient();
             const { data, error } = await member.rpc('claim_event_invite', { p_token: token });

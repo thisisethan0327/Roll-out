@@ -22,6 +22,7 @@
 import { redirect } from 'next/navigation';
 import { saveDefaultShippingAddress } from '@/lib/medusa-address';
 import { getConsumerProfile } from '@/lib/consumer';
+import { SUSPENDED_MESSAGE, isProfileBanned } from '@/lib/ban';
 import {
     checkHandleAvailability,
     saveProfileFields,
@@ -76,6 +77,7 @@ export async function claimProfileAction(input: {
 }): Promise<ClaimResult> {
     const me = await getConsumerProfile();
     if (!me) return { ok: false, error: 'Your session expired. Refresh and try again.' };
+    if (isProfileBanned(me)) return { ok: false, error: SUSPENDED_MESSAGE };
 
     const res = await saveProfileFields({
         profileId: me.profileId,

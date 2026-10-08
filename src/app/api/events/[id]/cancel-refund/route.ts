@@ -12,6 +12,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getConsumerProfileFromBearer } from '@/lib/consumer';
 import { cancelPaidRsvpAndRefund } from '@/lib/event-refund';
+import { SUSPENDED_CODE, SUSPENDED_MESSAGE, isProfileBanned } from '@/lib/ban';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -30,6 +31,9 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     const profile = await getConsumerProfileFromBearer(token);
     if (!profile) {
         return NextResponse.json({ ok: false, error: 'Sign in required.' }, { status: 401 });
+    }
+    if (isProfileBanned(profile)) {
+        return NextResponse.json({ ok: false, error: SUSPENDED_MESSAGE, code: SUSPENDED_CODE }, { status: 403 });
     }
 
     const result = await cancelPaidRsvpAndRefund(id, profile.profileId);

@@ -17,6 +17,7 @@ import { sendPlatformNotification } from '@/lib/platform-notify';
 import { SLUG_RE, UBI_RE, type ApplyState } from './types';
 import { isShopCategory } from '@/lib/shop-categories';
 import { consoleUrlForShop } from '@/lib/tenant-hosts';
+import { SUSPENDED_MESSAGE, isProfileBanned, isSuspendedError } from '@/lib/ban';
 
 function str(fd: FormData, key: string): string {
     return (fd.get(key)?.toString() ?? '').trim();
@@ -27,6 +28,9 @@ export async function submitShopApplication(
     formData: FormData,
 ): Promise<ApplyState> {
     const applicant = await requireConsumer('/shop/apply');
+    // requireConsumer already redirects a banned member to /suspended; this is
+    // the belt for the service-role slug pre-check below.
+    if (isProfileBanned(applicant)) return { ok: false, error: SUSPENDED_MESSAGE };
 
     const name = str(formData, 'name');
     const slug = str(formData, 'slug').toLowerCase();
@@ -118,6 +122,7 @@ export async function submitShopApplication(
     });
 
     if (error) {
+        if (isSuspendedError(error)) return { ok: false, error: SUSPENDED_MESSAGE };
         const msg = /duplicate|unique/i.test(error.message)
             ? 'That handle is already taken — try another.'
             : `Couldn’t submit your application: ${error.message}`;

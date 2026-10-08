@@ -9,12 +9,16 @@
 import { revalidatePath } from 'next/cache';
 import { getConsumerProfile } from '@/lib/consumer';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { isProfileBanned } from '@/lib/ban';
 
-export type FollowResult = { ok: true; following: boolean } | { ok: false; reason: 'signin' | 'self' | 'error' };
+export type FollowResult = { ok: true; following: boolean } | { ok: false; reason: 'signin' | 'self' | 'error' | 'suspended' };
 
 export async function toggleFollowAction(targetProfileId: string): Promise<FollowResult> {
     const me = await getConsumerProfile();
     if (!me) return { ok: false, reason: 'signin' };
+    // Rollout-banned (migration 091): this action writes with the service role,
+    // which RLS cannot stop, so the ban is enforced here.
+    if (isProfileBanned(me)) return { ok: false, reason: 'suspended' };
     if (me.profileId === targetProfileId) return { ok: false, reason: 'self' };
     const admin = getSupabaseAdmin();
     const { data: existing, error: readErr } = await admin

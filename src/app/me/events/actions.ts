@@ -19,6 +19,7 @@ import { requireVerifiedHost } from '@/lib/me-guard';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { getRolloutMemberClient } from '@/lib/consumer';
 import { eventHasPaidExposure } from '@/lib/event-refund';
+import { friendlyDbError } from '@/lib/ban';
 import { sendPlatformNotification } from '@/lib/platform-notify';
 import { parseDestinationName, parseHeroUrl } from '@/lib/host-event-parse';
 import { parseHostEventUpdate, parseNumber, parseTags } from '@/lib/host-event-write';
@@ -256,7 +257,7 @@ export async function setEventRoutePlan(
         p_event: eventId,
         p_plan: plan.length > 0 ? plan : null,
     });
-    if (error) return { ok: false, error: error.message };
+    if (error) return { ok: false, error: friendlyDbError(error, error.message) };
 
     revalidatePath(`/me/events/${eventId}`);
     revalidatePath(`/event/${eventId}`);

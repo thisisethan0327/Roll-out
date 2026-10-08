@@ -26,6 +26,8 @@ import 'server-only';
  */
 import { getConsumerProfile } from './consumer';
 import { getSupabaseAdmin } from './supabase/admin';
+import { isProfileBanned, SUSPENDED_MESSAGE } from './ban';
+import { isProfileIdBanned } from './ban-server';
 import { refundAndCancelEventOrder, getOrderEventMeta } from './medusa-admin';
 import {
     refundCutoffAt as tsRefundCutoffAt,
@@ -114,6 +116,12 @@ export async function cancelPaidRsvpAndRefund(
 ): Promise<CancelPaidRsvpResult> {
     if (!UUID_RE.test(eventId)) return { ok: false, error: 'Invalid event.' };
 
+    // Rollout ban (migration 091): the caller's own cancel-and-refund is a
+    // service-role money path, so it is refused here for EVERY entry point
+    // (web action, mobile route). The member's paid ticket stays as it is;
+    // an admin cancels / refunds through the event tools.
+    if (await isProfileIdBanned(profileId)) return { ok: false, error: SUSPENDED_MESSAGE };
+
     const windowOpen = await getRefundWindowOpen(eventId);
     if (!windowOpen) {
         return {
@@ -179,6 +187,9 @@ type PermissionResult = { ok: true; profileId: string } | { ok: false; error: st
 async function callerCanManageEvent(ev: EventCore): Promise<PermissionResult> {
     const me = await getConsumerProfile();
     if (!me) return { ok: false, error: 'Sign in required.' };
+    // A banned host / shop manager cannot cancel-and-refund an event either
+    // (platform admins cannot be banned, so they are unaffected).
+    if (isProfileBanned(me)) return { ok: false, error: SUSPENDED_MESSAGE };
 
     const admin = getSupabaseAdmin();
     const { data: padmin } = await admin

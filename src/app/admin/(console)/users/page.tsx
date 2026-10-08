@@ -1,24 +1,26 @@
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { requirePlatformAdmin } from '@/lib/auth-guard';
 import { UserRow } from './UserRow';
+import { selectWithBan } from '@/lib/ban-server';
 
 export const metadata = { title: 'Users' };
 
 async function listUsers(query?: string) {
     const admin = getSupabaseAdmin();
-    let q = admin
-        .from('profiles')
-        .select(
-            'id, handle, display_name, kind, is_verified, location, level, xp_total, created_at, shop_id',
-        )
-        .order('created_at', { ascending: false })
-        .limit(200);
-    if (query) {
-        q = q.or(`handle.ilike.%${query}%,display_name.ilike.%${query}%`);
-    }
-    const { data, error } = await q;
+    // selectWithBan: also fetches banned_until, and quietly drops it when
+    // migration 091 is not applied yet.
+    const { data, error } = await selectWithBan(
+        'id, handle, display_name, kind, is_verified, location, level, xp_total, created_at, shop_id',
+        (cols) => {
+            let q = admin.from('profiles').select(cols).order('created_at', { ascending: false }).limit(200);
+            if (query) {
+                q = q.or(`handle.ilike.%${query}%,display_name.ilike.%${query}%`);
+            }
+            return q;
+        },
+    );
     if (error) console.error('[admin/users] load failed:', error.message);
-    const profiles = data ?? [];
+    const profiles = (data ?? []) as any[];
 
     // Annotate with platform_admin + meet_coordinator membership in one extra
     // pass each.
