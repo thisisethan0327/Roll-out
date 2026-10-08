@@ -6,6 +6,19 @@ import { getSupabaseAdmin } from '@/lib/supabase/admin';
  * Server-rendered on every console navigation, so it stays fresh without any
  * client polling. Best-effort — a count failure never blocks the shell.
  */
+/** Open (status = pending) content reports, for the REPORTS sidebar badge. Best-effort. */
+export async function getPendingReportsCount(): Promise<number> {
+    try {
+        const { count } = await getSupabaseAdmin()
+            .from('content_reports')
+            .select('*', { count: 'exact', head: true })
+            .eq('status', 'pending');
+        return count ?? 0;
+    } catch {
+        return 0;
+    }
+}
+
 export async function getAttentionCount(): Promise<number> {
     try {
         const admin = getSupabaseAdmin();
