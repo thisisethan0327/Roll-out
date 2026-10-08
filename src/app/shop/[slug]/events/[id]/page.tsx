@@ -13,6 +13,8 @@ import QRCode from 'qrcode';
 import { AnnouncementsSection } from './AnnouncementsSection';
 import { listEventAnnouncementsForConsole } from '@/lib/announcements-write';
 import { VerificationSection, type VerificationView } from './VerificationSection';
+import { DoorSection } from '@/components/DoorSection';
+import { shopDoorCheckInAction } from './door-actions';
 
 export const metadata = { title: 'Event Detail' };
 
@@ -343,6 +345,16 @@ export default async function EventDetailPage({
             {/* ROLLOUT VERIFICATION + DOOR CHECK-IN (host only) */}
             {isHost && verification && (
                 <VerificationSection eventId={event.id} shopId={shop.shopId} slug={slug} view={verification} />
+            )}
+
+            {/* TICKETS / DOOR LIST (host shop; the RPCs re-check host / manager) */}
+            {isHost && (
+                <DoorSection
+                    eventId={event.id}
+                    rsvpMode={event.rsvp_mode}
+                    cancelled={!!event.cancelled_at}
+                    checkIn={shopDoorCheckInAction.bind(null, shop.shopId, slug, event.id)}
+                />
             )}
 
             {/* ANNOUNCEMENTS (host shop managers / host) */}

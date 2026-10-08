@@ -231,7 +231,9 @@ export default async function OverviewPage() {
             </div>
             <div className="admin-stat-grid">
                 <Stat label="PENDING APPOINTMENTS" value={s.pendingAppts} accent="gold" />
-                <Stat label="OPEN CONTENT REPORTS" value={s.openReports} accent={s.openReports > 0 ? 'warn' : undefined} />
+                <Link href="/admin/reports" style={{ textDecoration: 'none', color: 'inherit' }}>
+                    <Stat label="OPEN CONTENT REPORTS ›" value={s.openReports} accent={s.openReports > 0 ? 'warn' : undefined} />
+                </Link>
             </div>
 
             <div className="admin-page-head" style={{ marginTop: 12, borderBottom: 'none', paddingBottom: 0 }}>

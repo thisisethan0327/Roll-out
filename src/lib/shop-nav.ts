@@ -50,5 +50,5 @@ export const SHOP_NAV: ShopNavItem[] = [
     { href: 'services',  label: 'SERVICES',  section: 'SETTINGS', module: ModuleKey.Services, minRole: 'manager' },
     { href: 'settings/general', label: 'GENERAL',  section: 'SETTINGS', module: ModuleKey.Settings, minRole: 'owner' },
     { href: 'settings/email',   label: 'EMAIL',    section: 'SETTINGS', module: ModuleKey.Settings, minRole: 'owner' },
-    { href: 'settings/billing', label: 'BILLING',  section: 'SETTINGS', module: ModuleKey.Settings, minRole: 'owner' },
+    // BILLING (settings/billing) is hidden until billing is built; its route redirects to GENERAL.
 ];

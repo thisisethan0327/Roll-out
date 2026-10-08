@@ -12,6 +12,8 @@ import type { InviteBranding, InviteEvent } from '@/lib/event-invites';
 import { HostEventEditForm } from './HostEventEditForm';
 import { loadEventAreaLabel } from '@/lib/event-area-label';
 import { HostInviteSection } from './HostInviteSection';
+import { DoorSection } from '@/components/DoorSection';
+import { hostDoorCheckInAction } from '../door-actions';
 
 export const metadata = { title: 'Edit Event' };
 export const dynamic = 'force-dynamic';
@@ -39,7 +41,7 @@ export default async function HostEventDetail({
     const { data, error } = await admin
         .from('events')
         .select(
-            'id, shop_id, host_id, code, type, title, description, location_name, location_detail, lat, lng, start_at, capacity, visibility, tags, hero_image_url, cancelled_at, destination_name, destination_lat, destination_lng, route_plan',
+            'id, shop_id, host_id, code, type, title, description, location_name, location_detail, lat, lng, start_at, capacity, rsvp_mode, visibility, tags, hero_image_url, cancelled_at, destination_name, destination_lat, destination_lng, route_plan',
         )
         .eq('id', id)
         .maybeSingle();
@@ -137,6 +139,13 @@ export default async function HostEventDetail({
             </div>
 
             <HostEventEditForm event={event} isPaidEvent={isPaidEvent} />
+
+            <DoorSection
+                eventId={event.id}
+                rsvpMode={event.rsvp_mode}
+                cancelled={!!event.cancelled_at}
+                checkIn={hostDoorCheckInAction.bind(null, event.id)}
+            />
 
             {!event.cancelled_at ? (
                 <HostInviteSection
