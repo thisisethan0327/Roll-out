@@ -115,6 +115,73 @@ export async function deleteAddressAction(id: string): Promise<ActionResult> {
     return { ok: true, message: 'Address removed.' };
 }
 
+const DELETE_FN_FALLBACK =
+    'We could not delete your account just now. Email support@rollout.club and we will delete it within 24 hours.';
+
+/**
+ * Permanently delete the signed-in member's account via the same edge function
+ * the mobile app uses (delete-rollout-account): POST with the member's OWN
+ * access token as the bearer (the function resolves the caller from it and
+ * deletes only that user; there is no body and no user id to forge). The typed
+ * handle is re-checked here, server-side, against the session's profile -- the
+ * client-side gate is only a convenience. On success the session is signed out
+ * (global, per the 2026-09-08 ruling) and the member lands on the home page
+ * with a confirmation. The function hard-deletes auth.users, so this is
+ * irreversible and also removes the one shared sign-in for EMWRAPS/NeferStock/
+ * UNITY.
+ */
+export async function deleteMyAccountAction(typedHandle: string): Promise<ActionResult> {
+    const me = await getConsumerProfile();
+    if (!me) return { ok: false, error: 'Your session expired. Sign in again and retry.' };
+    const norm = (h: string) => h.trim().replace(/^@+/, '').toLowerCase();
+    if (!norm(typedHandle) || norm(typedHandle) !== norm(me.handle)) {
+        return { ok: false, error: 'The handle you typed does not match your account.' };
+    }
+
+    const supabase = await getSupabaseServer();
+    const {
+        data: { session },
+    } = await supabase.auth.getSession();
+    const token = session?.access_token;
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    if (!token || !url || !anon) return { ok: false, error: 'Your session expired. Sign in again and retry.' };
+
+    let ok = false;
+    try {
+        const res = await fetch(`${url}/functions/v1/delete-rollout-account`, {
+            method: 'POST',
+            headers: {
+                Authorization: `Bearer ${token}`,
+                apikey: anon,
+                'Content-Type': 'application/json',
+            },
+            body: '{}',
+            cache: 'no-store',
+        });
+        const body = (await res.json().catch(() => null)) as { ok?: boolean; error?: string; detail?: string } | null;
+        ok = res.ok && body?.ok === true;
+        if (!ok) {
+            console.error('[me/settings] delete-rollout-account failed:', res.status, body?.error, body?.detail);
+            if (res.status === 401) return { ok: false, error: 'Your session expired. Sign in again and retry.' };
+            return { ok: false, error: DELETE_FN_FALLBACK };
+        }
+    } catch (e) {
+        console.error('[me/settings] delete-rollout-account unreachable:', (e as any)?.message ?? e);
+        return { ok: false, error: DELETE_FN_FALLBACK };
+    }
+
+    // The auth user is gone, so the server may refuse the global revoke; fall back
+    // to clearing this browser's session cookies so nothing stale is left behind.
+    try {
+        const { error } = await supabase.auth.signOut({ scope: 'global' });
+        if (error) await supabase.auth.signOut({ scope: 'local' });
+    } catch {
+        await supabase.auth.signOut({ scope: 'local' }).catch(() => undefined);
+    }
+    redirect('/?account_deleted=1');
+}
+
 /** Sign out of EVERY device and browser (the global sign-out ruling, 2026-09-08). */
 export async function signOutEverywhereAction(): Promise<void> {
     const supabase = await getSupabaseServer();

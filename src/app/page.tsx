@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { HeroLoop } from '@/components/HeroLoop';
 import { NextRunBand } from './NextRunBand';
 import { AnnouncementBar } from '@/components/AnnouncementBar';
+import { AccountDeletedNotice } from '@/components/AccountDeletedNotice';
 import { getSiteAnnouncements } from '@/lib/announcements';
 import { HomeMotion } from '@/components/motion/HomeMotion';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
@@ -91,6 +92,7 @@ export default async function HomePage() {
     const { props: portraitPlate } = getImageProps({ alt: '', src: '/images/polish/hero-night-9x16.webp', fill: true, sizes: '100vw' });
     return (
         <>
+            <AccountDeletedNotice />
             {/* Site announcements: directly under the header, above the hero. */}
             <AnnouncementBar announcements={announcements} />
             {/* ── HERO ─────────────────────────────────────────────────────── */}
