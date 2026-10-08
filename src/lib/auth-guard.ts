@@ -130,14 +130,22 @@ export async function requireShopMember(
     const { profile } = await requireSession('/shop/login');
     const admin = getSupabaseAdmin();
 
-    // Platform admin bypass
-    const { data: padmin } = await admin
-        .from('platform_admins')
-        .select('profile_id')
-        .eq('profile_id', profile.profileId)
-        .maybeSingle();
+    const [{ data: padmin }, { data: m }] = await Promise.all([
+        admin.from('platform_admins').select('profile_id').eq('profile_id', profile.profileId).maybeSingle(),
+        admin
+            .from('shop_memberships')
+            .select('role')
+            .eq('profile_id', profile.profileId)
+            .eq('shop_id', shopId)
+            .maybeSingle(),
+    ]);
+
+    // Platform admins act as owner everywhere (unchanged). They are flagged as
+    // "acting as the shop" only where they are NOT on the shop's staff, so an
+    // admin working their own shop keeps the normal console (cookie, SWITCH SHOP).
     if (padmin) {
-        // Audit trail: every admin pass through a shop guard is logged.
+        if (m) return { profile, role: 'owner', viaPlatformAdmin: false };
+        // Audit trail: every admin pass into a shop they don't belong to is logged.
         console.info(
             '[auth-guard] platform admin @%s acting as owner of shop %d',
             profile.handle,
@@ -146,12 +154,6 @@ export async function requireShopMember(
         return { profile, role: 'owner', viaPlatformAdmin: true };
     }
 
-    const { data: m } = await admin
-        .from('shop_memberships')
-        .select('role')
-        .eq('profile_id', profile.profileId)
-        .eq('shop_id', shopId)
-        .maybeSingle();
     if (!m) redirect('/shop/login?error=not_member');
     return { profile, role: (m as any).role, viaPlatformAdmin: false };
 }
