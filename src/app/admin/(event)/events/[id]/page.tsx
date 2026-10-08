@@ -17,8 +17,7 @@ import { eventHasPaidExposure } from '@/lib/event-refund';
 import { formatClock, formatEventTime } from '@/lib/event-time';
 import { MEDUSA_URL } from '@/lib/medusa';
 import { HostEventEditForm } from '@/app/me/events/[id]/HostEventEditForm';
-import { EventActions } from '../EventActions';
-import { ShopConsolePanel } from './ShopConsolePanel';
+import { EventActions } from '@/app/admin/(console)/events/EventActions';
 import { adminCancelHostEvent, adminSetEventRoutePlan, adminUpdateHostEvent } from './host-actions';
 import {
     RSVP_LIMIT,
@@ -28,7 +27,6 @@ import {
     loadCohosts,
     loadEvent,
     loadRsvps,
-    loadShopConsoleContext,
     loadTickets,
     loadTiers,
     type AdminCheckin,
@@ -132,14 +130,13 @@ export default async function AdminEventDetailPage({ params }: { params: Promise
     const isShopEvent = event.shop_id != null;
     const shop = event.shop;
 
-    const [tiers, rsvps, ticketData, checkins, cohosts, isPaidEvent, enabledModules] = await Promise.all([
+    const [tiers, rsvps, ticketData, checkins, cohosts, isPaidEvent] = await Promise.all([
         loadTiers(id),
         loadRsvps(id),
         loadTickets(id),
         loadCheckins(id),
         loadCohosts(id),
         eventHasPaidExposure(id),
-        shop ? loadShopConsoleContext(shop.slug, shop.id) : Promise.resolve([] as string[]),
     ]);
     const { tickets, profiles } = ticketData;
     const counts = deriveCounts(event, rsvps, tickets, checkins);
@@ -232,7 +229,7 @@ export default async function AdminEventDetailPage({ params }: { params: Promise
                 <Stat label="DB COUNTER" value={counts.attendingCounter} />
             </div>
 
-            <div className="admin-event-grid" style={{ marginTop: 20 }}>
+            <div style={{ marginTop: 20, minWidth: 0 }}>
                 <div style={{ minWidth: 0 }}>
                     {/* CONTEXT */}
                     <SectionHead title="CONTEXT" sub="HOST · SHOP · LOCATION · TIERS" />
@@ -355,6 +352,7 @@ export default async function AdminEventDetailPage({ params }: { params: Promise
                     </div>
 
                     {/* ATTENDEES */}
+                    <div id="attendees" style={{ scrollMarginTop: 80 }} />
                     <SectionHead
                         title="ATTENDEES (RSVPS)"
                         sub={`${rsvps.length} SHOWN · MOST RECENT FIRST`}
@@ -374,6 +372,7 @@ export default async function AdminEventDetailPage({ params }: { params: Promise
                     {/* TICKETS */}
                     {showTickets && (
                         <>
+                            <div id="tickets" style={{ scrollMarginTop: 80 }} />
                             <SectionHead
                                 title="TICKETS"
                                 sub={`${counts.tickets.total} TOTAL · ${counts.tickets.confirmed} CONFIRMED · ${counts.tickets.held} HELD · ${counts.tickets.cancelled} CANCELLED`}
@@ -451,7 +450,7 @@ export default async function AdminEventDetailPage({ params }: { params: Promise
 
                     {/* MEMBER-HOSTED: edit here */}
                     {!isShopEvent && (
-                        <div id="edit" style={{ scrollMarginTop: 24 }}>
+                        <div id="edit" style={{ scrollMarginTop: 80 }}>
                             <SectionHead
                                 title="EDIT EVENT (AS HOST)"
                                 sub="MEMBER-HOSTED · SAVES ARE MADE AS PLATFORM ADMIN"
@@ -472,49 +471,6 @@ export default async function AdminEventDetailPage({ params }: { params: Promise
                     )}
                 </div>
 
-                <div>
-                    {shop ? (
-                        <ShopConsolePanel
-                            slug={shop.slug}
-                            shopName={shop.name}
-                            shopId={shop.id}
-                            shopStatus={shop.status}
-                            eventId={event.id}
-                            enabled={enabledModules}
-                        />
-                    ) : !isShopEvent ? (
-                        <div style={{ border: '1px solid var(--line)', padding: '12px 14px' }}>
-                            <div
-                                style={{
-                                    fontFamily: 'var(--font-display)',
-                                    fontSize: 9,
-                                    letterSpacing: 'var(--track-wider)',
-                                    color: 'var(--gold)',
-                                }}
-                            >
-                                MEMBER HOST
-                            </div>
-                            {event.host ? (
-                                <div style={{ marginTop: 8, fontSize: 14 }}>
-                                    <Link
-                                        href={`/admin/users?q=${encodeURIComponent(event.host.handle)}`}
-                                        className="text-link"
-                                    >
-                                        @{event.host.handle}
-                                    </Link>
-                                    {event.host.display_name ? (
-                                        <div className="admin-handle">{event.host.display_name}</div>
-                                    ) : null}
-                                </div>
-                            ) : null}
-                            <div className="admin-page-sub" style={{ marginTop: 10 }}>
-                                NO SHOP CONSOLE. THE HOST SENDS INVITES FROM /ME/EVENTS; EDIT THE EVENT IN THE FORM ON THE LEFT.
-                            </div>
-                        </div>
-                    ) : (
-                        <div className="admin-empty">SHOP #{event.shop_id} NOT FOUND — NO CONSOLE.</div>
-                    )}
-                </div>
             </div>
         </>
     );

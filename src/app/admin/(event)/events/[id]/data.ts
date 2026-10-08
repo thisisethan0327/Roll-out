@@ -1,4 +1,5 @@
 import 'server-only';
+import { cache } from 'react';
 /**
  * Loaders for /admin/events/[id] — an admin-only READ view of one event.
  * Everything runs on the service-role client; the page itself has already
@@ -60,7 +61,7 @@ const EVENT_COLS = `id, code, type, title, description, location_name, location_
  * makes a bare `shops(...)` embed ambiguous (PGRST201) — same hints as the
  * admin events list.
  */
-export async function loadEvent(id: string): Promise<AdminEvent | null> {
+export const loadEvent = cache(async (id: string): Promise<AdminEvent | null> => {
     const admin = getSupabaseAdmin();
     const { data, error } = await admin
         .from('events')
@@ -74,7 +75,7 @@ export async function loadEvent(id: string): Promise<AdminEvent | null> {
     if (error) console.error('[admin/events/[id]] event load failed:', error.message);
     if (!data) return null;
     return { ...(data as any), area_label: await loadEventAreaLabel(admin, id) } as AdminEvent;
-}
+});
 
 export type AdminTier = {
     id: string;
@@ -153,9 +154,9 @@ export type AdminTicket = {
 export type ProfileLite = { id: string; handle: string; display_name: string | null };
 
 /** Tickets (migration 080) + the profiles they reference. Fails soft to [] pre-080. */
-export async function loadTickets(
+export const loadTickets = cache(async (
     id: string,
-): Promise<{ tickets: AdminTicket[]; profiles: Map<string, ProfileLite> }> {
+): Promise<{ tickets: AdminTicket[]; profiles: Map<string, ProfileLite> }> => {
     const admin = getSupabaseAdmin();
     const { data, error } = await admin
         .from('event_tickets')
@@ -187,7 +188,7 @@ export async function loadTickets(
         for (const p of (ps as ProfileLite[]) ?? []) profiles.set(p.id, p);
     }
     return { tickets, profiles };
-}
+});
 
 export type AdminCheckin = { method: string | null; checked_in_at: string | null };
 
@@ -233,14 +234,14 @@ export async function loadCohosts(id: string): Promise<AdminCohost[]> {
  * the shop layout (tier ± overrides, then the Products/Orders data gates).
  * Role gating is skipped: an admin acts as owner.
  */
-export async function loadShopConsoleContext(slug: string, shopId: number): Promise<string[]> {
+export const loadShopConsoleContext = cache(async (slug: string, shopId: number): Promise<string[]> => {
     const { tier, overrides, showProducts } = await loadModuleContext(shopId);
     const showOrders = (await getShopVendorBySlug(slug)) !== null;
     const enabled = enabledModules(tier, overrides);
     if (!showProducts) enabled.delete(ModuleKey.Products);
     if (!showOrders) enabled.delete(ModuleKey.Orders);
     return [...enabled];
-}
+});
 
 export type EventCounts = {
     confirmedSeats: number;

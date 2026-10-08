@@ -10,6 +10,7 @@ import { hasMultipleShops, loadModuleContext, requireShopMemberBySlug } from '@/
 import { getShopVendorBySlug } from '@/lib/store-shops';
 import { enabledModules, ModuleKey } from '@/lib/shop-modules';
 import { ShopSidebar } from './ShopSidebar';
+import { AdminShell } from '@/app/admin/AdminShell';
 import { brandForSlug, brandStyle } from '@/lib/tenant-brand';
 import { ROLLOUT_ORIGIN, tenantForHost } from '@/lib/tenant-hosts';
 import { AuthHashGuard } from '@/components/auth/AuthHashGuard';
@@ -143,21 +144,64 @@ export default async function ShopLayout({
     // or not. SWITCH SHOP survives for anyone actually on staff at a second
     // shop, since for them it still goes somewhere they can reach.
     const onTenantHost = tenantForHost((await headers()).get('host')) !== null;
-    // A platform admin is not on this shop's staff, so there is nothing to
-    // switch between; the sidebar offers BACK TO ADMIN instead.
-    const showSwitchShop =
-        !viaPlatformAdmin && (!onTenantHost || (await hasMultipleShops(profile.profileId)));
+    const showSwitchShop = !onTenantHost || (await hasMultipleShops(profile.profileId));
     // Switching shops is a PLATFORM action, so on a tenant host it walks out to
     // Rollout by absolute URL rather than trying the picker behind the tenant's
     // own door -- the middleware refuses /shop/picker there, so a relative href
     // would just bounce back to the console (Ethan's call).
     const switchShopHref = onTenantHost ? `${ROLLOUT_ORIGIN}/shop/picker` : '/shop/picker';
 
+    // Per-tenant accent. One variable override reskins buttons, active nav,
+    // focus rings and eyebrows together, in both themes.
+    const tenantStyle = brandCss ? <style dangerouslySetInnerHTML={{ __html: brandCss }} /> : null;
+
+    // A platform admin acting in a shop they are NOT staff of (viaPlatformAdmin,
+    // computed server-side in requireShopMember): the admin shell, so god mode
+    // never disappears -- [AdminSidebar][this shop's nav as a sub-sidebar][page].
+    // Not used on a tenant's own host, where the middleware refuses /admin/* and
+    // the admin sidebar would be dead links; there the console renders as normal.
+    if (viaPlatformAdmin && !onTenantHost) {
+        return (
+            <AdminShell
+                adminHandle={profile.handle}
+                layoutClass="shop-layout"
+                dataTheme={shopTheme}
+                prelude={
+                    <>
+                        {tenantStyle}
+                        <AuthHashGuard />
+                    </>
+                }
+                subnav={
+                    <ShopSidebar
+                        variant="sub"
+                        slug={shop.slug}
+                        shopName={shop.name}
+                        callerHandle={profile.handle}
+                        callerRole={role}
+                        callerEmail={profile.email}
+                        enabledModules={enabledList}
+                        showSellOnNeferstock
+                        showSwitchShop={false}
+                        shopStatus={status}
+                    />
+                }
+                banner={
+                    <div className="shop-admin-strip">
+                        ADMIN · ACTING AS @{shop.slug.toUpperCase()}
+                        {status !== 'verified' ? ` · SHOP ${status.toUpperCase()}` : ''} — EVERY CHANGE HERE IS
+                        MADE AS THE SHOP.
+                    </div>
+                }
+            >
+                {children}
+            </AdminShell>
+        );
+    }
+
     return (
         <div className="shop-layout" data-theme={shopTheme}>
-            {/* Per-tenant accent. One variable override reskins buttons, active
-                nav, focus rings and eyebrows together, in both themes. */}
-            {brandCss ? <style dangerouslySetInnerHTML={{ __html: brandCss }} /> : null}
+            {tenantStyle}
             {/* Strip an auth fragment wherever the broker drops somebody who was
                 already signed in — they never pass the login page, so nothing
                 else would. */}
@@ -172,20 +216,8 @@ export default async function ShopLayout({
                 showSellOnNeferstock={!onTenantHost}
                 showSwitchShop={showSwitchShop}
                 switchShopHref={switchShopHref}
-                actingAsAdmin={viaPlatformAdmin}
-                adminHref={`/admin/shops/${shop.shopId}`}
-                shopStatus={status}
             />
-            <div className="admin-main">
-                {viaPlatformAdmin ? (
-                    <div className="shop-admin-strip">
-                        ADMIN · ACTING AS @{shop.slug.toUpperCase()}
-                        {status !== 'verified' ? ` · SHOP ${status.toUpperCase()}` : ''} — EVERY CHANGE HERE IS
-                        MADE AS THE SHOP.
-                    </div>
-                ) : null}
-                {children}
-            </div>
+            <div className="admin-main">{children}</div>
         </div>
     );
 }

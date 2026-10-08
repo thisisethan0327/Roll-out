@@ -33,8 +33,7 @@ export function ShopSidebar({
     showSellOnNeferstock = true,
     showSwitchShop = true,
     switchShopHref = '/shop/picker',
-    actingAsAdmin = false,
-    adminHref = '/admin',
+    variant = 'main',
     shopStatus = 'verified',
 }: {
     slug: string;
@@ -55,13 +54,14 @@ export function ShopSidebar({
      *  the picker is a platform surface the middleware won't serve; the default
      *  relative path everywhere else. */
     switchShopHref?: string;
-    /** Server-derived by the layout (requireShopMember's viaPlatformAdmin) --
-     *  never from a query param or cookie. Shows the GOD MODE strip + a link
-     *  back to /admin and labels the role as a platform admin. */
-    actingAsAdmin?: boolean;
-    /** Where BACK TO ADMIN goes (the shop's admin page). */
-    adminHref?: string;
-    /** The shop's status; shown as a pill in the admin strip when not verified. */
+    /** 'main' is the shop's own sidebar. 'sub' is the sub-sidebar the layout
+     *  renders next to the admin sidebar when a platform admin acts in a shop
+     *  they are not staff of (chosen server-side from requireShopMember's
+     *  viaPlatformAdmin, never from a query param or cookie). It keeps the nav
+     *  and active highlighting but drops sign-out and SWITCH SHOP -- the admin
+     *  sidebar beside it owns those. */
+    variant?: 'main' | 'sub';
+    /** The shop's status; shown as a pill in the sub header when not verified. */
     shopStatus?: string;
 }) {
     const pathname = usePathname() || '';
@@ -85,30 +85,32 @@ export function ShopSidebar({
     );
     const sections = SHOP_NAV_SECTIONS;
 
+    const sub = variant === 'sub';
+    const Root = sub ? 'div' : 'aside';
+
     return (
-        <aside className="shop-sidebar">
-            <div className="shop-sidebar-brand">
-                <div className="shop-sidebar-brand-word">{shopName.toUpperCase()}</div>
-                <div className="shop-sidebar-brand-sub">@{slug} · SHOP DASHBOARD</div>
-            </div>
-            {actingAsAdmin ? (
-                <div className="shop-sidebar-admin">
-                    <div>GOD MODE · ACTING AS @{slug.toUpperCase()}</div>
+        <Root className={sub ? 'shop-subnav' : 'shop-sidebar'}>
+            {sub ? (
+                <div className="admin-subnav-head">
+                    <div className="admin-subnav-eyebrow">ACTING AS @{slug.toUpperCase()}</div>
+                    <div className="admin-subnav-title">{shopName}</div>
                     {shopStatus !== 'verified' ? (
                         <div style={{ marginTop: 6 }}>
                             <span className="admin-pill warn">{shopStatus.toUpperCase()}</span>
                         </div>
                     ) : null}
-                    <Link href={adminHref} className="shop-sidebar-admin-back">
-                        ‹ BACK TO ADMIN
-                    </Link>
                 </div>
-            ) : null}
+            ) : (
+            <div className="shop-sidebar-brand">
+                <div className="shop-sidebar-brand-word">{shopName.toUpperCase()}</div>
+                <div className="shop-sidebar-brand-sub">@{slug} · SHOP DASHBOARD</div>
+            </div>
+            )}
             {sections.map((sec) => {
                 const items = visible.filter((n) => n.section === sec);
                 if (items.length === 0) return null;
                 return (
-                    <div key={sec}>
+                    <div key={sec} className="admin-subnav-group">
                         <div className="admin-sidebar-section">{sec}</div>
                         {items.map((n) => {
                             const href = `/shop/${slug}/${n.href}`;
@@ -134,7 +136,7 @@ export function ShopSidebar({
                 const href = `/shop/${slug}/sell`;
                 const active = pathname === href || pathname.startsWith(href + '/');
                 return (
-                    <div>
+                    <div className="admin-subnav-group">
                         <div className="admin-sidebar-section">COMMERCE</div>
                         <Link href={href} className={`admin-sidebar-link ${active ? 'active' : ''}`}>
                             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
@@ -146,6 +148,11 @@ export function ShopSidebar({
                     </div>
                 );
             })() : null}
+            {sub ? (
+                <div className="admin-subnav-foot">
+                    <ShopThemeToggle />
+                </div>
+            ) : (
             <div className="admin-sidebar-foot">
                 <Link
                     href={`/shop/${slug}/account`}
@@ -162,9 +169,7 @@ export function ShopSidebar({
                             {truncEmail(callerEmail)}
                         </div>
                     )}
-                    <div style={{ marginTop: 6 }}>
-                        {actingAsAdmin ? 'ROLE: PLATFORM ADMIN (AS OWNER)' : `ROLE: ${callerRole.toUpperCase()}`}
-                    </div>
+                    <div style={{ marginTop: 6 }}>ROLE: {callerRole.toUpperCase()}</div>
                 </Link>
                 {showSwitchShop ? (
                     <div style={{ marginTop: 10 }}>
@@ -187,6 +192,7 @@ export function ShopSidebar({
                     SIGN OUT
                 </button>
             </div>
-        </aside>
+            )}
+        </Root>
     );
 }
