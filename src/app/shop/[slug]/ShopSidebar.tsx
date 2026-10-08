@@ -3,51 +3,8 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { getSupabaseBrowser } from '@/lib/supabase/browser';
 import { LinkPending } from '@/components/feedback';
-import { ModuleKey } from '@/lib/shop-modules';
+import { SHOP_NAV as NAV, SHOP_NAV_SECTIONS, SHOP_ROLE_RANK as RANK } from '@/lib/shop-nav';
 import { ShopThemeToggle } from './ShopThemeToggle';
-
-type SidebarItem = {
-    href: string;
-    label: string;
-    section: 'TODAY' | 'CUSTOMERS' | 'PUBLIC' | 'SETTINGS';
-    /** Tier module this link belongs to. The layout resolves the enabled set
-     *  (tier ± overrides ± data-preconditions) and passes it in; links whose
-     *  module isn't enabled are hidden. Section routes enforce the same gate. */
-    module: ModuleKey;
-    /** Min role required to see this link in the sidebar. Routes themselves
-     *  enforce server-side; this just hides links the user can't use. */
-    minRole?: 'owner' | 'manager' | 'installer';
-};
-
-const RANK: Record<string, number> = {
-    owner: 5,
-    admin: 4,
-    manager: 3,
-    installer: 2,
-    staff: 1,
-};
-
-const NAV: SidebarItem[] = [
-    { href: 'overview',  label: 'OVERVIEW',  section: 'TODAY',    module: ModuleKey.Overview,  minRole: 'installer' },
-    { href: 'inbox',     label: 'INBOX',     section: 'TODAY',    module: ModuleKey.Inbox,     minRole: 'installer' },
-    { href: 'messages',  label: 'MESSAGES',  section: 'TODAY',    module: ModuleKey.Messages,  minRole: 'installer' },
-    { href: 'calendar',  label: 'CALENDAR',  section: 'TODAY',    module: ModuleKey.Calendar,  minRole: 'installer' },
-    { href: 'tickets',   label: 'TICKETS',   section: 'TODAY',    module: ModuleKey.Tickets,   minRole: 'installer' },
-    { href: 'customers', label: 'CUSTOMERS', section: 'CUSTOMERS', module: ModuleKey.Customers, minRole: 'installer' },
-    { href: 'products',  label: 'PRODUCTS',  section: 'CUSTOMERS', module: ModuleKey.Products,  minRole: 'installer' },
-    { href: 'orders',    label: 'ORDERS',    section: 'CUSTOMERS', module: ModuleKey.Orders,    minRole: 'installer' },
-    { href: 'posts',     label: 'POSTS',     section: 'PUBLIC',   module: ModuleKey.Posts,     minRole: 'manager' },
-    { href: 'events',    label: 'EVENTS',    section: 'PUBLIC',   module: ModuleKey.Events,    minRole: 'manager' },
-    { href: 'kiosk-events', label: 'KIOSK EVENTS', section: 'PUBLIC', module: ModuleKey.KioskEvents, minRole: 'manager' },
-    { href: 'reviews',   label: 'REVIEWS',   section: 'PUBLIC',   module: ModuleKey.Reviews,   minRole: 'manager' },
-    { href: 'page',      label: 'SHOP PAGE', section: 'PUBLIC',   module: ModuleKey.Page,      minRole: 'owner' },
-    { href: 'account',   label: 'MY ACCOUNT', section: 'SETTINGS', module: ModuleKey.Account },
-    { href: 'staff',     label: 'STAFF',     section: 'SETTINGS', module: ModuleKey.Staff,    minRole: 'owner' },
-    { href: 'services',  label: 'SERVICES',  section: 'SETTINGS', module: ModuleKey.Services, minRole: 'manager' },
-    { href: 'settings/general', label: 'GENERAL',  section: 'SETTINGS', module: ModuleKey.Settings, minRole: 'owner' },
-    { href: 'settings/email',   label: 'EMAIL',    section: 'SETTINGS', module: ModuleKey.Settings, minRole: 'owner' },
-    { href: 'settings/billing', label: 'BILLING',  section: 'SETTINGS', module: ModuleKey.Settings, minRole: 'owner' },
-];
 
 const SWITCH_SHOP_STYLE: React.CSSProperties = {
     color: 'var(--text-2)',
@@ -76,6 +33,9 @@ export function ShopSidebar({
     showSellOnNeferstock = true,
     showSwitchShop = true,
     switchShopHref = '/shop/picker',
+    actingAsAdmin = false,
+    adminHref = '/admin',
+    shopStatus = 'verified',
 }: {
     slug: string;
     shopName: string;
@@ -95,6 +55,14 @@ export function ShopSidebar({
      *  the picker is a platform surface the middleware won't serve; the default
      *  relative path everywhere else. */
     switchShopHref?: string;
+    /** Server-derived by the layout (requireShopMember's viaPlatformAdmin) --
+     *  never from a query param or cookie. Shows the GOD MODE strip + a link
+     *  back to /admin and labels the role as a platform admin. */
+    actingAsAdmin?: boolean;
+    /** Where BACK TO ADMIN goes (the shop's admin page). */
+    adminHref?: string;
+    /** The shop's status; shown as a pill in the admin strip when not verified. */
+    shopStatus?: string;
 }) {
     const pathname = usePathname() || '';
     const router = useRouter();
@@ -115,7 +83,7 @@ export function ShopSidebar({
             (!n.minRole || rank >= RANK[n.minRole]) &&
             enabled.has(n.module),
     );
-    const sections: SidebarItem['section'][] = ['TODAY', 'CUSTOMERS', 'PUBLIC', 'SETTINGS'];
+    const sections = SHOP_NAV_SECTIONS;
 
     return (
         <aside className="shop-sidebar">
@@ -123,6 +91,19 @@ export function ShopSidebar({
                 <div className="shop-sidebar-brand-word">{shopName.toUpperCase()}</div>
                 <div className="shop-sidebar-brand-sub">@{slug} · SHOP DASHBOARD</div>
             </div>
+            {actingAsAdmin ? (
+                <div className="shop-sidebar-admin">
+                    <div>GOD MODE · ACTING AS @{slug.toUpperCase()}</div>
+                    {shopStatus !== 'verified' ? (
+                        <div style={{ marginTop: 6 }}>
+                            <span className="admin-pill warn">{shopStatus.toUpperCase()}</span>
+                        </div>
+                    ) : null}
+                    <Link href={adminHref} className="shop-sidebar-admin-back">
+                        ‹ BACK TO ADMIN
+                    </Link>
+                </div>
+            ) : null}
             {sections.map((sec) => {
                 const items = visible.filter((n) => n.section === sec);
                 if (items.length === 0) return null;
@@ -181,7 +162,9 @@ export function ShopSidebar({
                             {truncEmail(callerEmail)}
                         </div>
                     )}
-                    <div style={{ marginTop: 6 }}>ROLE: {callerRole.toUpperCase()}</div>
+                    <div style={{ marginTop: 6 }}>
+                        {actingAsAdmin ? 'ROLE: PLATFORM ADMIN (AS OWNER)' : `ROLE: ${callerRole.toUpperCase()}`}
+                    </div>
                 </Link>
                 {showSwitchShop ? (
                     <div style={{ marginTop: 10 }}>

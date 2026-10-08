@@ -1223,6 +1223,46 @@ h4 { font-size: 16px; letter-spacing: var(--track-wide); }
   letter-spacing: var(--track-wider);
   color: var(--text-3);
 }
+/* Platform admin acting inside a shop console (server-derived flag). */
+.shop-sidebar-admin {
+  margin: -4px 20px 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--gold);
+  background: var(--gold-glow);
+  font-family: var(--font-display);
+  font-size: 9px;
+  letter-spacing: var(--track-wider);
+  color: var(--gold);
+}
+.shop-sidebar-admin-back {
+  display: inline-block;
+  margin-top: 8px;
+  color: var(--gold);
+  font-weight: 700;
+  text-decoration: none;
+}
+.shop-sidebar-admin-back:hover { text-decoration: underline; }
+.shop-admin-strip {
+  margin: -8px 0 18px;
+  padding: 8px 14px;
+  border: 1px solid var(--gold);
+  background: var(--gold-glow);
+  font-family: var(--font-display);
+  font-size: 10px;
+  letter-spacing: var(--track-wider);
+  color: var(--gold);
+}
+/* Admin event detail: content column + "act as shop" side panel. */
+.admin-event-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  gap: 24px;
+  align-items: start;
+}
+@media (max-width: 1100px) {
+  .admin-event-grid { grid-template-columns: minmax(0, 1fr); }
+}
+
 .admin-sidebar-signout {
   background: none;
   border: none;

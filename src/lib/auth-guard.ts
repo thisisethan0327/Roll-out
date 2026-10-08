@@ -13,7 +13,7 @@
 import 'server-only';
 import { redirect, notFound } from 'next/navigation';
 import { getSupabaseServer } from './supabase/server';
-import { getSupabaseAdmin } from './supabase/admin';
+import { getSupabaseAdmin, getSupabasePublicAdmin } from './supabase/admin';
 import {
     assertModuleEnabled,
     isModuleEnabled,
@@ -126,7 +126,7 @@ export async function getPlatformAdmin(): Promise<GuardedProfile | null> {
  */
 export async function requireShopMember(
     shopId: number,
-): Promise<{ profile: GuardedProfile; role: string }> {
+): Promise<{ profile: GuardedProfile; role: string; viaPlatformAdmin: boolean }> {
     const { profile } = await requireSession('/shop/login');
     const admin = getSupabaseAdmin();
 
@@ -136,7 +136,15 @@ export async function requireShopMember(
         .select('profile_id')
         .eq('profile_id', profile.profileId)
         .maybeSingle();
-    if (padmin) return { profile, role: 'owner' };
+    if (padmin) {
+        // Audit trail: every admin pass through a shop guard is logged.
+        console.info(
+            '[auth-guard] platform admin @%s acting as owner of shop %d',
+            profile.handle,
+            shopId,
+        );
+        return { profile, role: 'owner', viaPlatformAdmin: true };
+    }
 
     const { data: m } = await admin
         .from('shop_memberships')
@@ -145,7 +153,7 @@ export async function requireShopMember(
         .eq('shop_id', shopId)
         .maybeSingle();
     if (!m) redirect('/shop/login?error=not_member');
-    return { profile, role: (m as any).role };
+    return { profile, role: (m as any).role, viaPlatformAdmin: false };
 }
 
 /**
@@ -221,12 +229,56 @@ export async function resolveShopSlug(slug: string): Promise<
 export async function requireShopMemberBySlug(slug: string): Promise<{
     profile: GuardedProfile;
     role: string;
+    /** True when access came from rollout.platform_admins, not a membership. */
+    viaPlatformAdmin: boolean;
     shop: { shopId: number; slug: string; name: string };
 }> {
     const shop = await resolveShopSlug(slug);
     if (!shop) redirect('/shop/picker?error=shop_not_found');
-    const { profile, role } = await requireShopMember(shop.shopId);
-    return { profile, role, shop };
+    const { profile, role, viaPlatformAdmin } = await requireShopMember(shop.shopId);
+    return { profile, role, viaPlatformAdmin, shop };
+}
+
+/**
+ * Load the pieces that drive sidebar module visibility in one shop-row read:
+ *   • tier + overrides → the tier module gate (shop-modules.ts)
+ *   • showProducts     → the PRODUCTS data-precondition (kept, layered on top)
+ * Orders' precondition (a resolved Medusa vendor key) is fetched separately by
+ * the caller via getShopVendorBySlug. Shared by the shop layout and the admin
+ * event page's "shop console" panel so both resolve modules identically.
+ */
+export async function loadModuleContext(shopId: number): Promise<{
+    tier: number | null;
+    overrides: ModuleOverrides;
+    showProducts: boolean;
+    status: string;
+    reviewNote: string | null;
+}> {
+    const admin = getSupabaseAdmin();
+    const { data: shopRow } = await admin
+        .from('shops')
+        .select('sells_products, medusa_category_handles, commerce_tier, module_overrides, status, review_note')
+        .eq('id', shopId)
+        .maybeSingle();
+    const row = shopRow as any;
+    const handles = row?.medusa_category_handles;
+    let showProducts =
+        !!row?.sells_products || (Array.isArray(handles) && handles.length > 0);
+    if (!showProducts) {
+        const pub = getSupabasePublicAdmin();
+        const { count } = await pub
+            .from('products')
+            .select('id', { count: 'exact', head: true })
+            .eq('shop_id', shopId);
+        showProducts = (count ?? 0) > 0;
+    }
+    return {
+        tier: row?.commerce_tier ?? null,
+        overrides: (row?.module_overrides ?? {}) as ModuleOverrides,
+        showProducts,
+        status: (row?.status ?? 'pending') as string,
+        reviewNote: (row?.review_note ?? null) as string | null,
+    };
 }
 
 // ── Tier module gating resolvers ────────────────────────────────────────────

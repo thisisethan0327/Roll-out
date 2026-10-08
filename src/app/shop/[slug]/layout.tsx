@@ -6,61 +6,15 @@
  * default (instead of bouncing through the picker every time).
  */
 import { cookies, headers } from 'next/headers';
-import { hasMultipleShops, requireShopMemberBySlug } from '@/lib/auth-guard';
-import { getSupabaseAdmin, getSupabasePublicAdmin } from '@/lib/supabase/admin';
+import { hasMultipleShops, loadModuleContext, requireShopMemberBySlug } from '@/lib/auth-guard';
 import { getShopVendorBySlug } from '@/lib/store-shops';
-import {
-    enabledModules,
-    ModuleKey,
-    type ModuleOverrides,
-} from '@/lib/shop-modules';
+import { enabledModules, ModuleKey } from '@/lib/shop-modules';
 import { ShopSidebar } from './ShopSidebar';
 import { brandForSlug, brandStyle } from '@/lib/tenant-brand';
 import { ROLLOUT_ORIGIN, tenantForHost } from '@/lib/tenant-hosts';
 import { AuthHashGuard } from '@/components/auth/AuthHashGuard';
 
 const ACTIVE_SHOP_COOKIE = 'rollout_active_shop';
-
-/**
- * Load the pieces that drive sidebar module visibility in one shop-row read:
- *   • tier + overrides → the tier module gate (shop-modules.ts)
- *   • showProducts     → the PRODUCTS data-precondition (kept, layered on top)
- * Orders' precondition (a resolved Medusa vendor key) is fetched separately by
- * the caller via getShopVendorBySlug.
- */
-async function loadModuleContext(shopId: number): Promise<{
-    tier: number | null;
-    overrides: ModuleOverrides;
-    showProducts: boolean;
-    status: string;
-    reviewNote: string | null;
-}> {
-    const admin = getSupabaseAdmin();
-    const { data: shopRow } = await admin
-        .from('shops')
-        .select('sells_products, medusa_category_handles, commerce_tier, module_overrides, status, review_note')
-        .eq('id', shopId)
-        .maybeSingle();
-    const row = shopRow as any;
-    const handles = row?.medusa_category_handles;
-    let showProducts =
-        !!row?.sells_products || (Array.isArray(handles) && handles.length > 0);
-    if (!showProducts) {
-        const pub = getSupabasePublicAdmin();
-        const { count } = await pub
-            .from('products')
-            .select('id', { count: 'exact', head: true })
-            .eq('shop_id', shopId);
-        showProducts = (count ?? 0) > 0;
-    }
-    return {
-        tier: row?.commerce_tier ?? null,
-        overrides: (row?.module_overrides ?? {}) as ModuleOverrides,
-        showProducts,
-        status: (row?.status ?? 'pending') as string,
-        reviewNote: (row?.review_note ?? null) as string | null,
-    };
-}
 
 /**
  * Gate screen for a shop that is not yet verified. Renders instead of the full
@@ -130,13 +84,14 @@ export default async function ShopLayout({
     params: Promise<{ slug: string }>;
 }) {
     const { slug } = await params;
-    const { profile, role, shop } = await requireShopMemberBySlug(slug);
+    const { profile, role, shop, viaPlatformAdmin } = await requireShopMemberBySlug(slug);
     const { tier, overrides, showProducts, status, reviewNote } = await loadModuleContext(shop.shopId);
 
     // Not-yet-verified shops get the pending gate — no operational console until
-    // a platform admin approves the listing. (Platform admins reviewing the shop
-    // still use /admin/verifications, not this console.)
-    if (status !== 'verified') {
+    // a platform admin approves the listing. Platform admins are let through
+    // (the sidebar and the strip below show the shop's status), so they can
+    // inspect and fix a pending/rejected/suspended shop.
+    if (status !== 'verified' && !viaPlatformAdmin) {
         return <ShopPendingGate shopName={shop.name} status={status} reviewNote={reviewNote} />;
     }
     // Orders section is gated on the shop resolving to a Medusa vendor key
@@ -156,7 +111,8 @@ export default async function ShopLayout({
     // Persist "last active shop" so /shop root → this slug next time. 30-day
     // sliding window so it expires for long-inactive users.
     const cookieStore = await cookies();
-    if (cookieStore.get(ACTIVE_SHOP_COOKIE)?.value !== slug) {
+    // An admin acting as a shop must not repoint their own default shop.
+    if (!viaPlatformAdmin && cookieStore.get(ACTIVE_SHOP_COOKIE)?.value !== slug) {
         try {
             cookieStore.set(ACTIVE_SHOP_COOKIE, slug, {
                 path: '/',
@@ -187,7 +143,10 @@ export default async function ShopLayout({
     // or not. SWITCH SHOP survives for anyone actually on staff at a second
     // shop, since for them it still goes somewhere they can reach.
     const onTenantHost = tenantForHost((await headers()).get('host')) !== null;
-    const showSwitchShop = !onTenantHost || (await hasMultipleShops(profile.profileId));
+    // A platform admin is not on this shop's staff, so there is nothing to
+    // switch between; the sidebar offers BACK TO ADMIN instead.
+    const showSwitchShop =
+        !viaPlatformAdmin && (!onTenantHost || (await hasMultipleShops(profile.profileId)));
     // Switching shops is a PLATFORM action, so on a tenant host it walks out to
     // Rollout by absolute URL rather than trying the picker behind the tenant's
     // own door -- the middleware refuses /shop/picker there, so a relative href
@@ -213,8 +172,20 @@ export default async function ShopLayout({
                 showSellOnNeferstock={!onTenantHost}
                 showSwitchShop={showSwitchShop}
                 switchShopHref={switchShopHref}
+                actingAsAdmin={viaPlatformAdmin}
+                adminHref={`/admin/shops/${shop.shopId}`}
+                shopStatus={status}
             />
-            <div className="admin-main">{children}</div>
+            <div className="admin-main">
+                {viaPlatformAdmin ? (
+                    <div className="shop-admin-strip">
+                        ADMIN · ACTING AS @{shop.slug.toUpperCase()}
+                        {status !== 'verified' ? ` · SHOP ${status.toUpperCase()}` : ''} — EVERY CHANGE HERE IS
+                        MADE AS THE SHOP.
+                    </div>
+                ) : null}
+                {children}
+            </div>
         </div>
     );
 }
