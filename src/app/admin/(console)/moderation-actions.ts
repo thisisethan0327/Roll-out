@@ -17,7 +17,7 @@ export async function forceDeletePost(postId: string) {
 }
 
 export async function forceCancelEvent(eventId: string) {
-    await requirePlatformAdmin();
+    const { profile } = await requirePlatformAdmin();
 
     // 077: even a platform-admin force-cancel must not skip refunds on a paid
     // event — cancelEventAndRefundAllAction (available to platform admins
@@ -35,6 +35,8 @@ export async function forceCancelEvent(eventId: string) {
         .update({ cancelled_at: new Date().toISOString() })
         .eq('id', eventId);
     if (error) throw new Error(error.message);
+    console.warn('[admin] @%s force-cancelled event %s', profile.handle, eventId);
     revalidatePath('/admin/events');
+    revalidatePath(`/admin/events/${eventId}`);
     revalidatePath('/admin/overview');
 }

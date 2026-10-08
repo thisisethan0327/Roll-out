@@ -225,7 +225,9 @@ async function searchEvents(t: string): Promise<JumpGroup> {
             id: e.id,
             title: e.title,
             subtitle: [e.code, e.location_name].filter(Boolean).join(' · ') || null,
-            href: `/event/${e.id}`,
+            href: `/admin/events/${e.id}`,
+            altHref: `/event/${e.id}`,
+            altLabel: 'PUBLIC',
         }));
     } catch (e: any) {
         base.error = e?.message ?? 'Event search unavailable.';

@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { EventActions } from './EventActions';
 
@@ -58,11 +59,19 @@ export default async function EventsPage() {
                         ) : (
                             items.map((e: any) => (
                                 <tr key={e.id}>
-                                    <td>{e.code}</td>
                                     <td>
-                                        <div style={{ fontWeight: 700, color: 'var(--text)' }}>
+                                        <Link href={`/admin/events/${e.id}`} className="text-link">
+                                            {e.code}
+                                        </Link>
+                                    </td>
+                                    <td>
+                                        <Link
+                                            href={`/admin/events/${e.id}`}
+                                            className="text-link"
+                                            style={{ fontWeight: 700 }}
+                                        >
                                             {e.title}
-                                        </div>
+                                        </Link>
                                         <div className="admin-handle">{e.location_name}</div>
                                     </td>
                                     <td>
@@ -95,18 +104,25 @@ export default async function EventsPage() {
                                     </td>
                                     <td>
                                         <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                                            {e.visibility === 'private' && <span className="admin-pill warn">PRIVATE</span>}
+                                            {e.visibility === 'followers' && <span className="admin-pill">FOLLOWERS</span>}
                                             {e.is_official && <span className="admin-pill gold">OFFICIAL</span>}
                                             {e.cancelled_at && <span className="admin-pill warn">CANCELLED</span>}
                                         </div>
                                     </td>
                                     <td style={{ textAlign: 'right' }}>
-                                        {!e.cancelled_at && (
-                                            <EventActions
-                                                eventId={e.id}
-                                                eventTitle={e.title ?? ''}
-                                                isPaid={e.rsvp_mode === 'tiered' || e.rsvp_mode === 'paid'}
-                                            />
-                                        )}
+                                        <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                                            <Link href={`/admin/events/${e.id}`} className="admin-action-btn">
+                                                OPEN ›
+                                            </Link>
+                                            {!e.cancelled_at && (
+                                                <EventActions
+                                                    eventId={e.id}
+                                                    eventTitle={e.title ?? ''}
+                                                    isPaid={e.rsvp_mode === 'tiered' || e.rsvp_mode === 'paid'}
+                                                />
+                                            )}
+                                        </div>
                                     </td>
                                 </tr>
                             ))
