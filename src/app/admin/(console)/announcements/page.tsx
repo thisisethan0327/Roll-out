@@ -30,11 +30,15 @@ export default async function AnnouncementsPage() {
     const startMs = (ev: EventRow) => (ev.start_at ? new Date(ev.start_at).getTime() : NaN);
     const upcoming = events.filter((ev) => startMs(ev) >= nowMs).sort((a, b) => startMs(a) - startMs(b));
     const past = events.filter((ev) => !(startMs(ev) >= nowMs));
-    const toOption = (ev: EventRow, tag: string) => ({
+    const toOption = (ev: EventRow, isUpcoming: boolean) => ({
         id: ev.id,
-        label: `${tag}${ev.is_official ? '★ ' : ''}${ev.title ?? 'Untitled'}${ev.start_at ? ' · ' + ev.start_at.slice(0, 10) : ''}`,
+        label: `${ev.title ?? 'Untitled'}${ev.start_at ? ' · ' + ev.start_at.slice(0, 10) : ''}`,
+        title: ev.title ?? 'Untitled',
+        date: ev.start_at ? ev.start_at.slice(0, 10) : undefined,
+        upcoming: isUpcoming,
+        official: !!ev.is_official,
     });
-    const eventOptions = [...upcoming.map((ev) => toOption(ev, 'UPCOMING · ')), ...past.map((ev) => toOption(ev, 'PAST · '))];
+    const eventOptions = [...upcoming.map((ev) => toOption(ev, true)), ...past.map((ev) => toOption(ev, false))];
     // Sites first (pinned/severity), then by recency.
     const ordered = [...list.filter((x) => x.scope === 'site'), ...sortAnnouncements(list.filter((x) => x.scope === 'event'))];
     return (

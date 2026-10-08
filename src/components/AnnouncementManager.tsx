@@ -7,6 +7,7 @@
  */
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
+import { EventPicker } from './EventPicker';
 import {
     announcementState,
     type Announcement,
@@ -17,7 +18,14 @@ import {
 
 type Result = { ok: true } | { ok: false; error: string };
 
-export type EventOption = { id: string; label: string };
+export type EventOption = {
+    id: string;
+    label: string;            // plain "Title · date" fallback
+    title?: string;
+    date?: string;            // YYYY-MM-DD
+    upcoming?: boolean;
+    official?: boolean;
+};
 
 export type ManagerActions = {
     create: (p: { scope: 'site' | 'event'; eventId: string | null; input: AnnouncementInput }) => Promise<Result>;
@@ -182,13 +190,7 @@ export function AnnouncementManager({
                                 <option value="event">One event</option>
                             </select>
                             {draft.scope === 'event' && (
-                                <select aria-label="Event" className="admin-form-input" value={draft.eventId}
-                                    onChange={(e) => set('eventId', e.target.value)}>
-                                    <option value="">Pick an event…</option>
-                                    {(eventOptions ?? []).map((o) => (
-                                        <option key={o.id} value={o.id}>{o.label}</option>
-                                    ))}
-                                </select>
+                                <EventPicker options={eventOptions ?? []} value={draft.eventId} onChange={(id) => set('eventId', id)} />
                             )}
                         </div>
                     )}
