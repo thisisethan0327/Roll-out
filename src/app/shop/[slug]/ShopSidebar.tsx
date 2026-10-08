@@ -71,7 +71,9 @@ export function ShopSidebar({
 
     const signOut = async () => {
         const supabase = getSupabaseBrowser();
-        await supabase.auth.signOut({ scope: 'local' });
+        // Global by design (Ethan, 2026-09-08): one account across rollout.club, EMWRAPS,
+        // NeferStock and UNITY, so signing out here signs out everywhere. Never 'local'.
+        await supabase.auth.signOut({ scope: 'global' });
         // Clear active-shop cookie so next sign-in re-prompts when relevant.
         document.cookie = 'rollout_active_shop=; Path=/; Max-Age=0';
         router.push('/shop/login');

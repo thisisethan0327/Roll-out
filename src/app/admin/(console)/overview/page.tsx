@@ -62,7 +62,8 @@ async function getStats() {
     const { count: openReports } = await admin
         .from('content_reports')
         .select('*', { count: 'exact', head: true })
-        .eq('status', 'open');
+        // report_status is pending|reviewing|actioned|dismissed — 'open' never matched.
+        .in('status', ['pending', 'reviewing']);
     const { count: shopPages } = await admin
         .from('profiles')
         .select('*', { count: 'exact', head: true })

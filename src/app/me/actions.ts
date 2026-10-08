@@ -12,7 +12,9 @@ import { sendPlatformNotification } from '@/lib/platform-notify';
 /** Sign the member out (clears the SSR cookie session) and return home. */
 export async function signOutAction(): Promise<void> {
     const supabase = await getSupabaseServer();
-    await supabase.auth.signOut({ scope: 'local' });
+    // Global by design (Ethan, 2026-09-08): one account across rollout.club, EMWRAPS,
+    // NeferStock and UNITY, so signing out here signs out everywhere. Never 'local'.
+    await supabase.auth.signOut({ scope: 'global' });
     redirect('/');
 }
 

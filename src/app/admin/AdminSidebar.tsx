@@ -34,7 +34,9 @@ export function AdminSidebar({
 
     const signOut = async () => {
         const supabase = getSupabaseBrowser();
-        await supabase.auth.signOut({ scope: 'local' });
+        // Global by design (Ethan, 2026-09-08): one account across rollout.club, EMWRAPS,
+        // NeferStock and UNITY, so signing out here signs out everywhere. Never 'local'.
+        await supabase.auth.signOut({ scope: 'global' });
         router.push('/admin/login');
         router.refresh();
     };
