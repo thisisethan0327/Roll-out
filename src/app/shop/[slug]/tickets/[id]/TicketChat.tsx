@@ -4,11 +4,17 @@
  * thread, filtered by a visibility toggle. Staff compose with a
  * customer/internal switch. Refreshes on an 8s poll (router.refresh re-runs the
  * server component loader) so replies from the customer portal appear.
+ * Photos: pick a file -> compressed in-browser (JPG/PNG/WEBP up to 20 MB raw,
+ * resized to 1600px) -> signed upload straight to Storage -> sent as its own
+ * message with the current TO CUSTOMER / INTERNAL visibility.
  */
 import { useEffect, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { sendTicketMessage } from './detail-actions';
+import { mintChatPhotoTarget, sendTicketMessage, sendTicketPhotoMessage } from './detail-actions';
 import { PendingButton } from '@/components/feedback';
+import { getSupabaseBrowser } from '@/lib/supabase/browser';
+import { compressImageFile, KIOSK_IMAGE_ACCEPT } from '@/lib/kiosk-image';
+import { TICKET_BUCKET, TICKET_CACHE_CONTROL } from '@/lib/ticket-media-constants';
 
 type Message = {
     id: string;
@@ -35,6 +41,9 @@ export function TicketChat({
     const [visibility, setVisibility] = useState<'customer' | 'internal'>('customer');
     const [filter, setFilter] = useState<'all' | 'customer' | 'internal'>('all');
     const scrollRef = useRef<HTMLDivElement>(null);
+    const fileRef = useRef<HTMLInputElement>(null);
+    const [uploading, setUploading] = useState(false);
+    const [photoError, setPhotoError] = useState<string | null>(null);
 
     // Poll for new messages (customer portal replies) every 8s.
     useEffect(() => {
@@ -64,6 +73,31 @@ export function TicketChat({
                 alert('Send failed: ' + (e?.message ?? 'unknown'));
             }
         });
+    };
+
+    const onPhoto = async (files: FileList | null) => {
+        const file = files?.[0];
+        if (!file || uploading) return;
+        setPhotoError(null);
+        setUploading(true);
+        try {
+            const blob = await compressImageFile(file, { maxDim: 1600, quality: 0.82 });
+            const { path, token } = await mintChatPhotoTarget(slug, ticketRowId);
+            const { error } = await getSupabaseBrowser()
+                .storage.from(TICKET_BUCKET)
+                .uploadToSignedUrl(path, token, blob, {
+                    contentType: 'image/jpeg',
+                    cacheControl: TICKET_CACHE_CONTROL,
+                });
+            if (error) throw new Error(`Upload failed: ${error.message}`);
+            await sendTicketPhotoMessage(slug, ticketRowId, path, visibility);
+            router.refresh();
+        } catch (e: any) {
+            setPhotoError(e?.message ?? 'Photo upload failed');
+        } finally {
+            setUploading(false);
+            if (fileRef.current) fileRef.current.value = '';
+        }
     };
 
     return (
@@ -190,17 +224,37 @@ export function TicketChat({
                     }}
                     style={{ width: '100%', resize: 'vertical' }}
                 />
-                <div>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                     <PendingButton
                         type="button"
                         className="admin-action-btn"
                         pending={pending}
                         pendingLabel="SENDING"
-                        disabled={!text.trim()}
+                        disabled={!text.trim() || uploading}
                         onClick={send}
                     >
                         {visibility === 'internal' ? 'ADD NOTE' : 'SEND'}
                     </PendingButton>
+                    <input
+                        ref={fileRef}
+                        type="file"
+                        accept={KIOSK_IMAGE_ACCEPT}
+                        hidden
+                        onChange={(e) => onPhoto(e.target.files)}
+                    />
+                    <button
+                        type="button"
+                        className="admin-action-btn muted"
+                        disabled={uploading || pending}
+                        onClick={() => fileRef.current?.click()}
+                    >
+                        {uploading ? 'SENDING PHOTO…' : '+ PHOTO'}
+                    </button>
+                    {photoError && (
+                        <span role="alert" style={{ color: 'var(--warn)', fontSize: 12 }}>
+                            {photoError}
+                        </span>
+                    )}
                 </div>
             </div>
         </div>
