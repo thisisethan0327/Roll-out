@@ -9,7 +9,7 @@ import { cache } from 'react';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { loadEventAreaLabel } from '@/lib/event-area-label';
 import { getShopVendorBySlug } from '@/lib/store-shops';
-import { enabledModules, ModuleKey } from '@/lib/shop-modules';
+import { adminModuleView, enabledModules, ModuleKey } from '@/lib/shop-modules';
 import { loadModuleContext } from '@/lib/auth-guard';
 
 export const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -230,18 +230,23 @@ export async function loadCohosts(id: string): Promise<AdminCohost[]> {
 }
 
 /**
- * The modules the shop console would show for this shop — the same resolver as
- * the shop layout (tier ± overrides, then the Products/Orders data gates).
+ * The modules the shop console shows THIS caller. Only ever called from the
+ * admin event shell (requirePlatformAdmin has passed), so it is the platform-
+ * admin view: every module (adminModuleView), minus the ones hidden for want
+ * of data (Products with no catalog, Orders with no vendor). `adminOnly` are
+ * the ones the shop's own tier would hide; the sub-nav tags them ADMIN.
  * Role gating is skipped: an admin acts as owner.
  */
-export const loadShopConsoleContext = cache(async (slug: string, shopId: number): Promise<string[]> => {
-    const { tier, overrides, showProducts } = await loadModuleContext(shopId);
-    const showOrders = (await getShopVendorBySlug(slug)) !== null;
-    const enabled = enabledModules(tier, overrides);
-    if (!showProducts) enabled.delete(ModuleKey.Products);
-    if (!showOrders) enabled.delete(ModuleKey.Orders);
-    return [...enabled];
-});
+export const loadShopConsoleContext = cache(
+    async (slug: string, shopId: number): Promise<{ enabled: string[]; adminOnly: string[] }> => {
+        const { tier, overrides, showProducts } = await loadModuleContext(shopId);
+        const showOrders = (await getShopVendorBySlug(slug)) !== null;
+        const dataOff: ModuleKey[] = [];
+        if (!showProducts) dataOff.push(ModuleKey.Products);
+        if (!showOrders) dataOff.push(ModuleKey.Orders);
+        return adminModuleView(enabledModules(tier, overrides), dataOff);
+    },
+);
 
 export type EventCounts = {
     confirmedSeats: number;

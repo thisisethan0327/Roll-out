@@ -27,7 +27,7 @@ export default async function AdminEventLayout({
 
     let subnav: React.ReactNode = null;
     if (event.shop) {
-        const enabled = await loadShopConsoleContext(event.shop.slug, event.shop.id);
+        const { enabled, adminOnly } = await loadShopConsoleContext(event.shop.slug, event.shop.id);
         subnav = (
             <ShopEventSubnav
                 slug={event.shop.slug}
@@ -36,6 +36,7 @@ export default async function AdminEventLayout({
                 shopStatus={event.shop.status}
                 eventId={event.id}
                 enabled={enabled}
+                adminOnly={adminOnly}
             />
         );
     } else if (event.shop_id == null) {

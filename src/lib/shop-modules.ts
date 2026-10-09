@@ -134,3 +134,24 @@ export function assertModuleEnabled(shop: ShopModuleConfig, key: ModuleKey): voi
         notFound();
     }
 }
+
+/**
+ * What a PLATFORM ADMIN sees in a shop's console: every module, whatever the
+ * shop's tier (Ethan 2026-10-08: the Rollout admin "can access all functions").
+ * `tierEnabled` is the shop's own resolved set (tier ± overrides ± data gates);
+ * `dataGatedOff` are the modules hidden for want of data rather than tier
+ * (Products with no catalog, Orders with no vendor), which stay hidden because
+ * there is nothing behind them. Returns the full visible list plus the subset
+ * the shop itself would NOT show, so the nav can tag those "ADMIN".
+ *
+ * Pure: the caller decides who is a platform admin (server-side only).
+ */
+export function adminModuleView(
+    tierEnabled: Iterable<ModuleKey>,
+    dataGatedOff: Iterable<ModuleKey> = [],
+): { enabled: ModuleKey[]; adminOnly: ModuleKey[] } {
+    const own = new Set(tierEnabled);
+    const off = new Set(dataGatedOff);
+    const enabled = (Object.values(ModuleKey) as ModuleKey[]).filter((k) => !off.has(k));
+    return { enabled, adminOnly: enabled.filter((k) => !own.has(k)) };
+}

@@ -15,6 +15,7 @@ export function ShopEventSubnav({
     shopStatus,
     eventId,
     enabled,
+    adminOnly = [],
 }: {
     slug: string;
     shopName: string;
@@ -22,8 +23,11 @@ export function ShopEventSubnav({
     shopStatus: string | null;
     eventId: string;
     enabled: string[];
+    /** Modules shown only because the caller is a platform admin (tier hides them). */
+    adminOnly?: string[];
 }) {
     const on = new Set(enabled);
+    const adminOnlySet = new Set(adminOnly);
     const items = SHOP_NAV.filter((n) => on.has(n.module));
     return (
         <>
@@ -55,6 +59,14 @@ export function ShopEventSubnav({
                         {rows.map((n) => (
                             <Link key={n.href} href={`/shop/${slug}/${n.href}`} className="admin-sidebar-link">
                                 <span>{n.label}</span>
+                                {adminOnlySet.has(n.module) ? (
+                                    <span
+                                        title="Hidden for this shop's tier; shown because you are a Rollout admin"
+                                        style={{ fontSize: 8, letterSpacing: 'var(--track-wider)', color: 'var(--text-3)', border: '1px solid var(--line)', padding: '1px 4px' }}
+                                    >
+                                        ADMIN
+                                    </span>
+                                ) : null}
                             </Link>
                         ))}
                     </div>

@@ -8,7 +8,7 @@
 import { cookies, headers } from 'next/headers';
 import { hasMultipleShops, loadModuleContext, requireShopMemberBySlug } from '@/lib/auth-guard';
 import { getShopVendorBySlug } from '@/lib/store-shops';
-import { enabledModules, ModuleKey } from '@/lib/shop-modules';
+import { adminModuleView, enabledModules, ModuleKey } from '@/lib/shop-modules';
 import { ShopSidebar } from './ShopSidebar';
 import { AdminShell } from '@/app/admin/AdminShell';
 import { brandForSlug, brandStyle } from '@/lib/tenant-brand';
@@ -85,7 +85,7 @@ export default async function ShopLayout({
     params: Promise<{ slug: string }>;
 }) {
     const { slug } = await params;
-    const { profile, role, shop, viaPlatformAdmin } = await requireShopMemberBySlug(slug);
+    const { profile, role, shop, viaPlatformAdmin, isPlatformAdmin } = await requireShopMemberBySlug(slug);
     const { tier, overrides, showProducts, status, reviewNote } = await loadModuleContext(shop.shopId);
 
     // Not-yet-verified shops get the pending gate — no operational console until
@@ -107,7 +107,20 @@ export default async function ShopLayout({
     const enabled = enabledModules(tier, overrides);
     if (!showProducts) enabled.delete(ModuleKey.Products);
     if (!showOrders) enabled.delete(ModuleKey.Orders);
-    const enabledList = [...enabled];
+    // Platform admins (member of this shop or not) see EVERY module, tier or
+    // not; the ones the shop itself would not show get an ADMIN tag in the nav.
+    // Decided server-side in requireShopMember (never a prop/param), and the
+    // section route guards (requireShopModule) apply the same bypass.
+    let enabledList: string[] = [...enabled];
+    let adminOnlyModules: string[] = [];
+    if (isPlatformAdmin) {
+        const dataOff: ModuleKey[] = [];
+        if (!showProducts) dataOff.push(ModuleKey.Products);
+        if (!showOrders) dataOff.push(ModuleKey.Orders);
+        const view = adminModuleView(enabled, dataOff);
+        enabledList = view.enabled;
+        adminOnlyModules = view.adminOnly;
+    }
 
     // Persist "last active shop" so /shop root → this slug next time. 30-day
     // sliding window so it expires for long-inactive users.
@@ -181,6 +194,7 @@ export default async function ShopLayout({
                         callerRole={role}
                         callerEmail={profile.email}
                         enabledModules={enabledList}
+                        adminOnlyModules={adminOnlyModules}
                         showSellOnNeferstock
                         showSwitchShop={false}
                         shopStatus={status}
@@ -213,6 +227,7 @@ export default async function ShopLayout({
                 callerRole={role}
                 callerEmail={profile.email}
                 enabledModules={enabledList}
+                adminOnlyModules={adminOnlyModules}
                 showSellOnNeferstock={!onTenantHost}
                 showSwitchShop={showSwitchShop}
                 switchShopHref={switchShopHref}

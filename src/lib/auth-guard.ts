@@ -17,7 +17,6 @@ import { getSupabaseAdmin, getSupabasePublicAdmin } from './supabase/admin';
 import { selectWithBan } from './ban-server';
 import { isBannedUntil } from './ban';
 import {
-    assertModuleEnabled,
     isModuleEnabled,
     type ModuleKey,
     type ModuleOverrides,
@@ -133,7 +132,14 @@ export async function getPlatformAdmin(): Promise<GuardedProfile | null> {
  */
 export async function requireShopMember(
     shopId: number,
-): Promise<{ profile: GuardedProfile; role: string; viaPlatformAdmin: boolean }> {
+): Promise<{
+    profile: GuardedProfile;
+    role: string;
+    /** True only when access came from platform_admins and NOT from a membership. */
+    viaPlatformAdmin: boolean;
+    /** True for ANY platform admin, member of this shop or not (module-gate bypass). */
+    isPlatformAdmin: boolean;
+}> {
     const { profile } = await requireSession('/shop/login');
     const admin = getSupabaseAdmin();
 
@@ -151,18 +157,18 @@ export async function requireShopMember(
     // "acting as the shop" only where they are NOT on the shop's staff, so an
     // admin working their own shop keeps the normal console (cookie, SWITCH SHOP).
     if (padmin) {
-        if (m) return { profile, role: 'owner', viaPlatformAdmin: false };
+        if (m) return { profile, role: 'owner', viaPlatformAdmin: false, isPlatformAdmin: true };
         // Audit trail: every admin pass into a shop they don't belong to is logged.
         console.info(
             '[auth-guard] platform admin @%s acting as owner of shop %d',
             profile.handle,
             shopId,
         );
-        return { profile, role: 'owner', viaPlatformAdmin: true };
+        return { profile, role: 'owner', viaPlatformAdmin: true, isPlatformAdmin: true };
     }
 
     if (!m) redirect('/shop/login?error=not_member');
-    return { profile, role: (m as any).role, viaPlatformAdmin: false };
+    return { profile, role: (m as any).role, viaPlatformAdmin: false, isPlatformAdmin: false };
 }
 
 /**
@@ -240,12 +246,14 @@ export async function requireShopMemberBySlug(slug: string): Promise<{
     role: string;
     /** True when access came from rollout.platform_admins, not a membership. */
     viaPlatformAdmin: boolean;
+    /** True for ANY platform admin (member of this shop or not). */
+    isPlatformAdmin: boolean;
     shop: { shopId: number; slug: string; name: string };
 }> {
     const shop = await resolveShopSlug(slug);
     if (!shop) redirect('/shop/picker?error=shop_not_found');
-    const { profile, role, viaPlatformAdmin } = await requireShopMember(shop.shopId);
-    return { profile, role, viaPlatformAdmin, shop };
+    const { profile, role, viaPlatformAdmin, isPlatformAdmin } = await requireShopMember(shop.shopId);
+    return { profile, role, viaPlatformAdmin, isPlatformAdmin, shop };
 }
 
 /**
@@ -322,7 +330,13 @@ export async function getShopModuleConfigBySlug(
 export async function requireShopModule(slug: string, key: ModuleKey): Promise<void> {
     const cfg = await getShopModuleConfigBySlug(slug);
     if (!cfg) notFound();
-    assertModuleEnabled(cfg, key);
+    if (isModuleEnabled(cfg.commerce_tier, cfg.module_overrides, key)) return;
+    // Platform admins see every module of every shop (Ethan 2026-10-08: "Rollout
+    // admin ... can access all functions"). Checked server-side from the session
+    // and only when the tier gate would otherwise 404, so non-admins and the
+    // common enabled case pay nothing. Gating is nav + route only; no data moves.
+    if (await getPlatformAdmin()) return;
+    notFound();
 }
 
 /**
@@ -346,4 +360,59 @@ export async function isShopModuleEnabledById(
         ((data as any).module_overrides ?? {}) as ModuleOverrides,
         key,
     );
+}
+
+// ── Admin activity log (rollout.admin_audit, migration 092) ─────────────────
+
+/** The caller facts logAdminAction needs; a GuardedProfile satisfies it. */
+export type AuditActor = Pick<GuardedProfile, 'profileId'> & Partial<Pick<GuardedProfile, 'handle'>>;
+
+/** Table-missing errors (pre-092): Postgres 42P01, PostgREST PGRST205 / schema-cache text. */
+export function isAuditTableMissing(error: { code?: string; message?: string }): boolean {
+    return (
+        error.code === '42P01' ||
+        error.code === 'PGRST205' ||
+        /could not find the table|relation .*admin_audit.* does not exist/i.test(error.message ?? '')
+    );
+}
+
+/**
+ * Record one platform-admin action on rollout.admin_audit. Call it AFTER the
+ * write succeeded, and only on the admin's own branch (never for ordinary
+ * members). Service-role insert (the table grants nothing else write access).
+ *
+ * Fails soft by design: an audit hiccup must never undo or block the action it
+ * describes, and before migration 092 the table does not exist (42P01 /
+ * PGRST205), which is silent apart from the console.info line. Never throws.
+ * The log is readable only by platform admins (see lib/admin-audit.ts).
+ */
+export async function logAdminAction(
+    actor: AuditActor,
+    action: string,
+    subjectType: string,
+    subjectId: string | number,
+    meta: Record<string, unknown> = {},
+): Promise<void> {
+    try {
+        console.info(
+            '[admin-audit] %s @%s %s %s',
+            actor.profileId,
+            actor.handle ?? '?',
+            action,
+            `${subjectType}:${subjectId}`,
+        );
+        const admin = getSupabaseAdmin();
+        const { error } = await admin.from('admin_audit').insert({
+            actor_profile_id: actor.profileId,
+            action,
+            subject_type: subjectType,
+            subject_id: String(subjectId),
+            meta: { ...meta, source: 'web' },
+        });
+        if (error && !isAuditTableMissing(error)) {
+            console.error('[admin-audit] insert failed:', error.code, error.message);
+        }
+    } catch (e) {
+        console.error('[admin-audit] insert threw:', (e as any)?.message ?? e);
+    }
 }

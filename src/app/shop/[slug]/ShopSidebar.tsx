@@ -30,6 +30,7 @@ export function ShopSidebar({
     callerRole,
     callerEmail = null,
     enabledModules = [],
+    adminOnlyModules = [],
     showSellOnNeferstock = true,
     showSwitchShop = true,
     switchShopHref = '/shop/picker',
@@ -44,6 +45,9 @@ export function ShopSidebar({
     /** Tier-resolved enabled module keys (from the shop layout). Links whose
      *  module isn't in this set are hidden; the matching routes 404. */
     enabledModules?: string[];
+    /** Modules shown ONLY because the caller is a platform admin (the shop's tier
+     *  would hide them). Tagged ADMIN in the nav. Set server-side by the layout. */
+    adminOnlyModules?: string[];
     /** The two links that lead OUT of this console into Rollout. Both are set
      *  false by the layout on a tenant's own admin host, where the middleware
      *  makes them dead ends; SWITCH SHOP is kept there for anyone on staff at
@@ -68,6 +72,7 @@ export function ShopSidebar({
     const router = useRouter();
     const rank = RANK[callerRole] ?? 0;
     const enabled = new Set(enabledModules);
+    const adminOnly = new Set(adminOnlyModules);
 
     const signOut = async () => {
         const supabase = getSupabaseBrowser();
@@ -125,6 +130,20 @@ export function ShopSidebar({
                                 >
                                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
                                         {n.label}
+                                        {adminOnly.has(n.module) ? (
+                                            <span
+                                                title="Hidden for this shop's tier; shown because you are a Rollout admin"
+                                                style={{
+                                                    fontSize: 8,
+                                                    letterSpacing: 'var(--track-wider)',
+                                                    color: 'var(--text-3)',
+                                                    border: '1px solid var(--line)',
+                                                    padding: '1px 4px',
+                                                }}
+                                            >
+                                                ADMIN
+                                            </span>
+                                        ) : null}
                                         <LinkPending />
                                     </span>
                                     {active && <span>›</span>}
