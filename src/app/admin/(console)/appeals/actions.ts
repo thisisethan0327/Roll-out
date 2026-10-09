@@ -14,7 +14,7 @@
 import { revalidatePath } from 'next/cache';
 import { requirePlatformAdmin } from '@/lib/auth-guard';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
-import { isBanSchemaMissing, SUPPORT_EMAIL } from '@/lib/ban';
+import { describeBanEnd, isBanSchemaMissing, SUPPORT_EMAIL } from '@/lib/ban';
 import { sendPlatformNotification } from '@/lib/platform-notify';
 
 export type AppealActionResult = { ok: boolean; error?: string; needsOverride?: boolean; needsMigration?: boolean };
@@ -104,7 +104,8 @@ export async function decideAppeal(input: {
     const toProfile = ((data as any)?.profile_id as string | undefined) ?? null;
     const contactEmail = ((data as any)?.contact_email as string | null | undefined) ?? null;
     if (toProfile) {
-        const { data: who } = await svc.from('profiles').select('handle').eq('id', toProfile).maybeSingle();
+        const { data: who } = await svc.from('profiles').select('handle, banned_until').eq('id', toProfile).maybeSingle();
+        const overturned = input.decision === 'overturned';
         await sendPlatformNotification({
             template: 'platform_appeal_decided',
             toProfileId: toProfile,
@@ -113,6 +114,10 @@ export async function decideAppeal(input: {
                 handle: (who as any)?.handle ?? null,
                 decision: input.decision,
                 public_note: publicNote || null,
+                until_text: overturned ? null : describeBanEnd((who as any)?.banned_until ?? null) || null,
+                refund_note: overturned
+                    ? 'Tickets that were already refunded are not restored. You can buy again if spots are open.'
+                    : null,
                 support_email: SUPPORT_EMAIL,
             },
         });

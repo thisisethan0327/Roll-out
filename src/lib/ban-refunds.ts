@@ -195,7 +195,11 @@ async function notifyHost(row: BanRefundRow): Promise<void> {
     if (!row.event_id) return;
     try {
         const svc = getSupabaseAdmin();
-        const { data: ev } = await svc.from('events').select('id, title, host_id').eq('id', row.event_id).maybeSingle();
+        const { data: ev } = await svc
+            .from('events')
+            .select('id, title, host_id, host:profiles!events_host_id_fkey(handle)')
+            .eq('id', row.event_id)
+            .maybeSingle();
         const hostId = (ev as any)?.host_id as string | null | undefined;
         if (!hostId || hostId === row.profile_id) return;
         const title = ((ev as any)?.title as string | null) ?? 'your event';
@@ -203,7 +207,8 @@ async function notifyHost(row: BanRefundRow): Promise<void> {
             recipient_id: hostId,
             actor_id: null,
             type: 'system',
-            preview: `A ticket for ${title} was cancelled and refunded. The attendee's account was removed from Rollout.`,
+            // Never tell the host why: the member's suspension is private.
+            preview: `A ticket for ${title} was cancelled and refunded. The spot is open again.`,
             linked_event_id: row.event_id,
         });
         if (error) console.error('[ban-refunds] host notification failed:', error.message);
@@ -211,7 +216,12 @@ async function notifyHost(row: BanRefundRow): Promise<void> {
             template: 'platform_ticket_cancelled_host',
             toProfileId: hostId,
             linkedEventId: row.event_id,
-            vars: { event_title: title },
+            vars: {
+                host_handle: ((ev as any)?.host?.handle as string | null) ?? null,
+                member_name: 'An attendee',
+                event_title: title,
+                event_url: `https://rollout.club/event/${row.event_id}`,
+            },
         });
     } catch (e) {
         console.error('[ban-refunds] host notify threw:', clip(e));

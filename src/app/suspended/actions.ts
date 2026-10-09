@@ -52,6 +52,8 @@ export async function submitBanAppealAction(_prev: AppealResult | null, formData
             to: contact || undefined,
             vars: {
                 handle: me.handle,
+                submitted_at: new Date().toLocaleDateString('en-US', { timeZone: 'America/Los_Angeles', month: 'short', day: 'numeric', year: 'numeric' }),
+                target_text: 'within 5 business days',
                 appeal_url: 'https://rollout.club/suspended',
                 support_email: SUPPORT_EMAIL,
             },
