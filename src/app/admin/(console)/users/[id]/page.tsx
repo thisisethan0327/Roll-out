@@ -16,6 +16,8 @@ import { UUID_RE, loadUserFacts, relativeTime } from '@/lib/admin-user-facts';
 import { MEDUSA_URL } from '@/lib/medusa';
 import { UserActions } from './UserActions';
 import { isBanSchemaMissing, isBannedUntil, describeBanEnd } from '@/lib/ban';
+import { loadAuditForProfile } from '@/lib/admin-audit';
+import { AdminAuditTable } from '@/components/AdminAuditTable';
 
 export const metadata = { title: 'User · Detail' };
 export const dynamic = 'force-dynamic';
@@ -106,6 +108,30 @@ async function loadAll(id: string) {
         for (const e of (evs as any[]) ?? []) eventById.set(e.id, e);
     }
 
+    // Tickets this member bought or holds (migration 080). Fails soft before 080.
+    let tickets: any[] = [];
+    const tkRes = await admin
+        .from('event_tickets')
+        .select('id, event_id, seat, status, attendee_name, purchaser_profile_id, attendee_profile_id, checked_in_at, created_at')
+        .or(`purchaser_profile_id.eq.${id},attendee_profile_id.eq.${id}`)
+        .order('created_at', { ascending: false })
+        .limit(100);
+    if (tkRes.error) {
+        if (tkRes.error.code !== 'PGRST205' && tkRes.error.code !== '42P01') {
+            console.error('[admin/users/[id]] tickets load failed:', tkRes.error.message);
+        }
+    } else {
+        tickets = (tkRes.data as any[]) ?? [];
+        const missing = [...new Set(tickets.map((t) => t.event_id as string))].filter((e) => !eventById.has(e));
+        if (missing.length) {
+            const { data: evs } = await admin
+                .from('events')
+                .select('id, code, title, start_at, cancelled_at')
+                .in('id', missing);
+            for (const e of (evs as any[]) ?? []) eventById.set(e.id, e);
+        }
+    }
+
     // Rollout ban history (migration 091). A missing table = 091 not applied.
     let bans: any[] = [];
     let banHistoryReady = true;
@@ -145,6 +171,7 @@ async function loadAll(id: string) {
         hosted: ((hosted.data as any[]) ?? []) as any[],
         verifs: ((verifs.data as any[]) ?? []) as any[],
         rsvps,
+        tickets,
         eventById,
         bans,
         actorHandles,
@@ -157,7 +184,7 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
     const { id } = await params;
     if (!UUID_RE.test(id)) notFound();
 
-    const data = await loadAll(id);
+    const [data, audit] = await Promise.all([loadAll(id), loadAuditForProfile(id)]);
     if (!data) {
         return (
             <>
@@ -169,7 +196,7 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
         );
     }
 
-    const { profile: p, facts, memberships, hosted, verifs, rsvps, eventById } = data;
+    const { profile: p, facts, memberships, hosted, verifs, rsvps, tickets, eventById } = data;
     const auth = facts?.auth ?? null;
     const counts = facts?.counts;
     const n = (v: number | null | undefined) => (v == null ? '—' : String(v));
@@ -530,6 +557,62 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
                 </table>
             </div>
 
+            <SectionHead title="TICKETS" sub={`${tickets.length} SHOWN · BOUGHT OR HELD BY THIS MEMBER`} />
+            <div className="admin-table-wrap">
+                <table className="admin-table">
+                    <thead>
+                        <tr>
+                            <th>EVENT</th>
+                            <th>SEAT</th>
+                            <th>ROLE</th>
+                            <th>ATTENDEE</th>
+                            <th>STATUS</th>
+                            <th>CHECKED IN</th>
+                            <th>CREATED</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {tickets.length === 0 ? (
+                            <tr>
+                                <td colSpan={7}>
+                                    <div className="admin-empty">NO TICKETS</div>
+                                </td>
+                            </tr>
+                        ) : (
+                            tickets.map((t) => {
+                                const ev = eventById.get(t.event_id);
+                                const roles = [
+                                    t.purchaser_profile_id === p.id ? 'BUYER' : null,
+                                    t.attendee_profile_id === p.id ? 'ATTENDEE' : null,
+                                ].filter(Boolean);
+                                return (
+                                    <tr key={t.id}>
+                                        <td>
+                                            <Link href={`/admin/events/${t.event_id}`} className="text-link">
+                                                {ev?.title ?? t.event_id}
+                                            </Link>
+                                            {ev?.cancelled_at ? (
+                                                <span className="admin-pill warn" style={{ marginLeft: 6 }}>
+                                                    CANCELLED
+                                                </span>
+                                            ) : null}
+                                        </td>
+                                        <td>{t.seat ?? '—'}</td>
+                                        <td>{roles.join(' + ') || '—'}</td>
+                                        <td>{t.attendee_name || '—'}</td>
+                                        <td>
+                                            <span className="admin-pill">{String(t.status ?? '').toUpperCase() || '—'}</span>
+                                        </td>
+                                        <td>{t.checked_in_at ? stamp(t.checked_in_at) : '—'}</td>
+                                        <td>{stamp(t.created_at)}</td>
+                                    </tr>
+                                );
+                            })
+                        )}
+                    </tbody>
+                </table>
+            </div>
+
             <SectionHead
                 title="BAN HISTORY"
                 sub={banReady ? `${bans.length} ENTRIES · ROLLOUT ONLY` : 'NEEDS MIGRATION 091'}
@@ -643,6 +726,25 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
                     </tbody>
                 </table>
             </div>
+            {/* ADMIN ACTIVITY (platform admins only; hidden before migration 092) */}
+            {!audit.about.missing && (
+                <>
+                    <SectionHead
+                        title="ADMIN ACTIVITY"
+                        sub={`${audit.about.rows.length} SHOWN · ACTIONS TAKEN ON THIS MEMBER BY ROLLOUT ADMINS`}
+                    />
+                    <AdminAuditTable result={audit.about} />
+                    {audit.by.rows.length > 0 && (
+                        <>
+                            <SectionHead
+                                title="ACTIONS BY THIS MEMBER AS ADMIN"
+                                sub={`${audit.by.rows.length} SHOWN · MOST RECENT FIRST`}
+                            />
+                            <AdminAuditTable result={audit.by} showActor={false} />
+                        </>
+                    )}
+                </>
+            )}
         </>
     );
 }

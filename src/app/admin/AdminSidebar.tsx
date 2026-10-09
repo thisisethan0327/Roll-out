@@ -16,6 +16,7 @@ const NAV: NavItem[] = [
     { href: '/admin/users',          label: 'USERS',         section: 'CONSOLE' },
     { href: '/admin/shops',          label: 'SHOPS',         section: 'CONSOLE' },
     { href: '/admin/permissions',    label: 'PERMISSIONS',   section: 'CONSOLE' },
+    { href: '/admin/audit',          label: 'ACTIVITY LOG',  section: 'CONSOLE' },
     { href: '/admin/appointments', label: 'APPOINTMENTS', section: 'MODERATION' },
     { href: '/admin/events',       label: 'EVENTS',       section: 'MODERATION' },
     { href: '/admin/announcements', label: 'ANNOUNCEMENTS', section: 'MODERATION' },

@@ -18,7 +18,15 @@ import { formatClock, formatEventTime } from '@/lib/event-time';
 import { MEDUSA_URL } from '@/lib/medusa';
 import { HostEventEditForm } from '@/app/me/events/[id]/HostEventEditForm';
 import { EventActions } from '@/app/admin/(console)/events/EventActions';
-import { adminCancelHostEvent, adminSetEventRoutePlan, adminUpdateHostEvent } from './host-actions';
+import { DoorSection } from '@/components/DoorSection';
+import { AdminAuditTable } from '@/components/AdminAuditTable';
+import { loadAuditForEvent } from '@/lib/admin-audit';
+import {
+    adminCancelHostEvent,
+    adminDoorCheckInAction,
+    adminSetEventRoutePlan,
+    adminUpdateHostEvent,
+} from './host-actions';
 import {
     RSVP_LIMIT,
     UUID_RE,
@@ -130,13 +138,14 @@ export default async function AdminEventDetailPage({ params }: { params: Promise
     const isShopEvent = event.shop_id != null;
     const shop = event.shop;
 
-    const [tiers, rsvps, ticketData, checkins, cohosts, isPaidEvent] = await Promise.all([
+    const [tiers, rsvps, ticketData, checkins, cohosts, isPaidEvent, audit] = await Promise.all([
         loadTiers(id),
         loadRsvps(id),
         loadTickets(id),
         loadCheckins(id),
         loadCohosts(id),
         eventHasPaidExposure(id),
+        loadAuditForEvent(id),
     ]);
     const { tickets, profiles } = ticketData;
     const counts = deriveCounts(event, rsvps, tickets, checkins);
@@ -386,6 +395,17 @@ export default async function AdminEventDetailPage({ params }: { params: Promise
                         </>
                     )}
 
+                    {/* DOOR LIST + CHECK-IN: platform admins run the door for any event
+                        (shop OR member hosted). The list loads on the admin's own session
+                        (host_event_tickets admits platform admins); the check-in is
+                        adminDoorCheckInAction, which logs to the admin activity log. */}
+                    <DoorSection
+                        eventId={event.id}
+                        rsvpMode={event.rsvp_mode}
+                        cancelled={!!event.cancelled_at}
+                        checkIn={adminDoorCheckInAction.bind(null, event.id)}
+                    />
+
                     {/* CO-HOSTS */}
                     <SectionHead title="CO-HOSTS" sub={`${cohosts.length} TOTAL`} />
                     <div className="admin-table-wrap">
@@ -445,6 +465,17 @@ export default async function AdminEventDetailPage({ params }: { params: Promise
                                 eventTitle={event.title ?? ''}
                                 isPaid={isTiered}
                             />
+                        </>
+                    )}
+
+                    {/* ADMIN ACTIVITY (platform admins only; hidden before migration 092) */}
+                    {!audit.missing && (
+                        <>
+                            <SectionHead
+                                title="ADMIN ACTIVITY"
+                                sub={`${audit.rows.length} SHOWN · ACTIONS TAKEN ON THIS EVENT AS A ROLLOUT ADMIN`}
+                            />
+                            <AdminAuditTable result={audit} showSubject={false} />
                         </>
                     )}
 

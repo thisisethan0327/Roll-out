@@ -12,10 +12,11 @@
  * Return types match the /me actions exactly so the form can take either set.
  */
 import { revalidatePath } from 'next/cache';
-import { requirePlatformAdmin } from '@/lib/auth-guard';
+import { logAdminAction, requirePlatformAdmin } from '@/lib/auth-guard';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { getRolloutMemberClient } from '@/lib/consumer';
 import { eventHasPaidExposure } from '@/lib/event-refund';
+import { hostCheckInTicket } from '@/lib/event-tickets';
 import { writeWithAreaLabel } from '@/lib/event-area-label';
 import { parseHostEventUpdate } from '@/lib/host-event-write';
 import type {
@@ -75,7 +76,7 @@ export async function adminUpdateHostEvent(
     );
     if (error) return { ok: false, error: error.message };
 
-    console.warn('[admin-as-host] @%s updated event %s (host %s)', profile.handle, eventId, ev.hostId);
+    await logAdminAction(profile, 'event.update_as_host', 'event', eventId, { host_id: ev.hostId });
     revalidateEvent(eventId);
     return { ok: true };
 }
@@ -101,13 +102,10 @@ export async function adminCancelHostEvent(eventId: string, cancel: boolean): Pr
         .is('shop_id', null);
     if (error) throw new Error(error.message);
 
-    console.warn(
-        '[admin-as-host] @%s %s event %s (host %s)',
-        profile.handle,
-        cancel ? 'cancelled' : 'un-cancelled',
-        eventId,
-        ev.hostId,
-    );
+    await logAdminAction(profile, 'event.cancel_as_host', 'event', eventId, {
+        host_id: ev.hostId,
+        cancelled: cancel,
+    });
     revalidateEvent(eventId);
 }
 
@@ -144,9 +142,49 @@ export async function adminSetEventRoutePlan(
     });
     if (error) return { ok: false, error: error.message };
 
-    console.warn('[admin-as-host] @%s set route plan on event %s (host %s)', profile.handle, eventId, ev.hostId);
+    await logAdminAction(profile, 'event.route_plan_as_host', 'event', eventId, {
+        host_id: ev.hostId,
+        stops: plan.length,
+    });
     revalidatePath(`/admin/events/${eventId}`);
     revalidatePath(`/me/events/${eventId}`);
     revalidatePath(`/event/${eventId}`);
     return { ok: true, count: (data as number | null) ?? 0 };
+}
+
+// ── Door check-in as platform admin (any event: shop-hosted OR member-hosted) ──
+
+type DoorResult = { ok: true; already: boolean; claimed: boolean } | { ok: false; error: string };
+
+/**
+ * Check a ticket in at the door from /admin/events/[id]. Unlike the other
+ * actions here there is NO shop_id restriction: an admin runs the door for a
+ * shop's event and a member's alike.
+ *
+ * The write is host_check_in_ticket called AS THE ADMIN (their own session):
+ * since migration 092 the RPC admits rollout.is_platform_admin() and writes the
+ * admin_audit row itself (door.check_in); before 092 it refuses with its normal "only the host or a
+ * shop manager" text, which is shown to the admin as is. Authorization is
+ * requirePlatformAdmin() (server-side); the ids are re-bound to each other with
+ * the service role so a ticket of another event can't be smuggled in.
+ */
+export async function adminDoorCheckInAction(eventId: string, ticketId: string): Promise<DoorResult> {
+    await requirePlatformAdmin();
+    if (!UUID_RE.test(eventId) || !UUID_RE.test(ticketId)) return { ok: false, error: 'Bad request.' };
+
+    const admin = getSupabaseAdmin();
+    const [{ data: ev }, { data: tk }] = await Promise.all([
+        admin.from('events').select('id').eq('id', eventId).maybeSingle(),
+        admin.from('event_tickets').select('id, event_id').eq('id', ticketId).maybeSingle(),
+    ]);
+    if (!ev) return { ok: false, error: 'Event not found.' };
+    if (!tk || (tk as any).event_id !== eventId) {
+        return { ok: false, error: 'That ticket is not for this event.' };
+    }
+
+    // The RPC logs the admin override itself (door.check_in on the event_ticket),
+    // so this action writes no audit row of its own.
+    const res = await hostCheckInTicket(ticketId);
+    if (res.ok) revalidateEvent(eventId);
+    return res;
 }
