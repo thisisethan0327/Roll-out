@@ -680,7 +680,7 @@ function isMissingRpc(error: { code?: string; message?: string }): boolean {
 function describeDoorError(error: { code?: string; message?: string }): string {
     const m = error.message ?? '';
     if (error.code === '42501' || /not the host/i.test(m)) {
-        return 'Only the event host or a shop manager can use the door list.';
+        return 'Only the event host, a shop manager or a Rollout admin can use the door list.';
     }
     if (error.code === '28000' || /not signed in/i.test(m)) return 'Sign in again to continue.';
     if (/ticket not confirmed/i.test(m)) return 'This ticket is not confirmed, so it cannot be checked in.';

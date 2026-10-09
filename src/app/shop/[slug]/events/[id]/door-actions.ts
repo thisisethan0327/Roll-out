@@ -3,10 +3,12 @@
  * Door list check-in for the shop console event page.
  *
  * The write is host_check_in_ticket called AS THE MEMBER (their own session):
- * the RPC itself requires the event's host or a manager of the host shop, so
- * a platform admin acting as a shop is refused by it (expected). The shop
- * membership guard + ticket->event->shop binding below is defense-in-depth,
- * keeping the acting shop honest about which event the ticket belongs to.
+ * the RPC itself requires the event's host, a manager of the host shop, or (since
+ * migration 092) a platform admin. The shop membership guard + ticket->event->shop
+ * binding below is defense-in-depth, keeping the acting shop honest about which
+ * event the ticket belongs to. When a platform admin's access is what lets the
+ * RPC through, the RPC writes its own admin_audit row (door.check_in), so nothing
+ * is logged from here; before 092 it refuses them with its usual text, shown as is.
  */
 import { revalidatePath } from 'next/cache';
 import { requireShopMember } from '@/lib/auth-guard';

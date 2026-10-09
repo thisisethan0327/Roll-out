@@ -1,17 +1,18 @@
 'use server';
 import { revalidatePath } from 'next/cache';
-import { requirePlatformAdmin } from '@/lib/auth-guard';
+import { logAdminAction, requirePlatformAdmin } from '@/lib/auth-guard';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { eventHasPaidExposure } from '@/lib/event-refund';
 
 export async function forceDeletePost(postId: string) {
-    await requirePlatformAdmin();
+    const { profile } = await requirePlatformAdmin();
     const admin = getSupabaseAdmin();
     const { error } = await admin
         .from('posts')
         .update({ deleted_at: new Date().toISOString() })
         .eq('id', postId);
     if (error) throw new Error(error.message);
+    await logAdminAction(profile, 'post.force_delete', 'post', postId);
     revalidatePath('/admin/posts');
     revalidatePath('/admin/overview');
 }
@@ -36,6 +37,7 @@ export async function forceCancelEvent(eventId: string) {
         .eq('id', eventId);
     if (error) throw new Error(error.message);
     console.warn('[admin] @%s force-cancelled event %s', profile.handle, eventId);
+    await logAdminAction(profile, 'event.force_cancel', 'event', eventId);
     revalidatePath('/admin/events');
     revalidatePath(`/admin/events/${eventId}`);
     revalidatePath('/admin/overview');

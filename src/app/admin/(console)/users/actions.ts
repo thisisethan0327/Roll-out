@@ -1,66 +1,71 @@
 'use server';
 import { revalidatePath } from 'next/cache';
-import { requirePlatformAdmin } from '@/lib/auth-guard';
+import { logAdminAction, requirePlatformAdmin } from '@/lib/auth-guard';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { PERMANENT_BAN_UNTIL, isBanSchemaMissing } from '@/lib/ban';
 
 export async function setVerified(profileId: string, verified: boolean) {
-    await requirePlatformAdmin();
+    const { profile: me } = await requirePlatformAdmin();
     const admin = getSupabaseAdmin();
     const { error } = await admin
         .from('profiles')
         .update({ is_verified: verified })
         .eq('id', profileId);
     if (error) throw new Error(error.message);
+    await logAdminAction(me, verified ? 'user.verify' : 'user.unverify', 'profile', profileId);
     revalidatePath('/admin/users');
     revalidatePath('/admin/shops');
 }
 
 export async function grantPlatformAdmin(profileId: string, grantedBy: string) {
-    await requirePlatformAdmin();
+    const { profile: me } = await requirePlatformAdmin();
     const admin = getSupabaseAdmin();
     const { error } = await admin
         .from('platform_admins')
         .insert({ profile_id: profileId, granted_by: grantedBy, notes: 'granted via admin console' });
     if (error && error.code !== '23505') throw new Error(error.message);
+    if (!error) await logAdminAction(me, 'admin.grant', 'profile', profileId);
     revalidatePath('/admin/users');
     revalidatePath('/admin/permissions');
     revalidatePath('/admin/overview');
 }
 
 export async function revokePlatformAdmin(profileId: string) {
-    await requirePlatformAdmin();
+    const { profile: me } = await requirePlatformAdmin();
     const admin = getSupabaseAdmin();
     const { error } = await admin
         .from('platform_admins')
         .delete()
         .eq('profile_id', profileId);
     if (error) throw new Error(error.message);
+    await logAdminAction(me, 'admin.revoke', 'profile', profileId);
     revalidatePath('/admin/users');
     revalidatePath('/admin/permissions');
     revalidatePath('/admin/overview');
 }
 
 export async function grantMeetCoordinator(profileId: string, grantedBy: string) {
-    await requirePlatformAdmin();
+    const { profile: me } = await requirePlatformAdmin();
     const admin = getSupabaseAdmin();
     const { error } = await admin
         .from('meet_coordinators')
         .insert({ profile_id: profileId, granted_by: grantedBy, notes: 'granted via admin console' });
     if (error && error.code !== '23505') throw new Error(error.message);
+    if (!error) await logAdminAction(me, 'coordinator.grant', 'profile', profileId);
     revalidatePath('/admin/users');
     revalidatePath('/admin/permissions');
     revalidatePath('/admin/overview');
 }
 
 export async function revokeMeetCoordinator(profileId: string) {
-    await requirePlatformAdmin();
+    const { profile: me } = await requirePlatformAdmin();
     const admin = getSupabaseAdmin();
     const { error } = await admin
         .from('meet_coordinators')
         .delete()
         .eq('profile_id', profileId);
     if (error) throw new Error(error.message);
+    await logAdminAction(me, 'coordinator.revoke', 'profile', profileId);
     revalidatePath('/admin/users');
     revalidatePath('/admin/permissions');
 }
@@ -148,6 +153,13 @@ export async function banUser(
         if (isBanSchemaMissing(error)) return { ok: false, error: NEEDS_091, needsMigration: true };
         return { ok: false, error: error.message };
     }
+    // Mirrors the user_bans history row (reason is internal; this log is admin-only).
+    await logAdminAction(me, 'user.ban', 'profile', profileId, {
+        until: untilIso,
+        permanent: input.until === 'permanent',
+        reason,
+        has_public_note: Boolean(publicNote),
+    });
     revalidateBanViews(profileId, target.handle);
     return { ok: true };
 }
@@ -172,6 +184,7 @@ export async function unbanUser(profileId: string, note?: string): Promise<BanAc
         if (isBanSchemaMissing(error)) return { ok: false, error: NEEDS_091, needsMigration: true };
         return { ok: false, error: error.message };
     }
+    await logAdminAction(me, 'user.unban', 'profile', profileId, trimmed ? { note: trimmed } : {});
     revalidateBanViews(profileId, (target as any)?.handle ?? null);
     return { ok: true };
 }

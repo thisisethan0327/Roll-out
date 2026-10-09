@@ -14,7 +14,7 @@
  * be the event's host OR an accepted co-host.
  */
 import { revalidatePath } from 'next/cache';
-import { requireShopMember } from '@/lib/auth-guard';
+import { logAdminAction, requireShopMember } from '@/lib/auth-guard';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { consoleUrlForShop } from '@/lib/tenant-hosts';
 import {
@@ -39,9 +39,9 @@ const TYPE_LABEL: Record<string, string> = {
 };
 
 async function requireManager(shopId: number) {
-    const { profile, role } = await requireShopMember(shopId);
+    const { profile, role, viaPlatformAdmin } = await requireShopMember(shopId);
     if (!MANAGER_ROLES.has(role)) throw new Error('Manager role required.');
-    return { profile, role };
+    return { profile, role, viaPlatformAdmin };
 }
 
 async function loadEventRow(eventId: string) {
@@ -160,7 +160,7 @@ export async function sendEventInvites(
     shopId: number,
     formData: FormData,
 ): Promise<InviteSendResult> {
-    const { profile } = await requireManager(shopId);
+    const { profile, viaPlatformAdmin } = await requireManager(shopId);
     const admin = getSupabaseAdmin();
 
     const ev = await loadEventRow(eventId);
@@ -283,6 +283,16 @@ export async function sendEventInvites(
             .update({ sent_at: new Date().toISOString(), sent_by: profile.profileId })
             .eq('id', inviteId!);
         results.push({ email, status: 'sent' });
+    }
+
+    const sentCount = results.filter((r) => r.status === 'sent').length;
+    if (viaPlatformAdmin && sentCount > 0) {
+        await logAdminAction(profile, 'event.send_invites', 'event', eventId, {
+            shop_id: shopId,
+            sent: sentCount,
+            skipped: results.filter((r) => r.status === 'skipped').length,
+            failed: results.filter((r) => r.status === 'failed').length,
+        });
     }
 
     const slug = await fetchSlug(shopId);

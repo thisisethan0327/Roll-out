@@ -24,6 +24,7 @@ import 'server-only';
  * kept as a fallback for resilience (an RPC hiccup should not be the reason a
  * refund silently fails), and mirrors the SQL exactly.
  */
+import { logAdminAction } from './auth-guard';
 import { getConsumerProfile } from './consumer';
 import { getSupabaseAdmin } from './supabase/admin';
 import { isProfileBanned, SUSPENDED_MESSAGE } from './ban';
@@ -181,7 +182,8 @@ export async function cancelPaidRsvpAndRefund(
 
 // ── host / shop-manager / platform-admin: cancel event + refund everyone ────
 
-type PermissionResult = { ok: true; profileId: string } | { ok: false; error: string };
+/** `viaAdmin`: access came ONLY from platform_admins (the normal host/manager path would have refused). */
+type PermissionResult = { ok: true; profileId: string; viaAdmin: boolean } | { ok: false; error: string };
 
 /** Host of a no-shop event, a manager+ of the hosting shop, or a platform admin. */
 async function callerCanManageEvent(ev: EventCore): Promise<PermissionResult> {
@@ -197,22 +199,26 @@ async function callerCanManageEvent(ev: EventCore): Promise<PermissionResult> {
         .select('profile_id')
         .eq('profile_id', me.profileId)
         .maybeSingle();
-    if (padmin) return { ok: true, profileId: me.profileId };
 
+    // The ordinary path first, so an admin who is also the host / a manager is
+    // not flagged (and not logged) as an override.
+    let denied: string | null = null;
     if (ev.shop_id == null) {
-        if (ev.host_id === me.profileId) return { ok: true, profileId: me.profileId };
-        return { ok: false, error: 'Only the host can cancel this event.' };
+        if (ev.host_id === me.profileId) return { ok: true, profileId: me.profileId, viaAdmin: false };
+        denied = 'Only the host can cancel this event.';
+    } else {
+        const { data: mem } = await admin
+            .from('shop_memberships')
+            .select('role')
+            .eq('profile_id', me.profileId)
+            .eq('shop_id', ev.shop_id)
+            .maybeSingle();
+        const role = (mem as any)?.role as string | undefined;
+        if (role && SHOP_MANAGER_ROLES.has(role)) return { ok: true, profileId: me.profileId, viaAdmin: false };
+        denied = 'Only a shop manager can cancel this event.';
     }
-
-    const { data: mem } = await admin
-        .from('shop_memberships')
-        .select('role')
-        .eq('profile_id', me.profileId)
-        .eq('shop_id', ev.shop_id)
-        .maybeSingle();
-    const role = (mem as any)?.role as string | undefined;
-    if (role && SHOP_MANAGER_ROLES.has(role)) return { ok: true, profileId: me.profileId };
-    return { ok: false, error: 'Only a shop manager can cancel this event.' };
+    if (padmin) return { ok: true, profileId: me.profileId, viaAdmin: true };
+    return { ok: false, error: denied };
 }
 
 export type EventRefundPreview = {
@@ -340,6 +346,14 @@ export async function cancelEventAndRefundAll(eventId: string): Promise<CancelAl
         }
     }
 
+    if (perm.viaAdmin) {
+        await logAdminAction({ profileId: perm.profileId }, 'event.cancel_refund_all', 'event', eventId, {
+            refunded,
+            already_done: alreadyDone,
+            failed: failed.length,
+            shop_id: ev.shop_id,
+        });
+    }
     return { ok: true, refunded, alreadyDone, failed };
 }
 

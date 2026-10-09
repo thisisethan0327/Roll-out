@@ -36,7 +36,7 @@ async function guard(shopId: number, eventId: string, slug: string): Promise<Gua
 
 function friendly(message: string): string {
     if (/needs a venue|capacity/i.test(message)) return 'Set a venue (or route) and a capacity on the event first.';
-    if (/not the host/i.test(message)) return 'Only the host or a shop manager can do that.';
+    if (/not the host/i.test(message)) return 'Only the event host, a shop manager or a Rollout admin can do that.';
     if (/no RSVP/i.test(message)) return 'That member has not RSVP’d "going".';
     if (/does not check in/i.test(message)) return 'The host does not check in.';
     return message;

@@ -10,7 +10,7 @@
  * admin's rollout.profiles.id), reviewed_at, action_taken.
  */
 import { revalidatePath } from 'next/cache';
-import { requirePlatformAdmin } from '@/lib/auth-guard';
+import { logAdminAction, requirePlatformAdmin } from '@/lib/auth-guard';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { forceDeletePost } from '../moderation-actions';
 
@@ -60,8 +60,15 @@ export async function setReportStatus(input: {
     const { profile } = await requirePlatformAdmin();
     if (!UUID_RE.test(input.reportId)) return { ok: false, error: 'Bad report id' };
     if (!STATUSES.includes(input.status)) return { ok: false, error: 'Bad status' };
-    const res = await writeStatus(input.reportId, input.status, profile.profileId, cleanNote(input.note));
-    if (res.ok) refresh();
+    const note = cleanNote(input.note);
+    const res = await writeStatus(input.reportId, input.status, profile.profileId, note);
+    if (res.ok) {
+        await logAdminAction(profile, 'report.set_status', 'report', input.reportId, {
+            status: input.status,
+            ...(note ? { note } : {}),
+        });
+        refresh();
+    }
     return res;
 }
 
@@ -114,6 +121,12 @@ export async function actionReportWithTakedown(input: {
     );
     if (res.ok) {
         console.warn('[admin] @%s actioned report %s (%s)', profile.handle, input.reportId, tag);
+        await logAdminAction(profile, 'report.action_takedown', 'report', input.reportId, {
+            target_type: report.target_type,
+            target_id: report.target_id,
+            result: tag,
+            ...(note ? { note } : {}),
+        });
         refresh();
     }
     return res;

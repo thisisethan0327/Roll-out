@@ -9,7 +9,7 @@
  * from the client — so a caller cannot act across vendors by forging a param.
  */
 import { revalidatePath } from 'next/cache';
-import { requireShopMember, getPlatformAdmin } from '@/lib/auth-guard';
+import { requireShopMember, getPlatformAdmin, logAdminAction, type GuardedProfile } from '@/lib/auth-guard';
 import { resolveShopSlug } from '@/lib/auth-guard';
 import { getShopVendorBySlug } from '@/lib/store-shops';
 import { SHOPS_WITH_OWN_ADMIN } from '@/lib/tenant-hosts';
@@ -92,7 +92,16 @@ const refusal = (role: string, what: string): ActionResult => ({
  * nobody is invited to fail — but a server action is a public endpoint, and
  * hidden is not the same as forbidden.
  */
-type Guarded = { vendorKey: string; role: string } | { denied: ActionResult };
+type Guarded =
+    | {
+          vendorKey: string;
+          role: string;
+          /** Platform admin acting in a shop they are not staff of (logged). */
+          viaPlatformAdmin: boolean;
+          profile: GuardedProfile;
+          shopId: number;
+      }
+    | { denied: ActionResult };
 
 /** True when the guard refused; narrows the union for the caller. */
 function denied(g: Guarded): g is { denied: ActionResult } {
@@ -122,7 +131,7 @@ async function guard(slug: string, tier: 'manage' | 'money', what: string): Prom
         };
     }
 
-    const { role } = await requireShopMember(shop.shopId);
+    const { role, profile, viaPlatformAdmin } = await requireShopMember(shop.shopId);
     const allowed = tier === 'money' ? MONEY_ROLES : MANAGE_ROLES;
     if (!allowed.has(role)) {
         // Logged with the same tag as every other console event, so a refusal
@@ -133,7 +142,19 @@ async function guard(slug: string, tier: 'manage' | 'money', what: string): Prom
     }
     const resolved = await getShopVendorBySlug(slug);
     if (!resolved) return { denied: { ok: false, error: 'This shop has no order vendor.' } };
-    return { vendorKey: resolved.vendorKey, role };
+    return { vendorKey: resolved.vendorKey, role, viaPlatformAdmin, profile, shopId: shop.shopId };
+}
+
+/** Admin activity log for an order action; only when the caller is acting as a shop they don't staff. */
+async function auditOrder(
+    g: Extract<Guarded, { vendorKey: string }>,
+    action: string,
+    slug: string,
+    orderId: string,
+    meta: Record<string, unknown> = {},
+): Promise<void> {
+    if (!g.viaPlatformAdmin) return;
+    await logAdminAction(g.profile, action, 'order', orderId, { shop_id: g.shopId, shop_slug: slug, ...meta });
 }
 
 /**
@@ -187,7 +208,10 @@ export async function fulfillOrderAction(
         trackingNumber,
         carrier,
     );
-    if (result.ok) revalidate(slug, orderId);
+    if (result.ok) {
+        await auditOrder(g, 'order.fulfill', slug, orderId, { carrier });
+        revalidate(slug, orderId);
+    }
     return result;
 }
 
@@ -206,7 +230,10 @@ export async function shipOrderAction(
     if (denied(g)) return g.denied;
     const { vendorKey } = g;
     const result = await shipVendorFulfillment(vendorKey, orderId, trackingNumber, carrier);
-    if (result.ok) revalidate(slug, orderId);
+    if (result.ok) {
+        await auditOrder(g, 'order.ship', slug, orderId, { carrier });
+        revalidate(slug, orderId);
+    }
     return result;
 }
 
@@ -218,7 +245,10 @@ export async function markDeliveredAction(
     if (denied(g)) return g.denied;
     const { vendorKey } = g;
     const result = await markFulfillmentDelivered(vendorKey, orderId);
-    if (result.ok) revalidate(slug, orderId);
+    if (result.ok) {
+        await auditOrder(g, 'order.mark_delivered', slug, orderId);
+        revalidate(slug, orderId);
+    }
     return result;
 }
 
@@ -230,7 +260,10 @@ export async function capturePaymentAction(
     if (denied(g)) return g.denied;
     const { vendorKey } = g;
     const result = await captureOrderPayment(vendorKey, orderId);
-    if (result.ok) revalidate(slug, orderId);
+    if (result.ok) {
+        await auditOrder(g, 'order.capture', slug, orderId);
+        revalidate(slug, orderId);
+    }
     return result;
 }
 
@@ -244,7 +277,10 @@ export async function cancelOrderAction(
     if (refused) return refused;
     const { vendorKey } = g;
     const result = await cancelVendorOrder(vendorKey, orderId);
-    if (result.ok) revalidate(slug, orderId);
+    if (result.ok) {
+        await auditOrder(g, 'order.cancel', slug, orderId);
+        revalidate(slug, orderId);
+    }
     return result;
 }
 
@@ -259,7 +295,10 @@ export async function refundOrderAction(
     if (refused) return refused;
     const { vendorKey } = g;
     const result = await refundVendorOrder(vendorKey, orderId, amountCents);
-    if (result.ok) revalidate(slug, orderId);
+    if (result.ok) {
+        await auditOrder(g, 'order.refund', slug, orderId, { amount_cents: amountCents ?? 'full' });
+        revalidate(slug, orderId);
+    }
     return result;
 }
 
@@ -271,6 +310,9 @@ export async function completeOrderAction(
     if (denied(g)) return g.denied;
     const { vendorKey } = g;
     const result = await completeVendorOrder(vendorKey, orderId);
-    if (result.ok) revalidate(slug, orderId);
+    if (result.ok) {
+        await auditOrder(g, 'order.complete', slug, orderId);
+        revalidate(slug, orderId);
+    }
     return result;
 }

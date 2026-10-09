@@ -11,26 +11,26 @@
  */
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { requireShopMember } from '@/lib/auth-guard';
+import { logAdminAction, requireShopMember } from '@/lib/auth-guard';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 
 const MANAGER_ROLES = new Set(['owner', 'admin', 'manager']);
 const INSTALLER_ROLES = new Set(['owner', 'admin', 'manager', 'installer']);
 
 async function requireManager(shopId: number) {
-    const { profile, role } = await requireShopMember(shopId);
+    const { profile, role, viaPlatformAdmin } = await requireShopMember(shopId);
     if (!MANAGER_ROLES.has(role)) {
         throw new Error('Manager role required.');
     }
-    return { profile, role };
+    return { profile, role, viaPlatformAdmin };
 }
 
 async function requireInstaller(shopId: number) {
-    const { profile, role } = await requireShopMember(shopId);
+    const { profile, role, viaPlatformAdmin } = await requireShopMember(shopId);
     if (!INSTALLER_ROLES.has(role)) {
         throw new Error('Installer role required.');
     }
-    return { profile, role };
+    return { profile, role, viaPlatformAdmin };
 }
 
 async function fetchSlug(shopId: number): Promise<string> {
@@ -70,7 +70,7 @@ export async function sendMessageAsShop(
     shopId: number,
     body: string,
 ): Promise<void> {
-    await requireManager(shopId);
+    const { profile, viaPlatformAdmin } = await requireManager(shopId);
     const trimmed = body.trim();
     if (!trimmed) throw new Error('Empty message.');
 
@@ -101,6 +101,12 @@ export async function sendMessageAsShop(
     });
     if (insertErr) throw new Error(`message insert failed: ${insertErr.message}`);
 
+    // Platform admin posting as a shop they are not staff of: logged (thread id
+    // only, never the message text).
+    if (viaPlatformAdmin) {
+        await logAdminAction(profile, 'shop.message_as_shop', 'shop', shopId, { thread_id: threadId });
+    }
+
     const slug = await fetchSlug(shopId);
     if (slug) {
         revalidatePath(`/shop/${slug}/messages`, 'page');
@@ -125,7 +131,7 @@ export async function sendShopThreadMessage(
     shopId: number,
     body: string,
 ): Promise<void> {
-    const { profile } = await requireInstaller(shopId);
+    const { profile, viaPlatformAdmin } = await requireInstaller(shopId);
     const trimmed = body.trim();
     if (!trimmed) throw new Error('Empty message.');
 
@@ -150,6 +156,10 @@ export async function sendShopThreadMessage(
         body: trimmed,
     });
     if (insertErr) throw new Error(`message insert failed: ${insertErr.message}`);
+
+    if (viaPlatformAdmin) {
+        await logAdminAction(profile, 'shop.thread_message', 'shop', shopId, { thread_id: threadId });
+    }
 
     const slug = await fetchSlug(shopId);
     if (slug) {
