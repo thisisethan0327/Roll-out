@@ -25,10 +25,20 @@
  *    Only for the auth-gated trees, exactly as before — the marketing site
  *    stays cookie-free, which is why this runs after the gating and only for
  *    those paths.
+ *
+ * 4. BAN LOCKDOWN (Part 2, Ethan 2026-10-09). A banned member can sign in ONLY
+ *    to /suspended. For the LOCKED trees (see isBanLocked) a GET/HEAD from a
+ *    signed-in, banned user is redirected to /suspended. This is the first
+ *    layer; the server guards (requireSession / requireConsumer / /auth/landing
+ *    / onboarding) are the second and remain the actual gate. It NEVER touches
+ *    server-action POSTs (a redirect would break the action's RSC response),
+ *    fails OPEN on any RPC error (the guards still enforce), and leaves
+ *    /suspended, /auth/*, /api/* and static assets alone.
  */
 import { type NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { ROLLOUT_ORIGIN, tenantForHost } from '@/lib/tenant-hosts';
+import { isBannedUntil } from '@/lib/ban';
 
 /** The only host search engines should index. */
 const CANONICAL_HOST = new URL(ROLLOUT_ORIGIN).hostname;
@@ -59,6 +69,9 @@ function isAlwaysAllowed(pathname: string): boolean {
     return (
         pathname.startsWith('/auth/') ||
         pathname.startsWith('/api/') ||
+        // A banned staff member's guards redirect here; without this the tenant
+        // gate would bounce them back to the console they were just refused.
+        pathname === '/suspended' ||
         pathname === '/shop/login' ||
         pathname === '/favicon.ico' ||
         pathname === '/robots.txt' ||
@@ -107,6 +120,37 @@ function gateTenantHost(
     return NextResponse.redirect(url);
 }
 
+/**
+ * Trees a banned member may not open: the member area, the shop console and
+ * its sign-in/apply doors, the admin console, onboarding, and the sign-in/up
+ * pages. Public content (events, profiles, store, meets, help...) stays
+ * browsable. /suspended, /auth/*, /api/* are deliberately NOT here.
+ */
+const BAN_LOCKED_PREFIXES = ['/me', '/shop', '/admin', '/signup/onboarding', '/login', '/signup'] as const;
+
+function isBanLocked(pathname: string, tenant: boolean): boolean {
+    if (tenant && pathname === '/') return true;
+    return BAN_LOCKED_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+}
+
+/** Rollout ban state from rollout.my_ban() on the caller's own session; fails open. */
+async function isCallerBanned(supabase: ReturnType<typeof createServerClient>): Promise<boolean> {
+    try {
+        const { data, error } = await supabase.schema('rollout').rpc('my_ban');
+        if (error) {
+            // Pre-091 (no RPC) is expected to land here too; only log the odd ones.
+            if (!['PGRST202', '42883', 'PGRST106', '3F000'].includes(String(error.code))) {
+                console.error('[middleware] my_ban failed (failing open):', error.code, error.message);
+            }
+            return false;
+        }
+        return isBannedUntil((data as any)?.banned_until ?? null);
+    } catch (e) {
+        console.error('[middleware] my_ban threw (failing open):', e instanceof Error ? e.message : e);
+        return false;
+    }
+}
+
 export async function middleware(request: NextRequest) {
     const tenant = tenantForHost(request.headers.get('host'));
 
@@ -136,7 +180,8 @@ export async function middleware(request: NextRequest) {
         pathname.startsWith('/admin/') ||
         pathname.startsWith('/shop/') ||
         pathname.startsWith('/me/') ||
-        pathname === '/suspended';
+        pathname === '/suspended' ||
+        isBanLocked(pathname, !!tenant);
     if (!needsSession) return withHostPolicy(NextResponse.next({ request }), noindex);
 
     let response = NextResponse.next({ request });
@@ -161,7 +206,24 @@ export async function middleware(request: NextRequest) {
     );
 
     // Touch getUser to trigger token refresh if the access token expired.
-    await supabase.auth.getUser();
+    const {
+        data: { user },
+    } = await supabase.auth.getUser();
+
+    // Ban lockdown: GET/HEAD only, signed-in only, locked trees only.
+    if (
+        user &&
+        (request.method === 'GET' || request.method === 'HEAD') &&
+        isBanLocked(pathname, !!tenant) &&
+        (await isCallerBanned(supabase))
+    ) {
+        // RELATIVE Location (see auth/landing/route.ts: absolute URLs built from
+        // req.url are wrong behind the Coolify proxy). Carry any refreshed
+        // session cookies onto the redirect.
+        const redirect = new NextResponse(null, { status: 307, headers: { Location: '/suspended' } });
+        response.cookies.getAll().forEach((c) => redirect.cookies.set(c));
+        return withHostPolicy(redirect, noindex);
+    }
 
     return withHostPolicy(response, noindex);
 }

@@ -33,12 +33,6 @@ export async function GET(req: Request) {
     const url = new URL(req.url);
     const next = safeNextPath(url.searchParams.get('next')) ?? '/me';
 
-    // Staff/tenant doors have their own guards and never use placeholder
-    // profiles for anything a member sees — pass them straight through.
-    if (next.startsWith('/shop') || next.startsWith('/admin')) {
-        return redirectTo(next);
-    }
-
     let profile: { handle: string; bannedUntil?: string | null } | null = null;
     try {
         profile = await getConsumerProfile();
@@ -46,8 +40,16 @@ export async function GET(req: Request) {
         console.error('[auth/landing] profile read failed:', e instanceof Error ? e.message : e);
     }
 
-    // A Rollout-banned member lands on the explanation page, not on next=.
+    // A Rollout-banned member lands on the explanation page, not on next=. This
+    // sits ABOVE the staff passthrough: a banned staff member signing in through
+    // /shop/login or /admin/login must reach /suspended too (Part 2 lockdown).
     if (isProfileBanned(profile)) return redirectTo('/suspended');
+
+    // Staff/tenant doors have their own guards and never use placeholder
+    // profiles for anything a member sees — pass them straight through.
+    if (next.startsWith('/shop') || next.startsWith('/admin')) {
+        return redirectTo(next);
+    }
 
     const target = profile && isPlaceholderHandle(profile.handle) ? onboardingUrl(next) : next;
     return redirectTo(target);

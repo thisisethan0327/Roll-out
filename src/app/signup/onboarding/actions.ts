@@ -38,6 +38,7 @@ export type { HandleCheck };
 export async function checkHandleAction(raw: string): Promise<HandleCheck> {
     const me = await getConsumerProfile();
     if (!me) return { ok: false, reason: 'Session expired — refresh.' };
+    if (isProfileBanned(me)) return { ok: false, reason: SUSPENDED_MESSAGE };
     return checkHandleAvailability(raw, me.profileId);
 }
 

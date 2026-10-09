@@ -37,11 +37,12 @@ export type GuardedProfile = {
  * server client for chained queries.
  *
  * A Rollout-banned profile (banned_until in the future, migration 091) is sent
- * back to the login route with ?error=suspended: the admin and shop consoles
- * are closed to them, which also closes every shop-console server action behind
- * requireShopMember. The session is NOT ended here (sign-out is global, see
- * AdminSidebar); the login page just explains. Before 091 the column is absent
- * and nobody is banned.
+ * to /suspended: the admin and shop consoles are closed to them, which also
+ * closes every shop-console server action behind requireShopMember. The session
+ * is NOT ended here (sign-out is global, see AdminSidebar); /suspended is the
+ * one place a banned member can be (Part 2, Ethan 2026-10-09: they used to be
+ * bounced to the login page with ?error=suspended). Before 091 the column is
+ * absent and nobody is banned.
  */
 export async function requireSession(loginPath: string = '/admin/login'): Promise<{
     profile: GuardedProfile;
@@ -61,7 +62,7 @@ export async function requireSession(loginPath: string = '/admin/login'): Promis
         await supabase.auth.signOut({ scope: 'local' });
         redirect(loginPath + '?error=no_profile');
     }
-    if (isBannedUntil((profile as any).banned_until)) redirect(loginPath + '?error=suspended');
+    if (isBannedUntil((profile as any).banned_until)) redirect('/suspended');
 
     return {
         profile: {

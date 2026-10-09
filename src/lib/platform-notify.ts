@@ -15,7 +15,14 @@ export type PlatformTemplate =
     | 'platform_application_received'
     | 'platform_application_approved'
     | 'platform_application_rejected'
-    | 'platform_host_invite';
+    | 'platform_host_invite'
+    // Part 2 (migration 093 adds these to rollout.email_template; the edge
+    // function must be deployed with matching templates before they send).
+    | 'platform_account_suspended'
+    | 'platform_appeal_received'
+    | 'platform_appeal_decided'
+    | 'platform_account_reinstated'
+    | 'platform_ticket_cancelled_host';
 
 export interface PlatformNotifyInput {
     template: PlatformTemplate;

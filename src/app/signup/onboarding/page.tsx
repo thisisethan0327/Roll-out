@@ -11,6 +11,7 @@
  */
 import { redirect } from 'next/navigation';
 import { getConsumerProfile } from '@/lib/consumer';
+import { isProfileBanned } from '@/lib/ban';
 import { OnboardingForm } from './OnboardingForm';
 
 export const metadata = { title: 'Set Up Your Profile', robots: { index: false, follow: false } };
@@ -39,6 +40,9 @@ export default async function OnboardingPage({
         // Not signed in — send back to signup, preserving intent.
         redirect(cleanNext ? `/signup?next=${encodeURIComponent(cleanNext)}` : '/signup');
     }
+
+    // Rollout-banned: no profile setup either (Part 2 lockdown). /suspended explains.
+    if (isProfileBanned(profile)) redirect('/suspended');
 
     // Already onboarded → straight through (convergent sign-in path).
     if (!PLACEHOLDER_HANDLE.test(profile.handle)) {
