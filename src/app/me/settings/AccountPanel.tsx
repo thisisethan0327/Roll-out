@@ -46,7 +46,7 @@ export function AccountPanel({ email, handle }: { email: string | null; handle: 
 
             <div className="admin-form-label">DELETE MY ACCOUNT</div>
             <div style={{ fontSize: 12, color: 'var(--text-2)', marginBottom: 10 }}>
-                Permanently deletes your Rollout account right now. This cannot be undone.
+                Permanently deletes your Rollout profile right now. Your sign-in for EMWRAPS, NeferStock and UNITY is not affected. This cannot be undone.
             </div>
             {!armed ? (
                 <button type="button" className="admin-action-btn" style={DANGER} onClick={() => setArmed(true)}>
@@ -55,7 +55,7 @@ export function AccountPanel({ email, handle }: { email: string | null; handle: 
             ) : (
                 <div role="alertdialog" aria-labelledby="delete-acct-title" style={{ border: '1px solid #e5484d', padding: 16, display: 'grid', gap: 12 }}>
                     <div id="delete-acct-title" style={{ color: '#e5484d', fontSize: 12, letterSpacing: 1.5 }}>
-                        THIS PERMANENTLY DELETES YOUR ACCOUNT
+                        THIS PERMANENTLY DELETES YOUR ROLLOUT PROFILE
                     </div>
                     <div style={{ fontSize: 12, color: 'var(--text-2)' }}>
                         What happens:
@@ -64,11 +64,11 @@ export function AccountPanel({ email, handle }: { email: string | null; handle: 
                             <li>Your posts and your garage are removed.</li>
                             <li>Your RSVPs, follows, followers and blocks are removed.</li>
                             <li>
-                                Your sign-in is deleted. It is one account shared across Rollout, EMWRAPS, NeferStock and
-                                UNITY, so you are signed out and lose access everywhere.
+                                Your sign-in is kept. It is shared with EMWRAPS, NeferStock and UNITY, and your access and
+                                orders there are not affected. You are signed out on all your devices afterwards.
                             </li>
                             <li>Records we must keep, such as orders, payments and safety reports, are retained.</li>
-                            <li>There is no undo. You can sign up again later, but only as a brand-new account.</li>
+                            <li>There is no undo. If you sign in to Rollout again later, you start with a brand-new profile.</li>
                         </ul>
                     </div>
                     <div>

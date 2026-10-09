@@ -180,7 +180,8 @@ export async function deleteMyAccountAction(typedHandle: string): Promise<Action
         return { ok: false, error: DELETE_FN_FALLBACK };
     }
 
-    // The auth user is gone, so the server may refuse the global revoke; fall back
+    // The Rollout profile is gone (the shared sign-in is kept). Global revoke per the
+    // 2026-09-08 ruling; fall back
     // to clearing this browser's session cookies so nothing stale is left behind.
     try {
         const { error } = await supabase.auth.signOut({ scope: 'global' });

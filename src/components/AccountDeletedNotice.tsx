@@ -41,7 +41,7 @@ export function AccountDeletedNotice() {
                 justifyContent: 'space-between',
             }}
         >
-            <span>YOUR ACCOUNT HAS BEEN DELETED. YOU HAVE BEEN SIGNED OUT.</span>
+            <span>YOUR ROLLOUT PROFILE HAS BEEN DELETED. YOU HAVE BEEN SIGNED OUT.</span>
             <button type="button" className="admin-action-btn muted" onClick={() => setShow(false)}>
                 DISMISS
             </button>
