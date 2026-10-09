@@ -139,6 +139,9 @@ const DELETE_FN_FALLBACK =
 export async function deleteMyAccountAction(typedHandle: string): Promise<ActionResult> {
     const me = await getConsumerProfile();
     if (!me) return { ok: false, error: 'Your session expired. Sign in again and retry.' };
+    // Ethan 2026-10-08: a banned account is locked; it cannot be deleted (and so
+    // re-registered) while suspended. Data requests go through support instead.
+    if (isProfileBanned(me)) return { ok: false, error: SUSPENDED_MESSAGE };
     const norm = (h: string) => h.trim().replace(/^@+/, '').toLowerCase();
     if (!norm(typedHandle) || norm(typedHandle) !== norm(me.handle)) {
         return { ok: false, error: 'The handle you typed does not match your account.' };
