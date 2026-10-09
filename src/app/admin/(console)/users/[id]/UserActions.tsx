@@ -67,6 +67,10 @@ export function UserActions({
     const [untilDate, setUntilDate] = useState('');
     const [publicNote, setPublicNote] = useState('');
     const [banError, setBanError] = useState<string | null>(null);
+    // Permanent bans: refund policy for upcoming paid tickets (Part 2).
+    const [refundMode, setRefundMode] = useState<'auto' | 'withhold'>('auto');
+    const [withholdReason, setWithholdReason] = useState('');
+    const [banNotice, setBanNotice] = useState<string | null>(null);
 
     const banDisabledWhy = !banReady
         ? NEEDS_091
@@ -85,12 +89,46 @@ export function UserActions({
             if (!untilDate) return setBanError('Pick an end date.');
             until = new Date(`${untilDate}T23:59:59Z`).toISOString();
         } else until = new Date(Date.now() + (DURATION_MS[duration] ?? 0)).toISOString();
+        const permanent = duration === 'permanent';
+        if (permanent && refundMode === 'withhold' && !withholdReason.trim()) {
+            return setBanError('A written reason is required to withhold refunds.');
+        }
+        if (
+            permanent &&
+            refundMode === 'auto' &&
+            !confirm(
+                'Permanently ban @' +
+                    handle +
+                    '? Their upcoming paid tickets will be CANCELLED and REFUNDED to the original payment method, and the hosts told.',
+            )
+        ) {
+            return;
+        }
         start(async () => {
-            const res = await banUser(profileId, { reason, until, publicNote });
+            const res = await banUser(profileId, {
+                reason,
+                until,
+                publicNote,
+                ...(permanent
+                    ? { refundMode, refundWithheldReason: refundMode === 'withhold' ? withholdReason : undefined }
+                    : {}),
+            });
             if (!res.ok) return setBanError(res.error);
             setPanelOpen(false);
             setReason('');
             setPublicNote('');
+            setRefundMode('auto');
+            setWithholdReason('');
+            if (res.refunds) {
+                const r = res.refunds;
+                setBanNotice(
+                    r.note
+                        ? `BANNED. REFUND JOB DID NOT RUN: ${r.note}`
+                        : `BANNED. REFUNDS${r.dryRun ? ' (DRY RUN, NOTHING SENT)' : ''}: ${r.refunded} REFUNDED · ${r.failed} FAILED · ${r.withheld} WITHHELD. SEE TICKET REFUNDS BELOW.`,
+                );
+            } else {
+                setBanNotice(null);
+            }
             router.refresh();
         });
     };
@@ -196,6 +234,7 @@ export function UserActions({
             {kind === 'user' && !banReady && (
                 <div style={{ flexBasis: '100%', fontSize: 11, color: 'var(--text-3)' }}>{NEEDS_091}</div>
             )}
+            {banNotice && <div style={{ flexBasis: '100%', fontSize: 12 }}>{banNotice}</div>}
 
             {panelOpen && !isBanned && !banDisabledWhy && (
                 <div
@@ -209,7 +248,7 @@ export function UserActions({
                     }}
                 >
                     <div className="admin-page-sub">
-                        BAN @{handle} FROM ROLLOUT · POSTS AND COMMENTS HIDE WHILE BANNED · RSVPS, TICKETS AND HOSTED EVENTS STAY
+                        BAN @{handle} FROM ROLLOUT · THE MEMBER CAN SIGN IN ONLY TO THE SUSPENDED SCREEN · POSTS AND COMMENTS HIDE WHILE BANNED · HOSTED EVENTS STAY
                     </div>
                     <label style={{ display: 'grid', gap: 6 }}>
                         <span className="admin-form-label">REASON (INTERNAL, REQUIRED)</span>
@@ -250,6 +289,53 @@ export function UserActions({
                             />
                         )}
                     </div>
+                    {duration === 'permanent' ? (
+                        <div style={{ display: 'grid', gap: 8 }}>
+                            <span className="admin-form-label">UPCOMING PAID TICKETS (PERMANENT BAN)</span>
+                            <label style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 12 }}>
+                                <input
+                                    type="radio"
+                                    name={`ban-refund-${profileId}`}
+                                    checked={refundMode === 'auto'}
+                                    onChange={() => setRefundMode('auto')}
+                                    disabled={pending}
+                                />
+                                CANCEL AND REFUND UPCOMING PAID TICKETS (DEFAULT)
+                            </label>
+                            <label style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 12 }}>
+                                <input
+                                    type="radio"
+                                    name={`ban-refund-${profileId}`}
+                                    checked={refundMode === 'withhold'}
+                                    onChange={() => setRefundMode('withhold')}
+                                    disabled={pending}
+                                />
+                                WITHHOLD REFUNDS
+                            </label>
+                            {refundMode === 'withhold' && (
+                                <label style={{ display: 'grid', gap: 6 }}>
+                                    <span className="admin-form-label">
+                                        WHY WITHHOLD (INTERNAL, REQUIRED: FRAUD, CHARGEBACKS, ABUSE AT AN EVENT…)
+                                    </span>
+                                    <textarea
+                                        className="admin-search-input"
+                                        rows={2}
+                                        maxLength={1000}
+                                        value={withholdReason}
+                                        onChange={(e) => setWithholdReason(e.target.value)}
+                                        disabled={pending}
+                                    />
+                                </label>
+                            )}
+                            <div style={{ fontSize: 11, color: 'var(--text-3)' }}>
+                                Free upcoming RSVPs are released either way. The member never sees the withhold reason.
+                            </div>
+                        </div>
+                    ) : (
+                        <div style={{ fontSize: 12, color: 'var(--text-2)' }}>
+                            Tickets are kept; the member can request a refund from the suspended screen.
+                        </div>
+                    )}
                     <label style={{ display: 'grid', gap: 6 }}>
                         <span className="admin-form-label">NOTE SHOWN TO THE MEMBER (OPTIONAL, MAX 300)</span>
                         <input

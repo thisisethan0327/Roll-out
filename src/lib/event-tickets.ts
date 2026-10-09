@@ -443,7 +443,7 @@ const KNOWN_REFUND_FAIL_STATES = new Set<TicketRefundFailState>([
     'in_progress',
 ]);
 
-function parseRefundQuoteLike(data: any, ticketId: string): TicketRefundQuoteResult {
+export function parseRefundQuoteLike(data: any, ticketId: string): TicketRefundQuoteResult {
     const state = (data?.state as string | undefined) ?? '';
     if (state === 'ok') {
         const d = data;
@@ -483,7 +483,17 @@ function parseRefundQuoteLike(data: any, ticketId: string): TicketRefundQuoteRes
  * beginTicketRefund() right before actually moving money.
  */
 export async function ticketRefundQuote(ticketId: string): Promise<TicketRefundQuoteResult> {
-    const member = await getRolloutMemberClient();
+    return ticketRefundQuoteWith(await getRolloutMemberClient(), ticketId);
+}
+
+/**
+ * Client-parameterised cores (Part 2): the member wrappers above/below pass the
+ * caller's session client; admin refund flows (lib/admin-ticket-refund.ts,
+ * lib/ban-refunds.ts) pass the SERVICE-ROLE client, which the money RPCs admit
+ * (auth.uid() is null) and which is how a banned purchaser's ticket is refunded.
+ * Authorization is the CALLER's job on that path (requirePlatformAdmin).
+ */
+export async function ticketRefundQuoteWith(member: any, ticketId: string): Promise<TicketRefundQuoteResult> {
     const { data, error } = await member.rpc('ticket_refund_quote', { p_ticket: ticketId });
     if (error) return { ok: false, state: 'error', error: friendlyDbError(error, error.message) };
     return parseRefundQuoteLike(data, ticketId);
@@ -499,7 +509,10 @@ export async function ticketRefundQuote(ticketId: string): Promise<TicketRefundQ
  * that stays locked for support to sort out by hand).
  */
 export async function beginTicketRefund(ticketId: string): Promise<TicketRefundQuoteResult> {
-    const member = await getRolloutMemberClient();
+    return beginTicketRefundWith(await getRolloutMemberClient(), ticketId);
+}
+
+export async function beginTicketRefundWith(member: any, ticketId: string): Promise<TicketRefundQuoteResult> {
     const { data, error } = await member.rpc('ticket_refund_begin', { p_ticket: ticketId });
     if (error) return { ok: false, state: 'error', error: friendlyDbError(error, error.message) };
     return parseRefundQuoteLike(data, ticketId);
@@ -509,7 +522,13 @@ export async function beginTicketRefund(ticketId: string): Promise<TicketRefundQ
 export async function abortTicketRefund(
     ticketId: string,
 ): Promise<{ ok: true; state: 'released' | 'noop' } | { ok: false; error: string }> {
-    const member = await getRolloutMemberClient();
+    return abortTicketRefundWith(await getRolloutMemberClient(), ticketId);
+}
+
+export async function abortTicketRefundWith(
+    member: any,
+    ticketId: string,
+): Promise<{ ok: true; state: 'released' | 'noop' } | { ok: false; error: string }> {
     const { data, error } = await member.rpc('ticket_refund_abort', { p_ticket: ticketId });
     if (error) return { ok: false, error: friendlyDbError(error, error.message) };
     const state = (data as any)?.state as string | undefined;
@@ -527,7 +546,10 @@ const CANCEL_TICKET_MESSAGES: Record<string, string> = {
 
 /** Buyer-only, idempotent on refund_ref. Call ONLY after the refund landed. */
 export async function cancelTicket(ticketId: string, refundRef: string): Promise<CancelTicketResult> {
-    const member = await getRolloutMemberClient();
+    return cancelTicketWith(await getRolloutMemberClient(), ticketId, refundRef);
+}
+
+export async function cancelTicketWith(member: any, ticketId: string, refundRef: string): Promise<CancelTicketResult> {
     const { data, error } = await member.rpc('cancel_ticket', {
         p_ticket: ticketId,
         p_refund_ref: refundRef,
