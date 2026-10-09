@@ -15,6 +15,9 @@ import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { UUID_RE, loadUserFacts, relativeTime } from '@/lib/admin-user-facts';
 import { MEDUSA_URL } from '@/lib/medusa';
 import { UserActions } from './UserActions';
+import { BanRefundControls } from './BanRefundControls';
+import { APPEAL_BUSINESS_DAYS, addBusinessDays } from '@/lib/ban';
+import { REFUNDING_STALE_MS } from '@/lib/ban-refunds';
 import { isBanSchemaMissing, isBannedUntil, describeBanEnd } from '@/lib/ban';
 import { loadAuditForProfile } from '@/lib/admin-audit';
 import { AdminAuditTable } from '@/components/AdminAuditTable';
@@ -149,8 +152,63 @@ async function loadAll(id: string) {
     } else {
         bans = (banRes.data as any[]) ?? [];
     }
+    // Part 2 (migration 093): appeals and the refund ledger. Both fail soft.
+    let appeals: any[] = [];
+    let appealsReady = true;
+    const apRes = await admin
+        .from('user_ban_appeals')
+        .select(
+            'id, ban_id, body, contact_email, status, reviewer_profile_id, decided_by, decided_at, decision_note, decision_public_note, same_admin_override, created_at',
+        )
+        .eq('profile_id', id)
+        .order('created_at', { ascending: false })
+        .limit(20);
+    if (apRes.error) {
+        appealsReady = false;
+        if (!isBanSchemaMissing(apRes.error)) {
+            console.error('[admin/users/[id]] appeals load failed:', apRes.error.message);
+        }
+    } else {
+        appeals = (apRes.data as any[]) ?? [];
+    }
+    let refundRows: any[] = [];
+    let refundsReady = true;
+    const brRes = await admin
+        .from('ban_refunds')
+        .select(
+            'id, ban_id, kind, order_id, ticket_id, event_id, amount_cents, status, refund_ref, error, attempts, last_attempt_at, requested_at, note, created_at',
+        )
+        .eq('profile_id', id)
+        .order('created_at', { ascending: false })
+        .limit(200);
+    if (brRes.error) {
+        refundsReady = false;
+        if (!isBanSchemaMissing(brRes.error)) {
+            console.error('[admin/users/[id]] ban refunds load failed:', brRes.error.message);
+        }
+    } else {
+        refundRows = (brRes.data as any[]) ?? [];
+        const missingEv = [...new Set(refundRows.map((r) => r.event_id as string | null).filter((e): e is string => !!e))].filter(
+            (e) => !eventById.has(e),
+        );
+        if (missingEv.length) {
+            const { data: evs } = await admin
+                .from('events')
+                .select('id, code, title, start_at, cancelled_at')
+                .in('id', missingEv);
+            for (const e of (evs as any[]) ?? []) eventById.set(e.id, e);
+        }
+    }
     const actorHandles = new Map<string, string>();
-    const actorIds = [...new Set(bans.map((b) => b.actor_profile_id).filter(Boolean))] as string[];
+    const actorIds = [
+        ...new Set(
+            [
+                ...bans.map((b) => b.actor_profile_id),
+                ...appeals.map((a) => a.reviewer_profile_id),
+                ...appeals.map((a) => a.decided_by),
+            ].filter(Boolean),
+        ),
+    ] as string[];
     if (actorIds.length) {
         const { data: actors } = await admin.from('profiles').select('id, handle').in('id', actorIds);
         for (const a of (actors as any[]) ?? []) actorHandles.set(a.id, a.handle);
@@ -175,6 +233,10 @@ async function loadAll(id: string) {
         eventById,
         bans,
         actorHandles,
+        appeals,
+        appealsReady,
+        refundRows,
+        refundsReady,
         banReady: banColumnPresent && banHistoryReady,
     };
 }
@@ -204,8 +266,13 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
     // `authLocked` is Supabase auth's own banned_until (blocks sign-in on every app).
     const banned = isBannedUntil(p.banned_until);
     const authLocked = !!auth?.bannedUntil && new Date(auth.bannedUntil).getTime() > Date.now();
-    const { bans, actorHandles, banReady } = data;
+    const { bans, actorHandles, banReady, appeals, appealsReady, refundRows, refundsReady } = data;
+    const dryRunMode = process.env.BAN_REFUND_DRY_RUN === '1';
     const latestBan = bans.find((b) => b.action === 'ban') ?? null;
+    const latestBanId: string | null = latestBan?.id ?? null;
+    const runnableForLatest = refundRows.filter(
+        (r) => r.ban_id === latestBanId && (r.status === 'pending' || r.status === 'skipped'),
+    ).length;
     const nowMs = Date.now();
     const upcomingRsvps = rsvps.filter((r) => {
         const ev = eventById.get(r.event_id);
@@ -233,6 +300,15 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
                     <Link href="/admin/users" className="admin-action-btn muted" style={{ textDecoration: 'none' }}>
                         ‹ ALL USERS
                     </Link>
+                    {p.kind === 'user' && (
+                        <Link
+                            href={`/admin/users/${p.id}/messages`}
+                            className="admin-action-btn muted"
+                            style={{ textDecoration: 'none' }}
+                        >
+                            MESSAGES ›
+                        </Link>
+                    )}
                     <Link href={`/u/${p.handle}`} className="admin-action-btn muted" style={{ textDecoration: 'none' }}>
                         PUBLIC PROFILE ›
                     </Link>
@@ -280,11 +356,12 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
             {p.kind === 'user' && (upcomingRsvps.length > 0 || upcomingHosted.length > 0) && (
                 <div style={{ border: '1px solid var(--line)', padding: '12px 16px', marginTop: 12, fontSize: 13 }}>
                     <div className="admin-page-sub" style={{ marginBottom: 8 }}>
-                        UPCOMING COMMITMENTS · A BAN DOES NOT CANCEL OR REFUND ANYTHING
+                        UPCOMING COMMITMENTS · PERMANENT BAN: PAID TICKETS ARE CANCELLED AND REFUNDED · TEMPORARY BAN: KEPT
                     </div>
                     <div style={{ color: 'var(--text-2)', marginBottom: 8 }}>
-                        This member&rsquo;s RSVPs, paid tickets and hosted events stay as they are. Handle any of these with
-                        the event tools.
+                        A permanent ban cancels and refunds upcoming paid tickets (unless an admin withheld the refund) and
+                        releases free RSVPs. A temporary ban keeps them and the member can request a refund. Hosted events
+                        are never touched: handle them with the event tools. Refund state is under TICKET REFUNDS below.
                     </div>
                     {upcomingHosted.length > 0 && (
                         <div style={{ marginBottom: 6 }}>
@@ -663,6 +740,113 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
                     </tbody>
                 </table>
             </div>
+
+            {/* APPEAL (migration 093; hidden when never banned, notes the migration otherwise) */}
+            {(appeals.length > 0 || (bans.length > 0 && !appealsReady)) && (
+                <>
+                    <SectionHead
+                        title="APPEAL"
+                        sub={
+                            appealsReady
+                                ? `${appeals.length} ON RECORD · ONE PER BAN · DECIDE WITHIN ${APPEAL_BUSINESS_DAYS} BUSINESS DAYS`
+                                : 'NEEDS MIGRATION 093'
+                        }
+                    />
+                    {!appealsReady ? (
+                        <div className="admin-empty">NEEDS MIGRATION 093</div>
+                    ) : (
+                        <div style={{ display: 'grid', gap: 10 }}>
+                            {appeals.map((a) => {
+                                const open = a.status === 'submitted' || a.status === 'in_review';
+                                const due = addBusinessDays(new Date(a.created_at), APPEAL_BUSINESS_DAYS);
+                                return (
+                                    <div key={a.id} className="feature-card" style={{ padding: 14, display: 'grid', gap: 8 }}>
+                                        <div className="mono-row" style={{ fontSize: 11 }}>
+                                            <span
+                                                className={
+                                                    a.status === 'overturned'
+                                                        ? 'admin-pill neon'
+                                                        : a.status === 'upheld'
+                                                          ? 'admin-pill'
+                                                          : 'admin-pill warn'
+                                                }
+                                            >
+                                                {String(a.status).replace('_', ' ').toUpperCase()}
+                                            </span>
+                                            {open && due.getTime() < Date.now() && <span className="admin-pill warn">OVERDUE</span>}
+                                            <span className="sep" />
+                                            <span>SUBMITTED {stamp(a.created_at)} UTC</span>
+                                            {open && (
+                                                <>
+                                                    <span className="sep" />
+                                                    <span>DUE {stamp(due.toISOString()).slice(0, 10)}</span>
+                                                </>
+                                            )}
+                                        </div>
+                                        <div style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', fontSize: 14 }}>{a.body}</div>
+                                        <div className="admin-page-sub">
+                                            {a.contact_email ? `CONTACT ${a.contact_email} · ` : ''}
+                                            {a.reviewer_profile_id ? `REVIEWER @${actorHandles.get(a.reviewer_profile_id) ?? '—'} · ` : ''}
+                                            {a.decided_at
+                                                ? `DECIDED ${stamp(a.decided_at)} UTC BY @${actorHandles.get(a.decided_by) ?? '—'}${a.same_admin_override ? ' (SAME-ADMIN OVERRIDE)' : ''}`
+                                                : 'NOT DECIDED'}
+                                            {a.decision_note ? ` · NOTE: ${a.decision_note}` : ''}
+                                            {a.decision_public_note ? ` · SHOWN TO MEMBER: ${a.decision_public_note}` : ''}
+                                        </div>
+                                        {open && (
+                                            <div>
+                                                <Link href="/admin/appeals" className="admin-action-btn" style={{ textDecoration: 'none' }}>
+                                                    DECIDE IN THE APPEALS QUEUE ›
+                                                </Link>
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                </>
+            )}
+
+            {/* TICKET REFUNDS (migration 093; hidden before it) */}
+            {refundsReady && refundRows.length > 0 && (
+                <>
+                    <SectionHead
+                        title="TICKET REFUNDS"
+                        sub={`${refundRows.length} ROWS · BAN REFUND LEDGER${dryRunMode ? ' · DRY RUN MODE ON: NOTHING IS SENT TO PAYMENTS' : ''}`}
+                    />
+                    {dryRunMode && (
+                        <div className="admin-login-error" style={{ marginBottom: 10 }}>
+                            BAN_REFUND_DRY_RUN=1: runs only mark rows SKIPPED. No money moves.
+                        </div>
+                    )}
+                    <BanRefundControls
+                        banId={latestBanId}
+                        runnableCount={banned ? runnableForLatest : 0}
+                        banned={banned}
+                        staleBeforeIso={new Date(Date.now() - REFUNDING_STALE_MS).toISOString()}
+                        rows={refundRows.map((r) => {
+                            const ev = r.event_id ? eventById.get(r.event_id) : null;
+                            return {
+                                id: r.id,
+                                banId: r.ban_id,
+                                kind: r.kind,
+                                orderId: r.order_id,
+                                eventId: r.event_id,
+                                eventTitle: ev?.title ?? null,
+                                amountCents: r.amount_cents,
+                                status: r.status,
+                                error: r.error,
+                                attempts: r.attempts ?? 0,
+                                lastAttemptAt: r.last_attempt_at,
+                                requestedAt: r.requested_at,
+                                note: r.note,
+                                createdAt: r.created_at,
+                            };
+                        })}
+                    />
+                </>
+            )}
 
             <SectionHead title="VERIFICATION REQUESTS" sub={`${verifs.length} TOTAL`} />
             <div style={{ marginBottom: 8 }}>

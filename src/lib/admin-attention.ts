@@ -19,6 +19,23 @@ export async function getPendingReportsCount(): Promise<number> {
     }
 }
 
+/**
+ * Open ban appeals (submitted or in review), for the APPEALS sidebar badge.
+ * Fail-soft: before migration 093 the table does not exist and this is 0.
+ */
+export async function getPendingAppealsCount(): Promise<number> {
+    try {
+        const { count, error } = await getSupabaseAdmin()
+            .from('user_ban_appeals')
+            .select('*', { count: 'exact', head: true })
+            .in('status', ['submitted', 'in_review']);
+        if (error) return 0;
+        return count ?? 0;
+    } catch {
+        return 0;
+    }
+}
+
 export async function getAttentionCount(): Promise<number> {
     try {
         const admin = getSupabaseAdmin();

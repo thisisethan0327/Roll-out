@@ -8,7 +8,7 @@
  * (requirePlatformAdmin / requireShopMember) — this component renders chrome
  * only and trusts nothing from the client.
  */
-import { getAttentionCount, getPendingReportsCount } from '@/lib/admin-attention';
+import { getAttentionCount, getPendingAppealsCount, getPendingReportsCount } from '@/lib/admin-attention';
 import { AdminSidebar } from './AdminSidebar';
 import { JumpBar } from './JumpBar';
 
@@ -33,9 +33,10 @@ export async function AdminShell({
     banner?: React.ReactNode;
     children: React.ReactNode;
 }) {
-    const [attentionCount, reportsCount] = await Promise.all([
+    const [attentionCount, reportsCount, appealsCount] = await Promise.all([
         getAttentionCount(),
         getPendingReportsCount(),
+        getPendingAppealsCount(),
     ]);
     return (
         <div
@@ -43,7 +44,12 @@ export async function AdminShell({
             {...(dataTheme ? { 'data-theme': dataTheme } : {})}
         >
             {prelude}
-            <AdminSidebar adminLabel={`@${adminHandle}`} attentionCount={attentionCount} reportsCount={reportsCount} />
+            <AdminSidebar
+                adminLabel={`@${adminHandle}`}
+                attentionCount={attentionCount}
+                reportsCount={reportsCount}
+                appealsCount={appealsCount}
+            />
             {subnav ? (
                 <nav className="admin-subnav" aria-label="Section navigation">
                     <div className="admin-subnav-inner">{subnav}</div>

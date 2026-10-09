@@ -22,16 +22,19 @@ const NAV: NavItem[] = [
     { href: '/admin/announcements', label: 'ANNOUNCEMENTS', section: 'MODERATION' },
     { href: '/admin/posts',        label: 'POSTS',        section: 'MODERATION' },
     { href: '/admin/reports',      label: 'REPORTS',      section: 'MODERATION' },
+    { href: '/admin/appeals',      label: 'APPEALS',      section: 'MODERATION' },
 ];
 
 export function AdminSidebar({
     adminLabel,
     attentionCount = 0,
     reportsCount = 0,
+    appealsCount = 0,
 }: {
     adminLabel: string;
     attentionCount?: number;
     reportsCount?: number;
+    appealsCount?: number;
 }) {
     const pathname = usePathname() || '';
     const router = useRouter();
@@ -71,6 +74,9 @@ export function AdminSidebar({
                                     )}
                                     {n.href === '/admin/reports' && reportsCount > 0 && (
                                         <span className="admin-sidebar-badge">{reportsCount}</span>
+                                    )}
+                                    {n.href === '/admin/appeals' && appealsCount > 0 && (
+                                        <span className="admin-sidebar-badge">{appealsCount}</span>
                                     )}
                                 </span>
                                 {active && <span>›</span>}
