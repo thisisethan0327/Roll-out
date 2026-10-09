@@ -325,7 +325,7 @@ export async function processBanRefunds(banId: string, opts: ProcessBanRefundsOp
 
     // 1. Seed. Only a permanent ban seeds; on_request (temporary) rows come from the member.
     let seeded = 0;
-    if (!opts.noSeed && permanent && ban.refund_mode !== 'on_request') {
+    if (!opts.noSeed && permanent && (ban.refund_mode ?? 'on_request') !== 'on_request') {
         const s = await seedLedger(ban);
         if ('error' in s) return { ok: false, error: s.error, needsMigration: s.needsMigration };
         seeded = s.seeded;

@@ -155,7 +155,8 @@ export function parseMyBan(raw: unknown): MyBan | null {
         banId: (r.ban_id ?? null) as string | null,
         bannedAt: (r.banned_at ?? null) as string | null,
         isPermanent: typeof r.is_permanent === 'boolean' ? r.is_permanent : isPermanentBan(bannedUntil),
-        refundMode: mode === 'auto' || mode === 'on_request' || mode === 'withhold' ? mode : null,
+        // Legacy bans (null refund_mode) behave as on_request (migration 093).
+        refundMode: mode === 'auto' || mode === 'on_request' || mode === 'withhold' ? mode : extended ? 'on_request' : null,
         appeal:
             a && typeof a === 'object' && a.id
                 ? {

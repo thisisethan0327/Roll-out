@@ -19,6 +19,7 @@ import { MEDUSA_URL } from '@/lib/medusa';
 import { HostEventEditForm } from '@/app/me/events/[id]/HostEventEditForm';
 import { EventActions } from '@/app/admin/(console)/events/EventActions';
 import { DoorSection } from '@/components/DoorSection';
+import { RsvpRowActions, TicketRefundButton } from './RowActions';
 import { AdminAuditTable } from '@/components/AdminAuditTable';
 import { loadAuditForEvent } from '@/lib/admin-audit';
 import {
@@ -367,6 +368,7 @@ export default async function AdminEventDetailPage({ params }: { params: Promise
                         sub={`${rsvps.length} SHOWN · MOST RECENT FIRST`}
                     />
                     <RsvpTable
+                        eventId={event.id}
                         rsvps={rsvps}
                         checkins={checkins}
                         tierName={tierName}
@@ -387,6 +389,7 @@ export default async function AdminEventDetailPage({ params }: { params: Promise
                                 sub={`${counts.tickets.total} TOTAL · ${counts.tickets.confirmed} CONFIRMED · ${counts.tickets.held} HELD · ${counts.tickets.cancelled} CANCELLED`}
                             />
                             <TicketTable
+                                eventId={event.id}
                                 tickets={tickets}
                                 profiles={profiles}
                                 tierName={tierName}
@@ -557,11 +560,13 @@ function CheckedIn({ c, timeZone }: { c: AdminCheckin | undefined; timeZone: str
 }
 
 function RsvpTable({
+    eventId,
     rsvps,
     checkins,
     tierName,
     timeZone,
 }: {
+    eventId: string;
     rsvps: AdminRsvp[];
     checkins: Map<string, AdminCheckin>;
     tierName: Map<string, string>;
@@ -581,12 +586,13 @@ function RsvpTable({
                         <th>PAID</th>
                         <th>CHECKED IN</th>
                         <th>RSVPED</th>
+                        <th style={{ textAlign: 'right' }}>ACTIONS</th>
                     </tr>
                 </thead>
                 <tbody>
                     {rsvps.length === 0 ? (
                         <tr>
-                            <td colSpan={9}>
+                            <td colSpan={10}>
                                 <div className="admin-empty">NO RSVPS YET</div>
                             </td>
                         </tr>
@@ -641,6 +647,18 @@ function RsvpTable({
                                     <CheckedIn c={checkins.get(r.profile_id)} timeZone={timeZone} />
                                 </td>
                                 <td>{stamp(r.rsvped_at)}</td>
+                                <td style={{ textAlign: 'right' }}>
+                                    {r.status === 'declined' ? (
+                                        '—'
+                                    ) : (
+                                        <RsvpRowActions
+                                            eventId={eventId}
+                                            profileId={r.profile_id}
+                                            handle={r.profile?.handle ?? 'member'}
+                                            paid={!!r.payment_ref}
+                                        />
+                                    )}
+                                </td>
                             </tr>
                         ))
                     )}
@@ -651,11 +669,13 @@ function RsvpTable({
 }
 
 function TicketTable({
+    eventId,
     tickets,
     profiles,
     tierName,
     timeZone,
 }: {
+    eventId: string;
     tickets: AdminTicket[];
     profiles: Map<string, ProfileLite>;
     tierName: Map<string, string>;
@@ -684,12 +704,13 @@ function TicketTable({
                         <th>CLAIMED</th>
                         <th>CHECKED IN</th>
                         <th>REFUND</th>
+                        <th style={{ textAlign: 'right' }}>ACTIONS</th>
                     </tr>
                 </thead>
                 <tbody>
                     {tickets.length === 0 ? (
                         <tr>
-                            <td colSpan={10}>
+                            <td colSpan={11}>
                                 <div className="admin-empty">NO TICKETS YET</div>
                             </td>
                         </tr>
@@ -699,6 +720,7 @@ function TicketTable({
                             const buyer = first.purchaser_profile_id ? profiles.get(first.purchaser_profile_id) : null;
                             return (
                                 <TicketGroup
+                                    eventId={eventId}
                                     key={key}
                                     groupKey={key}
                                     rows={rows}
@@ -717,6 +739,7 @@ function TicketTable({
 }
 
 function TicketGroup({
+    eventId,
     groupKey,
     rows,
     buyer,
@@ -724,6 +747,7 @@ function TicketGroup({
     tierName,
     timeZone,
 }: {
+    eventId: string;
     groupKey: string;
     rows: AdminTicket[];
     buyer: ProfileLite | null;
@@ -736,7 +760,7 @@ function TicketGroup({
         <>
             <tr>
                 <td
-                    colSpan={10}
+                    colSpan={11}
                     style={{
                         background: 'var(--bg-2)',
                         fontFamily: 'var(--font-display)',
@@ -788,6 +812,13 @@ function TicketGroup({
                             )}
                         </td>
                         <td>{t.refund_cents ? money(t.refund_cents) : '—'}</td>
+                        <td style={{ textAlign: 'right' }}>
+                            {t.status === 'confirmed' && t.order_id ? (
+                                <TicketRefundButton eventId={eventId} ticketId={t.id} />
+                            ) : (
+                                '—'
+                            )}
+                        </td>
                     </tr>
                 );
             })}

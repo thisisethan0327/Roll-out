@@ -15,6 +15,7 @@ import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { UUID_RE, loadUserFacts, relativeTime } from '@/lib/admin-user-facts';
 import { MEDUSA_URL } from '@/lib/medusa';
 import { UserActions } from './UserActions';
+import { TicketRefundButton } from '@/app/admin/(event)/events/[id]/RowActions';
 import { BanRefundControls } from './BanRefundControls';
 import { APPEAL_BUSINESS_DAYS, addBusinessDays } from '@/lib/ban';
 import { REFUNDING_STALE_MS } from '@/lib/ban-refunds';
@@ -115,7 +116,7 @@ async function loadAll(id: string) {
     let tickets: any[] = [];
     const tkRes = await admin
         .from('event_tickets')
-        .select('id, event_id, seat, status, attendee_name, purchaser_profile_id, attendee_profile_id, checked_in_at, created_at')
+        .select('id, event_id, order_id, seat, status, attendee_name, purchaser_profile_id, attendee_profile_id, checked_in_at, created_at')
         .or(`purchaser_profile_id.eq.${id},attendee_profile_id.eq.${id}`)
         .order('created_at', { ascending: false })
         .limit(100);
@@ -646,12 +647,13 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
                             <th>STATUS</th>
                             <th>CHECKED IN</th>
                             <th>CREATED</th>
+                            <th style={{ textAlign: 'right' }}>ACTIONS</th>
                         </tr>
                     </thead>
                     <tbody>
                         {tickets.length === 0 ? (
                             <tr>
-                                <td colSpan={7}>
+                                <td colSpan={8}>
                                     <div className="admin-empty">NO TICKETS</div>
                                 </td>
                             </tr>
@@ -682,6 +684,13 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
                                         </td>
                                         <td>{t.checked_in_at ? stamp(t.checked_in_at) : '—'}</td>
                                         <td>{stamp(t.created_at)}</td>
+                                        <td style={{ textAlign: 'right' }}>
+                                            {t.status === 'confirmed' && t.order_id && t.purchaser_profile_id === p.id ? (
+                                                <TicketRefundButton eventId={t.event_id} ticketId={t.id} />
+                                            ) : (
+                                                '—'
+                                            )}
+                                        </td>
                                     </tr>
                                 );
                             })

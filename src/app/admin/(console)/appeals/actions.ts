@@ -35,7 +35,7 @@ function refresh(profileId?: string | null) {
 export async function takeAppeal(appealId: string): Promise<AppealActionResult> {
     const { profile } = await requirePlatformAdmin();
     if (!UUID_RE.test(appealId)) return { ok: false, error: 'Bad appeal id.' };
-    const { error } = await getSupabaseAdmin().rpc('review_ban_appeal', {
+    const { data, error } = await getSupabaseAdmin().rpc('review_ban_appeal', {
         p_appeal: appealId,
         p_actor: profile.profileId,
     });
@@ -43,7 +43,10 @@ export async function takeAppeal(appealId: string): Promise<AppealActionResult> 
         if (isBanSchemaMissing(error)) return { ok: false, error: NEEDS_093, needsMigration: true };
         return { ok: false, error: error.message };
     }
+    const state = (data as any)?.state as string | undefined;
+    if (state === 'not_found') return { ok: false, error: 'Appeal not found.' };
     refresh();
+    // 'already' = someone else took it first; the queue refresh shows the reviewer.
     return { ok: true };
 }
 
@@ -90,21 +93,22 @@ export async function decideAppeal(input: {
         return { ok: false, error: error.message };
     }
 
-    const profileId = ((data as any)?.profile_id as string | undefined) ?? null;
+    const state = (data as any)?.state as string | undefined;
+    if (state === 'not_found') return { ok: false, error: 'Appeal not found.' };
+    if (state === 'already_decided') {
+        refresh();
+        return { ok: false, error: 'This appeal was already decided.' };
+    }
 
     // Best-effort decision email. Prefer the contact address the member gave.
-    const { data: appeal } = await svc
-        .from('user_ban_appeals')
-        .select('profile_id, contact_email')
-        .eq('id', input.appealId)
-        .maybeSingle();
-    const toProfile = profileId ?? ((appeal as any)?.profile_id as string | undefined) ?? null;
+    const toProfile = ((data as any)?.profile_id as string | undefined) ?? null;
+    const contactEmail = ((data as any)?.contact_email as string | null | undefined) ?? null;
     if (toProfile) {
         const { data: who } = await svc.from('profiles').select('handle').eq('id', toProfile).maybeSingle();
         await sendPlatformNotification({
             template: 'platform_appeal_decided',
             toProfileId: toProfile,
-            to: ((appeal as any)?.contact_email as string | null) || undefined,
+            to: contactEmail || undefined,
             vars: {
                 handle: (who as any)?.handle ?? null,
                 decision: input.decision,
