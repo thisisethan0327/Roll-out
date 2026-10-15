@@ -6,6 +6,7 @@
  */
 import { useState, useTransition } from 'react';
 import { createDirectThreadWithCustomer } from './actions';
+import { ChevronRight } from '@/components/icons';
 
 export function NewMessageDialog({ shopId }: { shopId: number }) {
     const [open, setOpen] = useState(false);
@@ -37,7 +38,7 @@ export function NewMessageDialog({ shopId }: { shopId: number }) {
                     setOpen(true);
                 }}
             >
-                NEW MESSAGE ›
+                NEW MESSAGE <ChevronRight />
             </button>
         );
     }
@@ -45,7 +46,7 @@ export function NewMessageDialog({ shopId }: { shopId: number }) {
     return (
         <>
             <button type="button" className="admin-action-btn" onClick={() => setOpen(false)}>
-                NEW MESSAGE ›
+                NEW MESSAGE <ChevronRight />
             </button>
             <div
                 role="dialog"
@@ -135,7 +136,7 @@ export function NewMessageDialog({ shopId }: { shopId: number }) {
                             onClick={submit}
                             disabled={isPending || !handle.trim()}
                         >
-                            {isPending ? 'STARTING…' : 'START ›'}
+                            {isPending ? 'STARTING…' : <>START <ChevronRight /></>}
                         </button>
                     </div>
                 </div>

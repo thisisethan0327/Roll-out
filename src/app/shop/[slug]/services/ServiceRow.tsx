@@ -1,6 +1,7 @@
 'use client';
 import { useState, useTransition } from 'react';
 import { updateService, toggleServiceActive, deleteService } from './actions';
+import { ChevronRight } from '@/components/icons';
 
 export type ServiceRowData = {
     id: string;
@@ -220,7 +221,7 @@ export function ServiceRow({ service, canDelete }: { service: ServiceRowData; ca
                                 className="admin-action-btn"
                                 disabled={pending}
                             >
-                                {pending ? 'SAVING…' : 'SAVE ›'}
+                                {pending ? 'SAVING…' : <>SAVE <ChevronRight /></>}
                             </button>
                         </div>
                     </form>

@@ -14,6 +14,7 @@ import Link from 'next/link';
 import { requirePlatformAdmin } from '@/lib/auth-guard';
 import { AUDIT_PAGE_SIZE, loadAuditPage } from '@/lib/admin-audit';
 import { AdminAuditTable } from '@/components/AdminAuditTable';
+import { ChevronLeft, ChevronRight } from '@/components/icons';
 
 export const metadata = { title: 'Activity Log' };
 export const dynamic = 'force-dynamic';
@@ -92,7 +93,7 @@ export default async function AdminAuditPage({ searchParams }: { searchParams: P
                             aria-label="Admin handle"
                         />
                         <button type="submit" className="admin-action-btn">
-                            FILTER ›
+                            FILTER <ChevronRight />
                         </button>
                         {filtered && (
                             <Link href="/admin/audit" className="admin-action-btn muted" style={{ textDecoration: 'none' }}>
@@ -114,12 +115,12 @@ export default async function AdminAuditPage({ searchParams }: { searchParams: P
                         <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
                             {pageNum > 0 && (
                                 <Link href={qs(pageNum - 1)} className="admin-action-btn muted" style={{ textDecoration: 'none' }}>
-                                    ‹ NEWER
+                                    <ChevronLeft /> NEWER
                                 </Link>
                             )}
                             {result.hasMore && (
                                 <Link href={qs(pageNum + 1)} className="admin-action-btn" style={{ textDecoration: 'none' }}>
-                                    OLDER › ({AUDIT_PAGE_SIZE} PER PAGE)
+                                    OLDER <ChevronRight /> ({AUDIT_PAGE_SIZE} PER PAGE)
                                 </Link>
                             )}
                         </div>

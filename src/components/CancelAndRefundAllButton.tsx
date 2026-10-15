@@ -18,6 +18,7 @@ import {
     cancelEventAndRefundAllAction,
 } from '@/lib/event-refund-actions';
 import type { CancelAllResult } from '@/lib/event-refund';
+import { Check } from '@/components/icons';
 
 function formatCents(cents: number, currency: string | null): string {
     const cur = (currency ?? 'usd').toUpperCase();
@@ -180,7 +181,7 @@ function ResultSummary({ result }: { result: CancelAllResult }) {
     }
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 13 }}>
-            <div style={{ color: 'var(--gold)' }}>✓ Event cancelled.</div>
+            <div style={{ color: 'var(--gold)' }}><Check /> Event cancelled.</div>
             <div>{result.refunded} refunded now.</div>
             {result.alreadyDone > 0 ? <div>{result.alreadyDone} already refunded/cancelled (no-op).</div> : null}
             {result.failed.length > 0 ? (

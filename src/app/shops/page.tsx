@@ -15,6 +15,7 @@ import { EmptyRow } from '@/app/me/ui';
 import Link from 'next/link';
 import { BandReveal } from '@/components/motion/BandReveal';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { ArrowRight, Check, Stars } from '@/components/icons';
 
 // Render at request time, not build time: this page reads via the service-role
 // admin client whose key is runtime-only on Coolify. Static prerender at build
@@ -109,9 +110,8 @@ async function loadShops(): Promise<ShopCard[]> {
     }));
 }
 
-function stars(rating: number): string {
-    const r = Math.max(0, Math.min(5, Math.round(rating)));
-    return '★'.repeat(r) + '☆'.repeat(5 - r);
+function stars(rating: number) {
+    return <Stars rating={rating} />;
 }
 
 export const metadata: Metadata = {
@@ -215,10 +215,10 @@ export default async function ShopsDirectoryPage() {
                         </p>
                     </div>
                     <Link href="/shop/apply" className="btn" style={{ whiteSpace: 'nowrap' }}>
-                        OPEN A SHOP →
+                        OPEN A SHOP <ArrowRight />
                     </Link>
                     <Link href="/shop/login" className="btn btn-ghost" style={{ whiteSpace: 'nowrap' }}>
-                        Shop Console →
+                        Shop Console <ArrowRight />
                     </Link>
                 </div>
             </section>
@@ -249,7 +249,7 @@ function ShopDirectoryCard({ shop: s }: { shop: ShopCard }) {
                 <div style={{ minWidth: 0 }}>
                     <div className="mono-row" style={{ fontSize: 10 }}>
                         {s.is_verified ? (
-                            <span className="accent">✓ VERIFIED</span>
+                            <span className="accent"><Check /> VERIFIED</span>
                         ) : (
                             <span>SHOP</span>
                         )}

@@ -5,6 +5,7 @@
  */
 import Link from 'next/link';
 import { formatDateTime } from '@/lib/event-time';
+import { ChevronRight } from '@/components/icons';
 
 export function fmtDate(iso: string | null | undefined): string {
     if (!iso) return '—';
@@ -89,7 +90,7 @@ export function Panel({
                             textDecoration: 'none',
                         }}
                     >
-                        {hrefLabel ?? 'VIEW'} ›
+                        {hrefLabel ?? 'VIEW'} <ChevronRight />
                     </Link>
                 )}
             </div>

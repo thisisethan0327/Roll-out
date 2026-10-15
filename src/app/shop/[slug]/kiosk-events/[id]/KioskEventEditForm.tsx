@@ -3,6 +3,7 @@ import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { updateKioskEvent } from '../actions';
 import { TagListEditor } from '../TagListEditor';
+import { Check } from '@/components/icons';
 
 const MANAGER_ROLES = new Set(['owner', 'admin', 'manager']);
 
@@ -166,7 +167,7 @@ export function KioskEventEditForm({
             {canManage && (
                 <div style={{ marginTop: 18, display: 'flex', gap: 8 }}>
                     <button type="submit" className="admin-form-btn" disabled={pending}>
-                        {savedFlash ? 'SAVED ✓' : 'SAVE CHANGES'}
+                        {savedFlash ? <>SAVED <Check /></> : 'SAVE CHANGES'}
                     </button>
                 </div>
             )}

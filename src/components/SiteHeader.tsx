@@ -21,6 +21,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { ThemeToggle } from './ThemeToggle';
+import { X } from '@/components/icons';
 
 type NavContext = {
     signedIn: boolean;
@@ -187,7 +188,7 @@ export function SiteHeader() {
                                 onClick={() => setOpen(false)}
                                 className="site-mobile-close"
                             >
-                                ✕
+                                <X />
                             </button>
                         </div>
 

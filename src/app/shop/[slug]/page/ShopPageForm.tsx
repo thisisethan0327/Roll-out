@@ -1,6 +1,7 @@
 'use client';
 import { useState, useTransition } from 'react';
 import { updateShopPage } from './actions';
+import { Check } from '@/components/icons';
 
 export function ShopPageForm({
     shopId,
@@ -266,7 +267,7 @@ export function ShopPageForm({
                     >
                         {displayName || '—'}{' '}
                         {profile?.is_verified && (
-                            <span style={{ color: 'var(--gold)' }}>✓</span>
+                            <span style={{ color: 'var(--gold)' }}><Check /></span>
                         )}
                     </div>
                     <div

@@ -8,6 +8,7 @@ import { formatEventTime } from '@/lib/event-time';
 import { requireVerifiedHost } from '@/lib/me-guard';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { resolveCover, coverFocus } from '@/lib/event-covers';
+import { ChevronLeft, Dot } from '@/components/icons';
 
 export const metadata = { title: 'My Events' };
 export const dynamic = 'force-dynamic';
@@ -53,7 +54,7 @@ export default async function MyEventsPage() {
                     </div>
                 </div>
                 <div style={{ display: 'flex', gap: 8 }}>
-                    <Link href="/me" className="admin-action-btn muted" style={{ textDecoration: 'none' }}>‹ MY ROLLOUT</Link>
+                    <Link href="/me" className="admin-action-btn muted" style={{ textDecoration: 'none' }}><ChevronLeft /> MY ROLLOUT</Link>
                     <Link href="/me/events/new" className="admin-action-btn" style={{ textDecoration: 'none' }}>+ HOST EVENT</Link>
                 </div>
             </div>
@@ -89,7 +90,7 @@ export default async function MyEventsPage() {
                                 <div style={{ fontSize: 16, letterSpacing: 0.4, color: 'var(--text)' }}>{e.title}</div>
                                 <div className="text-dim" style={{ fontSize: 12 }}>{fmt(e.start_at, e.time_zone)} · {e.location_name ?? 'TBA'}</div>
                                 <div className="mono-row" style={{ fontSize: 10, marginTop: 4 }}>
-                                    <span><span className="accent">●</span> {e.attending_count ?? 0} GOING</span>
+                                    <span><span className="accent"><Dot /></span> {e.attending_count ?? 0} GOING</span>
                                 </div>
                             </div>
                         </Link>

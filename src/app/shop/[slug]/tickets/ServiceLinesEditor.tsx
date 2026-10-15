@@ -15,6 +15,7 @@
 import { useEffect, useState, useTransition } from 'react';
 import { loadServiceCatalog, type CatalogCategory } from './form-actions';
 import { lineTotal, totalFromLines, serviceDisplayName, type ServiceLine } from '@/lib/ticket-services';
+import { Undo2, X } from '@/components/icons';
 
 export function ServiceLinesEditor({
     slug,
@@ -148,7 +149,7 @@ export function ServiceLinesEditor({
                                         disabled={disabled}
                                         aria-label="Restore line"
                                     >
-                                        ↩ RESTORE
+                                        <Undo2 /> RESTORE
                                     </button>
                                 </div>
                             );
@@ -220,7 +221,7 @@ export function ServiceLinesEditor({
                                     disabled={disabled}
                                     aria-label="Remove line"
                                 >
-                                    ✕
+                                    <X />
                                 </button>
                             </div>
                             </div>

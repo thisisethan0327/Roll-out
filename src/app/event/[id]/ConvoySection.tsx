@@ -6,6 +6,7 @@
  */
 import Link from 'next/link';
 import styles from './cover-story.module.css';
+import { Dot } from '@/components/icons';
 
 type Attendee = {
     profile_id: string;
@@ -35,7 +36,7 @@ export function ConvoySection({
         <>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap', marginBottom: 20 }}>
                 <span className="mono-row" style={{ fontSize: 11 }}>
-                    <span className="accent">●</span>
+                    <span className="accent"><Dot /></span>
                     <span>{attendingCount} CONFIRMED</span>
                 </span>
             </div>

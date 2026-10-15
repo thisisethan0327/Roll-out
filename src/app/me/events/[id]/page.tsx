@@ -14,6 +14,7 @@ import { loadEventAreaLabel } from '@/lib/event-area-label';
 import { HostInviteSection } from './HostInviteSection';
 import { DoorSection } from '@/components/DoorSection';
 import { hostDoorCheckInAction } from '../door-actions';
+import { Check, ChevronLeft, ChevronRight } from '@/components/icons';
 
 export const metadata = { title: 'Edit Event' };
 export const dynamic = 'force-dynamic';
@@ -113,14 +114,14 @@ export default async function HostEventDetail({
                             letterSpacing: 'var(--track-wider)',
                         }}
                     >
-                        ✓ EVENT CREATED
+                        <Check /> EVENT CREATED
                     </span>
                     <a
                         href="#route"
                         className="admin-action-btn"
                         style={{ textDecoration: 'none', borderColor: 'var(--gold)', color: 'var(--gold)' }}
                     >
-                        ／ PLAN THE ROUTE ›
+                        ／ PLAN THE ROUTE <ChevronRight />
                     </a>
                 </div>
             ) : null}
@@ -133,8 +134,8 @@ export default async function HostEventDetail({
                     </div>
                 </div>
                 <div style={{ display: 'flex', gap: 8 }}>
-                    <Link href={`/event/${event.id}`} className="admin-action-btn muted" style={{ textDecoration: 'none' }}>VIEW PUBLIC ›</Link>
-                    <Link href="/me/events" className="admin-action-btn muted" style={{ textDecoration: 'none' }}>‹ MY EVENTS</Link>
+                    <Link href={`/event/${event.id}`} className="admin-action-btn muted" style={{ textDecoration: 'none' }}>VIEW PUBLIC <ChevronRight /></Link>
+                    <Link href="/me/events" className="admin-action-btn muted" style={{ textDecoration: 'none' }}><ChevronLeft /> MY EVENTS</Link>
                 </div>
             </div>
 

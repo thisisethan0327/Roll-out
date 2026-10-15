@@ -33,6 +33,7 @@ import {
     ChatSection,
     ActivitySection,
 } from './sections';
+import { ChevronLeft } from '@/components/icons';
 
 export const metadata = { title: 'Ticket' };
 
@@ -80,7 +81,7 @@ export default async function TicketDetailPage({
                             textDecoration: 'none',
                         }}
                     >
-                        ‹ ALL TICKETS
+                        <ChevronLeft /> ALL TICKETS
                     </Link>
                     <div
                         className="admin-page-title"

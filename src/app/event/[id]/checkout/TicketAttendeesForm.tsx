@@ -16,6 +16,7 @@ import { useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { reserveEventTicketsAction } from '../actions';
 import { SWEATER_SIZES, type SweaterSize } from '@/lib/event-tickets-shared';
+import { ChevronRight } from '@/components/icons';
 
 type SeatDraft = { name: string; email: string; size: SweaterSize | '' };
 
@@ -193,7 +194,7 @@ export function TicketAttendeesForm({
                 className="btn btn-lg"
                 style={{ alignSelf: 'flex-start', cursor: pending ? 'wait' : 'pointer', opacity: pending ? 0.7 : 1 }}
             >
-                {pending ? 'RESERVING…' : `RESERVE ${quantity} + CONTINUE ›`}
+                {pending ? 'RESERVING…' : <>RESERVE {quantity} + CONTINUE <ChevronRight /></>}
             </button>
         </div>
     );

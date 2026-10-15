@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, useTransition } from 'react';
 import { checkHandleAction } from '@/app/signup/onboarding/actions';
 import { saveProfileSettingsAction } from './actions';
 import { PendingButton } from '@/components/feedback';
+import { Check, ChevronRight } from '@/components/icons';
 
 type HandleState = { kind: 'idle' } | { kind: 'checking' } | { kind: 'ok' } | { kind: 'bad'; reason: string };
 
@@ -42,7 +43,7 @@ export function ProfileForm({ initial }: { initial: { displayName: string; handl
         handleState.kind === 'checking'
             ? { text: 'CHECKING…', color: 'var(--text-3)' }
             : handleState.kind === 'ok'
-              ? { text: '✓ AVAILABLE · YOUR OLD HANDLE STOPS WORKING WHEN YOU SAVE', color: 'var(--gold)' }
+              ? { text: <><Check /> AVAILABLE · YOUR OLD HANDLE STOPS WORKING WHEN YOU SAVE</>, color: 'var(--gold)' }
               : handleState.kind === 'bad'
                 ? { text: handleState.reason.toUpperCase(), color: '#e5484d' }
                 : { text: 'LETTERS, NUMBERS, UNDERSCORES · 3–20 CHARS', color: 'var(--text-3)' };
@@ -83,7 +84,7 @@ export function ProfileForm({ initial }: { initial: { displayName: string; handl
                 </div>
             ) : null}
             <PendingButton type="submit" pending={pending} pendingLabel="SAVING" disabled={!canSave} className="admin-login-btn">
-                SAVE PROFILE ›
+                SAVE PROFILE <ChevronRight />
             </PendingButton>
         </form>
     );

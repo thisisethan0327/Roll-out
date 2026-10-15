@@ -10,6 +10,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { MEDUSA_URL, medusaHeaders } from '@/lib/medusa';
+import { Check } from '@/components/icons';
 
 export const dynamic = 'force-dynamic';
 
@@ -54,7 +55,7 @@ export default async function OrderConfirmedPage({
                 <div className="eyebrow eyebrow-gold mb-4" style={{ justifyContent: 'center' }}>
                     ／ ORDER CONFIRMED
                 </div>
-                <div style={{ fontSize: 44, color: 'var(--gold)', marginBottom: 12 }}>✓</div>
+                <div style={{ fontSize: 44, color: 'var(--gold)', marginBottom: 12 }}><Check /></div>
                 <h1 style={{ letterSpacing: 1, margin: '0 0 14px' }}>THANK YOU</h1>
                 <p style={{ color: 'var(--text-2)', fontSize: 16, lineHeight: 1.6, maxWidth: 460, margin: '0 auto 8px' }}>
                     Your order is in. {display ? `Order ${display}.` : ''}

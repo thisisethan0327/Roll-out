@@ -7,6 +7,7 @@
  */
 import Link from 'next/link';
 import { SHOP_NAV, SHOP_NAV_SECTIONS } from '@/lib/shop-nav';
+import { ChevronRight } from '@/components/icons';
 
 export function ShopEventSubnav({
     slug,
@@ -46,7 +47,7 @@ export function ShopEventSubnav({
                     <span>THIS EVENT · ADMIN VIEW</span>
                 </Link>
                 <Link href={`/shop/${slug}/events/${eventId}`} className="admin-sidebar-link">
-                    <span>EDIT EVENT ›</span>
+                    <span>EDIT EVENT <ChevronRight /></span>
                 </Link>
             </div>
 
@@ -75,7 +76,7 @@ export function ShopEventSubnav({
 
             <div className="admin-subnav-foot">
                 <Link href={`/admin/shops/${shopId}`} className="admin-sidebar-link" style={{ padding: '10px 0' }}>
-                    <span>ADMIN SHOP PAGE ›</span>
+                    <span>ADMIN SHOP PAGE <ChevronRight /></span>
                 </Link>
             </div>
         </>
@@ -113,11 +114,11 @@ export function HostEventSubnav({
                     </a>
                 ) : null}
                 <Link href={`/event/${eventId}`} className="admin-sidebar-link">
-                    <span>VIEW PUBLIC ›</span>
+                    <span>VIEW PUBLIC <ChevronRight /></span>
                 </Link>
                 {handle ? (
                     <Link href={`/admin/users?q=${encodeURIComponent(handle)}`} className="admin-sidebar-link">
-                        <span>HOST IN USERS ›</span>
+                        <span>HOST IN USERS <ChevronRight /></span>
                     </Link>
                 ) : null}
             </div>

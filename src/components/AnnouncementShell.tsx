@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState, type ReactNode } from 'react';
+import { X } from '@/components/icons';
 
 const KEY = 'rollout_ann_dismissed';
 
@@ -53,7 +54,7 @@ export function AnnouncementShell({
             {children}
             {dismissible ? (
                 <button type="button" className="ann-x" onClick={dismiss} aria-label="Dismiss this update">
-                    ✕
+                    <X />
                 </button>
             ) : null}
         </div>

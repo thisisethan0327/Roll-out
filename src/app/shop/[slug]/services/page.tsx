@@ -2,6 +2,7 @@ import { requireShopMemberBySlug } from '@/lib/auth-guard';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { ServiceRow, type ServiceRowData } from './ServiceRow';
 import { AddServiceForm } from './AddServiceForm';
+import { ChevronRight } from '@/components/icons';
 
 export const metadata = { title: 'Services' };
 
@@ -117,7 +118,7 @@ export default async function ShopServicesPage({
                     placeholder="SEARCH NAME OR DESCRIPTION"
                 />
                 <button type="submit" className="admin-action-btn">
-                    SEARCH ›
+                    SEARCH <ChevronRight />
                 </button>
             </form>
 

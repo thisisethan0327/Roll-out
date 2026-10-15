@@ -14,6 +14,7 @@ import { loadTicketDetail } from '@/lib/me-data';
 import { fmtDate, fmtDay, money, StatusPill, EmptyRow, KV } from '../../ui';
 import { PortalChat } from './PortalChat';
 import { parseServices, lineTotal, visibleLines, serviceDisplayName } from '@/lib/ticket-services';
+import { ChevronLeft } from '@/components/icons';
 
 export const dynamic = 'force-dynamic';
 
@@ -71,7 +72,7 @@ export default async function MeTicketDetail({
                             textDecoration: 'none',
                         }}
                     >
-                        ‹ ALL TICKETS
+                        <ChevronLeft /> ALL TICKETS
                     </Link>
                     <div className="admin-page-title" style={{ fontFamily: 'var(--font-mono, monospace)' }}>
                         {t.ticket_id ?? '—'}

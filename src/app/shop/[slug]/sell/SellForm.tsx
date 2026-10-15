@@ -16,6 +16,7 @@ import {
     submitCommerceApplication,
     type SubmitDoc,
 } from './actions';
+import { ChevronRight } from '@/components/icons';
 
 // Kept in sync with lib/verification-docs.ts (that module is server-only, so a
 // Client Component can't import from it — hence this local literal).
@@ -149,7 +150,7 @@ export function SellForm({ shopId, slug }: { shopId: number; slug: string }) {
 
             <div style={{ marginTop: 18 }}>
                 <button type="button" className="admin-form-btn" onClick={onSubmit} disabled={pending}>
-                    {pending ? 'SUBMITTING…' : 'SUBMIT APPLICATION ›'}
+                    {pending ? 'SUBMITTING…' : <>SUBMIT APPLICATION <ChevronRight /></>}
                 </button>
             </div>
             <div className="admin-form-hint" style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 8 }}>

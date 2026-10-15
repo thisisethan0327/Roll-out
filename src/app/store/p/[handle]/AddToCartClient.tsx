@@ -6,6 +6,7 @@ import { addToCart } from '@/lib/medusa-cart';
 import { formatMoney } from '@/lib/medusa-types';
 import type { MedusaVariant } from '@/lib/medusa-types';
 import { Dots } from '../../_ui';
+import { ArrowRight, Check } from '@/components/icons';
 
 type Props = {
     paused: boolean;
@@ -214,7 +215,7 @@ export function AddToCartClient({
                 {pending ? (
                     <>ADDING<Dots /></>
                 ) : justAdded ? (
-                    'ADDED ✓'
+                    <>ADDED <Check /></>
                 ) : soldOut ? (
                     'COMING SOON'
                 ) : priceText ? (
@@ -226,10 +227,10 @@ export function AddToCartClient({
 
             {added ? (
                 <div className="mono-row" style={{ fontSize: 12 }}>
-                    <span className="accent">✓ ADDED</span>
+                    <span className="accent"><Check /> ADDED</span>
                     <span className="sep" />
                     <a href="/store/cart" style={{ color: 'var(--gold)', textDecoration: 'none' }}>
-                        VIEW CART →
+                        VIEW CART <ArrowRight />
                     </a>
                 </div>
             ) : null}

@@ -12,6 +12,7 @@ import { requirePlatformAdmin } from '@/lib/auth-guard';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { UUID_RE } from '@/lib/admin-user-facts';
 import { ThreadsGate } from './ReasonGate';
+import { ChevronLeft } from '@/components/icons';
 
 export const metadata = { title: 'Messages' };
 export const dynamic = 'force-dynamic';
@@ -33,7 +34,7 @@ export default async function AdminUserMessagesPage({ params }: { params: Promis
                     <div className="admin-page-sub">PRIVATE DMS · REASON REQUIRED · EVERY VIEW IS LOGGED</div>
                 </div>
                 <Link href={`/admin/users/${p.id}`} className="admin-action-btn muted" style={{ textDecoration: 'none' }}>
-                    ‹ BACK TO USER
+                    <ChevronLeft /> BACK TO USER
                 </Link>
             </div>
             <ThreadsGate profileId={p.id} handle={p.handle} />

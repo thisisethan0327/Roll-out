@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import { X } from '@/components/icons';
 
 /**
  * Chip-list editor that serializes into a hidden input so the surrounding
@@ -54,7 +55,7 @@ export function TagListEditor({
                                     aria-label={`Remove ${item}`}
                                     onClick={() => setItems(items.filter((i) => i !== item))}
                                 >
-                                    ✕
+                                    <X />
                                 </button>
                             )}
                         </span>

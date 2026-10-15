@@ -12,6 +12,7 @@ import { requireShopMemberBySlug } from '@/lib/auth-guard';
 import { getSupabaseAdmin, getSupabasePublicAdmin } from '@/lib/supabase/admin';
 import { PrintButton } from '../invoice/PrintButton';
 import { parseServices, lineTotal, visibleLines, serviceDisplayName } from '@/lib/ticket-services';
+import { ChevronLeft } from '@/components/icons';
 
 export const metadata = { title: 'Work Order' };
 
@@ -106,7 +107,7 @@ export default async function WorkOrderPage({
 
             <div className="no-print" style={{ display: 'flex', gap: 8, marginBottom: 16, alignItems: 'center' }}>
                 <Link href={`/shop/${slug}/tickets/${id}`} className="admin-action-btn muted" style={{ textDecoration: 'none' }}>
-                    ‹ BACK TO TICKET
+                    <ChevronLeft /> BACK TO TICKET
                 </Link>
                 <PrintButton />
             </div>

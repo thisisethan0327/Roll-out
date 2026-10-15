@@ -5,6 +5,7 @@ import { getSupabasePublicAdmin } from '@/lib/supabase/admin';
 import { KioskEventStatusActions } from '../KioskEventStatusActions';
 import { KioskEventEditForm } from './KioskEventEditForm';
 import { KioskEventImages } from './KioskEventImages';
+import { ArrowRight, Check, ChevronLeft } from '@/components/icons';
 
 export const metadata = { title: 'Kiosk Event' };
 
@@ -59,14 +60,14 @@ export default async function KioskEventDetailPage({
                         letterSpacing: 'var(--track-wider)',
                     }}
                 >
-                    ✓ DRAFT CREATED · ADD IMAGES BELOW, THEN PUBLISH TO PUT IT ON THE KIOSK
+                    <Check /> DRAFT CREATED · ADD IMAGES BELOW, THEN PUBLISH TO PUT IT ON THE KIOSK
                 </div>
             ) : null}
             <div className="admin-page-head">
                 <div>
                     <div className="admin-page-title">{event.title}</div>
                     <div className="admin-page-sub">
-                        KIOSK EVENT · {event.starts_at} → {event.ends_at}
+                        KIOSK EVENT · {event.starts_at} <ArrowRight /> {event.ends_at}
                     </div>
                 </div>
                 <Link
@@ -74,7 +75,7 @@ export default async function KioskEventDetailPage({
                     className="admin-action-btn muted"
                     style={{ textDecoration: 'none' }}
                 >
-                    ‹ ALL KIOSK EVENTS
+                    <ChevronLeft /> ALL KIOSK EVENTS
                 </Link>
             </div>
 

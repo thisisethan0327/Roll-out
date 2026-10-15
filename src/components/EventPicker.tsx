@@ -8,6 +8,7 @@
  */
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { EventOption } from './AnnouncementManager';
+import { ChevronDown, Star } from '@/components/icons';
 
 export function EventPicker({ options, value, onChange }: { options: EventOption[]; value: string; onChange: (id: string) => void }) {
     const [open, setOpen] = useState(false);
@@ -47,7 +48,7 @@ export function EventPicker({ options, value, onChange }: { options: EventOption
             <button type="button" className="admin-form-input evpick-btn" aria-haspopup="listbox" aria-expanded={open} aria-controls={listId}
                 onClick={() => setOpen((v) => !v)}>
                 {selected ? <Row o={selected} /> : <span className="evpick-placeholder">Pick an event…</span>}
-                <span className="evpick-caret" aria-hidden="true">▾</span>
+                <span className="evpick-caret" aria-hidden="true"><ChevronDown /></span>
             </button>
             {open && (
                 <div className="evpick-pop">
@@ -73,7 +74,7 @@ function Row({ o }: { o: EventOption }) {
     const upcoming = o.upcoming ?? false;
     return (
         <span className="evpick-row">
-            <span className="evpick-title">{o.official ? '★ ' : ''}{o.title ?? o.label}</span>
+            <span className="evpick-title">{o.official ? <><Star fill="currentColor" />{' '}</> : ''}{o.title ?? o.label}</span>
             {o.date && <span className="evpick-date">{o.date}</span>}
             <span className={`evpick-badge ${upcoming ? 'is-upcoming' : 'is-past'}`}>{upcoming ? 'UPCOMING' : 'PAST'}</span>
         </span>

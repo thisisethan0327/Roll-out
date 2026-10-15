@@ -10,6 +10,7 @@ import { getShopVendorBySlug } from '@/lib/store-shops';
 import { countPaidUnfulfilledOrders } from '@/lib/medusa-admin';
 import { fetchCatalogByHandles } from '@/lib/medusa';
 import { DismissButton } from './DismissButton';
+import { Check, ChevronRight } from '@/components/icons';
 
 // Orders count is derived live from Medusa on every load — never cache the page.
 export const dynamic = 'force-dynamic';
@@ -236,7 +237,7 @@ export default async function ShopOverviewPage({
                     </div>
                 </div>
                 <Link href={`/shop/${slug}/inbox`} className="admin-action-btn" style={{ textDecoration: 'none' }}>
-                    OPEN INBOX ›
+                    OPEN INBOX <ChevronRight />
                 </Link>
             </div>
 
@@ -260,7 +261,7 @@ export default async function ShopOverviewPage({
                     <span className="admin-pill gold">{attn.unfulfilledOrders}</span>
                     <span>
                         paid order{attn.unfulfilledOrders === 1 ? '' : 's'} awaiting fulfillment —
-                        pack &amp; ship ›
+                        pack &amp; ship <ChevronRight />
                     </span>
                 </Link>
             )}
@@ -268,7 +269,7 @@ export default async function ShopOverviewPage({
             {attn.catalogPaused && (
                 <Link href={`/shop/${slug}/products`} className="admin-attention-derived">
                     <span className="admin-pill warn">PAUSED</span>
-                    <span>CATALOG PAUSED — products hidden from the store ›</span>
+                    <span>CATALOG PAUSED — products hidden from the store <ChevronRight /></span>
                 </Link>
             )}
 
@@ -276,7 +277,7 @@ export default async function ShopOverviewPage({
                 <Link href={`/shop/${slug}/inbox`} className="admin-attention-derived">
                     <span className="admin-pill gold">{s.pending}</span>
                     <span>
-                        pending appointment request{s.pending === 1 ? '' : 's'} — review now ›
+                        pending appointment request{s.pending === 1 ? '' : 's'} — review now <ChevronRight />
                     </span>
                 </Link>
             )}
@@ -311,7 +312,7 @@ export default async function ShopOverviewPage({
                             <div className="admin-attention-actions">
                                 {item.href && (
                                     <Link href={item.href} className="admin-action-btn">
-                                        OPEN ›
+                                        OPEN <ChevronRight />
                                     </Link>
                                 )}
                                 <DismissButton slug={slug} id={item.id} />
@@ -387,7 +388,7 @@ export default async function ShopOverviewPage({
                                             className="admin-action-btn"
                                             style={{ textDecoration: 'none' }}
                                         >
-                                            REVIEW ›
+                                            REVIEW <ChevronRight />
                                         </Link>
                                     </td>
                                 </tr>
@@ -412,7 +413,7 @@ export default async function ShopOverviewPage({
                 >
                     <strong style={{ color: 'var(--gold)' }}>VERIFICATION PENDING</strong> — your shop_page profile
                     isn&apos;t marked verified yet. Customers booking through Rollout will see a yellow note instead of
-                    the ✓ badge. Reach out to{' '}
+                    the <Check /> badge. Reach out to{' '}
                     <a href="mailto:team@rollout.club" style={{ color: 'var(--gold)' }}>team@rollout.club</a> when
                     you&apos;re ready.
                 </div>

@@ -7,6 +7,7 @@ import { notFound } from 'next/navigation';
 import { requirePlatformAdmin } from '@/lib/auth-guard';
 import { UUID_RE } from '@/lib/admin-user-facts';
 import { ThreadGate } from '../ReasonGate';
+import { ChevronLeft } from '@/components/icons';
 
 export const metadata = { title: 'Thread' };
 export const dynamic = 'force-dynamic';
@@ -28,7 +29,7 @@ export default async function AdminUserThreadPage({ params }: { params: Promise<
                     className="admin-action-btn muted"
                     style={{ textDecoration: 'none' }}
                 >
-                    ‹ ALL THREADS
+                    <ChevronLeft /> ALL THREADS
                 </Link>
             </div>
             <ThreadGate profileId={id} threadId={threadId} />

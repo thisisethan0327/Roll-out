@@ -1,6 +1,7 @@
 'use client';
 import { useTransition } from 'react';
 import { setShopVerified } from './actions';
+import { Check, ChevronRight } from '@/components/icons';
 
 export function ShopRow({ shop }: { shop: any }) {
     const [pending, start] = useTransition();
@@ -51,7 +52,7 @@ export function ShopRow({ shop }: { shop: any }) {
             <td>{shop.memberCount}</td>
             <td>
                 {verified ? (
-                    <span className="admin-pill gold">✓ VERIFIED</span>
+                    <span className="admin-pill gold"><Check /> VERIFIED</span>
                 ) : (
                     <span className="admin-pill">UNVERIFIED</span>
                 )}
@@ -63,10 +64,10 @@ export function ShopRow({ shop }: { shop: any }) {
                         disabled={pending || !shop.page}
                         onClick={handleVerify}
                     >
-                        {verified ? 'UNVERIFY' : 'VERIFY ✓'}
+                        {verified ? 'UNVERIFY' : <>VERIFY <Check /></>}
                     </button>
                     <a href={`/admin/shops/${shop.id}`} className="admin-action-btn">
-                        OPEN ›
+                        OPEN <ChevronRight />
                     </a>
                 </div>
             </td>

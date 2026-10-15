@@ -1,4 +1,5 @@
 import { getSystemHealth, type HealthStatus } from '@/lib/system-health';
+import { ArrowUpRight } from '@/components/icons';
 
 /**
  * LAUNCHER + HEALTH ROW (Console Phase C3) — one card per system in the
@@ -46,7 +47,7 @@ export default async function LauncherSection() {
                         <div className="launcher-top">
                             <span className={`launcher-dot ${s.status}`} title={DOT_LABEL[s.status]} />
                             <span className="launcher-label">{s.label}</span>
-                            <span className="launcher-open">↗</span>
+                            <span className="launcher-open"><ArrowUpRight /></span>
                         </div>
                         <div className="launcher-host">{s.host}</div>
                         <div className={`launcher-status ${s.status}`}>

@@ -13,6 +13,7 @@ import { VehiclePicker, EMPTY_VEHICLE, type VehicleValue } from '../VehiclePicke
 import { ServiceLinesEditor } from '../ServiceLinesEditor';
 import { createTicketStructured } from '../actions';
 import type { ServiceLine } from '@/lib/ticket-services';
+import { ChevronRight } from '@/components/icons';
 
 const STATUS_OPTIONS = [
     'quote',
@@ -170,7 +171,7 @@ export function NewTicketForm({ slug, canCreate }: { slug: string; canCreate: bo
 
             <div style={{ display: 'flex', gap: 8 }}>
                 <button type="button" className="admin-form-btn" disabled={disabled} onClick={submit}>
-                    {pending ? 'CREATING…' : 'CREATE TICKET ›'}
+                    {pending ? 'CREATING…' : <>CREATE TICKET <ChevronRight /></>}
                 </button>
             </div>
         </div>

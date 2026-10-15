@@ -4,6 +4,7 @@ import { requestAppointmentAction } from './actions';
 import { SERVICE_LABEL, SERVICE_TYPES } from './services';
 import { browserTimeZone } from '@/lib/event-time';
 import { PendingButton } from '@/components/feedback';
+import { ArrowRight, ChevronRight } from '@/components/icons';
 
 export function BookForm({
     shopId,
@@ -74,10 +75,10 @@ export function BookForm({
             {err ? <div className="admin-login-error">{err}</div> : null}
 
             <PendingButton type="submit" pending={pending} pendingLabel="SENDING" className="admin-login-btn">
-                SEND REQUEST ›
+                SEND REQUEST <ChevronRight />
             </PendingButton>
             <div style={{ fontSize: 12, color: 'var(--text-2)', lineHeight: 1.5, marginTop: 8 }}>
-                The shop confirms a time from its console; you will see the request under My account → Appointments.
+                The shop confirms a time from its console; you will see the request under My account <ArrowRight /> Appointments.
             </div>
         </form>
     );

@@ -11,6 +11,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { MeetsMap } from './MeetsMap';
 import { loadMapData, isValidType, type EventType } from '../mapData';
+import { ChevronLeft } from '@/components/icons';
 
 const TYPE_LABEL: Record<EventType, string> = {
     NIGHT_RUN: 'Night Run',
@@ -68,7 +69,7 @@ export default async function MeetsMapPage({
                                 textDecoration: 'none',
                             }}
                         >
-                            ◂ LIST
+                            <ChevronLeft /> LIST
                         </Link>
                         <span
                             style={{

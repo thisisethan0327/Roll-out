@@ -43,6 +43,7 @@ import {
     type AdminTicket,
     type ProfileLite,
 } from './data';
+import { ArrowDown, Check, ChevronLeft, ChevronRight } from '@/components/icons';
 
 export const metadata = { title: 'Event Detail' };
 export const dynamic = 'force-dynamic';
@@ -130,7 +131,7 @@ export default async function AdminEventDetailPage({ params }: { params: Promise
             <>
                 <div className="admin-empty">EVENT NOT FOUND</div>
                 <Link href="/admin/events" className="admin-action-btn muted" style={{ textDecoration: 'none' }}>
-                    ‹ ALL EVENTS
+                    <ChevronLeft /> ALL EVENTS
                 </Link>
             </>
         );
@@ -169,10 +170,10 @@ export default async function AdminEventDetailPage({ params }: { params: Promise
                 </div>
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                     <Link href="/admin/events" className="admin-action-btn muted" style={{ textDecoration: 'none' }}>
-                        ‹ ALL EVENTS
+                        <ChevronLeft /> ALL EVENTS
                     </Link>
                     <Link href={`/event/${event.id}`} className="admin-action-btn muted" style={{ textDecoration: 'none' }}>
-                        VIEW PUBLIC ›
+                        VIEW PUBLIC <ChevronRight />
                     </Link>
                     {isShopEvent && shop ? (
                         <Link
@@ -180,7 +181,7 @@ export default async function AdminEventDetailPage({ params }: { params: Promise
                             className="admin-action-btn"
                             style={{ textDecoration: 'none', borderColor: 'var(--gold)', color: 'var(--gold)' }}
                         >
-                            EDIT IN @{shop.slug.toUpperCase()} CONSOLE ›
+                            EDIT IN @{shop.slug.toUpperCase()} CONSOLE <ChevronRight />
                         </Link>
                     ) : !isShopEvent ? (
                         <a
@@ -188,7 +189,7 @@ export default async function AdminEventDetailPage({ params }: { params: Promise
                             className="admin-action-btn"
                             style={{ textDecoration: 'none', borderColor: 'var(--gold)', color: 'var(--gold)' }}
                         >
-                            EDIT BELOW ↓
+                            EDIT BELOW <ArrowDown />
                         </a>
                     ) : null}
                 </div>
@@ -448,7 +449,7 @@ export default async function AdminEventDetailPage({ params }: { params: Promise
                                                         className="admin-action-btn"
                                                         style={{ textDecoration: 'none' }}
                                                     >
-                                                        OPEN AS CO-HOST ›
+                                                        OPEN AS CO-HOST <ChevronRight />
                                                     </Link>
                                                 )}
                                             </td>
@@ -553,7 +554,7 @@ function CheckedIn({ c, timeZone }: { c: AdminCheckin | undefined; timeZone: str
     if (!c) return <>—</>;
     return (
         <span className="admin-pill neon">
-            ✓ {c.method ? `${String(c.method).toUpperCase()} · ` : ''}
+            <Check /> {c.method ? `${String(c.method).toUpperCase()} · ` : ''}
             {c.checked_in_at ? formatClock(c.checked_in_at, timeZone) : ''}
         </span>
     );
@@ -806,7 +807,7 @@ function TicketGroup({
                         <td>{t.attendee_profile_id ? <HandleLink p={claimed} /> : '—'}</td>
                         <td>
                             {t.checked_in_at ? (
-                                <span className="admin-pill neon">✓ {formatClock(t.checked_in_at, timeZone)}</span>
+                                <span className="admin-pill neon"><Check /> {formatClock(t.checked_in_at, timeZone)}</span>
                             ) : (
                                 '—'
                             )}

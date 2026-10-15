@@ -2,6 +2,7 @@ import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { MembershipRow } from './MembershipRow';
 import { AddMembershipForm } from './AddMembershipForm';
 import { ShopProfileForm } from './ShopProfileForm';
+import { Check, ChevronLeft } from '@/components/icons';
 
 export const metadata = { title: 'Shop · Detail' };
 
@@ -52,7 +53,7 @@ export default async function ShopDetailPage({
                     </div>
                 </div>
                 <a href="/admin/shops" className="admin-action-btn muted">
-                    ‹ ALL SHOPS
+                    <ChevronLeft /> ALL SHOPS
                 </a>
             </div>
 
@@ -76,7 +77,7 @@ export default async function ShopDetailPage({
                             className={`admin-stat-num ${(page as any).is_verified ? 'gold' : ''}`}
                             style={{ fontSize: 16 }}
                         >
-                            {(page as any).is_verified ? '✓ YES' : 'NO'}
+                            {(page as any).is_verified ? <><Check /> YES</> : 'NO'}
                         </div>
                     </div>
                 </div>

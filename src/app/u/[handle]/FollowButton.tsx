@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { useState, useTransition } from 'react';
 import { toggleFollowAction } from './follow-actions';
 import { SUSPENDED_MESSAGE } from '@/lib/ban';
+import { Check } from '@/components/icons';
 
 export function FollowButton({
     targetProfileId,
@@ -65,7 +66,7 @@ export function FollowButton({
                     })
                 }
             >
-                {following ? 'Following ✓' : 'Follow'}
+                {following ? <>Following <Check /></> : 'Follow'}
             </button>
             <span className="mono-row" style={{ fontSize: 10 }}>
                 <span className="accent">{count}</span>

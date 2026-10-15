@@ -3,6 +3,7 @@ import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { DismissButton } from './DismissButton';
 import PulseSection from './PulseSection';
 import LauncherSection from './LauncherSection';
+import { ChevronRight } from '@/components/icons';
 
 export const metadata = { title: 'Overview' };
 
@@ -151,7 +152,7 @@ export default async function OverviewPage() {
                         {s.pendingVerifications === 1
                             ? 'verification pending'
                             : 'verifications pending'}{' '}
-                        — review now ›
+                        — review now <ChevronRight />
                     </span>
                 </Link>
             )}
@@ -192,7 +193,7 @@ export default async function OverviewPage() {
                                     <div className="admin-attention-actions">
                                         {item.href && (
                                             <Link href={item.href} className="admin-action-btn">
-                                                OPEN ›
+                                                OPEN <ChevronRight />
                                             </Link>
                                         )}
                                         <DismissButton id={item.id} />
@@ -232,7 +233,7 @@ export default async function OverviewPage() {
             <div className="admin-stat-grid">
                 <Stat label="PENDING APPOINTMENTS" value={s.pendingAppts} accent="gold" />
                 <Link href="/admin/reports" style={{ textDecoration: 'none', color: 'inherit' }}>
-                    <Stat label="OPEN CONTENT REPORTS ›" value={s.openReports} accent={s.openReports > 0 ? 'warn' : undefined} />
+                    <Stat label={<>OPEN CONTENT REPORTS <ChevronRight /></>} value={s.openReports} accent={s.openReports > 0 ? 'warn' : undefined} />
                 </Link>
             </div>
 
@@ -254,7 +255,7 @@ function Stat({
     value,
     accent,
 }: {
-    label: string;
+    label: React.ReactNode;
     value: number | string;
     accent?: 'gold' | 'warn';
 }) {

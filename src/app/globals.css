@@ -116,6 +116,12 @@ body {
   min-height: 100vh;
 }
 
+/* Lucide icons sit on the text baseline at the text's size (size="1em")
+   and never shrink inside flex rows. */
+.lucide { vertical-align: -0.125em; flex-shrink: 0; }
+.icon-stars { display: inline-flex; gap: 0.08em; vertical-align: -0.125em; }
+.icon-stars .lucide { vertical-align: 0; }
+
 a {
   color: var(--gold);
   text-decoration: none;

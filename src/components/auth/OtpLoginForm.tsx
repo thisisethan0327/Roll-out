@@ -43,6 +43,7 @@ function signInErrorCopy(e: { message?: string; code?: string } | null | undefin
 import { useRouter } from 'next/navigation';
 import { getSupabaseBrowser, isSupabaseConfigured } from '@/lib/supabase/browser';
 import { PendingButton } from '@/components/feedback';
+import { ArrowLeft, ChevronRight } from '@/components/icons';
 
 type Phase = 'email' | 'otp';
 
@@ -290,7 +291,7 @@ export function OtpLoginForm({
                     pendingLabel="SENDING"
                     className="admin-login-btn"
                 >
-                    SEND CODE ›
+                    SEND CODE <ChevronRight />
                 </PendingButton>
             </form>
         );
@@ -326,7 +327,7 @@ export function OtpLoginForm({
                 disabled={otp.length !== 6}
                 className="admin-login-btn"
             >
-                VERIFY ›
+                VERIFY <ChevronRight />
             </PendingButton>
             <button
                 type="button"
@@ -349,7 +350,7 @@ export function OtpLoginForm({
                 }}
                 className="admin-login-secondary"
             >
-                ← USE DIFFERENT EMAIL
+                <ArrowLeft /> USE DIFFERENT EMAIL
             </button>
         </form>
     );

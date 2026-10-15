@@ -12,6 +12,7 @@ import { requireShopMemberBySlug } from '@/lib/auth-guard';
 import { getSupabaseAdmin, getSupabasePublicAdmin } from '@/lib/supabase/admin';
 import { PrintButton } from './PrintButton';
 import { parseServices, lineTotal, totalFromLines, visibleLines, serviceDisplayName } from '@/lib/ticket-services';
+import { ChevronLeft } from '@/components/icons';
 
 export const metadata = { title: 'Invoice' };
 
@@ -80,7 +81,7 @@ export default async function TicketInvoicePage({
                     className="admin-action-btn muted"
                     style={{ textDecoration: 'none' }}
                 >
-                    ‹ BACK TO TICKET
+                    <ChevronLeft /> BACK TO TICKET
                 </Link>
                 <PrintButton />
             </div>

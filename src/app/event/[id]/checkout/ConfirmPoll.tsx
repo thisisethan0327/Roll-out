@@ -11,6 +11,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { getRsvpSnapshot, type RsvpState } from '../actions';
 import { SweepBar } from '../../../store/_ui';
+import { Check } from '@/components/icons';
 
 const POLL_MS = 2000;
 const MAX_POLLS = 15; // ~30s window — the subscriber usually lands in seconds.
@@ -54,7 +55,7 @@ export function ConfirmPoll({
     if (state === 'confirmed' && seats.length > 1) {
         return (
             <>
-                <div style={{ fontSize: 44, color: 'var(--gold)', marginBottom: 12 }}>✓</div>
+                <div style={{ fontSize: 44, color: 'var(--gold)', marginBottom: 12 }}><Check /></div>
                 <h1 style={{ letterSpacing: 1, margin: '0 0 14px' }}>
                     YOU&apos;RE IN — {seats.length} TICKETS
                 </h1>
@@ -94,7 +95,7 @@ export function ConfirmPoll({
     if (state === 'confirmed') {
         return (
             <>
-                <div style={{ fontSize: 44, color: 'var(--gold)', marginBottom: 12 }}>✓</div>
+                <div style={{ fontSize: 44, color: 'var(--gold)', marginBottom: 12 }}><Check /></div>
                 <h1 style={{ letterSpacing: 1, margin: '0 0 14px' }}>
                     YOU&apos;RE IN{spotNo != null ? ` — NO. ${String(spotNo).padStart(3, '0')}` : ''}
                 </h1>

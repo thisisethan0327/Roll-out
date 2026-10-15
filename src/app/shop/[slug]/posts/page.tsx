@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { requireShopMemberBySlug } from '@/lib/auth-guard';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { PostActions } from './PostActions';
+import { ChevronRight, CircleDot, Heart } from '@/components/icons';
 
 export const metadata = { title: 'Posts' };
 
@@ -214,7 +215,7 @@ export default async function ShopPostsPage({
                     placeholder="SEARCH POST BODY"
                 />
                 <button type="submit" className="admin-action-btn">
-                    SEARCH ›
+                    SEARCH <ChevronRight />
                 </button>
             </form>
 
@@ -255,7 +256,7 @@ export default async function ShopPostsPage({
                                     </td>
                                     <td>
                                         <span className="admin-handle">
-                                            ♥ {p.like_count ?? 0} · ◉ {p.comment_count ?? 0}
+                                            <Heart fill="currentColor" /> {p.like_count ?? 0} · <CircleDot /> {p.comment_count ?? 0}
                                         </span>
                                     </td>
                                     <td>

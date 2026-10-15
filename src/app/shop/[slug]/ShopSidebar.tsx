@@ -5,6 +5,7 @@ import { getSupabaseBrowser } from '@/lib/supabase/browser';
 import { LinkPending } from '@/components/feedback';
 import { SHOP_NAV as NAV, SHOP_NAV_SECTIONS, SHOP_ROLE_RANK as RANK } from '@/lib/shop-nav';
 import { ShopThemeToggle } from './ShopThemeToggle';
+import { ArrowLeftRight, ChevronRight } from '@/components/icons';
 
 const SWITCH_SHOP_STYLE: React.CSSProperties = {
     color: 'var(--text-2)',
@@ -146,7 +147,7 @@ export function ShopSidebar({
                                         ) : null}
                                         <LinkPending />
                                     </span>
-                                    {active && <span>›</span>}
+                                    {active && <span><ChevronRight /></span>}
                                 </Link>
                             );
                         })}
@@ -164,7 +165,7 @@ export function ShopSidebar({
                                 SELL ON NEFERSTOCK
                                 <LinkPending />
                             </span>
-                            {active && <span>›</span>}
+                            {active && <span><ChevronRight /></span>}
                         </Link>
                     </div>
                 );
@@ -180,7 +181,7 @@ export function ShopSidebar({
                     style={{ display: 'block', textDecoration: 'none', color: 'inherit' }}
                     title="View / edit your account"
                 >
-                    <div>SIGNED IN AS ›</div>
+                    <div>SIGNED IN AS <ChevronRight /></div>
                     <div style={{ color: 'var(--gold)', marginTop: 4 }}>@{callerHandle}</div>
                     {truncEmail(callerEmail) && (
                         <div
@@ -199,11 +200,11 @@ export function ShopSidebar({
                             Link the router would try to prefetch. */}
                         {switchShopHref.startsWith('http') ? (
                             <a href={switchShopHref} style={SWITCH_SHOP_STYLE}>
-                                ⇄ SWITCH SHOP
+                                <ArrowLeftRight /> SWITCH SHOP
                             </a>
                         ) : (
                             <Link href={switchShopHref} style={SWITCH_SHOP_STYLE}>
-                                ⇄ SWITCH SHOP
+                                <ArrowLeftRight /> SWITCH SHOP
                             </Link>
                         )}
                     </div>

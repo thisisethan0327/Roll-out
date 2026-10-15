@@ -5,6 +5,7 @@ import { createEvent } from '../actions';
 import { EventCoverPicker } from '../EventCoverPicker';
 import { TierRowsEditor } from '../TierRowsEditor';
 import { EventStartAtField } from '@/components/EventStartAtField';
+import { ChevronLeft, ChevronRight } from '@/components/icons';
 
 export const metadata = { title: 'Host Event' };
 
@@ -41,7 +42,7 @@ export default async function NewEventPage({
                     className="admin-action-btn muted"
                     style={{ textDecoration: 'none' }}
                 >
-                    ‹ BACK
+                    <ChevronLeft /> BACK
                 </Link>
             </div>
 
@@ -174,7 +175,7 @@ export default async function NewEventPage({
 
                 <div style={{ marginTop: 18, display: 'flex', gap: 8 }}>
                     <button type="submit" className="admin-form-btn">
-                        HOST EVENT ›
+                        HOST EVENT <ChevronRight />
                     </button>
                     <Link
                         href={`/shop/${slug}/events`}

@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { isSafeLink, type Announcement } from '@/lib/announcements-core';
 import { AnnouncementShell } from './AnnouncementShell';
+import { CircleDot, TriangleAlert, X } from '@/components/icons';
 
 /**
  * Time-bounded notices (rollout.announcements). Server component: the text is
@@ -11,7 +12,11 @@ import { AnnouncementShell } from './AnnouncementShell';
  * `variant="band"` is the full-width strip under the header; `variant="card"`
  * is the in-column version for the event page.
  */
-const ICON: Record<Announcement['level'], string> = { info: '◉', warning: '▲', critical: '✕' };
+const ICON: Record<Announcement['level'], React.ReactNode> = {
+    info: <CircleDot />,
+    warning: <TriangleAlert />,
+    critical: <X />,
+};
 const LABEL: Record<Announcement['level'], string> = { info: 'UPDATE', warning: 'HEADS UP', critical: 'IMPORTANT' };
 
 function Cta({ url, label }: { url: string; label: string }) {

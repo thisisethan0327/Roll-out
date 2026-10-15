@@ -15,6 +15,7 @@ import { listEventAnnouncementsForConsole } from '@/lib/announcements-write';
 import { VerificationSection, type VerificationView } from './VerificationSection';
 import { DoorSection } from '@/components/DoorSection';
 import { shopDoorCheckInAction } from './door-actions';
+import { Check, ChevronLeft } from '@/components/icons';
 
 export const metadata = { title: 'Event Detail' };
 
@@ -271,7 +272,7 @@ export default async function EventDetailPage({
                         letterSpacing: 'var(--track-wider)',
                     }}
                 >
-                    ✓ EVENT CREATED · LIVE ON /MEETS AND /U/{slug.toUpperCase()}
+                    <Check /> EVENT CREATED · LIVE ON /MEETS AND /U/{slug.toUpperCase()}
                 </div>
             ) : null}
             <div className="admin-page-head">
@@ -287,7 +288,7 @@ export default async function EventDetailPage({
                     className="admin-action-btn muted"
                     style={{ textDecoration: 'none' }}
                 >
-                    ‹ ALL EVENTS
+                    <ChevronLeft /> ALL EVENTS
                 </Link>
             </div>
 

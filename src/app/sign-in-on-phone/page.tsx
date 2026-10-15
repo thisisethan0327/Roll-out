@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { AppStoreBadges } from '@/components/AppStoreBadges';
 import Link from 'next/link';
+import { ArrowLeft } from '@/components/icons';
 
 export const metadata: Metadata = {
     alternates: { canonical: '/sign-in-on-phone' },
@@ -67,7 +68,7 @@ export default function SignInOnPhonePage() {
 
                 <div style={{ marginTop: 48 }}>
                     <Link href="/" className="mono-row">
-                        <span className="accent">←</span> BACK TO ROLLOUT.CLUB
+                        <span className="accent"><ArrowLeft /></span> BACK TO ROLLOUT.CLUB
                     </Link>
                 </div>
             </div>

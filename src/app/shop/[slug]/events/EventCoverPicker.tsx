@@ -14,6 +14,7 @@
  */
 import { useMemo, useState } from 'react';
 import { DEFAULT_EVENT_COVERS, EVENT_COVER_TYPES, EVENT_COVER_TYPE_LABELS, defaultsForType, isEventCoverType, type EventCoverType, publicCoverUrl } from '@/lib/event-covers';
+import { Check, ChevronDown, ChevronRight } from '@/components/icons';
 
 const TYPE_OPTIONS: { value: EventCoverType; label: string }[] = EVENT_COVER_TYPES.map((v) => ({
     value: v,
@@ -112,7 +113,7 @@ export function EventCoverPicker({
                 onClick={() => setShowAll((s) => !s)}
                 style={{ marginBottom: showAll ? 12 : 0 }}
             >
-                {showAll ? '▾ HIDE ALL COVERS' : '▸ ALL COVERS'}
+                {showAll ? <><ChevronDown /> HIDE ALL COVERS</> : <><ChevronRight /> ALL COVERS</>}
             </button>
 
             {showAll ? (
@@ -208,7 +209,7 @@ function Tile({
                     lineHeight: 1.3,
                 }}
             >
-                {active ? '✓ ' : ''}
+                {active ? <><Check />{' '}</> : ''}
                 {label}
                 {sublabel ? <span style={{ display: 'block', opacity: 0.75, fontSize: 8 }}>{sublabel}</span> : null}
             </span>

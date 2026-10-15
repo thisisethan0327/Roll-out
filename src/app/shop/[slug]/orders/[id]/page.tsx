@@ -18,6 +18,7 @@ import { fmtMoney, fmtDate, maskEmail, StatusChip } from '../ui';
 import { OrderActions } from './OrderActions';
 import { SHOPS_WITH_OWN_ADMIN } from '@/lib/tenant-hosts';
 import { ManagedElsewhereNotice } from '../../ManagedElsewhereNotice';
+import { ChevronLeft, ChevronRight } from '@/components/icons';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Order' };
@@ -119,7 +120,7 @@ export default async function OrderDetailPage({
                         color: 'var(--text-2)',
                     }}
                 >
-                    ‹ ALL ORDERS
+                    <ChevronLeft /> ALL ORDERS
                 </Link>
                 <div className="admin-page-head" style={{ marginTop: 8 }}>
                     <div>
@@ -182,7 +183,7 @@ export default async function OrderDetailPage({
                     <p style={{ fontSize: 13, margin: 0, color: 'var(--text-2)', lineHeight: 1.6 }}>
                         {refundPolicyLine}{' '}
                         <Link href={REFUND_POLICY_PATH} className="text-link">
-                            Full policy ›
+                            Full policy <ChevronRight />
                         </Link>
                     </p>
                 </section>

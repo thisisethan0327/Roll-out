@@ -2,6 +2,7 @@ import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { requirePlatformAdmin } from '@/lib/auth-guard';
 import { UserRow } from './UserRow';
 import { selectWithBan } from '@/lib/ban-server';
+import { ChevronRight } from '@/components/icons';
 
 export const metadata = { title: 'Users' };
 
@@ -67,7 +68,7 @@ export default async function UsersPage({
                     placeholder="SEARCH HANDLE OR DISPLAY NAME"
                 />
                 <button type="submit" className="admin-action-btn">
-                    SEARCH ›
+                    SEARCH <ChevronRight />
                 </button>
             </form>
 

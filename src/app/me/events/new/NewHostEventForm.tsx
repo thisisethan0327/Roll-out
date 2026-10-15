@@ -10,6 +10,7 @@ import { useActionState } from 'react';
 import { createHostEvent } from '../actions';
 import { EventCoverPicker } from '@/app/shop/[slug]/events/EventCoverPicker';
 import { EventStartAtField } from '@/components/EventStartAtField';
+import { ArrowRight, ChevronRight } from '@/components/icons';
 
 const VISIBILITY: { value: string; label: string }[] = [
     { value: 'public', label: 'PUBLIC' },
@@ -68,7 +69,7 @@ export function NewHostEventForm() {
                 </div>
             </div>
             <div className="admin-form-hint" style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 4 }}>
-                Add lat/lng to pin your meet on the Meets map. Look them up on Google Maps (right-click → coordinates).
+                Add lat/lng to pin your meet on the Meets map. Look them up on Google Maps (right-click <ArrowRight /> coordinates).
             </div>
 
             <SectionHeading>／ ROUTE DESTINATION (OPTIONAL)</SectionHeading>
@@ -112,7 +113,7 @@ export function NewHostEventForm() {
 
             <div style={{ marginTop: 18, display: 'flex', gap: 8 }}>
                 <button type="submit" className="admin-form-btn" disabled={pending}>
-                    {pending ? 'HOSTING…' : 'HOST EVENT ›'}
+                    {pending ? 'HOSTING…' : <>HOST EVENT <ChevronRight /></>}
                 </button>
                 <Link href="/me/events" className="admin-action-btn muted" style={{ textDecoration: 'none' }}>CANCEL</Link>
             </div>

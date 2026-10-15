@@ -2,6 +2,7 @@ import { requireShopMemberBySlug } from '@/lib/auth-guard';
 import { formatDateOnly } from '@/lib/event-time';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { ReviewReply } from './ReviewReply';
+import { Stars } from '@/components/icons';
 
 export const metadata = { title: 'Reviews' };
 
@@ -31,9 +32,8 @@ async function loadReviews(shopId: number): Promise<ReviewRecord[]> {
     return ((data as any[]) ?? []) as ReviewRecord[];
 }
 
-function stars(rating: number): string {
-    const r = Math.max(0, Math.min(5, Math.round(rating)));
-    return '★'.repeat(r) + '☆'.repeat(5 - r);
+function stars(rating: number) {
+    return <Stars rating={rating} />;
 }
 
 function reviewDate(iso: string | null): string {

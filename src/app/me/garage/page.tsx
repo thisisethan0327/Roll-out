@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { requireConsumer } from '@/lib/me-guard';
 import { loadMyGarage, loadMyPosts } from '@/lib/me-data';
 import { fmtDay, EmptyRow, Panel, StatusPill } from '../ui';
+import { Heart, MessageCircle } from '@/components/icons';
 
 export const dynamic = 'force-dynamic';
 
@@ -147,7 +148,7 @@ export default async function GaragePage() {
                                         </div>
                                     )}
                                     <div className="text-dim" style={{ fontSize: 11, marginTop: 4 }}>
-                                        ♥ {p.like_count ?? 0} · 💬 {p.comment_count ?? 0}
+                                        <Heart fill="currentColor" /> {p.like_count ?? 0} · <MessageCircle /> {p.comment_count ?? 0}
                                     </div>
                                 </div>
                             </div>

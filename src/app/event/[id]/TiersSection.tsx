@@ -32,6 +32,7 @@ import {
     type ReservationPolicy,
 } from '@/lib/refund-policy';
 import styles from './cover-story.module.css';
+import { Check, ChevronRight, Dot, Scissors } from '@/components/icons';
 
 export type TierView = {
     id: string;
@@ -439,14 +440,14 @@ export function TiersSection({
                             color: 'var(--gold)',
                         }}
                     >
-                        ● SPOT HELD{spotNo != null ? ` · #${String(spotNo).padStart(3, '0')}` : ''} — COMPLETE PAYMENT IN{' '}
+                        <Dot /> SPOT HELD{spotNo != null ? ` · #${String(spotNo).padStart(3, '0')}` : ''} — COMPLETE PAYMENT IN{' '}
                         <span style={{ color: 'var(--text)', fontWeight: 700 }}>
                             {mounted && holdExpiresAt ? formatRemaining(holdExpiresAt, now) : '…'}
                         </span>
                     </div>
                     <div style={{ display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'center' }}>
                         <Link href={`/event/${eventId}/checkout`} className="btn btn-lg" style={{ textDecoration: 'none' }}>
-                            COMPLETE PAYMENT ›
+                            COMPLETE PAYMENT <ChevronRight />
                         </Link>
                         <button
                             type="button"
@@ -477,7 +478,7 @@ export function TiersSection({
                             color: 'var(--gold)',
                         }}
                     >
-                        ✓ YOU&apos;RE IN{spotNo != null ? ` · SPOT #${String(spotNo).padStart(3, '0')}` : ''}
+                        <Check /> YOU&apos;RE IN{spotNo != null ? ` · SPOT #${String(spotNo).padStart(3, '0')}` : ''}
                         {myTierName ? ` · ${myTierName.toUpperCase()}` : ''}
                     </div>
                     {myTierIsPaid ? (
@@ -517,7 +518,7 @@ export function TiersSection({
                             color: 'var(--text-2)',
                         }}
                     >
-                        ● WAITLISTED{waitPos != null ? ` · #${waitPos} IN LINE` : ''}
+                        <Dot /> WAITLISTED{waitPos != null ? ` · #${waitPos} IN LINE` : ''}
                         {myTierName ? ` · ${myTierName.toUpperCase()}` : ''}
                     </div>
                     <button
@@ -551,7 +552,7 @@ export function TiersSection({
                             color: 'var(--text-2)',
                         }}
                     >
-                        ● TICKET PENDING{myTierName ? ` · ${myTierName.toUpperCase()}` : ''}
+                        <Dot /> TICKET PENDING{myTierName ? ` · ${myTierName.toUpperCase()}` : ''}
                     </div>
                     <p className="text-muted" style={{ fontSize: 11, margin: 0, textAlign: 'center', maxWidth: 320 }}>
                         You&apos;re on someone else&apos;s order for this meet — your spot confirms once they finish paying.
@@ -595,7 +596,7 @@ export function TiersSection({
 
                                 <div className={styles.tierCoupon}>
                                 <div className={styles.cutLineLabel} style={{ marginBottom: 6 }}>
-                                    <span aria-hidden="true">✂</span> CUT HERE
+                                    <span aria-hidden="true"><Scissors /></span> CUT HERE
                                 </div>
                                 <hr className={styles.cutLine} />
 
@@ -647,7 +648,7 @@ export function TiersSection({
                                                 textDecoration: 'none',
                                             }}
                                         >
-                                            {isFree ? 'SIGN IN TO RSVP ›' : 'SIGN IN TO RESERVE ›'}
+                                            {isFree ? 'SIGN IN TO RSVP' : 'SIGN IN TO RESERVE'} <ChevronRight />
                                         </a>
                                         <a
                                             href={signupHref}
@@ -663,7 +664,7 @@ export function TiersSection({
                                                 textDecoration: 'underline',
                                             }}
                                         >
-                                            NEW TO ROLLOUT? SIGN UP ›
+                                            NEW TO ROLLOUT? SIGN UP <ChevronRight />
                                         </a>
                                     </div>
                                 ) : (
@@ -734,8 +735,8 @@ export function TiersSection({
                                             : isFree
                                                 ? 'RSVP FREE'
                                                 : ticketsEnabled && (qty[tier.id] ?? 1) > 1
-                                                    ? `RESERVE ${Math.max(1, Math.min(MAX_TICKETS, tier.remaining ?? MAX_TICKETS, qty[tier.id] ?? 1))} + PAY ›`
-                                                    : 'RESERVE + PAY ›'}
+                                                    ? <>RESERVE {Math.max(1, Math.min(MAX_TICKETS, tier.remaining ?? MAX_TICKETS, qty[tier.id] ?? 1))} + PAY <ChevronRight /></>
+                                                    : <>RESERVE + PAY <ChevronRight /></>}
                                 </button>
                                 </>
                                 )}
@@ -744,7 +745,7 @@ export function TiersSection({
                                     <p className={styles.tierPolicy}>
                                         {policyLine}{' '}
                                         <Link href={REFUND_POLICY_PATH} className="text-link" style={{ color: 'var(--gold)', fontWeight: 700, textDecoration: 'underline' }}>
-                                            Full policy ›
+                                            Full policy <ChevronRight />
                                         </Link>
                                     </p>
                                 ) : null}
@@ -814,7 +815,7 @@ function PaidCancelControl({
                 <p className="text-muted" style={{ fontSize: 10, margin: 0, textAlign: 'center', maxWidth: 320 }}>
                     {policyLine}{' '}
                     <Link href={REFUND_POLICY_PATH} className="text-link" style={{ color: 'inherit', textDecoration: 'underline' }}>
-                        Full policy ›
+                        Full policy <ChevronRight />
                     </Link>
                 </p>
             </div>
@@ -879,7 +880,7 @@ function PaidCancelControl({
             <p className="text-muted" style={{ fontSize: 10, margin: 0, textAlign: 'center', maxWidth: 320 }}>
                 Your spot is released immediately. {policyLine}{' '}
                 <Link href={REFUND_POLICY_PATH} className="text-link" style={{ color: 'inherit', textDecoration: 'underline' }}>
-                    Full policy ›
+                    Full policy <ChevronRight />
                 </Link>
             </p>
             {err ? (

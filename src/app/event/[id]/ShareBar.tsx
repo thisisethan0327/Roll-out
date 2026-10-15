@@ -4,6 +4,7 @@
  * Facebook intents. Client-only because it touches navigator + clipboard.
  */
 import { useState } from 'react';
+import { Check } from '@/components/icons';
 
 type Props = { url: string; title: string };
 
@@ -53,7 +54,7 @@ export function ShareBar({ url, title }: Props) {
     return (
         <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center' }}>
             <button type="button" onClick={copy} className="text-link" style={linkStyle}>
-                {copied ? '✓ LINK COPIED' : 'COPY LINK'}
+                {copied ? <><Check /> LINK COPIED</> : 'COPY LINK'}
             </button>
             <a href={x} target="_blank" rel="noopener noreferrer" className="text-link" style={{ ...linkStyle, cursor: 'pointer' }}>
                 SHARE ON X

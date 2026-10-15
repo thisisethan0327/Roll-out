@@ -7,6 +7,7 @@ import {
     acceptReschedule,
     declineReschedule,
 } from './actions';
+import { ChevronRight } from '@/components/icons';
 
 export function AppointmentActions({
     appointmentId,
@@ -62,7 +63,7 @@ export function AppointmentActions({
                     disabled={pending}
                     onClick={() => run(() => convertAppointmentToTicket(appointmentId, shopId))}
                 >
-                    CONVERT TO TICKET ›
+                    CONVERT TO TICKET <ChevronRight />
                 </button>
             </div>
         );

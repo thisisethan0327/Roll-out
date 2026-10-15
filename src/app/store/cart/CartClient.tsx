@@ -8,6 +8,7 @@ import { updateLineItem, removeLineItem } from '@/lib/medusa-cart';
 import { formatMoney } from '@/lib/medusa-types';
 import type { Cart } from '@/lib/medusa-types';
 import { Dots } from '../_ui';
+import { ArrowRight } from '@/components/icons';
 
 export function CartClient({ initialCart }: { initialCart: Cart | null }) {
     const router = useRouter();
@@ -182,7 +183,7 @@ export function CartClient({ initialCart }: { initialCart: Cart | null }) {
                     CONTINUE SHOPPING
                 </Link>
                 <Link href="/store/checkout" className="btn btn-lg" style={{ flex: 1, minWidth: 200, textAlign: 'center' }}>
-                    CHECKOUT →
+                    CHECKOUT <ArrowRight />
                 </Link>
             </div>
         </div>

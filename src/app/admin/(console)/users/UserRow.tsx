@@ -8,6 +8,7 @@ import {
     grantMeetCoordinator,
     revokeMeetCoordinator,
 } from './actions';
+import { Check } from '@/components/icons';
 
 export type UserRowData = {
     id: string;
@@ -65,7 +66,7 @@ export function UserRow({
             </td>
             <td>
                 <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                    {user.is_verified && <span className="admin-pill gold">✓ VERIFIED</span>}
+                    {user.is_verified && <span className="admin-pill gold"><Check /> VERIFIED</span>}
                     {user.isPlatformAdmin && <span className="admin-pill warn">GOD</span>}
                     {user.isMeetCoordinator && <span className="admin-pill neon">MEET COORD</span>}
                     {isBannedUntil(user.banned_until) && <span className="admin-pill warn">BANNED</span>}
@@ -82,7 +83,7 @@ export function UserRow({
                         disabled={pending}
                         onClick={() => handleAction(() => setVerified(user.id, !user.is_verified))}
                     >
-                        {user.is_verified ? 'UNVERIFY' : 'VERIFY ✓'}
+                        {user.is_verified ? 'UNVERIFY' : <>VERIFY <Check /></>}
                     </button>
                     {user.kind === 'user' && (
                         user.isPlatformAdmin ? (

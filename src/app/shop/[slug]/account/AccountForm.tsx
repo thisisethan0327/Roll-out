@@ -9,6 +9,7 @@
 import { useEffect, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { checkAccountHandleAction, saveAccountAction } from './actions';
+import { Check } from '@/components/icons';
 
 type HandleState =
     | { kind: 'idle' }
@@ -107,7 +108,7 @@ export function AccountForm({
             case 'checking':
                 return { text: 'CHECKING…', color: 'var(--text-3)' };
             case 'ok':
-                return { text: '✓ AVAILABLE', color: 'var(--gold)' };
+                return { text: <><Check /> AVAILABLE</>, color: 'var(--gold)' };
             case 'current':
                 return { text: 'YOUR CURRENT HANDLE', color: 'var(--text-3)' };
             case 'bad':

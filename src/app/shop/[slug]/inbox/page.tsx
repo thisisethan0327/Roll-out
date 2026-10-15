@@ -4,6 +4,7 @@ import { requireShopMemberBySlug } from '@/lib/auth-guard';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { AppointmentActions } from './AppointmentActions';
 import { RealtimeRefresh } from './RealtimeRefresh';
+import { ArrowRight, ChevronRight } from '@/components/icons';
 
 export const metadata = { title: 'Inbox' };
 
@@ -153,7 +154,7 @@ export default async function ShopInboxPage({
                     className="admin-action-btn"
                     style={{ textDecoration: 'none' }}
                 >
-                    CALENDAR ›
+                    CALENDAR <ChevronRight />
                 </Link>
             </div>
 
@@ -192,7 +193,7 @@ export default async function ShopInboxPage({
                     placeholder="SEARCH HANDLE, SERVICE OR NOTES"
                 />
                 <button type="submit" className="admin-action-btn">
-                    SEARCH ›
+                    SEARCH <ChevronRight />
                 </button>
             </form>
 
@@ -265,7 +266,7 @@ export default async function ShopInboxPage({
                                             <tr className="admin-subrow">
                                                 <td colSpan={7}>
                                                     <div className="admin-handle" style={{ paddingLeft: 8 }}>
-                                                        RESCHEDULE: {fmt(a.previous_preferred_at)} → {fmt(a.preferred_at)}
+                                                        RESCHEDULE: {fmt(a.previous_preferred_at)} <ArrowRight /> {fmt(a.preferred_at)}
                                                     </div>
                                                 </td>
                                             </tr>

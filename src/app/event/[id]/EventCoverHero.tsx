@@ -19,6 +19,7 @@ import { HeroParallax } from '@/components/motion/HeroParallax';
 import { Countdown } from './Countdown';
 import { PosterModeSwitch } from './PosterModeSwitch';
 import styles from './cover-story.module.css';
+import { Check } from '@/components/icons';
 
 /**
  * Responsive sources for a poster, by convention only: an asset shipped at
@@ -195,7 +196,7 @@ function HeroSection({
                         <span className={styles.kicker}>A Rollout Cover Story</span>
                         {hostName ? (
                             <span className={styles.verifiedPill}>
-                                {hostVerified ? <span className={styles.checkDot}>✓</span> : null}
+                                {hostVerified ? <span className={styles.checkDot}><Check strokeWidth={3} /></span> : null}
                                 HOSTED BY{' '}
                                 {hostHandle ? (
                                     <Link href={`/u/${hostHandle}`} className={styles.pillLink}>

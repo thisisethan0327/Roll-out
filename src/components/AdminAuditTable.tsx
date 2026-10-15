@@ -8,6 +8,7 @@
  */
 import Link from 'next/link';
 import { auditSubjectHref, type AuditResult, type AuditRow } from '@/lib/admin-audit';
+import { ChevronRight } from '@/components/icons';
 
 function stamp(iso: string): string {
     return new Date(iso).toISOString().slice(0, 16).replace('T', ' ');
@@ -92,7 +93,7 @@ function Row({ r, showActor, showSubject }: { r: AuditRow; showActor: boolean; s
                     <div className="admin-handle">{r.subjectType}</div>
                     {href ? (
                         <Link href={href} className="text-link">
-                            {shortId(r.subjectId)} ›
+                            {shortId(r.subjectId)} <ChevronRight />
                         </Link>
                     ) : (
                         <span>{shortId(r.subjectId)}</span>

@@ -34,6 +34,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { formatEventTime } from '@/lib/event-time';
 import { teaserPopupLine, type TeaserVisibility } from '@/lib/event-teaser-format';
+import { svgIcon, svgStars } from '@/lib/icon-svg';
 
 export type MapEvent = {
     id: string;
@@ -212,8 +213,7 @@ function fmtDate(iso: string | null, tz?: string | null): string {
 }
 
 function starStr(rating: number): string {
-    const r = Math.max(0, Math.min(5, Math.round(rating)));
-    return '★'.repeat(r) + '☆'.repeat(5 - r);
+    return svgStars(rating);
 }
 
 function buildLockedPopup(e: MapEvent): string {
@@ -223,10 +223,10 @@ function buildLockedPopup(e: MapEvent): string {
           <div class="rl-pop-kicker">
             <span class="rl-pop-tag rl-pop-tag-gold">${e.privacy === 'followers' ? 'FOLLOWERS ONLY' : 'PRIVATE'}</span>
           </div>
-          <div class="rl-pop-name">${esc(line)}</div>
+          <div class="rl-pop-name">${svgIcon('lock')} ${esc(line)}</div>
           ${e.host_handle ? `<div class="rl-pop-sub">@${esc(e.host_handle)}</div>` : ''}
           <div class="rl-pop-actions">
-            <a class="rl-pop-btn" href="/event/${esc(e.id)}">View event →</a>
+            <a class="rl-pop-btn" href="/event/${esc(e.id)}">View event ${svgIcon('arrow-right')}</a>
           </div>
         </div>`;
 }
@@ -247,7 +247,7 @@ function buildEventPopup(e: MapEvent): string {
               e.host_handle ? ` · @${esc(e.host_handle)}` : ''
           }</div>
           <div class="rl-pop-actions">
-            <a class="rl-pop-btn" href="/event/${esc(e.id)}">View event →</a>
+            <a class="rl-pop-btn" href="/event/${esc(e.id)}">View event ${svgIcon('arrow-right')}</a>
           </div>
         </div>`;
 }
@@ -261,7 +261,7 @@ function buildShopPopup(s: MapShop): string {
         : `<span class="rl-pop-logo-fallback">${esc(initial)}</span>`;
 
     const kicker = s.is_verified
-        ? '<span class="rl-pop-verified">✓ VERIFIED</span>'
+        ? `<span class="rl-pop-verified">${svgIcon('check')} VERIFIED</span>`
         : '<span class="rl-pop-tag">SHOP</span>';
     // Area shops are city-level presence: no street address, an ONLINE ·
     // BASED IN <city> line instead of a plain place.
@@ -292,7 +292,7 @@ function buildShopPopup(s: MapShop): string {
 
     const products =
         s.sells_products && s.slug
-            ? `<a class="rl-pop-btn rl-pop-btn-ghost" href="/store?shop=${esc(s.slug)}">Products →</a>`
+            ? `<a class="rl-pop-btn rl-pop-btn-ghost" href="/store?shop=${esc(s.slug)}">Products ${svgIcon('arrow-right')}</a>`
             : '';
 
     return `
@@ -307,7 +307,7 @@ function buildShopPopup(s: MapShop): string {
           ${rating}
           ${chipsHtml}
           <div class="rl-pop-actions">
-            <a class="rl-pop-btn" href="${viewHref}">View shop →</a>
+            <a class="rl-pop-btn" href="${viewHref}">View shop ${svgIcon('arrow-right')}</a>
             ${products}
           </div>
         </div>`;
@@ -430,7 +430,7 @@ export function MeetsMap({
                 // Locked teaser — hollow dark pin with a lock, visibly NOT a venue.
                 const lockedIcon = L.divIcon({
                     className: '',
-                    html: '<div class="rl-pin rl-pin-event rl-pin-locked"><span class="rl-pin-dot">🔒</span></div>',
+                    html: `<div class="rl-pin rl-pin-event rl-pin-locked"><span class="rl-pin-dot">${svgIcon('lock')}</span></div>`,
                     iconSize: [22, 22],
                     iconAnchor: [11, 11],
                     popupAnchor: [0, -12],

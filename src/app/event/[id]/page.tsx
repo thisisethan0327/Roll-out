@@ -61,6 +61,7 @@ import { AnnouncementBar } from '@/components/AnnouncementBar';
 import { getEventAnnouncements, getSiteAnnouncements } from '@/lib/announcements';
 import { sortAnnouncements } from '@/lib/announcements-core';
 import styles from './cover-story.module.css';
+import { ChevronRight, Dot, X } from '@/components/icons';
 
 type EventRow = {
     id: string;
@@ -784,7 +785,7 @@ export default async function PublicEventPage({
                         letterSpacing: 'var(--track-wider)',
                     }}
                 >
-                    ✕ THIS MEET HAS BEEN CANCELLED
+                    <X /> THIS MEET HAS BEEN CANCELLED
                 </div>
             ) : isPast ? (
                 <div
@@ -799,7 +800,7 @@ export default async function PublicEventPage({
                         letterSpacing: 'var(--track-wider)',
                     }}
                 >
-                    ● THIS MEET HAS ENDED · RSVPS ARE CLOSED
+                    <Dot /> THIS MEET HAS ENDED · RSVPS ARE CLOSED
                 </div>
             ) : null}
 
@@ -982,14 +983,14 @@ export default async function PublicEventPage({
                                     rel="noopener noreferrer"
                                     style={{ fontSize: 12, fontFamily: 'var(--font-display)', letterSpacing: 'var(--track-wider)', textDecoration: 'none', borderBottom: '1px solid var(--line-mid)', paddingBottom: 2 }}
                                 >
-                                    OPEN IN GOOGLE MAPS ›
+                                    OPEN IN GOOGLE MAPS <ChevronRight />
                                 </a>
                                 <Link
                                     className="text-link"
                                     href="/meets/map"
                                     style={{ fontSize: 12, fontFamily: 'var(--font-display)', letterSpacing: 'var(--track-wider)', textDecoration: 'none', borderBottom: '1px solid var(--line-mid)', paddingBottom: 2 }}
                                 >
-                                    VIEW MEETS MAP ›
+                                    VIEW MEETS MAP <ChevronRight />
                                 </Link>
                             </div>
                         ) : null}

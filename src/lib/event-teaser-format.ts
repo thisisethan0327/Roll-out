@@ -111,7 +111,7 @@ export function toLockedMeet(t: EventTeaser): LockedMeet {
 
 /** Hero badge on the locked event page. */
 export function teaserBadge(v: TeaserVisibility): string {
-    return v === 'followers' ? '🔒 FOLLOWERS ONLY' : '🔒 PRIVATE EVENT · INVITE ONLY';
+    return v === 'followers' ? 'FOLLOWERS ONLY' : 'PRIVATE EVENT · INVITE ONLY';
 }
 
 /** Short badge for list cards. */
@@ -134,7 +134,7 @@ export function teaserLockedCopy(v: TeaserVisibility, hostHandle: string | null 
 }
 
 /**
- * Map popup line: "🔒 <title> · Invite only · <general_area> · <date>".
+ * Map popup line: "<title> · Invite only · <general_area> · <date>".
  * Plain text — the map escapes it before it becomes HTML.
  */
 export function teaserPopupLine(
@@ -144,7 +144,7 @@ export function teaserPopupLine(
     dateLabel: string,
 ): string {
     const lock = v === 'followers' ? 'Followers only' : 'Invite only';
-    return [`🔒 ${str(title) ?? 'Private event'}`, lock, teaserAreaLabel(area), dateLabel].join(' · ');
+    return [`${str(title) ?? 'Private event'}`, lock, teaserAreaLabel(area), dateLabel].join(' · ');
 }
 
 /** A well-formed invite token (uuid), or null. */

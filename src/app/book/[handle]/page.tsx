@@ -5,6 +5,7 @@ import { requireConsumer } from '@/lib/me-guard';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { loadMyGarage } from '@/lib/me-data';
 import { BookForm } from './BookForm';
+import { ChevronLeft } from '@/components/icons';
 
 export const dynamic = 'force-dynamic';
 
@@ -45,7 +46,7 @@ export default async function BookPage({ params }: { params: Promise<{ handle: s
                 <BookForm shopId={Number(profile.shop_id)} handle={handle} vehicles={vehicles} />
                 <div style={{ marginTop: 18 }}>
                     <Link href={`/u/${handle}`} className="mono-row" style={{ textDecoration: 'none' }}>
-                        <span className="accent">‹</span> BACK TO {name.toUpperCase()}
+                        <span className="accent"><ChevronLeft /></span> BACK TO {name.toUpperCase()}
                     </Link>
                 </div>
             </div>

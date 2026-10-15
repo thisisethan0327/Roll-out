@@ -13,6 +13,7 @@
  * how to show one pin and report a click's lat/lng.
  */
 import { useEffect, useRef, useState } from 'react';
+import { svgIcon } from '@/lib/icon-svg';
 
 const MAPLIBRE_CSS = 'https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css';
 const MAPLIBRE_JS = 'https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js';
@@ -129,7 +130,7 @@ export default function RoutePickerMap({
                 if (lat != null && lng != null) {
                     const el = document.createElement('div');
                     el.className = 'rl-route-pin rl-route-pin-pick';
-                    el.textContent = '📍';
+                    el.innerHTML = svgIcon('map-pin');
                     markerRef.current = new maplibregl.Marker({ element: el, anchor: 'bottom' })
                         .setLngLat([lng, lat])
                         .addTo(map);
@@ -172,7 +173,7 @@ export default function RoutePickerMap({
             const maplibregl = (window as any).maplibregl;
             const el = document.createElement('div');
             el.className = 'rl-route-pin rl-route-pin-pick';
-            el.textContent = '📍';
+            el.innerHTML = svgIcon('map-pin');
             markerRef.current = new maplibregl.Marker({ element: el, anchor: 'bottom' }).setLngLat([lng, lat]).addTo(map);
         } else {
             markerRef.current.setLngLat([lng, lat]);

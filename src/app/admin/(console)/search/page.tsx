@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { jumpSearch, type JumpHit } from '@/lib/jump-search';
+import { ArrowUpRight, ChevronRight } from '@/components/icons';
 
 export const metadata = { title: 'Search' };
 export const dynamic = 'force-dynamic';
@@ -29,10 +30,10 @@ function HitRow({ hit }: { hit: JumpHit }) {
                         className="admin-action-btn muted"
                         onClick={(e) => e.stopPropagation()}
                     >
-                        {hit.altLabel ?? 'ALT'} ↗
+                        {hit.altLabel ?? 'ALT'} <ArrowUpRight />
                     </a>
                 )}
-                <span className="admin-action-btn">{hit.external ? 'OPEN ↗' : 'OPEN ›'}</span>
+                <span className="admin-action-btn">OPEN {hit.external ? <ArrowUpRight /> : <ChevronRight />}</span>
             </div>
         </>
     );
@@ -80,7 +81,7 @@ export default async function SearchPage({
                     autoFocus
                 />
                 <button type="submit" className="admin-action-btn">
-                    SEARCH ›
+                    SEARCH <ChevronRight />
                 </button>
             </form>
 

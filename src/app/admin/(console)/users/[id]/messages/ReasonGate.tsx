@@ -15,6 +15,7 @@ import {
     type DmMessage,
     type DmThread,
 } from './actions';
+import { ChevronRight } from '@/components/icons';
 
 const REASON_MIN = 10;
 const REASON_MAX = 500;
@@ -127,7 +128,7 @@ export function ThreadsGate({ profileId, handle }: { profileId: string; handle: 
                                             className="admin-action-btn"
                                             style={{ textDecoration: 'none' }}
                                         >
-                                            OPEN ›
+                                            OPEN <ChevronRight />
                                         </Link>
                                     </td>
                                 </tr>
@@ -252,7 +253,7 @@ export function ThreadGate({ profileId, threadId }: { profileId: string; threadI
                                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                                         {m.media_urls.map((u) => (
                                             <a key={u} href={u} target="_blank" rel="noopener noreferrer" className="text-link" style={{ fontSize: 11 }}>
-                                                ATTACHMENT ›
+                                                ATTACHMENT <ChevronRight />
                                             </a>
                                         ))}
                                     </div>

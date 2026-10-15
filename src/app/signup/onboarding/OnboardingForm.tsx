@@ -11,6 +11,7 @@
 import { useEffect, useRef, useState, useTransition } from 'react';
 import { checkHandleAction, claimProfileAction, type OnboardingAddress } from './actions';
 import { PendingButton } from '@/components/feedback';
+import { Check, ChevronRight } from '@/components/icons';
 
 type HandleState =
     | { kind: 'idle' }
@@ -144,7 +145,7 @@ export function OnboardingForm({
             case 'checking':
                 return { text: 'CHECKING…', color: 'var(--text-3)' };
             case 'ok':
-                return { text: handleTouched ? '✓ AVAILABLE' : '✓ AVAILABLE · FROM YOUR NAME — EDIT IF YOU LIKE', color: 'var(--gold)' };
+                return { text: <><Check /> {handleTouched ? 'AVAILABLE' : 'AVAILABLE · FROM YOUR NAME — EDIT IF YOU LIKE'}</>, color: 'var(--gold)' };
             case 'bad':
                 return { text: handleState.reason.toUpperCase(), color: '#e5484d' };
             default:
@@ -250,7 +251,7 @@ export function OnboardingForm({
             {formErr && <div className="admin-login-error">{formErr}</div>}
 
             <PendingButton type="submit" pending={pending} pendingLabel="SETTING UP" disabled={!canSubmit} className="admin-login-btn">
-                ENTER ROLLOUT ›
+                ENTER ROLLOUT <ChevronRight />
             </PendingButton>
         </form>
     );

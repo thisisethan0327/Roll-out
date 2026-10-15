@@ -20,6 +20,7 @@ import { useEffect, useRef, useState } from 'react';
 import { resolveCover, coverFocus } from '@/lib/event-covers';
 import { MeetsMap, type MapEvent, type MapShop } from './map/MeetsMap';
 import { teaserAreaLabel, teaserShortBadge, type LockedMeet, type TeaserVisibility } from '@/lib/event-teaser-format';
+import { ChevronRight, CircleDashed, CircleDot, Dot, Lock } from '@/components/icons';
 
 export type SplitMeet = {
     id: string;
@@ -113,15 +114,15 @@ export function MeetsSplit({
                             aria-hidden="true"
                             style={{ background: 'var(--bg-2)', display: 'grid', placeItems: 'center', fontSize: 26 }}
                         >
-                            🔒
+                            <Lock />
                         </div>
                         <div className="meets-split-body">
                             <div className="mono-row" style={{ fontSize: 10 }}>
-                                <span className="accent">🔒 {teaserShortBadge(m.visibility).toUpperCase()}</span>
+                                <span className="accent"><Lock /> {teaserShortBadge(m.visibility).toUpperCase()}</span>
                                 {plottable.has(m.id) ? (
                                     <>
                                         <span className="sep" />
-                                        <span className="meets-split-pin" aria-label="Approximate area on the map">◌ AREA</span>
+                                        <span className="meets-split-pin" aria-label="Approximate area on the map"><CircleDashed /> AREA</span>
                                     </>
                                 ) : null}
                             </div>
@@ -130,7 +131,7 @@ export function MeetsSplit({
                                 {formatDate(m.start_at, m.time_zone)} · {teaserAreaLabel(m.general_area)}
                             </div>
                             <div className="mono-row" style={{ fontSize: 10, marginTop: 'auto', paddingTop: 8 }}>
-                                {m.viewer_can_view ? <span className="accent">YOU&apos;RE INVITED ›</span> : <span>INVITE ONLY</span>}
+                                {m.viewer_can_view ? <span className="accent">YOU&apos;RE INVITED <ChevronRight /></span> : <span>INVITE ONLY</span>}
                                 {m.host_handle ? (
                                     <>
                                         <span className="sep" />
@@ -167,7 +168,7 @@ export function MeetsSplit({
                                 {m.privacy ? (
                                     <>
                                         <span className="sep" />
-                                        <span className="accent">🔒 PRIVATE</span>
+                                        <span className="accent"><Lock /> PRIVATE</span>
                                     </>
                                 ) : null}
                                 {m.sector_code ? (
@@ -179,7 +180,7 @@ export function MeetsSplit({
                                 {plottable.has(m.id) ? (
                                     <>
                                         <span className="sep" />
-                                        <span className="meets-split-pin" aria-label="On the map">◉ MAP</span>
+                                        <span className="meets-split-pin" aria-label="On the map"><CircleDot /> MAP</span>
                                     </>
                                 ) : null}
                             </div>
@@ -188,7 +189,7 @@ export function MeetsSplit({
                                 {formatDate(m.start_at, m.time_zone)} · {m.location_name ?? 'TBA'}
                             </div>
                             <div className="mono-row" style={{ fontSize: 10, marginTop: 'auto', paddingTop: 8 }}>
-                                <span><span className="accent">●</span> {m.attending_count ?? 0} GOING</span>
+                                <span><span className="accent"><Dot /></span> {m.attending_count ?? 0} GOING</span>
                                 {m.spots_left != null ? (
                                     <>
                                         <span className="sep" />

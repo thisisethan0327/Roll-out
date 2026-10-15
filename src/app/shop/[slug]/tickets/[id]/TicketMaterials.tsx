@@ -13,6 +13,7 @@ import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { addTicketMaterial, removeTicketMaterial } from './detail-actions';
 import { loadMaterialPickerOptions, type MaterialPickerProduct } from '../form-actions';
+import { X } from '@/components/icons';
 
 const MANAGER_ROLES = new Set(['owner', 'admin', 'manager']);
 
@@ -140,8 +141,9 @@ export function TicketMaterials({
                                                 className="admin-action-btn danger"
                                                 disabled={pending}
                                                 onClick={() => remove(m.id)}
+                                                aria-label={armedDelete === m.id ? 'Confirm remove material' : 'Remove material'}
                                             >
-                                                {armedDelete === m.id ? 'SURE?' : '✕'}
+                                                {armedDelete === m.id ? 'SURE?' : <X />}
                                             </button>
                                         </td>
                                     )}

@@ -18,6 +18,7 @@ import Link from 'next/link';
 import { requireShopMemberBySlug } from '@/lib/auth-guard';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { SellForm } from './SellForm';
+import { ChevronLeft } from '@/components/icons';
 
 export const metadata = { title: 'Sell on NeferStock' };
 export const dynamic = 'force-dynamic';
@@ -55,7 +56,7 @@ export default async function SellPage({ params }: { params: Promise<{ slug: str
                     <div className="admin-page-title">SELL ON NEFERSTOCK</div>
                     <div className="admin-page-sub">{shop.name.toUpperCase()} · COMMERCE APPLICATION</div>
                 </div>
-                <Link href={`/shop/${slug}/overview`} className="admin-action-btn muted" style={{ textDecoration: 'none' }}>‹ BACK</Link>
+                <Link href={`/shop/${slug}/overview`} className="admin-action-btn muted" style={{ textDecoration: 'none' }}><ChevronLeft /> BACK</Link>
             </div>
 
             {!eligible ? (

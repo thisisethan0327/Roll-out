@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { requireConsumer } from '@/lib/me-guard';
 import { loadMyAppointments } from '@/lib/me-data';
 import { fmtDate, StatusPill, EmptyRow } from '../ui';
+import { ChevronRight } from '@/components/icons';
 
 export const dynamic = 'force-dynamic';
 
@@ -128,7 +129,7 @@ export default async function AppointmentsPage({ searchParams }: { searchParams:
                                             className="admin-action-btn"
                                             style={{ textDecoration: 'none' }}
                                         >
-                                            VIEW TICKET ›
+                                            VIEW TICKET <ChevronRight />
                                         </Link>
                                     </div>
                                 )}

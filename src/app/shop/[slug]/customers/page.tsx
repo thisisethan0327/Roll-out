@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { requireShopMemberBySlug } from '@/lib/auth-guard';
 import { getSupabaseAdmin, getSupabasePublicAdmin } from '@/lib/supabase/admin';
+import { ChevronRight } from '@/components/icons';
 
 export const metadata = { title: 'Customers' };
 
@@ -241,7 +242,7 @@ export default async function ShopCustomersPage({
                 {/* preserve the active source pill on submit */}
                 <input type="hidden" name="source" value={src} />
                 <button type="submit" className="admin-action-btn">
-                    SEARCH ›
+                    SEARCH <ChevronRight />
                 </button>
             </form>
 
@@ -339,7 +340,7 @@ export default async function ShopCustomersPage({
                                 className="admin-action-btn muted"
                                 style={{ textDecoration: 'none' }}
                             >
-                                VIEW MORE ›
+                                VIEW MORE <ChevronRight />
                             </Link>
                         </div>
                     )}
@@ -425,7 +426,7 @@ export default async function ShopCustomersPage({
                                 className="admin-action-btn muted"
                                 style={{ textDecoration: 'none' }}
                             >
-                                VIEW MORE ›
+                                VIEW MORE <ChevronRight />
                             </Link>
                         </div>
                     )}

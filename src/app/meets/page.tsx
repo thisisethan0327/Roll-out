@@ -32,6 +32,7 @@ import {
 } from '@/lib/event-teaser-format';
 import { loadMapData } from './mapData';
 import { MeetsSplit } from './MeetsSplit';
+import { ChevronRight, Dot, Lock } from '@/components/icons';
 
 // Read at request time: the map loader uses the runtime-only service-role key.
 export const dynamic = 'force-dynamic';
@@ -235,7 +236,7 @@ export default async function MeetsDirectoryPage({
                         >
                             LIST
                         </span>
-                        <FilterChip href={mapHref} label="MAP ▸" active={false} />
+                        <FilterChip href={mapHref} label={<>MAP <ChevronRight /></>} active={false} />
                     </div>
                 </div>
             </section>
@@ -315,7 +316,7 @@ function MeetTile({ m, past = false, hasUpdate = false }: { m: MeetCard; past?: 
                         {m.privacy ? (
                             <>
                                 <span className="sep" />
-                                <span className="accent">🔒 PRIVATE</span>
+                                <span className="accent"><Lock /> PRIVATE</span>
                             </>
                         ) : null}
                         {m.sector_code ? (
@@ -337,7 +338,7 @@ function MeetTile({ m, past = false, hasUpdate = false }: { m: MeetCard; past?: 
                         </p>
                     ) : null}
                     <div className="mono-row" style={{ fontSize: 10, marginTop: 'auto', paddingTop: 8 }}>
-                        <span><span className="accent">●</span> {m.attending_count ?? 0} GOING</span>
+                        <span><span className="accent"><Dot /></span> {m.attending_count ?? 0} GOING</span>
                         {!past && m.spots_left != null ? (
                             <>
                                 <span className="sep" />
@@ -384,11 +385,11 @@ function LockedTile({ m }: { m: LockedMeet }) {
                         fontSize: 34,
                     }}
                 >
-                    🔒
+                    <Lock />
                 </div>
                 <div style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 8, flex: 1 }}>
                     <div className="mono-row" style={{ fontSize: 10 }}>
-                        <span className="accent">🔒 {teaserShortBadge(m.visibility).toUpperCase()}</span>
+                        <span className="accent"><Lock /> {teaserShortBadge(m.visibility).toUpperCase()}</span>
                     </div>
                     <h3 style={{ fontSize: 18, letterSpacing: 0.8, margin: 0, color: 'var(--text)' }}>
                         {(m.title ?? 'Private event').toUpperCase()}
@@ -397,7 +398,7 @@ function LockedTile({ m }: { m: LockedMeet }) {
                         {formatDate(m.start_at, m.time_zone)} · {teaserAreaLabel(m.general_area)}
                     </div>
                     <div className="mono-row" style={{ fontSize: 10, marginTop: 'auto', paddingTop: 8 }}>
-                        {m.viewer_can_view ? <span className="accent">YOU&apos;RE INVITED ›</span> : <span>INVITE ONLY</span>}
+                        {m.viewer_can_view ? <span className="accent">YOU&apos;RE INVITED <ChevronRight /></span> : <span>INVITE ONLY</span>}
                         {m.host_handle ? (
                             <>
                                 <span className="sep" />
@@ -411,7 +412,7 @@ function LockedTile({ m }: { m: LockedMeet }) {
     );
 }
 
-function FilterChip({ href, label, active }: { href: string; label: string; active: boolean }) {
+function FilterChip({ href, label, active }: { href: string; label: React.ReactNode; active: boolean }) {
     return (
         <Link
             href={href}

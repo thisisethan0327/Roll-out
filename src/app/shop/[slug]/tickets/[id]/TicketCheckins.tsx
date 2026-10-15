@@ -17,6 +17,7 @@ import {
     attachCheckinPhoto,
     deleteCheckin,
 } from './detail-actions';
+import { X } from '@/components/icons';
 
 const MANAGER_ROLES = new Set(['owner', 'admin', 'manager']);
 
@@ -275,8 +276,9 @@ export function TicketCheckins({
                                             className="admin-action-btn danger"
                                             disabled={pending}
                                             onClick={() => remove(c.id)}
+                                            aria-label={armedDelete === c.id ? 'Confirm delete inspection' : 'Delete inspection'}
                                         >
-                                            {armedDelete === c.id ? 'SURE?' : '✕'}
+                                            {armedDelete === c.id ? 'SURE?' : <X />}
                                         </button>
                                     )}
                                 </div>

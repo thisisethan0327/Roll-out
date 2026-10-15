@@ -16,6 +16,7 @@ import type { MyTicketRow } from '@/lib/event-tickets';
 import { cancelPaidRsvp } from './actions';
 import { refundWindowOpen, refundPolicyShortLine, REFUND_POLICY_PATH, type ReservationPolicy } from '@/lib/refund-policy';
 import { isDeadTicketStatus } from '@/lib/event-tickets-shared';
+import { Check, ChevronRight, Dot } from '@/components/icons';
 
 export function MyTicketsPanel({
     eventId,
@@ -43,10 +44,10 @@ export function MyTicketsPanel({
     const allDead = sorted.length > 0 && sorted.every((t) => isDeadTicketStatus(t.status));
     const header =
         live > 0
-            ? `✓ YOU'RE IN · ${live} TICKET${live === 1 ? '' : 'S'}`
+            ? <><Check /> YOU&apos;RE IN · {live} TICKET{live === 1 ? '' : 'S'}</>
             : allDead
                 ? 'ORDER CANCELLED'
-                : `● TICKETS PENDING · ${sorted.length}`;
+                : <><Dot /> TICKETS PENDING · {sorted.length}</>;
 
     return (
         <div
@@ -94,7 +95,7 @@ export function MyTicketsPanel({
                 <p className="text-muted" style={{ fontSize: 10, margin: 0, lineHeight: 1.5 }}>
                     {policyLine}{' '}
                     <Link href={REFUND_POLICY_PATH} className="text-link" style={{ color: 'inherit', textDecoration: 'underline' }}>
-                        Full policy ›
+                        Full policy <ChevronRight />
                     </Link>
                 </p>
             ) : null}

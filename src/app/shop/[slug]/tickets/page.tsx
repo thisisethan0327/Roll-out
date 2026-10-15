@@ -8,6 +8,7 @@
 import Link from 'next/link';
 import { requireShopMemberBySlug } from '@/lib/auth-guard';
 import { getSupabasePublicAdmin } from '@/lib/supabase/admin';
+import { ChevronRight } from '@/components/icons';
 
 export const metadata = { title: 'Tickets' };
 
@@ -186,7 +187,7 @@ export default async function TicketsListPage({
                     placeholder="SEARCH TICKET ID, CUSTOMER, OR VEHICLE"
                 />
                 <button type="submit" className="admin-action-btn">
-                    SEARCH ›
+                    SEARCH <ChevronRight />
                 </button>
                 {q && (
                     <Link

@@ -32,6 +32,7 @@ import { formatClock } from '@/lib/event-time';
 import { refundPolicyShortLine, REFUND_POLICY_PATH } from '@/lib/refund-policy';
 import { multiTicketsEnabled, MAX_TICKETS_PER_ORDER, myTicketsForEvent } from '@/lib/event-tickets';
 import { isDeadTicketStatus } from '@/lib/event-tickets-shared';
+import { ChevronRight } from '@/components/icons';
 
 export const dynamic = 'force-dynamic';
 
@@ -165,7 +166,7 @@ export default async function EventCheckoutPage({
                         <p className="text-muted" style={{ fontSize: 12, margin: '0 0 28px', lineHeight: 1.6 }}>
                             {policyLine}{' '}
                             <Link href={REFUND_POLICY_PATH} className="text-link">
-                                Full refund & cancellation policy ›
+                                Full refund & cancellation policy <ChevronRight />
                             </Link>
                         </p>
                         <TicketAttendeesForm
@@ -231,7 +232,7 @@ export default async function EventCheckoutPage({
                 <p className="text-muted" style={{ fontSize: 12, margin: '0 0 28px', lineHeight: 1.6 }}>
                     {policyLine}{' '}
                     <Link href={REFUND_POLICY_PATH} className="text-link">
-                        Full refund & cancellation policy ›
+                        Full refund & cancellation policy <ChevronRight />
                     </Link>
                 </p>
                 <CheckoutClient

@@ -15,6 +15,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { fetchProductsByIds, formatMoney, type MedusaProduct } from '@/lib/medusa';
+import { ArrowRight, Check, Columns2, Heart, Pencil, RotateCw } from '@/components/icons';
 
 type Author = {
     handle: string | null;
@@ -243,7 +244,7 @@ export default async function PostPage({
             <section style={{ background: 'var(--bg-1)', borderBottom: '1px solid var(--line)' }}>
                 <div className="container container-narrow" style={{ padding: '40px 0 28px' }}>
                     <div className="mono-row" style={{ fontSize: 10, marginBottom: 14 }}>
-                        <span className="accent">{isRepost ? '↻ REPOST' : (post.type ?? 'POST').toUpperCase()}</span>
+                        <span className="accent">{isRepost ? <><RotateCw /> REPOST</> : (post.type ?? 'POST').toUpperCase()}</span>
                         {post.created_at ? (
                             <>
                                 <span className="sep" />
@@ -281,10 +282,10 @@ export default async function PostPage({
                             <div>
                                 <div style={{ fontFamily: 'var(--font-display)', fontSize: 15, color: 'var(--text)', letterSpacing: 0.5 }}>
                                     {authorName}
-                                    {post.author?.is_verified ? <span className="accent"> ✓</span> : null}
+                                    {post.author?.is_verified ? <span className="accent"> <Check /></span> : null}
                                 </div>
                                 <div className="text-dim" style={{ fontSize: 12, marginTop: 2 }}>
-                                    {isPlainRepost ? `↻ reposted · @${authorHandle}` : `@${authorHandle}`}
+                                    {isPlainRepost ? <><RotateCw /> reposted · @{authorHandle}</> : `@${authorHandle}`}
                                 </div>
                             </div>
                         </Link>
@@ -384,11 +385,11 @@ export default async function PostPage({
 
                     {/* ENGAGEMENT (read-only) */}
                     <div className="mono-row" style={{ fontSize: 11, marginTop: 28 }}>
-                        <span><span className="accent">♥</span> {post.like_count ?? 0}</span>
+                        <span><span className="accent"><Heart fill="currentColor" /></span> {post.like_count ?? 0}</span>
                         <span className="sep" />
-                        <span><span className="accent">✎</span> {post.comment_count ?? 0}</span>
+                        <span><span className="accent"><Pencil /></span> {post.comment_count ?? 0}</span>
                         <span className="sep" />
-                        <span><span className="accent">↻</span> {post.repost_count ?? 0}</span>
+                        <span><span className="accent"><RotateCw /></span> {post.repost_count ?? 0}</span>
                     </div>
                 </div>
             </section>
@@ -428,7 +429,7 @@ export default async function PostPage({
                                         <div className="text-dim" style={{ fontSize: 13, marginTop: 4 }}>{ev!.location_name}</div>
                                     ) : null}
                                 </div>
-                                <span className="accent" style={{ fontSize: 18 }}>→</span>
+                                <span className="accent" style={{ fontSize: 18 }}><ArrowRight /></span>
                             </div>
                         </Link>
                     </div>
@@ -454,7 +455,7 @@ function OriginalCard({ original }: { original: OriginalPost | typeof UNAVAILABL
                     letterSpacing: 'var(--track-wider)',
                 }}
             >
-                ↻ ORIGINAL POST UNAVAILABLE
+                <RotateCw /> ORIGINAL POST UNAVAILABLE
             </div>
         );
     }
@@ -534,7 +535,7 @@ function ProductTagsSheet({ tags }: { tags: ProductTag[] }) {
                     gap: 8,
                 }}
             >
-                <span>◫ VIEW PRODUCTS ({tags.length})</span>
+                <span><Columns2 /> VIEW PRODUCTS ({tags.length})</span>
             </summary>
             <div style={{ display: 'flex', flexDirection: 'column', borderTop: '1px solid var(--line-mid)' }}>
                 {tags.map((t) => {
@@ -586,7 +587,7 @@ function ProductTagsSheet({ tags }: { tags: ProductTag[] }) {
                                     {p.paused ? 'COMING SOON' : formatMoney(p.price, p.currency)}
                                 </div>
                             </div>
-                            <span className="accent" style={{ fontSize: 16 }}>→</span>
+                            <span className="accent" style={{ fontSize: 16 }}><ArrowRight /></span>
                         </Link>
                     );
                 })}

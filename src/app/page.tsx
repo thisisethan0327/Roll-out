@@ -11,6 +11,7 @@ import Image, { getImageProps } from 'next/image';
 import type { Metadata } from 'next';
 import { ROLLOUT_ORIGIN } from '@/lib/tenant-hosts';
 import { APP_ID, UNITY_ORG, UNITY_ORG_ID, WEBSITE_ID, jsonLdHtml } from '@/lib/structured-data';
+import { CircleDot, Contrast, Diamond, Pencil, Sparkle, Waves } from '@/components/icons';
 
 // The root layout no longer carries a site-wide canonical; the home page
 // declares its own.
@@ -156,11 +157,11 @@ export default async function HomePage() {
 
                     {/* Spec strip */}
                     <div data-hero-copy className="mono-row" style={{ marginTop: 40, flexWrap: 'wrap', gap: 20 }}>
-                        <span><span className="accent">◉</span> RSVP CONVOY RUNS</span>
+                        <span><span className="accent"><CircleDot /></span> RSVP CONVOY RUNS</span>
                         <span className="sep" />
-                        <span><span className="accent">◐</span> TRACK BUILD LOGS</span>
+                        <span><span className="accent"><Contrast /></span> TRACK BUILD LOGS</span>
                         <span className="sep" />
-                        <span><span className="accent">✎</span> DIRECT LINE TO SHOPS</span>
+                        <span><span className="accent"><Pencil /></span> DIRECT LINE TO SHOPS</span>
                     </div>
 
                     {/* CTAs */}
@@ -190,12 +191,12 @@ export default async function HomePage() {
                     </p>
 
                     <div className="feature-grid">
-                        <FeatureCard plate="rsvps" glyph="◉" title="Convoy RSVPs" body="Know who's actually rolling. Live spot count, capacity gates, lat-long meet points." />
-                        <FeatureCard plate="buildlog" glyph="◐" title="Build log" body="Track mods, miles, milestones. Up to 5 photos per build. Tagged feed for parts you ran." />
-                        <FeatureCard plate="shopline" glyph="✎" title="Shop direct line" body="Talk to the shop that wrapped your car, not their public DMs. Quotes, status, follow-ups." />
-                        <FeatureCard plate="garage" glyph="◈" title="Garage that belongs to you" body="Your photos, your specs, your history. Delete anytime — fully." />
-                        <FeatureCard plate="nearyou" glyph="✦" title="Host your own meets" body="Verified hosts set the capacity, run the waitlist, sell packages and invite by email." />
-                        <FeatureCard plate="private" glyph="∿" title="The store" body="Film, parts and merch from the shops on Rollout. One checkout, shipped by the shop that sells it." />
+                        <FeatureCard plate="rsvps" glyph={<CircleDot />} title="Convoy RSVPs" body="Know who's actually rolling. Live spot count, capacity gates, lat-long meet points." />
+                        <FeatureCard plate="buildlog" glyph={<Contrast />} title="Build log" body="Track mods, miles, milestones. Up to 5 photos per build. Tagged feed for parts you ran." />
+                        <FeatureCard plate="shopline" glyph={<Pencil />} title="Shop direct line" body="Talk to the shop that wrapped your car, not their public DMs. Quotes, status, follow-ups." />
+                        <FeatureCard plate="garage" glyph={<Diamond />} title="Garage that belongs to you" body="Your photos, your specs, your history. Delete anytime — fully." />
+                        <FeatureCard plate="nearyou" glyph={<Sparkle />} title="Host your own meets" body="Verified hosts set the capacity, run the waitlist, sell packages and invite by email." />
+                        <FeatureCard plate="private" glyph={<Waves />} title="The store" body="Film, parts and merch from the shops on Rollout. One checkout, shipped by the shop that sells it." />
                     </div>
                 </div>
             </section>
@@ -270,7 +271,7 @@ export default async function HomePage() {
     );
 }
 
-function FeatureCard({ plate, glyph, title, body }: { plate: string; glyph: string; title: string; body: string }) {
+function FeatureCard({ plate, glyph, title, body }: { plate: string; glyph: React.ReactNode; title: string; body: string }) {
     return (
         <div className="feature-card corner-wrap rv">
             <span className="corner-bottom-left" />

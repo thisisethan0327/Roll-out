@@ -1,6 +1,7 @@
 'use client';
 import { useTransition } from 'react';
 import { removeStaff, setStaffRole, nominateHostAction } from './actions';
+import { Check } from '@/components/icons';
 
 const ROLES = ['owner', 'admin', 'manager', 'installer', 'staff'] as const;
 
@@ -86,7 +87,7 @@ export function StaffRow({
             <td style={{ textAlign: 'right' }}>
                 <div style={{ display: 'inline-flex', gap: 6, alignItems: 'center', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
                     {hostStatus === 'verified' ? (
-                        <span className="admin-pill neon" title="Verified individual host">HOST ✓</span>
+                        <span className="admin-pill neon" title="Verified individual host">HOST <Check /></span>
                     ) : hostStatus === 'pending' ? (
                         <span className="admin-pill gold" title="Host nomination under review">HOST PENDING</span>
                     ) : canNominate ? (

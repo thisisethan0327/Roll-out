@@ -6,6 +6,7 @@
 import Link from 'next/link';
 import { requireVerifiedHost } from '@/lib/me-guard';
 import { NewHostEventForm } from './NewHostEventForm';
+import { ChevronLeft } from '@/components/icons';
 
 export const metadata = { title: 'Host Event' };
 
@@ -19,7 +20,7 @@ export default async function NewHostEventPage() {
                     <div className="admin-page-title">HOST EVENT</div>
                     <div className="admin-page-sub">YOUR COMMUNITY EVENT · NO SHOP</div>
                 </div>
-                <Link href="/me/events" className="admin-action-btn muted" style={{ textDecoration: 'none' }}>‹ BACK</Link>
+                <Link href="/me/events" className="admin-action-btn muted" style={{ textDecoration: 'none' }}><ChevronLeft /> BACK</Link>
             </div>
 
             <NewHostEventForm />

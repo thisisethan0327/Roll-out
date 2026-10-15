@@ -6,6 +6,7 @@
 import Link from 'next/link';
 import { requireShopMemberBySlug } from '@/lib/auth-guard';
 import { createCustomer } from '../actions';
+import { ChevronLeft, ChevronRight } from '@/components/icons';
 
 export const metadata = { title: 'New Customer' };
 
@@ -35,7 +36,7 @@ export default async function NewCustomerPage({
                             textDecoration: 'none',
                         }}
                     >
-                        ‹ ALL CUSTOMERS
+                        <ChevronLeft /> ALL CUSTOMERS
                     </Link>
                     <div className="admin-page-title">NEW CUSTOMER</div>
                     <div className="admin-page-sub">CREATE A CONTACT + OPTIONAL FIRST VEHICLE</div>
@@ -77,7 +78,7 @@ export default async function NewCustomerPage({
 
                     <div>
                         <button type="submit" className="admin-action-btn">
-                            CREATE CUSTOMER ›
+                            CREATE CUSTOMER <ChevronRight />
                         </button>
                     </div>
                 </form>

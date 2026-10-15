@@ -9,6 +9,7 @@ import Link from 'next/link';
 import { requireConsumer } from '@/lib/me-guard';
 import { loadMyOrders, formatMoney } from '@/lib/medusa-customer';
 import { fmtDay, StatusPill, EmptyRow } from '../ui';
+import { ChevronRight } from '@/components/icons';
 
 export const dynamic = 'force-dynamic';
 
@@ -161,7 +162,7 @@ export default async function OrdersPage() {
                                     color: 'var(--gold)',
                                 }}
                             >
-                                VIEW DETAILS ›
+                                VIEW DETAILS <ChevronRight />
                             </div>
                         </Link>
                     ))}

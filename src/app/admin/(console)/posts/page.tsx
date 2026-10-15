@@ -1,5 +1,6 @@
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { PostActions } from './PostActions';
+import { CircleDot, Heart } from '@/components/icons';
 
 export const metadata = { title: 'Posts' };
 
@@ -108,7 +109,7 @@ export default async function PostsPage({
                                         </div>
                                     </td>
                                     <td>
-                                        ♥ {p.like_count} · ◉ {p.comment_count}
+                                        <Heart fill="currentColor" /> {p.like_count} · <CircleDot /> {p.comment_count}
                                     </td>
                                     <td>
                                         {p.deleted_at && <span className="admin-pill warn">DELETED</span>}

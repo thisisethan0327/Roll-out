@@ -3,6 +3,7 @@ import { useState, useTransition } from 'react';
 import type { CustomerAddress } from '@/lib/medusa-address';
 import { deleteAddressAction, saveAddressAction } from './actions';
 import { PendingButton } from '@/components/feedback';
+import { ChevronRight } from '@/components/icons';
 
 const US_STATES = ['AL','AK','AZ','AR','CA','CO','CT','DE','DC','FL','GA','HI','ID','IL','IN','IA','KS','KY','LA','ME','MD','MA','MI','MN','MS','MO','MT','NE','NV','NH','NJ','NM','NY','NC','ND','OH','OK','OR','PA','RI','SC','SD','TN','TX','UT','VT','VA','WA','WV','WI','WY'];
 type Draft = Omit<CustomerAddress, 'id' | 'isDefault'> & { id: string | null; isDefault: boolean };
@@ -103,7 +104,7 @@ export function AddressBook({ initial, connected }: { initial: CustomerAddress[]
                     </label>
                     <div style={{ display: 'flex', gap: 8, marginTop: 14, flexWrap: 'wrap' }}>
                         <PendingButton type="submit" pending={pending} pendingLabel="SAVING" className="admin-login-btn">
-                            {draft.id ? 'SAVE ADDRESS ›' : 'ADD ADDRESS ›'}
+                            {draft.id ? 'SAVE ADDRESS' : 'ADD ADDRESS'} <ChevronRight />
                         </PendingButton>
                         <button type="button" className="admin-action-btn muted" onClick={() => setDraft(null)}>CANCEL</button>
                     </div>

@@ -11,6 +11,7 @@
  * instead of reloading in a loop.
  */
 import { useEffect, useState } from 'react';
+import { ChevronRight } from '@/components/icons';
 
 const KEY = 'rollout:auto-reload';
 const RELOAD_WINDOW_MS = 30_000;
@@ -81,7 +82,7 @@ export function StaleDeployRecovery({ error }: { error: Error & { digest?: strin
             </p>
             {showRetry ? (
                 <a href="/me/event-tickets" style={{ color: "#ffb733", fontSize: 12, letterSpacing: "0.2em" }}>
-                    MY TICKETS ›
+                    MY TICKETS <ChevronRight />
                 </a>
             ) : null}
             {showRetry ? (

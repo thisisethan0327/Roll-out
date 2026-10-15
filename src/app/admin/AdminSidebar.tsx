@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useRouter } from 'next/navigation';
 import { getSupabaseBrowser } from '@/lib/supabase/browser';
+import { ChevronRight } from '@/components/icons';
 
 type NavItem = {
     href: string;
@@ -79,7 +80,7 @@ export function AdminSidebar({
                                         <span className="admin-sidebar-badge">{appealsCount}</span>
                                     )}
                                 </span>
-                                {active && <span>›</span>}
+                                {active && <span><ChevronRight /></span>}
                             </Link>
                         );
                     })}

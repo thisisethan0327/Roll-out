@@ -5,6 +5,7 @@
  */
 import Link from 'next/link';
 import styles from './cover-story.module.css';
+import { ChevronRight } from '@/components/icons';
 
 export function ActionsToolbar({
     calUrl,
@@ -30,7 +31,7 @@ export function ActionsToolbar({
             ) : null}
             {manageHref ? (
                 <Link href={manageHref} className={styles.actionBtn}>
-                    HOST · MANAGE THIS EVENT ›
+                    HOST · MANAGE THIS EVENT <ChevronRight />
                 </Link>
             ) : null}
         </div>

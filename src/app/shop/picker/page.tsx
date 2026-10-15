@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { requireSession, listMyShops } from '@/lib/auth-guard';
+import { ChevronRight } from '@/components/icons';
 
 export const metadata = { title: 'Choose Shop' };
 
@@ -74,7 +75,7 @@ export default async function ShopPickerPage() {
                                     @{s.slug} · {s.role.toUpperCase()}
                                 </div>
                             </div>
-                            <span style={{ color: 'var(--gold)', fontSize: 18 }}>›</span>
+                            <span style={{ color: 'var(--gold)', fontSize: 18 }}><ChevronRight /></span>
                         </Link>
                     ))}
                 </div>

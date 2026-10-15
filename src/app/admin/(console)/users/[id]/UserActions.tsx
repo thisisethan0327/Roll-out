@@ -17,6 +17,7 @@ import {
     banUser,
     unbanUser,
 } from '../actions';
+import { Check } from '@/components/icons';
 
 type Duration = '24h' | '7d' | '30d' | 'date' | 'permanent';
 const DURATION_LABEL: Record<Duration, string> = {
@@ -160,7 +161,7 @@ export function UserActions({
                 disabled={pending}
                 onClick={() => run(() => setVerified(profileId, !isVerified))}
             >
-                {isVerified ? 'UNVERIFY' : 'VERIFY ✓'}
+                {isVerified ? 'UNVERIFY' : <>VERIFY <Check /></>}
             </button>
             {kind === 'user' &&
                 (isPlatformAdmin ? (

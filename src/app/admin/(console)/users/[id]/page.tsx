@@ -22,6 +22,7 @@ import { REFUNDING_STALE_MS } from '@/lib/ban-refunds';
 import { isBanSchemaMissing, isBannedUntil, describeBanEnd } from '@/lib/ban';
 import { loadAuditForProfile } from '@/lib/admin-audit';
 import { AdminAuditTable } from '@/components/AdminAuditTable';
+import { Check, ChevronLeft, ChevronRight } from '@/components/icons';
 
 export const metadata = { title: 'User · Detail' };
 export const dynamic = 'force-dynamic';
@@ -253,7 +254,7 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
             <>
                 <div className="admin-empty">USER NOT FOUND</div>
                 <Link href="/admin/users" className="admin-action-btn muted" style={{ textDecoration: 'none' }}>
-                    ‹ ALL USERS
+                    <ChevronLeft /> ALL USERS
                 </Link>
             </>
         );
@@ -299,7 +300,7 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
                 </div>
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                     <Link href="/admin/users" className="admin-action-btn muted" style={{ textDecoration: 'none' }}>
-                        ‹ ALL USERS
+                        <ChevronLeft /> ALL USERS
                     </Link>
                     {p.kind === 'user' && (
                         <Link
@@ -307,11 +308,11 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
                             className="admin-action-btn muted"
                             style={{ textDecoration: 'none' }}
                         >
-                            MESSAGES ›
+                            MESSAGES <ChevronRight />
                         </Link>
                     )}
                     <Link href={`/u/${p.handle}`} className="admin-action-btn muted" style={{ textDecoration: 'none' }}>
-                        PUBLIC PROFILE ›
+                        PUBLIC PROFILE <ChevronRight />
                     </Link>
                 </div>
             </div>
@@ -320,7 +321,7 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
                 <span className={`admin-pill ${p.kind === 'shop_page' ? 'gold' : ''}`}>
                     {p.kind === 'shop_page' ? 'SHOP' : 'USER'}
                 </span>
-                {p.is_verified && <span className="admin-pill gold">✓ VERIFIED</span>}
+                {p.is_verified && <span className="admin-pill gold"><Check /> VERIFIED</span>}
                 {hostStatus === 'verified' && <span className="admin-pill neon">VERIFIED HOST</span>}
                 {hostStatus === 'pending' && <span className="admin-pill gold">HOST PENDING</span>}
                 {data.isPlatformAdmin && <span className="admin-pill warn">GOD</span>}
@@ -805,7 +806,7 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
                                         {open && (
                                             <div>
                                                 <Link href="/admin/appeals" className="admin-action-btn" style={{ textDecoration: 'none' }}>
-                                                    DECIDE IN THE APPEALS QUEUE ›
+                                                    DECIDE IN THE APPEALS QUEUE <ChevronRight />
                                                 </Link>
                                             </div>
                                         )}
@@ -860,7 +861,7 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
             <SectionHead title="VERIFICATION REQUESTS" sub={`${verifs.length} TOTAL`} />
             <div style={{ marginBottom: 8 }}>
                 <Link href="/admin/verifications" className="admin-action-btn" style={{ textDecoration: 'none' }}>
-                    OPEN VERIFICATION QUEUE ›
+                    OPEN VERIFICATION QUEUE <ChevronRight />
                 </Link>
             </div>
             <div className="admin-table-wrap">

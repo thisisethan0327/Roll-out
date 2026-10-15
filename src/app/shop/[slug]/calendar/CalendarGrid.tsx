@@ -1,5 +1,6 @@
 'use client';
 import { useRouter } from 'next/navigation';
+import { ChevronLeft, ChevronRight } from '@/components/icons';
 
 function fmtYmd(d: Date): string {
     const y = d.getFullYear();
@@ -29,13 +30,13 @@ export function CalendarNav({ slug, weekStart }: { slug: string; weekStart: stri
     return (
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             <button className="admin-action-btn muted" onClick={() => go(-7)}>
-                ‹ PREV WEEK
+                <ChevronLeft /> PREV WEEK
             </button>
             <button className="admin-action-btn" onClick={() => go(null)}>
                 TODAY
             </button>
             <button className="admin-action-btn muted" onClick={() => go(7)}>
-                NEXT WEEK ›
+                NEXT WEEK <ChevronRight />
             </button>
         </div>
     );

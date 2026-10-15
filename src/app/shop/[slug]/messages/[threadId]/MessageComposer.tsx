@@ -7,6 +7,7 @@
  */
 import { useState, useTransition, useRef } from 'react';
 import { sendMessageAsShop } from '../actions';
+import { ChevronRight } from '@/components/icons';
 
 export function MessageComposer({
     threadId,
@@ -128,7 +129,7 @@ export function MessageComposer({
                     onClick={submit}
                     disabled={isPending || !body.trim()}
                 >
-                    {isPending ? 'SENDING…' : 'SEND ›'}
+                    {isPending ? 'SENDING…' : <>SEND <ChevronRight /></>}
                 </button>
             </div>
         </div>

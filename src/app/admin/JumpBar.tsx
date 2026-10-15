@@ -9,6 +9,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { JumpGroup, JumpHit } from '@/lib/jump-search';
+import { ArrowUpRight, ChevronRight } from '@/components/icons';
 
 const DEBOUNCE_MS = 220;
 
@@ -177,7 +178,7 @@ export function JumpBar() {
                                             </span>
                                             <span className="jump-hit-tags">
                                                 {hit.badge && <span className="jump-badge">{hit.badge}</span>}
-                                                {hit.external && <span className="jump-ext">↗</span>}
+                                                {hit.external && <span className="jump-ext"><ArrowUpRight /></span>}
                                             </span>
                                         </button>
                                     );
@@ -186,7 +187,7 @@ export function JumpBar() {
                         ))
                     )}
                     <button type="button" className="jump-seeall" onClick={seeAll}>
-                        SEE ALL RESULTS ›
+                        SEE ALL RESULTS <ChevronRight />
                     </button>
                 </div>
             )}

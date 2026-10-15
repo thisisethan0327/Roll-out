@@ -3,6 +3,7 @@
 import { useActionState } from 'react';
 import { submitShopApplication } from './actions';
 import { APPLY_INITIAL, SHOP_CATEGORIES } from './types';
+import { ChevronRight } from '@/components/icons';
 
 export function ApplyForm({ withCommerce }: { withCommerce: boolean }) {
     const [state, action, pending] = useActionState(submitShopApplication, APPLY_INITIAL);
@@ -116,7 +117,7 @@ export function ApplyForm({ withCommerce }: { withCommerce: boolean }) {
 
             <div>
                 <button type="submit" className="admin-form-btn" disabled={pending} style={{ justifySelf: 'start' }}>
-                    {pending ? 'SUBMITTING…' : 'SUBMIT APPLICATION ›'}
+                    {pending ? 'SUBMITTING…' : <>SUBMIT APPLICATION <ChevronRight /></>}
                 </button>
             </div>
             <p style={{ color: 'var(--text-2)', fontSize: 12, margin: 0, lineHeight: 1.6 }}>

@@ -4,6 +4,7 @@
  */
 import Link from 'next/link';
 import styles from './cover-story.module.css';
+import { Check } from '@/components/icons';
 
 function initials(name: string, handle: string): string {
     const src = (name?.trim() || handle || '·').trim();
@@ -29,7 +30,7 @@ export function HostBlock({
                 {hostHandle ? (
                     <Link href={`/u/${hostHandle}`} className={styles.hostName}>
                         {hostName}
-                        {hostVerified ? ' ✓' : ''}
+                        {hostVerified ? <> <Check /></> : ''}
                     </Link>
                 ) : (
                     <span className={styles.hostName}>{hostName}</span>

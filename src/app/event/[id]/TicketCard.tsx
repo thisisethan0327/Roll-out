@@ -5,13 +5,14 @@
  * lives here, purely the coupon frame (corner notches + cut line + eyebrow).
  */
 import styles from './cover-story.module.css';
+import { Scissors } from '@/components/icons';
 
 export function TicketCard({ children }: { children: React.ReactNode }) {
     return (
         <div className={styles.ticketWrap}>
             <div className={styles.ticketCoupon}>
                 <div className={styles.cutLineLabel}>
-                    <span>✂ CUT HERE</span>
+                    <span><Scissors /> CUT HERE</span>
                 </div>
                 <hr className={styles.cutLine} />
                 {children}

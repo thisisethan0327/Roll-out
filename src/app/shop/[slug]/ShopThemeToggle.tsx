@@ -11,6 +11,7 @@
  * so the marketing site, /me, and /admin are unaffected.
  */
 import { useEffect, useState } from 'react';
+import { Moon, Sun } from '@/components/icons';
 
 const COOKIE = 'rollout_shop_theme';
 const LS_KEY = 'rollout_shop_theme';
@@ -53,10 +54,10 @@ export function ShopThemeToggle() {
         >
             <span className="shop-theme-toggle-track" data-on={isLight}>
                 <span className="shop-theme-toggle-icon sun" aria-hidden>
-                    ☀
+                    <Sun />
                 </span>
                 <span className="shop-theme-toggle-icon moon" aria-hidden>
-                    ☾
+                    <Moon />
                 </span>
                 <span className="shop-theme-toggle-knob" />
             </span>

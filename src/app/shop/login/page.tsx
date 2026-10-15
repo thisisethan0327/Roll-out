@@ -5,6 +5,7 @@ import { BrokerSignInButton } from '@/components/auth/BrokerSignInButton';
 import { BrokerHashSession } from '@/components/auth/BrokerHashSession';
 import { tenantForHost } from '@/lib/tenant-hosts';
 import { brandForSlug } from '@/lib/tenant-brand';
+import { ArrowRight } from '@/components/icons';
 
 // A sign-in / application door: crawlable, never a search result (no ?next= duplicates).
 export const metadata = { title: 'Shop · Sign In', robots: { index: false, follow: true } };
@@ -79,7 +80,7 @@ export default async function ShopLoginPage({
                         {/* The apply route is Rollout's, and a tenant door refuses
                             it — so only offer it where it leads somewhere. */}
                         {onTenantDoor ? null : (
-                            <a href="/shop/apply?commerce=1" style={{ textDecoration: 'underline' }}>Open a shop →</a>
+                            <a href="/shop/apply?commerce=1" style={{ textDecoration: 'underline' }}>Open a shop <ArrowRight /></a>
                         )}
                     </div>
                 )}

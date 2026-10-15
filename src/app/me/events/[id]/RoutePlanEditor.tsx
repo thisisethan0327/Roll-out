@@ -31,6 +31,7 @@ import RoutePickerMapLoader from './RoutePickerMapLoader';
 import RouteMapLoader from '@/app/event/[id]/RouteMapLoader';
 import { buildRoutePoints, type RoutePlanStop } from '@/lib/route-plan';
 import { setEventRoutePlan, type RoutePlanStopInput, type SetRoutePlanResult } from '../actions';
+import { ArrowDown, ArrowUp, Check, MapPin } from '@/components/icons';
 
 const KIND_OPTIONS: { value: string; label: string }[] = [
     { value: 'stop', label: 'STOP' },
@@ -277,7 +278,7 @@ export function RoutePlanEditor({
                     onClick={() => setPickMode('destination')}
                     disabled={busy}
                 >
-                    📍 PICK ON MAP
+                    <MapPin /> PICK ON MAP
                 </button>
             </div>
 
@@ -364,8 +365,8 @@ export function RoutePlanEditor({
                                 />
                             </div>
                             <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
-                                <button type="button" data-testid="stop-move-up" className="admin-action-btn muted" onClick={() => moveStop(i, -1)} disabled={busy || i === 0}>
-                                    ↑
+                                <button type="button" data-testid="stop-move-up" className="admin-action-btn muted" onClick={() => moveStop(i, -1)} disabled={busy || i === 0} aria-label="Move stop up">
+                                    <ArrowUp />
                                 </button>
                                 <button
                                     type="button"
@@ -373,8 +374,9 @@ export function RoutePlanEditor({
                                     className="admin-action-btn muted"
                                     onClick={() => moveStop(i, 1)}
                                     disabled={busy || i === stops.length - 1}
+                                    aria-label="Move stop down"
                                 >
-                                    ↓
+                                    <ArrowDown />
                                 </button>
                                 <button type="button" data-testid="stop-remove" className="admin-action-btn danger" onClick={() => removeStop(i)} disabled={busy}>
                                     REMOVE
@@ -499,7 +501,7 @@ export function RoutePlanEditor({
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 4 }}>
                 <button type="button" data-testid="save-route" className="admin-form-btn" onClick={onSaveRoute} disabled={busy}>
-                    {savedFlash ? 'ROUTE SAVED ✓' : saving ? 'SAVING…' : 'SAVE ROUTE'}
+                    {savedFlash ? <>ROUTE SAVED <Check /></> : saving ? 'SAVING…' : 'SAVE ROUTE'}
                 </button>
                 {dirty && !saving && !savedFlash ? (
                     <span className="text-dim" style={{ fontSize: 11 }}>

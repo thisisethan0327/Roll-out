@@ -23,6 +23,7 @@ import { RealtimeRefresh } from './RealtimeRefresh';
 import { MessageComposer } from './MessageComposer';
 import { ShopThreadComposer } from './ShopThreadComposer';
 import { markThreadRead } from '../actions';
+import { ChevronLeft, ChevronRight } from '@/components/icons';
 
 export const metadata = { title: 'Thread' };
 
@@ -227,7 +228,7 @@ export default async function ShopThreadPage({
                             className="admin-action-btn muted"
                             style={{ textDecoration: 'none' }}
                         >
-                            VIEW USER ›
+                            VIEW USER <ChevronRight />
                         </Link>
                     )}
                     <Link
@@ -235,7 +236,7 @@ export default async function ShopThreadPage({
                         className="admin-action-btn muted"
                         style={{ textDecoration: 'none' }}
                     >
-                        ‹ BACK
+                        <ChevronLeft /> BACK
                     </Link>
                 </div>
             </div>

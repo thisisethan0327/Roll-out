@@ -14,6 +14,7 @@ import { getSellingShops } from '@/lib/store-shops';
 import { fetchCatalogByHandles, type MedusaProduct } from '@/lib/medusa';
 import { ProductCard } from '@/components/ProductCard';
 import { CartLink } from '../CartLink';
+import { ArrowRight } from '@/components/icons';
 
 export const dynamic = 'force-dynamic';
 
@@ -159,7 +160,7 @@ function ShopBlock({
                         textDecoration: 'none',
                     }}
                 >
-                    VISIT SHOP →
+                    VISIT SHOP <ArrowRight />
                 </Link>
             </div>
 

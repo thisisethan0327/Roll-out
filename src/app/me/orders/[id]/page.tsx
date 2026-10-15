@@ -26,6 +26,7 @@ import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { refundPolicyShortLine, REFUND_POLICY_PATH } from '@/lib/refund-policy';
 import { ticketsForOrder, sizeLabel } from '@/lib/event-tickets';
 import { fmtDate, fmtDay, StatusPill, EmptyRow } from '../../ui';
+import { ArrowUpRight, ChevronLeft, ChevronRight } from '@/components/icons';
 
 export const dynamic = 'force-dynamic';
 
@@ -194,7 +195,7 @@ export default async function OrderDetailPage({
                     <p className="text-dim" style={{ fontSize: 13, margin: 0, lineHeight: 1.6 }}>
                         {refundPolicyLine}{' '}
                         <Link href={REFUND_POLICY_PATH} className="text-link" style={{ color: 'var(--gold)', textDecoration: 'none' }}>
-                            Full policy ›
+                            Full policy <ChevronRight />
                         </Link>
                     </p>
                 </section>
@@ -365,7 +366,7 @@ export default async function OrderDetailPage({
                                             className="text-link"
                                             style={{ color: 'var(--gold)', textDecoration: 'none' }}
                                         >
-                                            {t.number ?? 'Track shipment'} ↗
+                                            {t.number ?? 'Track shipment'} <ArrowUpRight />
                                         </a>
                                     ) : (
                                         <span style={{ color: 'var(--text)' }}>{t.number}</span>
@@ -427,7 +428,7 @@ function BackLink() {
                 color: 'var(--text-2)',
             }}
         >
-            ‹ ALL ORDERS
+            <ChevronLeft /> ALL ORDERS
         </Link>
     );
 }

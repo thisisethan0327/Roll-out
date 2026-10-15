@@ -9,6 +9,7 @@
 import Link from 'next/link';
 import { requireShopMemberBySlug } from '@/lib/auth-guard';
 import { NewTicketForm } from './NewTicketForm';
+import { ChevronLeft } from '@/components/icons';
 
 export const metadata = { title: 'New Ticket' };
 
@@ -37,7 +38,7 @@ export default async function NewTicketPage({
                             textDecoration: 'none',
                         }}
                     >
-                        ‹ ALL TICKETS
+                        <ChevronLeft /> ALL TICKETS
                     </Link>
                     <div className="admin-page-title">NEW TICKET</div>
                     <div className="admin-page-sub">{shop.name.toUpperCase()} · MANUAL ENTRY</div>

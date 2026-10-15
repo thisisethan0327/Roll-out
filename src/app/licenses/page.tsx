@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { ArrowLeft, ArrowRight } from '@/components/icons';
 
 export const metadata: Metadata = {
     alternates: { canonical: '/licenses' },
@@ -38,7 +39,7 @@ export default function LicensesPage() {
                     non-exhaustive list of the most-load-bearing libraries we use. A complete machine-readable
                     license file ships with the mobile app via{' '}
                     <code style={{ color: 'var(--gold)', fontFamily: 'var(--font-display)' }}>expo-licenses</code>{' '}
-                    — open Settings → Open-Source Licenses inside the app to see every dependency.
+                    — open Settings <ArrowRight /> Open-Source Licenses inside the app to see every dependency.
                 </p>
 
                 <div style={{ marginTop: 32, border: '1px solid var(--line)', background: 'var(--bg-2)' }}>
@@ -84,7 +85,7 @@ export default function LicensesPage() {
 
                 <div style={{ marginTop: 48 }}>
                     <Link href="/" className="mono-row">
-                        <span className="accent">←</span> BACK TO ROLLOUT.CLUB
+                        <span className="accent"><ArrowLeft /></span> BACK TO ROLLOUT.CLUB
                     </Link>
                 </div>
             </div>

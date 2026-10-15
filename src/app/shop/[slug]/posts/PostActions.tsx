@@ -1,6 +1,7 @@
 'use client';
 import { useTransition } from 'react';
 import { softDeletePost, undeletePost } from './actions';
+import { ArrowUpRight } from '@/components/icons';
 
 const MANAGER_ROLES = new Set(['owner', 'admin', 'manager']);
 
@@ -37,7 +38,7 @@ export function PostActions({
                 rel="noopener noreferrer"
                 style={{ textDecoration: 'none' }}
             >
-                VIEW ↗
+                VIEW <ArrowUpRight />
             </a>
             {canManage && !deleted && (
                 <button

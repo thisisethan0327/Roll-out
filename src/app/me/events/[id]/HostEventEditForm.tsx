@@ -19,6 +19,7 @@ import { EventStartAtField } from '@/components/EventStartAtField';
 import { RoutePlanEditor } from './RoutePlanEditor';
 import { parseRoutePlan } from '@/lib/route-plan';
 import { CancelAndRefundAllButton } from '@/components/CancelAndRefundAllButton';
+import { Check } from '@/components/icons';
 
 const VISIBILITY: { value: string; label: string }[] = [
     { value: 'public', label: 'PUBLIC' },
@@ -185,7 +186,7 @@ export function HostEventEditForm({
 
             <div style={{ marginTop: 18, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 <button type="submit" className="admin-form-btn" disabled={pending}>
-                    {savedFlash ? 'SAVED ✓' : 'SAVE CHANGES'}
+                    {savedFlash ? <>SAVED <Check /></> : 'SAVE CHANGES'}
                 </button>
                 {!event.cancelled_at && isPaidEvent ? (
                     <CancelAndRefundAllButton

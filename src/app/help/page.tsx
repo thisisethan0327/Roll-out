@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { ArrowLeft } from '@/components/icons';
 
 export const metadata: Metadata = {
     alternates: { canonical: '/help' },
@@ -102,7 +103,7 @@ export default function HelpPage() {
 
                 <div style={{ marginTop: 48 }}>
                     <Link href="/" className="mono-row">
-                        <span className="accent">←</span> BACK TO ROLLOUT.CLUB
+                        <span className="accent"><ArrowLeft /></span> BACK TO ROLLOUT.CLUB
                     </Link>
                 </div>
             </div>

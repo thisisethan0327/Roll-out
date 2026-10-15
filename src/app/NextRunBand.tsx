@@ -5,6 +5,7 @@ import { hasDrawnRoute, snapToSite, ROUTE_ORIGIN } from '@/lib/map-sites';
 import { StylisedMap, type MapPin } from '@/components/map/StylisedMap';
 import { UpdatePill } from '@/components/AnnouncementBar';
 import { getEventIdsWithAnnouncements } from '@/lib/announcements';
+import { ArrowRight, ChevronRight } from '@/components/icons';
 
 /**
  * "／ NEXT RUN" — the map band below the home hero (UI polish §6). The map is
@@ -98,11 +99,11 @@ export async function NextRunBand() {
                 <p className="text-dim" style={{ marginTop: 10, fontSize: 15 }}>
                     {formatEventTime(featured.start_at, featured.time_zone)}
                     {featured.location_name ? ` · ${featured.location_name}` : ''}
-                    {dest ? ` → ${dest}` : ''}
+                    {dest ? <> <ArrowRight /> {dest}</> : ''}
                 </p>
             </div>
             <Link href="/meets" className="mono-row" style={{ textDecoration: 'none', minHeight: 44, alignItems: 'center' }}>
-                <span className="accent">›</span> ALL MEETS
+                <span className="accent"><ChevronRight /></span> ALL MEETS
             </Link>
         </div>
     );
@@ -166,7 +167,7 @@ export async function NextRunBand() {
                             <div className="pop-when">{formatEventTime(featured.start_at, featured.time_zone)}</div>
                             <div className="pop-where">
                                 {featured.location_name ?? 'Meet point TBA'}
-                                {dest ? ` → ${dest}` : ''}
+                                {dest ? <> <ArrowRight /> {dest}</> : ''}
                             </div>
                             {spots != null ? (
                                 <div className="pop-spots">

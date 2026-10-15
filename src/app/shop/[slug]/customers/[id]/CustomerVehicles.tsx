@@ -6,6 +6,7 @@
 import { useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { addVehicle, updateVehicle, deleteVehicle } from '../actions';
+import { X } from '@/components/icons';
 
 const MANAGER_ROLES = new Set(['owner', 'admin', 'manager']);
 
@@ -161,10 +162,11 @@ export function CustomerVehicles({
                                                         type="button"
                                                         className="admin-action-btn danger"
                                                         onClick={() => remove(v.id)}
+                                                        aria-label={armedDelete === v.id ? 'Confirm remove vehicle' : 'Remove vehicle'}
                                                         disabled={pending}
                                                         style={{ marginLeft: 6 }}
                                                     >
-                                                        {armedDelete === v.id ? 'SURE?' : '✕'}
+                                                        {armedDelete === v.id ? 'SURE?' : <X />}
                                                     </button>
                                                 )}
                                             </td>

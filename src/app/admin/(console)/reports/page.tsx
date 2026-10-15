@@ -14,6 +14,7 @@ import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { relativeTime } from '@/lib/admin-user-facts';
 import { ReportActions } from './ReportActions';
 import type { ReportStatus } from './actions';
+import { ChevronRight } from '@/components/icons';
 
 export const metadata = { title: 'Reports' };
 export const dynamic = 'force-dynamic';
@@ -209,7 +210,7 @@ function Target({ type, targetId, pv }: { type: string; targetId: string; pv: Pr
                 )}
                 {type === 'event' && (
                     <Link href={`/admin/events/${targetId}`} className="text-link">
-                        OPEN EVENT ›
+                        OPEN EVENT <ChevronRight />
                     </Link>
                 )}
             </div>

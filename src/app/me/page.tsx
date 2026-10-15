@@ -14,6 +14,7 @@ import {
 import { resolveCover, coverFocus } from '@/lib/event-covers';
 import { fmtDate, StatusPill, Panel, EmptyRow } from './ui';
 import { HostPanel } from './HostPanel';
+import { ChevronRight } from '@/components/icons';
 
 export const dynamic = 'force-dynamic';
 
@@ -122,8 +123,8 @@ export default async function MeOverview({ searchParams }: { searchParams: Promi
             >
                 <QuickLink href="/me/appointments" label="APPOINTMENTS" value={String(appts.length)} />
                 <QuickLink href="/me/tickets" label="TICKETS" value={String(tickets.length)} />
-                <QuickLink href="/me/orders" label="ORDERS" value="›" />
-                <QuickLink href="/me/garage" label="GARAGE" value="›" />
+                <QuickLink href="/me/orders" label="ORDERS" value={<ChevronRight />} />
+                <QuickLink href="/me/garage" label="GARAGE" value={<ChevronRight />} />
             </div>
 
             {/* BECOME A HOST */}
@@ -238,7 +239,7 @@ const rowStyle: React.CSSProperties = {
     textDecoration: 'none',
 };
 
-function QuickLink({ href, label, value }: { href: string; label: string; value: string }) {
+function QuickLink({ href, label, value }: { href: string; label: string; value: React.ReactNode }) {
     return (
         <Link
             href={href}

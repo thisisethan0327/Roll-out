@@ -1,6 +1,7 @@
 'use client';
 import { useState, useTransition } from 'react';
 import { addService } from './actions';
+import { ChevronRight } from '@/components/icons';
 
 export function AddServiceForm({ shopId }: { shopId: number }) {
     const [open, setOpen] = useState(false);
@@ -194,7 +195,7 @@ export function AddServiceForm({ shopId }: { shopId: number }) {
                             className="admin-action-btn"
                             disabled={pending}
                         >
-                            {pending ? 'SAVING…' : 'CREATE ›'}
+                            {pending ? 'SAVING…' : <>CREATE <ChevronRight /></>}
                         </button>
                     </div>
                 </form>

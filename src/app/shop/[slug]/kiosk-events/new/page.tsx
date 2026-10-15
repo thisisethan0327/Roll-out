@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { requireShopMemberBySlug } from '@/lib/auth-guard';
 import { createKioskEvent } from '../actions';
 import { TagListEditor } from '../TagListEditor';
+import { ChevronLeft, ChevronRight } from '@/components/icons';
 
 export const metadata = { title: 'New Kiosk Event' };
 
@@ -35,7 +36,7 @@ export default async function NewKioskEventPage({
                     className="admin-action-btn muted"
                     style={{ textDecoration: 'none' }}
                 >
-                    ‹ BACK
+                    <ChevronLeft /> BACK
                 </Link>
             </div>
 
@@ -120,7 +121,7 @@ export default async function NewKioskEventPage({
 
                 <div style={{ marginTop: 18, display: 'flex', gap: 8 }}>
                     <button type="submit" className="admin-form-btn">
-                        CREATE DRAFT ›
+                        CREATE DRAFT <ChevronRight />
                     </button>
                     <Link
                         href={`/shop/${slug}/kiosk-events`}

@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { EventActions } from './EventActions';
+import { ChevronRight } from '@/components/icons';
 
 export const metadata = { title: 'Events' };
 
@@ -113,7 +114,7 @@ export default async function EventsPage() {
                                     <td style={{ textAlign: 'right' }}>
                                         <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
                                             <Link href={`/admin/events/${e.id}`} className="admin-action-btn">
-                                                OPEN ›
+                                                OPEN <ChevronRight />
                                             </Link>
                                             {!e.cancelled_at && (
                                                 <EventActions

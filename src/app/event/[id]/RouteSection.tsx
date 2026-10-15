@@ -7,6 +7,7 @@
 import type { RoutePoint, RoutePlanStop } from '@/lib/route-plan';
 import RouteMapLoader from './RouteMapLoader';
 import styles from './cover-story.module.css';
+import { ChevronRight, Flag } from '@/components/icons';
 
 export function RouteSection({
     routeStops,
@@ -63,7 +64,7 @@ export function RouteSection({
                     ))}
                     {hasDestination ? (
                         <li className={styles.routeStopItem}>
-                            <span className={styles.routeStopNum}>🏁</span>
+                            <span className={styles.routeStopNum}><Flag /></span>
                             <div style={{ minWidth: 0, flex: 1 }}>
                                 <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--text)' }}>{destinationName ?? 'Destination'}</div>
                                 <div style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 2 }}>FINISH</div>
@@ -81,7 +82,7 @@ export function RouteSection({
                         rel="noopener noreferrer"
                         style={{ fontSize: 12, fontFamily: 'var(--font-display)', letterSpacing: 'var(--track-wider)', textDecoration: 'none', borderBottom: '1px solid var(--line-mid)', paddingBottom: 2, color: 'var(--text-2)' }}
                     >
-                        OPEN IN GOOGLE MAPS ›
+                        OPEN IN GOOGLE MAPS <ChevronRight />
                     </a>
                 </div>
             ) : null}

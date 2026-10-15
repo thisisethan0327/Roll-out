@@ -14,6 +14,7 @@ import {
 import { formatMoney } from '@/lib/medusa-types';
 import type { Cart, ShippingOption, AddressInput } from '@/lib/medusa-types';
 import { Dots, SweepBar } from '../_ui';
+import { ArrowRight, Check } from '@/components/icons';
 
 type ShippingGroup = { key: string; title: string; note?: string; options: ShippingOption[] };
 
@@ -401,7 +402,7 @@ function CheckoutInner({
                                 <Field label="Phone (optional)" value={form.phone ?? ''} onChange={set('phone')} />
                             </Row2>
                             <button type="submit" className="btn btn-lg" disabled={pending} style={{ marginTop: 6 }}>
-                                {pending ? <>SAVING<Dots /></> : 'CONTINUE TO SHIPPING →'}
+                                {pending ? <>SAVING<Dots /></> : <>CONTINUE TO SHIPPING <ArrowRight /></>}
                             </button>
                         </form>
                     ) : (
@@ -465,7 +466,7 @@ function CheckoutInner({
                                 </>
                             )}
                             <button type="button" className="btn btn-lg" disabled={pending || !allShippingChosen} onClick={submitShipping} style={{ marginTop: 6 }}>
-                                {pending ? <>SAVING<Dots /></> : 'CONTINUE TO PAYMENT →'}
+                                {pending ? <>SAVING<Dots /></> : <>CONTINUE TO PAYMENT <ArrowRight /></>}
                             </button>
                         </div>
                     ) : step === 'payment' ? (
@@ -629,7 +630,7 @@ function StepBlock({
         <div style={{ border: `1px solid ${active ? 'var(--gold)' : 'var(--line)'}`, padding: 20, opacity: active || done ? 1 : 0.6 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: active ? 16 : 0 }}>
                 <div className="mono-row" style={{ fontSize: 12 }}>
-                    <span className="accent">{done ? '✓' : n}</span>
+                    <span className="accent">{done ? <Check /> : n}</span>
                     <span className="sep" />
                     <span style={{ color: 'var(--text)', letterSpacing: 1 }}>{title}</span>
                 </div>

@@ -6,6 +6,7 @@ import { EventCoverPicker } from '../EventCoverPicker';
 import { TierRowsEditor, type TierDraft } from '../TierRowsEditor';
 import { EventStartAtField } from '@/components/EventStartAtField';
 import { CancelAndRefundAllButton } from '@/components/CancelAndRefundAllButton';
+import { Check } from '@/components/icons';
 
 const VISIBILITY: { value: string; label: string }[] = [
     { value: 'public', label: 'PUBLIC' },
@@ -246,7 +247,7 @@ export function EventEditForm({
             <div style={{ marginTop: 18, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 {canManage && (
                     <button type="submit" className="admin-form-btn" disabled={pending}>
-                        {savedFlash ? 'SAVED ✓' : 'SAVE CHANGES'}
+                        {savedFlash ? <>SAVED <Check /></> : 'SAVE CHANGES'}
                     </button>
                 )}
                 {canManage && !event.cancelled_at && isPaidEvent && (

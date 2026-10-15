@@ -3,6 +3,7 @@ import { requireShopMemberBySlug } from '@/lib/auth-guard';
 import { getSupabaseAdmin, getSupabasePublicAdmin } from '@/lib/supabase/admin';
 import { CustomerVehicles } from './CustomerVehicles';
 import { CustomerEditForm } from './CustomerEditForm';
+import { Check, ChevronLeft } from '@/components/icons';
 
 export const metadata = { title: 'Customer · Detail' };
 
@@ -194,7 +195,7 @@ export default async function CustomerDetailPage({
                         className="admin-action-btn muted"
                         style={{ textDecoration: 'none' }}
                     >
-                        ‹ ALL CUSTOMERS
+                        <ChevronLeft /> ALL CUSTOMERS
                     </Link>
                 </div>
                 <div className="admin-empty">
@@ -239,7 +240,7 @@ async function RolloutBranch({
                         className="admin-action-btn muted"
                         style={{ textDecoration: 'none' }}
                     >
-                        ‹ ALL CUSTOMERS
+                        <ChevronLeft /> ALL CUSTOMERS
                     </Link>
                 </div>
                 <div className="admin-empty">NO ROLLOUT PROFILE WITH THIS ID.</div>
@@ -293,7 +294,7 @@ async function RolloutBranch({
                         </span>
                         {profile.is_verified ? (
                             <span className="admin-pill neon" style={{ marginLeft: 6 }}>
-                                ✓ VERIFIED
+                                <Check /> VERIFIED
                             </span>
                         ) : null}
                     </div>
@@ -303,7 +304,7 @@ async function RolloutBranch({
                     className="admin-action-btn muted"
                     style={{ textDecoration: 'none' }}
                 >
-                    ‹ ALL CUSTOMERS
+                    <ChevronLeft /> ALL CUSTOMERS
                 </Link>
             </div>
 
@@ -398,7 +399,7 @@ async function LegacyBranch({
                         className="admin-action-btn muted"
                         style={{ textDecoration: 'none' }}
                     >
-                        ‹ ALL CUSTOMERS
+                        <ChevronLeft /> ALL CUSTOMERS
                     </Link>
                 </div>
                 <div className="admin-empty">
@@ -451,7 +452,7 @@ async function LegacyBranch({
                     className="admin-action-btn muted"
                     style={{ textDecoration: 'none' }}
                 >
-                    ‹ ALL CUSTOMERS
+                    <ChevronLeft /> ALL CUSTOMERS
                 </Link>
             </div>
 

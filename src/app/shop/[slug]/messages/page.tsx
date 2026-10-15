@@ -20,6 +20,7 @@ import Link from 'next/link';
 import { requireShopMemberBySlug } from '@/lib/auth-guard';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { NewMessageDialog } from './NewMessageDialog';
+import { ChevronRight } from '@/components/icons';
 
 export const metadata = { title: 'Messages' };
 
@@ -343,7 +344,7 @@ export default async function ShopMessagesPage({
                     placeholder="SEARCH HANDLE OR NAME"
                 />
                 <button type="submit" className="admin-action-btn">
-                    SEARCH ›
+                    SEARCH <ChevronRight />
                 </button>
             </form>
 

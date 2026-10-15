@@ -13,6 +13,7 @@
 import Link from 'next/link';
 import { useActionState } from 'react';
 import { becomeHostAction } from './actions';
+import { ChevronRight } from '@/components/icons';
 
 type HostStatus = 'none' | 'pending' | 'verified';
 
@@ -57,7 +58,7 @@ export function HostPanel({
                     </p>
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                         <Link href="/me/events/new" className="admin-action-btn" style={{ textDecoration: 'none' }}>
-                            HOST AN EVENT ›
+                            HOST AN EVENT <ChevronRight />
                         </Link>
                         <Link href="/me/events" className="admin-action-btn muted" style={{ textDecoration: 'none' }}>
                             MY EVENTS
@@ -99,7 +100,7 @@ export function HostPanel({
                             <div style={{ color: 'var(--danger, #d33)', fontSize: 12 }}>{state.error}</div>
                         ) : null}
                         <button type="submit" className="admin-action-btn" disabled={pending} style={{ alignSelf: 'flex-start' }}>
-                            {pending ? 'SUBMITTING…' : 'APPLY TO HOST ›'}
+                            {pending ? 'SUBMITTING…' : <>APPLY TO HOST <ChevronRight /></>}
                         </button>
                     </form>
                 </>

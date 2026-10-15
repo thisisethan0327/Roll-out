@@ -19,6 +19,7 @@ import {
     removeGalleryImage,
     reorderGalleryImages,
 } from '../actions';
+import { ChevronLeft, ChevronRight, X } from '@/components/icons';
 
 const MANAGER_ROLES = new Set(['owner', 'admin', 'manager']);
 const BUCKET = 'kiosk-media';
@@ -198,7 +199,7 @@ export function KioskEventImages({
                                         onClick={() => move(i, -1)}
                                         aria-label="Move earlier"
                                     >
-                                        ‹
+                                        <ChevronLeft />
                                     </button>
                                     <button
                                         type="button"
@@ -207,7 +208,7 @@ export function KioskEventImages({
                                         onClick={() => move(i, 1)}
                                         aria-label="Move later"
                                     >
-                                        ›
+                                        <ChevronRight />
                                     </button>
                                     <button
                                         type="button"
@@ -216,7 +217,7 @@ export function KioskEventImages({
                                         onClick={() => remove(url)}
                                         aria-label="Remove photo"
                                     >
-                                        {armedRemove === url ? 'SURE?' : '✕'}
+                                        {armedRemove === url ? 'SURE?' : <X />}
                                     </button>
                                 </div>
                             )}

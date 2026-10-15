@@ -16,6 +16,7 @@ import {
     type EventTeaser,
 } from '@/lib/event-teaser-format';
 import styles from './cover-story.module.css';
+import { Check, ChevronRight, Lock } from '@/components/icons';
 
 function formatDate(iso: string | null, timeZone: string | null): string {
     if (!iso) return 'Date TBA';
@@ -45,7 +46,7 @@ export function LockedEvent({
                 <div className="container">
                     <div className={styles.lockedInner}>
                         <div className={styles.kickerRow}>
-                            <span className={styles.lockedBadge}>{teaserBadge(teaser.visibility)}</span>
+                            <span className={styles.lockedBadge}><Lock /> {teaserBadge(teaser.visibility)}</span>
                         </div>
                         <h1 className={styles.lockedTitle}>{(teaser.title ?? 'Private event').toUpperCase()}</h1>
                         {hostLabel ? (
@@ -54,7 +55,7 @@ export function LockedEvent({
                                 {handle ? (
                                     <Link href={`/u/${handle}`} className={styles.pillLink} style={{ color: 'var(--gold)' }}>
                                         @{handle}
-                                        {teaser.host_is_verified ? ' ✓' : ''}
+                                        {teaser.host_is_verified ? <> <Check /></> : ''}
                                     </Link>
                                 ) : (
                                     <span>{hostLabel}</span>
@@ -78,11 +79,11 @@ export function LockedEvent({
                         <div className={styles.lockedActions}>
                             {!signedIn ? (
                                 <a className="btn btn-lg" href={signInHref}>
-                                    SIGN IN ›
+                                    SIGN IN <ChevronRight />
                                 </a>
                             ) : null}
                             <Link className="btn btn-ghost btn-lg" href="/meets">
-                                BROWSE PUBLIC MEETS ›
+                                BROWSE PUBLIC MEETS <ChevronRight />
                             </Link>
                         </div>
                     </div>

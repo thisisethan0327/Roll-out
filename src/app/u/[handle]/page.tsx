@@ -16,6 +16,7 @@ import { isSeedProfile } from '@/lib/seed-content';
 import { isTestShop } from '@/lib/test-shops';
 import { selectWithBan } from '@/lib/ban-server';
 import { isBannedUntil } from '@/lib/ban';
+import { ArrowRight, Check, ChevronRight, Dot, Heart, Pencil, Stars } from '@/components/icons';
 
 // ── Types (loose; rollout schema not codegen'd) ────────────────────────────
 type Profile = {
@@ -128,9 +129,8 @@ function initials(name: string | null | undefined, handle: string): string {
     return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
-function stars(rating: number): string {
-    const r = Math.max(0, Math.min(5, Math.round(rating)));
-    return '★'.repeat(r) + '☆'.repeat(5 - r);
+function stars(rating: number) {
+    return <Stars rating={rating} />;
 }
 
 function reviewAge(iso: string | null | undefined): string {
@@ -614,7 +614,7 @@ export default async function HandlePage({
                                     letterSpacing: 'var(--track-wider)',
                                 }}
                             >
-                                ✓ VERIFIED
+                                <Check /> VERIFIED
                             </span>
                         ) : null}
                     </div>
@@ -642,7 +642,7 @@ export default async function HandlePage({
                     ) : null}
 
                     <div className="mono-row" style={{ marginTop: 8 }}>
-                        <span className="accent">●</span>
+                        <span className="accent"><Dot /></span>
                         <span>{card.followers_count ?? 0} {(card.followers_count ?? 0) === 1 ? 'FOLLOWER' : 'FOLLOWERS'}</span>
                     </div>
                 </div>
@@ -740,7 +740,7 @@ export default async function HandlePage({
                                 className="font-display"
                                 style={{ fontSize: 11, letterSpacing: 'var(--track-wider)', color: 'var(--gold)', textDecoration: 'none' }}
                             >
-                                SHOP ALL →
+                                SHOP ALL <ArrowRight />
                             </Link>
                         </div>
                         <div
@@ -859,9 +859,9 @@ export default async function HandlePage({
                                         <div className="mono-row" style={{ fontSize: 10 }}>
                                             <span>@{post.author_handle || cleanHandle}</span>
                                             <span className="sep" />
-                                            <span><span className="accent">♥</span> {post.like_count ?? 0}</span>
+                                            <span><span className="accent"><Heart fill="currentColor" /></span> {post.like_count ?? 0}</span>
                                             <span className="sep" />
-                                            <span><span className="accent">✎</span> {post.comment_count ?? 0}</span>
+                                            <span><span className="accent"><Pencil /></span> {post.comment_count ?? 0}</span>
                                         </div>
                                     </div>
                                 </Link>
@@ -926,7 +926,7 @@ export default async function HandlePage({
                                                     ) : null}
                                                 </div>
                                             </div>
-                                            <span className="accent" style={{ fontSize: 18 }}>→</span>
+                                            <span className="accent" style={{ fontSize: 18 }}><ArrowRight /></span>
                                         </div>
                                     </Link>
                                 ))}
@@ -978,7 +978,7 @@ export default async function HandlePage({
                                             {rev.verified_purchase ? (
                                                 <>
                                                     <span className="sep" />
-                                                    <span className="accent">✓ VERIFIED</span>
+                                                    <span className="accent"><Check /> VERIFIED</span>
                                                 </>
                                             ) : null}
                                         </div>
@@ -1047,7 +1047,7 @@ export default async function HandlePage({
                                     paddingBottom: 2,
                                 }}
                             >
-                                GET DIRECTIONS ›
+                                GET DIRECTIONS <ChevronRight />
                             </a>
                         </div>
                     </div>
