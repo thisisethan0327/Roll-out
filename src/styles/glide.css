@@ -796,6 +796,24 @@ a.g-tchip:hover { color: var(--ink); text-decoration: none; }
 .g-tchip:disabled,
 .g-tchip[aria-disabled='true'] { background: var(--surface-2); color: var(--ink-2); box-shadow: none; cursor: not-allowed; }
 .g-tchips { display: flex; flex-wrap: wrap; gap: 8px; }
+
+/* ── Map controls ──────────────────────────────────────────────────────────
+   MapLibre draws 29px zoom buttons. Every MapLibre map inside a Glide scope
+   (and anything marked `.g-mapctl`) gets 44px ones on a rounded group. */
+:is(.g-map, .g-mapctl, .glide .maplibregl-map, body:has(.glide-page) .maplibregl-map) .maplibregl-ctrl-group {
+  border-radius: 22px;
+  overflow: hidden;
+}
+:is(.g-map, .g-mapctl, .glide .maplibregl-map, body:has(.glide-page) .maplibregl-map) .maplibregl-ctrl-group button {
+  width: 44px;
+  height: 44px;
+}
+:is(.g-map, .g-mapctl, .glide .maplibregl-map, body:has(.glide-page) .maplibregl-map) .maplibregl-ctrl-group button:focus-visible {
+  outline: 2px solid var(--link);
+  outline-offset: -3px;
+  box-shadow: none;
+}
+
 /* ══════════════════════════════════════════════════════════════════════════
    SITE SHELL
    ══════════════════════════════════════════════════════════════════════════ */
@@ -1325,7 +1343,6 @@ a.g-li:hover { box-shadow: 0 0 0 1.5px var(--link); }
   height: 22px;
   box-shadow: 0 0 0 2.5px var(--crew-ring), 0 0 0 5px var(--stripe-1), 0 0 0 6.5px var(--crew-ring), 0 0 0 8px var(--stripe-3);
 }
-.g-map .maplibregl-ctrl-group { border-radius: 22px; overflow: hidden; }
 .g-map-msg {
   position: absolute;
   inset: 0;
