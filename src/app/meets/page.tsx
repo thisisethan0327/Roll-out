@@ -13,32 +13,36 @@
  * no extra cards.
  */
 import type { Metadata } from 'next';
-import { EmptyRow } from '@/app/me/ui';
-import { formatEventTime } from '@/lib/event-time';
 import Link from 'next/link';
-import { BandReveal } from '@/components/motion/BandReveal';
+import { CalendarX2, Flag, Map as MapIcon } from 'lucide-react';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
-import { resolveCover, coverFocus } from '@/lib/event-covers';
 import { loadUpcomingTeasers } from '@/lib/event-teasers';
 import { getEventIdsWithAnnouncements } from '@/lib/announcements';
-import { UpdatePill } from '@/components/AnnouncementBar';
 import {
     mergeByStartAt,
-    teaserAreaLabel,
-    teaserShortBadge,
     toLockedMeet,
     type LockedMeet,
     type TeaserVisibility,
 } from '@/lib/event-teaser-format';
 import { loadMapData } from './mapData';
 import { MeetsSplit } from './MeetsSplit';
-import { ChevronRight, Dot, Lock } from '@/components/icons';
+import { Card, IconRoundel } from '@/components/glide/primitives';
+import { FilterChips, MeetRow, ViewToggle } from '@/components/glide-discover/ui';
 
 // Read at request time: the map loader uses the runtime-only service-role key.
 export const dynamic = 'force-dynamic';
 
 const EVENT_TYPES = ['CAR_MEET', 'CRUISE', 'SHOW', 'TRACK_DAY', 'NIGHT_RUN'] as const;
 type EventType = (typeof EVENT_TYPES)[number];
+
+/** Chip labels, sentence case. */
+const TYPE_LABEL_SHORT: Record<EventType, string> = {
+    CAR_MEET: 'Car meets',
+    CRUISE: 'Cruises',
+    SHOW: 'Shows',
+    TRACK_DAY: 'Track days',
+    NIGHT_RUN: 'Night runs',
+};
 
 const TYPE_LABEL: Record<EventType, string> = {
     NIGHT_RUN: 'Night Run',
@@ -136,20 +140,6 @@ async function loadPrivateUpcoming(type: EventType | null): Promise<UpcomingItem
     });
 }
 
-function formatDate(iso: string | null, tz?: string | null): string {
-    if (!iso) return 'TBA';
-    try {
-        return formatEventTime(iso, tz);
-    } catch {
-        return 'TBA';
-    }
-}
-
-function truncate(s: string | null | undefined, n: number): string {
-    if (!s) return '';
-    return s.length <= n ? s : s.slice(0, n - 1).trimEnd() + '…';
-}
-
 export async function generateMetadata({
     searchParams,
 }: {
@@ -175,6 +165,15 @@ export async function generateMetadata({
     };
 }
 
+/** Plural headings for a filtered list ("Night runs"). */
+const TYPE_PLURAL: Record<EventType, string> = {
+    NIGHT_RUN: 'Night runs',
+    CAR_MEET: 'Car meets',
+    TRACK_DAY: 'Track days',
+    CRUISE: 'Cruises',
+    SHOW: 'Shows',
+};
+
 export default async function MeetsDirectoryPage({
     searchParams,
 }: {
@@ -183,251 +182,78 @@ export default async function MeetsDirectoryPage({
     const { type: raw } = await searchParams;
     const type = isValidType(raw) ? raw : null;
     const [{ upcoming, past }, mapData] = await Promise.all([loadMeets(type), loadMapData(type)]);
-    // One query: which upcoming meets have a live announcement (UPDATE pill).
+    // One query: which upcoming meets have a live announcement (Update pill).
     const updateIds = await getEventIdsWithAnnouncements(upcoming.filter((m) => !isLocked(m)).map((m) => m.id));
     const mapHref = type ? `/meets/map?type=${type}` : '/meets/map';
+    const listHref = type ? `/meets?type=${type}` : '/meets';
+    const chips = [
+        { href: '/meets', label: 'All', current: !type },
+        ...EVENT_TYPES.map((t) => ({ href: `/meets?type=${t}`, label: TYPE_LABEL_SHORT[t], current: type === t })),
+    ];
 
     return (
-        <>
-            {/* HERO */}
-            <BandReveal>
-            <section className="hero-band" data-band="meets">
-                <div className="container" style={{ paddingTop: 64, paddingBottom: 48 }}>
-                    <div className="eyebrow eyebrow-gold mb-4">／ MEETS</div>
-                    <h1 data-band-title style={{ fontSize: 'clamp(32px, 5vw, 56px)', letterSpacing: 1, margin: 0 }}>
-                        UPCOMING CAR MEETS
-                    </h1>
-                    <p data-band-copy style={{ fontSize: 16, marginTop: 14, maxWidth: 600 }}>
-                        Night runs, car meets, track days, cruises, and shows from shops and the community across the platform.
-                    </p>
-                </div>
-            </section>
-            </BandReveal>
-
-            {/* FILTER STRIP + VIEW TOGGLE */}
-            <section style={{ background: 'var(--bg-1)', borderBottom: '1px solid var(--line)', position: 'sticky', top: 0, zIndex: 5 }}>
-                <div
-                    className="container"
-                    style={{ paddingTop: 14, paddingBottom: 14, display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', justifyContent: 'space-between' }}
-                >
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                        <FilterChip href="/meets" label="ALL" active={!type} />
-                        {EVENT_TYPES.map((t) => (
-                            <FilterChip
-                                key={t}
-                                href={`/meets?type=${t}`}
-                                label={TYPE_LABEL[t].toUpperCase()}
-                                active={type === t}
-                            />
-                        ))}
-                    </div>
-                    {/* View toggle — mobile/tablet only; desktop shows the split. */}
-                    <div className="meets-view-toggle" style={{ display: 'flex', gap: 8 }}>
-                        <span
-                            style={{
-                                padding: '8px 14px',
-                                border: '1px solid var(--gold)',
-                                background: 'var(--gold)',
-                                color: 'var(--bg-0, #000)',
-                                fontFamily: 'var(--font-display)',
-                                fontSize: 11,
-                                letterSpacing: 'var(--track-wider)',
-                            }}
-                        >
-                            LIST
-                        </span>
-                        <FilterChip href={mapHref} label={<>MAP <ChevronRight /></>} active={false} />
-                    </div>
-                </div>
-            </section>
-
-            {/* UPCOMING */}
-            <section className="section" style={{ padding: '48px 0' }}>
-                <div className="container">
-                    <div className="eyebrow eyebrow-gold mb-4">／ UPCOMING</div>
-                    {upcoming.length === 0 ? (
-                        <EmptyRow text={`No upcoming ${type ? TYPE_LABEL[type].toLowerCase() + ' ' : ''}meets right now — open the map or host one.`} art="empty-meets" />
-                    ) : (
-                        <>
-                            {/* Desktop (≥1024): list + live map side by side, cross-highlighting. */}
-                            <div className="meets-split-desktop">
-                                <MeetsSplit meets={upcoming} events={mapData.events} shops={mapData.shops} updateIds={Array.from(updateIds)} />
-                            </div>
-                            {/* Mobile/tablet (<1024): classic grid; the map lives at /meets/map. */}
-                            <div className="meets-grid-mobile">
-                                {upcoming.map((m) =>
-                                    isLocked(m) ? <LockedTile key={m.id} m={m} /> : <MeetTile key={m.id} m={m} hasUpdate={updateIds.has(m.id)} />,
-                                )}
-                            </div>
-                        </>
-                    )}
-                </div>
-            </section>
-
-            {/* PAST */}
-            {past.length > 0 ? (
-                <section className="section" style={{ padding: '0 0 56px' }}>
-                    <div className="container">
-                        <div className="eyebrow mb-4" style={{ color: 'var(--text-3)' }}>／ PAST MEETS</div>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 16, opacity: 0.72 }}>
-                            {past.map((m) => (
-                                <MeetTile key={m.id} m={m} past />
-                            ))}
-                        </div>
-                    </div>
-                </section>
-            ) : null}
-        </>
-    );
-}
-
-function MeetTile({ m, past = false, hasUpdate = false }: { m: MeetCard; past?: boolean; hasUpdate?: boolean }) {
-    return (
-        <Link href={`/event/${m.id}`} style={{ textDecoration: 'none', display: 'block' }}>
-            <article
-                className="feature-card corner-wrap"
-                style={{ padding: 0, overflow: 'hidden', height: '100%', display: 'flex', flexDirection: 'column' }}
-            >
-                <span className="corner-bottom-left" />
-                <span className="corner-bottom-right" />
-                <div
-                    style={{
-                        width: '100%',
-                        aspectRatio: '16 / 9',
-                        background: `url(${resolveCover(m.hero_image_url, m.type, m.id)}) ${coverFocus(m.hero_image_url)}/cover no-repeat`,
-                        borderBottom: '1px solid var(--line)',
-                        filter: past ? 'grayscale(0.4)' : undefined,
-                    }}
-                />
-                <div style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 8, flex: 1 }}>
-                    <div className="mono-row" style={{ fontSize: 10 }}>
-                        <span className="accent">{m.code ?? m.type ?? 'MEET'}</span>
-                        {past ? (
-                            <>
-                                <span className="sep" />
-                                <span style={{ color: 'var(--text-3)' }}>ENDED</span>
-                            </>
-                        ) : m.is_official ? (
-                            <>
-                                <span className="sep" />
-                                <span className="accent">OFFICIAL</span>
-                            </>
-                        ) : null}
-                        {m.privacy ? (
-                            <>
-                                <span className="sep" />
-                                <span className="accent"><Lock /> PRIVATE</span>
-                            </>
-                        ) : null}
-                        {m.sector_code ? (
-                            <>
-                                <span className="sep" />
-                                <span>{m.sector_code}</span>
-                            </>
-                        ) : null}
-                    </div>
-                    <h3 style={{ fontSize: 18, letterSpacing: 0.8, margin: 0, color: 'var(--text)' }}>
-                        {(m.title ?? 'Untitled meet').toUpperCase()}{hasUpdate ? <> <UpdatePill /></> : null}
-                    </h3>
-                    <div className="text-dim" style={{ fontSize: 13 }}>
-                        {formatDate(m.start_at, m.time_zone)} · {m.location_name ?? 'TBA'}
-                    </div>
-                    {m.description ? (
-                        <p style={{ color: 'var(--text-2)', fontSize: 13, lineHeight: 1.5, margin: 0 }}>
-                            {truncate(m.description, 120)}
+        <div className="glide glide-page gd-page">
+            <div className="g-wrap">
+                <header className="gd-head">
+                    <div>
+                        <h1>{type ? TYPE_PLURAL[type] : 'Meets'}</h1>
+                        <p>
+                            {upcoming.length > 0 ? (
+                                <>
+                                    <span className="g-w">{upcoming.length}</span> coming up ·{' '}
+                                </>
+                            ) : null}
+                            Meets, runs, track days, cruises and shows from shops and the community. RSVP right here on the web.
                         </p>
-                    ) : null}
-                    <div className="mono-row" style={{ fontSize: 10, marginTop: 'auto', paddingTop: 8 }}>
-                        <span><span className="accent"><Dot /></span> {m.attending_count ?? 0} GOING</span>
-                        {!past && m.spots_left != null ? (
-                            <>
-                                <span className="sep" />
-                                <span>{m.spots_left} SPOTS</span>
-                            </>
-                        ) : null}
-                        {m.host_handle ? (
-                            <>
-                                <span className="sep" />
-                                <span>@{m.host_handle}</span>
-                            </>
-                        ) : null}
                     </div>
-                </div>
-            </article>
-        </Link>
-    );
-}
+                    <ViewToggle current="list" listHref={listHref} mapHref={mapHref} />
+                </header>
+                <FilterChips items={chips} label="Event type" />
 
-/**
- * A locked private / followers-only meet: date, title, badge, general area and
- * host — built from event_teasers only. No photo (a dark lock placeholder), no
- * venue, no attendee count. Still links to /event/[id], which shows the same
- * locked teaser (or the full page, for a viewer who may open it).
- */
-function LockedTile({ m }: { m: LockedMeet }) {
-    return (
-        <Link href={`/event/${m.id}`} style={{ textDecoration: 'none', display: 'block' }}>
-            <article
-                className="feature-card corner-wrap"
-                style={{ padding: 0, overflow: 'hidden', height: '100%', display: 'flex', flexDirection: 'column' }}
-            >
-                <span className="corner-bottom-left" />
-                <span className="corner-bottom-right" />
-                <div
-                    aria-hidden="true"
-                    style={{
-                        width: '100%',
-                        aspectRatio: '16 / 9',
-                        background: 'radial-gradient(circle at 50% 45%, rgba(255,183,51,0.08), rgba(0,0,0,0) 60%), var(--bg-2)',
-                        borderBottom: '1px solid var(--line)',
-                        display: 'grid',
-                        placeItems: 'center',
-                        fontSize: 34,
-                    }}
-                >
-                    <Lock />
-                </div>
-                <div style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 8, flex: 1 }}>
-                    <div className="mono-row" style={{ fontSize: 10 }}>
-                        <span className="accent"><Lock /> {teaserShortBadge(m.visibility).toUpperCase()}</span>
-                    </div>
-                    <h3 style={{ fontSize: 18, letterSpacing: 0.8, margin: 0, color: 'var(--text)' }}>
-                        {(m.title ?? 'Private event').toUpperCase()}
-                    </h3>
-                    <div className="text-dim" style={{ fontSize: 13 }}>
-                        {formatDate(m.start_at, m.time_zone)} · {teaserAreaLabel(m.general_area)}
-                    </div>
-                    <div className="mono-row" style={{ fontSize: 10, marginTop: 'auto', paddingTop: 8 }}>
-                        {m.viewer_can_view ? <span className="accent">YOU&apos;RE INVITED <ChevronRight /></span> : <span>INVITE ONLY</span>}
-                        {m.host_handle ? (
-                            <>
-                                <span className="sep" />
-                                <span>@{m.host_handle}</span>
-                            </>
-                        ) : null}
-                    </div>
-                </div>
-            </article>
-        </Link>
-    );
-}
+                {/* UPCOMING */}
+                <section className="gd-block" aria-labelledby="meets-upcoming">
+                    <h2 id="meets-upcoming" className="g-sr">
+                        Upcoming
+                    </h2>
+                    {upcoming.length === 0 ? (
+                        <Card className="gd-empty">
+                            <IconRoundel>
+                                <CalendarX2 size={21} strokeWidth={1.75} />
+                            </IconRoundel>
+                            <span style={{ flex: 1 }}>
+                                <b>No upcoming {type ? TYPE_PLURAL[type].toLowerCase() : 'meets'} right now</b>
+                                Open the map to see shops near you, or host one yourself.
+                            </span>
+                            <Link href={mapHref} className="g-link">
+                                <MapIcon size={16} strokeWidth={2} aria-hidden="true" />
+                                Open the map
+                            </Link>
+                            <Link href="/me/events" className="g-link">
+                                <Flag size={16} strokeWidth={2} aria-hidden="true" />
+                                Host a meet
+                            </Link>
+                        </Card>
+                    ) : (
+                        <MeetsSplit meets={upcoming} events={mapData.events} shops={mapData.shops} updateIds={Array.from(updateIds)} />
+                    )}
+                </section>
 
-function FilterChip({ href, label, active }: { href: string; label: React.ReactNode; active: boolean }) {
-    return (
-        <Link
-            href={href}
-            style={{
-                padding: '8px 14px',
-                border: '1px solid var(--gold)',
-                background: active ? 'var(--gold)' : 'transparent',
-                color: active ? 'var(--bg-0, #000)' : 'var(--gold)',
-                fontFamily: 'var(--font-display)',
-                fontSize: 11,
-                letterSpacing: 'var(--track-wider)',
-                textDecoration: 'none',
-            }}
-        >
-            {label}
-        </Link>
+                {/* PAST */}
+                {past.length > 0 ? (
+                    <section className="gd-block" aria-labelledby="meets-past" style={{ marginTop: 44 }}>
+                        <div className="g-sh">
+                            <h2 id="meets-past">Past meets</h2>
+                        </div>
+                        <ul className="gd-past">
+                            {past.map((m) => (
+                                <li key={m.id}>
+                                    <MeetRow m={m} past chevron={false} />
+                                </li>
+                            ))}
+                        </ul>
+                    </section>
+                ) : null}
+            </div>
+        </div>
     );
 }

@@ -5,7 +5,10 @@ import { requireConsumer } from '@/lib/me-guard';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { loadMyGarage } from '@/lib/me-data';
 import { BookForm } from './BookForm';
-import { ChevronLeft } from '@/components/icons';
+import { ChevronLeft } from 'lucide-react';
+import { Card } from '@/components/glide/primitives';
+import { dioramaFor } from '@/components/glide-discover/dioramas';
+import '@/components/glide-discover/discover.css';
 
 export const dynamic = 'force-dynamic';
 
@@ -37,17 +40,42 @@ export default async function BookPage({ params }: { params: Promise<{ handle: s
     const vehicles = garage.map((v: any) => ({ id: v.id as string, label: [v.year, v.make, v.model].filter(Boolean).join(' ') || 'Vehicle' }));
     const name = profile.display_name || handle;
 
+    // The shop's own diorama when it has one (keyed by handle here: this page
+    // reads the profile only); otherwise a workshop plate.
+    const dio = dioramaFor(handle);
+
     return (
-        <div className="admin-login-wrap">
-            <div className="admin-login-card">
-                <div className="eyebrow eyebrow-gold mb-4">／ BOOK ONLINE</div>
-                <h1 className="admin-login-title">{name.toUpperCase()}</h1>
-                <p className="admin-login-sub">Tell {name} what you need and when suits you. They confirm from their console.</p>
-                <BookForm shopId={Number(profile.shop_id)} handle={handle} vehicles={vehicles} />
-                <div style={{ marginTop: 18 }}>
-                    <Link href={`/u/${handle}`} className="mono-row" style={{ textDecoration: 'none' }}>
-                        <span className="accent"><ChevronLeft /></span> BACK TO {name.toUpperCase()}
+        <div className="glide glide-page gd-page">
+            <div className="g-wrap">
+                <p className="gd-back">
+                    <Link href={`/u/${handle}`} className="g-link">
+                        <ChevronLeft size={16} strokeWidth={2} aria-hidden="true" />
+                        Back to {name}
                     </Link>
+                </p>
+                <div className="gd-bk">
+                    <div className={dio ? 'gd-bk-cover gd-bk-cover--dio' : 'gd-bk-cover'}>
+                        {dio ? (
+                            <>
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img className="g-only-light" src={dio.day} alt={dio.altDay} />
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img className="g-only-dark" src={dio.night} alt={dio.altNight} />
+                            </>
+                        ) : (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src="/images/polish/banner-workshop-21x9.webp" alt="" />
+                        )}
+                        <div className="gd-id g-fp g-edge" aria-hidden="true">
+                            <p className="gd-id-name">{name}</p>
+                            <p className="gd-id-sub">@{handle} · Request a time, the shop confirms</p>
+                        </div>
+                    </div>
+                    <Card edge className="gd-bk-card">
+                        <h1>Book {name}</h1>
+                        <p>Tell {name} what you need and when suits you. They confirm a time from their console.</p>
+                        <BookForm shopId={Number(profile.shop_id)} handle={handle} vehicles={vehicles} />
+                    </Card>
                 </div>
             </div>
         </div>

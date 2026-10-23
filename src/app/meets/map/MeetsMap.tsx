@@ -32,7 +32,8 @@
  * a ref so React 18/19 strict-mode double-invoke doesn't create two maps.
  */
 import { useEffect, useRef, useState } from 'react';
-import { formatEventTime } from '@/lib/event-time';
+import { DEFAULT_EVENT_TIME_ZONE, formatEventTime, isValidTimeZone } from '@/lib/event-time';
+import { LoaderCircle, MapPinOff } from 'lucide-react';
 import { teaserPopupLine, type TeaserVisibility } from '@/lib/event-teaser-format';
 import { svgIcon, svgStars } from '@/lib/icon-svg';
 
@@ -216,6 +217,102 @@ function starStr(rating: number): string {
     return svgStars(rating);
 }
 
+/* ── Glide mode (web phase 2, discover lane) ──────────────────────────────
+   Theme-aware basemap (light Positron in Light, the dark style in Midnight and
+   Graphite), date-roundel event pins, store roundels for shops, and popups on
+   the Glide card. Classes are gd- (components/glide-discover/discover.css). */
+const GLIDE_BASEMAP = {
+    light: 'https://tiles.openfreemap.org/styles/positron',
+    dark: 'https://tiles.openfreemap.org/styles/dark',
+} as const;
+
+/** Lucide paths (v1.57) as strings: Leaflet markers and popups are HTML, not React. */
+const LUCIDE: Record<string, string> = {
+    store:
+        '<path d="M15 21v-5a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v5"/><path d="M17.774 10.31a1.12 1.12 0 0 0-1.549 0 2.5 2.5 0 0 1-3.451 0 1.12 1.12 0 0 0-1.548 0 2.5 2.5 0 0 1-3.452 0 1.12 1.12 0 0 0-1.549 0 2.5 2.5 0 0 1-3.77-3.248l2.889-4.184A2 2 0 0 1 7 2h10a2 2 0 0 1 1.653.873l2.895 4.192a2.5 2.5 0 0 1-3.774 3.244"/><path d="M4 10.95V19a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8.05"/>',
+    'badge-check':
+        '<path d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z"/><path d="m16 9-5.5 5.5L8 12"/>',
+    lock: '<rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+    'arrow-right': '<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>',
+    star: '<path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/>',
+};
+function lucide(name: keyof typeof LUCIDE, size = 17, fill = false): string {
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="${fill ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${LUCIDE[name]}</svg>`;
+}
+
+/** The event's own zone, as the date roundel reads it (SAT / 07). */
+function roundelParts(iso: string | null, tz: string | null): { dow: string; day: string; long: string } | null {
+    if (!iso) return null;
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return null;
+    const zone = tz && isValidTimeZone(tz) ? tz : DEFAULT_EVENT_TIME_ZONE;
+    const f = (o: Intl.DateTimeFormatOptions) => d.toLocaleString('en-US', { ...o, timeZone: zone });
+    return { dow: f({ weekday: 'short' }).toUpperCase(), day: f({ day: 'numeric' }), long: f({ weekday: 'short', month: 'short', day: 'numeric' }) };
+}
+
+function glideEventPinHtml(e: MapEvent): string {
+    if (e.locked) {
+        return `<div class="gd-pin gd-pin--lock"><span class="gd-pin-dt">${lucide('lock', 18)}</span></div>`;
+    }
+    const r = roundelParts(e.start_at, e.time_zone);
+    return `<div class="gd-pin"><span class="gd-pin-dt"><small>${esc(r?.dow ?? 'TBA')}</small><b>${esc(r?.day ?? '–')}</b></span></div>`;
+}
+
+function glideEventPopup(e: MapEvent): string {
+    if (e.locked) {
+        const line = teaserPopupLine(e.title, e.privacy ?? 'private', e.general_area, fmtDate(e.start_at, e.time_zone));
+        return `
+        <div class="gd-pop">
+          <div class="gd-pop-k"><span>${lucide('lock', 13)}${e.privacy === 'followers' ? 'Followers only' : 'Private'}</span></div>
+          <div class="gd-pop-n">${esc(e.title)}</div>
+          <div class="gd-pop-m">${esc(line)}</div>
+          ${e.host_handle ? `<div class="gd-pop-m">@${esc(e.host_handle)}</div>` : ''}
+          <div class="gd-pop-acts"><a class="gd-pop-btn" href="/event/${esc(e.id)}">View event<i>${lucide('arrow-right', 15)}</i></a></div>
+        </div>`;
+    }
+    const meta = [fmtDate(e.start_at, e.time_zone), e.location_name].filter(Boolean).map(esc).join(' · ');
+    const kick = [
+        e.is_official ? '<span>Official</span>' : '',
+        e.privacy ? `<span>${lucide('lock', 13)}Private</span>` : '',
+    ].join('');
+    return `
+        <div class="gd-pop">
+          ${kick ? `<div class="gd-pop-k">${kick}</div>` : ''}
+          <div class="gd-pop-n">${esc(e.title)}</div>
+          <div class="gd-pop-m">${meta}</div>
+          <div class="gd-pop-m">${e.attending_count > 0 ? `<b>${e.attending_count}</b> going` : 'Be the first to RSVP'}${e.host_handle ? ` · @${esc(e.host_handle)}` : ''}</div>
+          <div class="gd-pop-acts"><a class="gd-pop-btn" href="/event/${esc(e.id)}">View event<i>${lucide('arrow-right', 15)}</i></a></div>
+        </div>`;
+}
+
+function glideShopPopup(s: MapShop): string {
+    const loc = [s.city, s.state_region].filter(Boolean).join(', ');
+    const where = s.location_precision === 'area' ? `Online${loc ? ` · based in ${esc(s.city || loc)}` : ''}` : esc(loc);
+    const initial = esc((s.name || '?').trim().charAt(0).toUpperCase());
+    const logo = s.avatar_url ? `<img src="${esc(s.avatar_url)}" alt="" loading="lazy" />` : initial;
+    const rating =
+        s.rating_count > 0
+            ? `<span class="is-plain">${lucide('star', 13, true)}${s.rating_avg.toFixed(1)} · ${s.rating_count} ${s.rating_count === 1 ? 'review' : 'reviews'}</span>`
+            : '<span class="is-plain">No reviews yet</span>';
+    const caps = [s.offers_services ? '<span class="is-plain">Services</span>' : '', s.sells_products ? '<span class="is-plain">Store</span>' : ''].join('');
+    const viewHref = s.handle ? `/u/${esc(s.handle)}` : '/shops';
+    return `
+        <div class="gd-pop">
+          <div class="gd-pop-head">
+            <span class="gd-pop-logo">${logo}</span>
+            <div>
+              <div class="gd-pop-n">${esc(s.name)} ${s.is_verified ? lucide('badge-check', 15) : ''}</div>
+              ${where ? `<div class="gd-pop-m">${where}</div>` : ''}
+            </div>
+          </div>
+          <div class="gd-pop-k" style="margin:12px 0 0">${rating}${caps}</div>
+          <div class="gd-pop-acts">
+            <a class="gd-pop-btn" href="${viewHref}">View shop<i>${lucide('arrow-right', 15)}</i></a>
+            ${s.sells_products && s.slug ? `<a class="gd-pop-btn gd-pop-btn--sec" href="/store?shop=${esc(s.slug)}">Products</a>` : ''}
+          </div>
+        </div>`;
+}
+
 function buildLockedPopup(e: MapEvent): string {
     const line = teaserPopupLine(e.title, e.privacy ?? 'private', e.general_area, fmtDate(e.start_at, e.time_zone));
     return `
@@ -319,6 +416,8 @@ export function MeetsMap({
     fill = false,
     activeId = null,
     onSelectEvent,
+    glide = false,
+    overlayInset,
 }: {
     events: MapEvent[];
     shops: MapShop[];
@@ -328,6 +427,10 @@ export function MeetsMap({
     activeId?: string | null;
     /** Fired when an event pin is clicked (pin → card cross-highlight). */
     onSelectEvent?: (id: string) => void;
+    /** Glide styling: theme-aware basemap, date-roundel pins, Glide popups. */
+    glide?: boolean;
+    /** Space taken by controls floating over the map (px), kept clear when fitting the pins. */
+    overlayInset?: { top: number; bottom: number };
 }) {
     const containerRef = useRef<HTMLDivElement>(null);
     const mapRef = useRef<any>(null);
@@ -343,6 +446,14 @@ export function MeetsMap({
     // load from a CDN and can take 1–3s, during which the canvas is blank.
     const [tilesReady, setTilesReady] = useState(false);
     const [failed, setFailed] = useState(false);
+    // Glide: bumped when Appearance changes, so the map rebuilds in the new palette.
+    const [themeRev, setThemeRev] = useState(0);
+    useEffect(() => {
+        if (!glide) return;
+        const on = () => setThemeRev((n) => n + 1);
+        window.addEventListener('rollout:appearance', on);
+        return () => window.removeEventListener('rollout:appearance', on);
+    }, [glide]);
 
     useEffect(() => {
         let cancelled = false;
@@ -354,7 +465,8 @@ export function MeetsMap({
                 if (mapRef.current || (containerRef.current as any)._leaflet_id) return;
 
                 const map = L.map(containerRef.current, {
-                    zoomControl: true,
+                    // Glide: the zoom buttons sit top-right, clear of the floating title.
+                    zoomControl: !glide,
                     scrollWheelZoom: false,
                     // Suppress the default control so we can re-add one with
                     // `prefix: false` — that prefix is the only way to drop the
@@ -366,9 +478,10 @@ export function MeetsMap({
                 // whatever control is on the map at addLayer() time, so this has
                 // to exist before the tile layer below is added.
                 L.control.attribution({ prefix: false, position: 'bottomright' }).addTo(map);
+                if (glide) L.control.zoom({ position: 'topright' }).addTo(map);
 
                 const tiles = L.maplibreGL({
-                    style: BASEMAP_STYLES[currentTheme()],
+                    style: glide ? GLIDE_BASEMAP[currentTheme()] : BASEMAP_STYLES[currentTheme()],
                     attribution: BASEMAP_ATTRIBUTION,
                 });
                 tiles.addTo(map);
@@ -379,7 +492,7 @@ export function MeetsMap({
                 // untouched — only the basemap is replaced.
                 const applyTheme = () => {
                     try {
-                        tiles.getMaplibreMap()?.setStyle(BASEMAP_STYLES[currentTheme()]);
+                        tiles.getMaplibreMap()?.setStyle(glide ? GLIDE_BASEMAP[currentTheme()] : BASEMAP_STYLES[currentTheme()]);
                     } catch {
                         // A style swap is cosmetic; never let it break the map.
                     }
@@ -420,6 +533,14 @@ export function MeetsMap({
                 const bounds: [number, number][] = [];
 
                 // Event markers — solid gold dot (priority), highlightable.
+                const glideEventIcon = (e: MapEvent) =>
+                    L.divIcon({
+                        className: '',
+                        html: glideEventPinHtml(e),
+                        iconSize: [44, 44],
+                        iconAnchor: [22, 22],
+                        popupAnchor: [0, -24],
+                    });
                 const eventIcon = L.divIcon({
                     className: '',
                     html: '<div class="rl-pin rl-pin-event"><span class="rl-pin-dot"></span></div>',
@@ -437,8 +558,19 @@ export function MeetsMap({
                 });
                 eventMarkersRef.current.clear();
                 for (const e of events) {
-                    const marker = L.marker([e.lat, e.lng], { icon: e.locked ? lockedIcon : eventIcon, riseOnHover: true }).addTo(map);
-                    marker.bindPopup(buildEventPopup(e), { className: 'rl-popup', maxWidth: 300, minWidth: 210 });
+                    const marker = L.marker([e.lat, e.lng], {
+                        icon: glide ? glideEventIcon(e) : e.locked ? lockedIcon : eventIcon,
+                        riseOnHover: true,
+                        // Glide: meets draw above shop pins (a shop must not hide a meet).
+                        zIndexOffset: glide ? 400 : 0,
+                        title: glide ? `${e.title}${roundelParts(e.start_at, e.time_zone) ? `, ${roundelParts(e.start_at, e.time_zone)!.long}` : ''}` : undefined,
+                        keyboard: true,
+                    }).addTo(map);
+                    marker.bindPopup(glide ? glideEventPopup(e) : buildEventPopup(e), {
+                        className: glide ? 'gd-popup' : 'rl-popup',
+                        maxWidth: 300,
+                        minWidth: 220,
+                    });
                     marker.on('click', () => onSelectRef.current?.(e.id));
                     eventMarkersRef.current.set(e.id, marker);
                     bounds.push([e.lat, e.lng]);
@@ -472,17 +604,35 @@ export function MeetsMap({
                     iconAnchor: [11, 11],
                     popupAnchor: [0, -11],
                 });
+                const glideShopIcon = (area: boolean) =>
+                    L.divIcon({
+                        className: '',
+                        html: `<div class="gd-pin${area ? ' gd-pin--area' : ''}"><span class="gd-pin-shop">${lucide('store', 17)}</span></div>`,
+                        iconSize: [34, 34],
+                        iconAnchor: [17, 17],
+                        popupAnchor: [0, -18],
+                    });
                 for (const s of shops) {
-                    const icon = s.location_precision === 'area' ? shopAreaIcon : shopIcon;
-                    const marker = L.marker([s.lat, s.lng], { icon }).addTo(map);
-                    marker.bindPopup(buildShopPopup(s), { className: 'rl-popup', maxWidth: 300, minWidth: 220 });
+                    const area = s.location_precision === 'area';
+                    const icon = glide ? glideShopIcon(area) : area ? shopAreaIcon : shopIcon;
+                    const marker = L.marker([s.lat, s.lng], { icon, title: glide ? s.name : undefined, keyboard: true }).addTo(map);
+                    marker.bindPopup(glide ? glideShopPopup(s) : buildShopPopup(s), {
+                        className: glide ? 'gd-popup' : 'rl-popup',
+                        maxWidth: 300,
+                        minWidth: 230,
+                    });
                     bounds.push([s.lat, s.lng]);
                 }
 
                 if (bounds.length === 1) {
                     map.setView(bounds[0], 13);
                 } else if (bounds.length > 1) {
-                    map.fitBounds(bounds, { padding: [48, 48], maxZoom: 14 });
+                    map.fitBounds(
+                        bounds,
+                        overlayInset
+                            ? { paddingTopLeft: [48, overlayInset.top], paddingBottomRight: [48, overlayInset.bottom], maxZoom: 14 }
+                            : { padding: [48, 48], maxZoom: 14 },
+                    );
                 } else {
                     // No pins at all: the national view, then the visitor's own area
                     // if the browser will say. Never a city the visitor may not be in.
@@ -510,19 +660,55 @@ export function MeetsMap({
                 mapRef.current = null;
             }
         };
-    }, [events, shops]);
+    }, [events, shops, glide, themeRev]);
 
     // Cross-highlight: reflect the active event id onto its pin.
     useEffect(() => {
         const markers = eventMarkersRef.current;
         markers.forEach((marker, id) => {
             const el = marker.getElement?.();
-            const pin = el?.querySelector?.('.rl-pin');
+            const pin = el?.querySelector?.(glide ? '.gd-pin' : '.rl-pin');
             const on = id === activeId;
-            if (pin) pin.classList.toggle('rl-pin-active', on);
-            marker.setZIndexOffset?.(on ? 1000 : 0);
+            if (pin) pin.classList.toggle(glide ? 'is-active' : 'rl-pin-active', on);
+            marker.setZIndexOffset?.(on ? 1000 : glide ? 400 : 0);
         });
-    }, [activeId]);
+    }, [activeId, glide, tilesReady]);
+
+    if (glide) {
+        return (
+            <div className="gd-map" style={{ height: fill ? '100%' : '68vh', minHeight: fill ? 0 : 420 }}>
+                <div ref={containerRef} style={{ position: 'absolute', inset: 0, zIndex: 1 }} />
+                {!tilesReady && !failed ? (
+                    <div className="gd-map-msg" role="status">
+                        <span>
+                            <LoaderCircle size={18} strokeWidth={2} className="g-spin" aria-hidden="true" />
+                            Loading the map
+                        </span>
+                    </div>
+                ) : null}
+                {failed ? (
+                    <div className="gd-map-msg" role="status">
+                        <span>
+                            <MapPinOff size={18} strokeWidth={2} aria-hidden="true" />
+                            The map could not load. Check your connection and refresh.
+                        </span>
+                    </div>
+                ) : null}
+                {events.length === 0 && shops.length === 0 && !failed ? (
+                    <button
+                        type="button"
+                        className="g-sec gd-map-loc"
+                        onClick={() => mapRef.current?.locate({ setView: true, maxZoom: 10 })}
+                    >
+                        Use my location
+                    </button>
+                ) : null}
+                <noscript>
+                    <div className="gd-map-msg">Turn on JavaScript to see the map.</div>
+                </noscript>
+            </div>
+        );
+    }
 
     return (
         <div

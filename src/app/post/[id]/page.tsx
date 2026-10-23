@@ -15,7 +15,10 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { fetchProductsByIds, formatMoney, type MedusaProduct } from '@/lib/medusa';
-import { ArrowRight, Check, Columns2, Heart, Pencil, RotateCw } from '@/components/icons';
+import { BadgeCheck, ChevronRight, Flag, Hash, Heart, MessageCircle, PackageX, Repeat2, ShoppingBag } from 'lucide-react';
+import { Card, Chip, IconRoundel, Row } from '@/components/glide/primitives';
+import { Avatar, CardHead } from '@/components/glide-discover/ui';
+import { placeName } from '@/lib/glide-format';
 
 type Author = {
     handle: string | null;
@@ -148,12 +151,11 @@ function truncate(s: string | null | undefined, n: number): string {
     return s.length <= n ? s : s.slice(0, n - 1).trimEnd() + '…';
 }
 
-function initials(name: string | null | undefined, handle: string | null | undefined): string {
-    const src = (name?.trim() || handle || '·').trim();
-    const parts = src.split(/\s+/).filter(Boolean);
-    if (parts.length === 0) return '·';
-    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+/** The post kinds as members read them. */
+const POST_TYPE_LABEL: Record<string, string> = { BUILD: 'Build', MEET: 'Meet', EDU: 'Guide', TRADE: 'For sale', POST: 'Post' };
+function postTypeLabel(t: string | null | undefined): string {
+    if (!t) return 'Post';
+    return POST_TYPE_LABEL[t.toUpperCase()] ?? t.charAt(0).toUpperCase() + t.slice(1).toLowerCase();
 }
 
 function fmtDate(iso: string | null | undefined): string {
@@ -168,7 +170,7 @@ function fmtDate(iso: string | null | undefined): string {
 /** Split a body into text + @mention links (→ /u/<handle>). Renames break the
  *  link at render (handle-based), same as the app / IG. Hashtags (#) are left
  *  untouched. */
-function linkifyMentions(text: string): ReactNode[] {
+function linkifyMentions(text: string, links = true): ReactNode[] {
     const out: ReactNode[] = [];
     const re = /@([a-z0-9_.-]+)/gi;
     let last = 0;
@@ -177,10 +179,15 @@ function linkifyMentions(text: string): ReactNode[] {
     while ((m = re.exec(text)) !== null) {
         if (m.index > last) out.push(text.slice(last, m.index));
         const handle = m[1];
+        // Inside another link (the embedded original) a mention stays text: links cannot nest.
         out.push(
-            <Link key={`m${key++}`} href={`/u/${handle}`} className="accent" style={{ textDecoration: 'none' }}>
-                @{handle}
-            </Link>,
+            links ? (
+                <Link key={`m${key++}`} href={`/u/${handle}`}>
+                    @{handle}
+                </Link>
+            ) : (
+                <span key={`m${key++}`}>@{handle}</span>
+            ),
         );
         last = m.index + m[0].length;
     }
@@ -225,7 +232,8 @@ export default async function PostPage({
 
     const authorHandle = post.author?.handle ?? '';
     const authorName = post.author?.display_name || authorHandle || 'Member';
-    const media = (post.media_urls ?? []).filter(Boolean);
+    // The hero is usually media_urls[0] too; show it once.
+    const media = (post.media_urls ?? []).filter((u) => u && u !== post.hero_image_url);
     const ev = post.linked_event;
     const eventLive = ev && ev.visibility === 'public';
 
@@ -239,203 +247,131 @@ export default async function PostPage({
     const productTags = await loadProductTags(post.id);
 
     return (
-        <>
-            {/* HEADER */}
-            <section style={{ background: 'var(--bg-1)', borderBottom: '1px solid var(--line)' }}>
-                <div className="container container-narrow" style={{ padding: '40px 0 28px' }}>
-                    <div className="mono-row" style={{ fontSize: 10, marginBottom: 14 }}>
-                        <span className="accent">{isRepost ? <><RotateCw /> REPOST</> : (post.type ?? 'POST').toUpperCase()}</span>
-                        {post.created_at ? (
-                            <>
-                                <span className="sep" />
-                                <span>{fmtDate(post.created_at)}</span>
-                            </>
-                        ) : null}
-                    </div>
-
-                    {authorHandle ? (
-                        <Link
-                            href={`/u/${authorHandle}`}
-                            style={{ display: 'inline-flex', alignItems: 'center', gap: 12, textDecoration: 'none' }}
-                        >
-                            <div
-                                style={{
-                                    width: 44,
-                                    height: 44,
-                                    borderRadius: '50%',
-                                    border: '1px solid var(--gold)',
-                                    background: post.author?.avatar_url
-                                        ? `url(${post.author.avatar_url}) center/cover no-repeat`
-                                        : 'var(--bg-3)',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    fontFamily: 'var(--font-display)',
-                                    fontWeight: 700,
-                                    fontSize: 13,
-                                    color: 'var(--gold)',
-                                    flexShrink: 0,
-                                }}
-                            >
-                                {!post.author?.avatar_url && initials(authorName, authorHandle)}
-                            </div>
-                            <div>
-                                <div style={{ fontFamily: 'var(--font-display)', fontSize: 15, color: 'var(--text)', letterSpacing: 0.5 }}>
-                                    {authorName}
-                                    {post.author?.is_verified ? <span className="accent"> <Check /></span> : null}
-                                </div>
-                                <div className="text-dim" style={{ fontSize: 12, marginTop: 2 }}>
-                                    {isPlainRepost ? <><RotateCw /> reposted · @{authorHandle}</> : `@${authorHandle}`}
-                                </div>
-                            </div>
-                        </Link>
-                    ) : (
-                        <div style={{ fontFamily: 'var(--font-display)', fontSize: 15, color: 'var(--text)' }}>{authorName}</div>
-                    )}
-                </div>
-            </section>
-
-            {/* HERO IMAGE (own media — absent on a plain repost) */}
-            {post.hero_image_url ? (
-                <section style={{ borderBottom: '1px solid var(--line)' }}>
-                    <div className="container container-narrow" style={{ padding: '24px 0 0' }}>
-                        <div
-                            className="corner-wrap"
-                            style={{
-                                position: 'relative',
-                                width: '100%',
-                                aspectRatio: '16 / 9',
-                                background: `url(${post.hero_image_url}) center/cover no-repeat`,
-                                border: '1px solid var(--line)',
-                            }}
-                        >
-                            <span className="corner-bottom-left" />
-                            <span className="corner-bottom-right" />
-                        </div>
-                    </div>
-                </section>
-            ) : null}
-
-            {/* BODY */}
-            <section className="section" style={{ padding: '32px 0 48px' }}>
-                <div className="container container-narrow">
-                    {isPlainRepost ? null : bodyText ? (
-                        <p style={{ color: 'var(--text)', fontSize: 17, lineHeight: 1.7, whiteSpace: 'pre-wrap', margin: 0 }}>
-                            {linkifyMentions(bodyText)}
-                        </p>
-                    ) : (
-                        <p className="text-dim" style={{ fontSize: 16 }}>No caption.</p>
-                    )}
-
-                    {/* EMBEDDED ORIGINAL (plain + quote reposts) */}
-                    {isRepost ? (
-                        <div style={{ marginTop: isPlainRepost ? 0 : 24 }}>
-                            <OriginalCard original={original} />
-                        </div>
-                    ) : null}
-
-                    {/* MEDIA GRID (own media) */}
-                    {media.length > 0 ? (
-                        <div
-                            style={{
-                                display: 'grid',
-                                gridTemplateColumns: media.length === 1 ? '1fr' : 'repeat(auto-fill, minmax(200px, 1fr))',
-                                gap: 12,
-                                marginTop: 24,
-                            }}
-                        >
-                            {media.map((url, i) => (
-                                <div
-                                    key={i}
-                                    style={{
-                                        width: '100%',
-                                        aspectRatio: '4 / 3',
-                                        background: `url(${url}) center/cover no-repeat`,
-                                        border: '1px solid var(--line)',
-                                    }}
-                                />
-                            ))}
-                        </div>
-                    ) : null}
-
-                    {/* TAGGED PRODUCTS (§3.3) */}
-                    <ProductTagsSheet tags={productTags} />
-
-                    {/* TAGS */}
-                    {post.tags && post.tags.length > 0 ? (
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 24 }}>
-                            {post.tags.slice(0, 10).map((t) => (
-                                <span
-                                    key={t}
-                                    style={{
-                                        padding: '4px 10px',
-                                        border: '1px solid var(--line-mid)',
-                                        fontFamily: 'var(--font-display)',
-                                        fontSize: 10,
-                                        letterSpacing: 'var(--track-wider)',
-                                        color: 'var(--text-2)',
-                                        textTransform: 'uppercase',
-                                    }}
-                                >
-                                    {t}
+        <div className="glide glide-page gd-page">
+            <div className="g-wrap">
+                <div className="gd-post-wrap">
+                    <Card as="article" className="gd-post" aria-label={`${isRepost ? 'Repost' : postTypeLabel(post.type)} by ${authorName}`}>
+                        {/* AUTHOR */}
+                        <div className="gd-post-au">
+                            {authorHandle ? (
+                                <Link href={`/u/${authorHandle}`}>
+                                    <Avatar src={post.author?.avatar_url} name={authorName} handle={authorHandle} small />
+                                    <span style={{ minWidth: 0 }}>
+                                        <b>
+                                            {authorName}
+                                            {post.author?.is_verified ? <BadgeCheck size={16} strokeWidth={2} aria-label="Verified" /> : null}
+                                        </b>
+                                        <small>
+                                            {isPlainRepost ? 'Reposted · ' : ''}@{authorHandle}
+                                            {post.created_at ? ` · ${fmtDate(post.created_at)}` : ''}
+                                        </small>
+                                    </span>
+                                </Link>
+                            ) : (
+                                <span style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                    <Avatar name={authorName} small />
+                                    <span>
+                                        <b>{authorName}</b>
+                                        {post.created_at ? <small>{fmtDate(post.created_at)}</small> : null}
+                                    </span>
                                 </span>
-                            ))}
+                            )}
+                            <Chip icon={isRepost ? <Repeat2 size={14} strokeWidth={2} aria-hidden="true" /> : undefined}>
+                                {isRepost ? 'Repost' : postTypeLabel(post.type)}
+                            </Chip>
                         </div>
-                    ) : null}
 
-                    {/* ENGAGEMENT (read-only) */}
-                    <div className="mono-row" style={{ fontSize: 11, marginTop: 28 }}>
-                        <span><span className="accent"><Heart fill="currentColor" /></span> {post.like_count ?? 0}</span>
-                        <span className="sep" />
-                        <span><span className="accent"><Pencil /></span> {post.comment_count ?? 0}</span>
-                        <span className="sep" />
-                        <span><span className="accent"><RotateCw /></span> {post.repost_count ?? 0}</span>
-                    </div>
-                </div>
-            </section>
-
-            {/* LINKED EVENT */}
-            {eventLive ? (
-                <section className="section" style={{ padding: '0 0 56px' }}>
-                    <div className="container container-narrow">
-                        <div className="eyebrow eyebrow-gold mb-4">／ LINKED MEET</div>
-                        <Link href={`/event/${ev!.id}`} style={{ textDecoration: 'none' }}>
-                            <div
-                                style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'space-between',
-                                    gap: 16,
-                                    padding: '20px 24px',
-                                    background: 'var(--bg-2)',
-                                    border: '1px solid var(--line)',
-                                    flexWrap: 'wrap',
-                                }}
-                            >
-                                <div style={{ minWidth: 0 }}>
-                                    <div className="mono-row" style={{ fontSize: 10 }}>
-                                        <span className="accent">{ev!.code ?? 'MEET'}</span>
-                                        {ev!.cancelled_at ? (
-                                            <>
-                                                <span className="sep" />
-                                                <span style={{ color: '#ff8f8f' }}>CANCELLED</span>
-                                            </>
-                                        ) : null}
-                                    </div>
-                                    <h3 style={{ fontSize: 17, margin: '6px 0 0', color: 'var(--text)', letterSpacing: 0.8 }}>
-                                        {(ev!.title ?? 'Untitled meet').toUpperCase()}
-                                    </h3>
-                                    {ev!.location_name ? (
-                                        <div className="text-dim" style={{ fontSize: 13, marginTop: 4 }}>{ev!.location_name}</div>
-                                    ) : null}
-                                </div>
-                                <span className="accent" style={{ fontSize: 18 }}><ArrowRight /></span>
+                        {/* HERO IMAGE (own media — absent on a plain repost) */}
+                        {post.hero_image_url ? (
+                            <div className="gd-post-hero">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img src={post.hero_image_url} alt={truncate(post.body, 100) || 'Post photo'} />
                             </div>
-                        </Link>
-                    </div>
-                </section>
-            ) : null}
-        </>
+                        ) : null}
+
+                        {/* BODY */}
+                        {isPlainRepost ? null : bodyText ? (
+                            <p className="gd-post-body">{linkifyMentions(bodyText)}</p>
+                        ) : (
+                            <p className="gd-post-empty">No caption.</p>
+                        )}
+
+                        {/* EMBEDDED ORIGINAL (plain + quote reposts) */}
+                        {isRepost ? <OriginalCard original={original} /> : null}
+
+                        {/* MEDIA GRID (own media) */}
+                        {media.length > 0 ? (
+                            <div className={media.length === 1 ? 'gd-media is-one' : 'gd-media'}>
+                                {media.map((url, i) => (
+                                    <div key={i} role="img" aria-label={`Photo ${i + 1} of ${media.length}`} style={{ backgroundImage: `url(${url})` }} />
+                                ))}
+                            </div>
+                        ) : null}
+
+                        {/* TAGGED PRODUCTS (§3.3) */}
+                        <ProductTagsSheet tags={productTags} />
+
+                        {/* TAGS */}
+                        {post.tags && post.tags.length > 0 ? (
+                            <div className="g-chips" aria-label="Tags">
+                                {post.tags.slice(0, 10).map((t) => (
+                                    <Chip key={t} icon={<Hash size={13} strokeWidth={2} aria-hidden="true" />}>
+                                        {t.replace(/^#/, '')}
+                                    </Chip>
+                                ))}
+                            </div>
+                        ) : null}
+
+                        {/* ENGAGEMENT (read-only) */}
+                        <div className="gd-eng">
+                            <span>
+                                <Heart size={18} strokeWidth={2} aria-hidden="true" />
+                                <span className="g-w">{post.like_count ?? 0}</span>
+                                <span className="g-sr">likes</span>
+                            </span>
+                            <span>
+                                <MessageCircle size={18} strokeWidth={2} aria-hidden="true" />
+                                <span className="g-w">{post.comment_count ?? 0}</span>
+                                <span className="g-sr">comments</span>
+                            </span>
+                            <span>
+                                <Repeat2 size={18} strokeWidth={2} aria-hidden="true" />
+                                <span className="g-w">{post.repost_count ?? 0}</span>
+                                <span className="g-sr">reposts</span>
+                            </span>
+                            <p>Like, comment and repost in the Rollout app.</p>
+                        </div>
+                    </Card>
+
+                    {/* LINKED EVENT */}
+                    {eventLive ? (
+                        <Card as="section" aria-labelledby="post-meet">
+                            <CardHead id="post-meet" title="Linked meet" />
+                            <ul className="gd-evrows">
+                                <li>
+                                    <Link href={`/event/${ev!.id}`} className="gd-evrow">
+                                        {/* No date here: this read has no event time zone, and a date in
+                                            the wrong zone would be a wrong date. */}
+                                        <IconRoundel>
+                                            <Flag size={21} strokeWidth={1.75} />
+                                        </IconRoundel>
+                                        <span className="g-row-t">
+                                            <b>{ev!.title ?? 'Untitled meet'}</b>
+                                            <small>
+                                                {[ev!.cancelled_at ? 'Cancelled' : null, placeName(ev!.location_name), 'Open the meet for the date and RSVP']
+                                                    .filter(Boolean)
+                                                    .join(' · ')}
+                                            </small>
+                                        </span>
+                                        <ChevronRight size={18} strokeWidth={2} className="g-row-ch" aria-hidden="true" />
+                                    </Link>
+                                </li>
+                            </ul>
+                        </Card>
+                    ) : null}
+                </div>
+            </div>
+        </div>
     );
 }
 
@@ -444,18 +380,9 @@ export default async function PostPage({
 function OriginalCard({ original }: { original: OriginalPost | typeof UNAVAILABLE | null }) {
     if (!original || original === UNAVAILABLE) {
         return (
-            <div
-                style={{
-                    padding: '18px 20px',
-                    border: '1px dashed var(--line-mid)',
-                    background: 'var(--bg-2)',
-                    color: 'var(--text-2)',
-                    fontFamily: 'var(--font-display)',
-                    fontSize: 12,
-                    letterSpacing: 'var(--track-wider)',
-                }}
-            >
-                <RotateCw /> ORIGINAL POST UNAVAILABLE
+            <div className="gd-orig gd-orig--gone">
+                <Repeat2 size={18} strokeWidth={2} aria-hidden="true" />
+                The original post is no longer available.
             </div>
         );
     }
@@ -465,145 +392,52 @@ function OriginalCard({ original }: { original: OriginalPost | typeof UNAVAILABL
     const thumb = original.hero_image_url || (original.media_urls ?? []).filter(Boolean)[0] || null;
 
     return (
-        <Link href={`/post/${original.id}`} style={{ textDecoration: 'none', display: 'block' }}>
-            <div
-                style={{
-                    display: 'flex',
-                    gap: 14,
-                    padding: 16,
-                    border: '1px solid var(--line-mid)',
-                    background: 'var(--bg-2)',
-                    alignItems: 'flex-start',
-                }}
-            >
-                {thumb ? (
-                    <div
-                        style={{
-                            width: 84,
-                            height: 84,
-                            flexShrink: 0,
-                            background: `url(${thumb}) center/cover no-repeat`,
-                            border: '1px solid var(--line)',
-                        }}
-                    />
-                ) : null}
-                <div style={{ minWidth: 0 }}>
-                    <div className="mono-row" style={{ fontSize: 10, marginBottom: 6 }}>
-                        <span className="accent">{name.toUpperCase()}</span>
-                        {handle ? (
-                            <>
-                                <span className="sep" />
-                                <span>@{handle}</span>
-                            </>
-                        ) : null}
-                    </div>
-                    <div style={{ color: 'var(--text)', fontSize: 14, lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>
-                        {original.body ? linkifyMentions(truncate(original.body, 280)) : <span className="text-dim">No caption.</span>}
-                    </div>
-                </div>
-            </div>
+        <Link href={`/post/${original.id}`} className="gd-orig">
+            {thumb ? <span className="gd-orig-im" style={{ backgroundImage: `url(${thumb})` }} aria-hidden="true" /> : null}
+            <span style={{ minWidth: 0 }}>
+                <b>
+                    {name} {handle ? <span>@{handle}</span> : null}
+                </b>
+                <p>{original.body ? linkifyMentions(truncate(original.body, 280), false) : 'No caption.'}</p>
+            </span>
         </Link>
     );
 }
 
-/** IG-style "View products" disclosure for tagged store products. Uses a native
- *  <details> element so it needs no client JS. Paused products link to the PDP
- *  but flag COMING SOON; missing/deleted products render a quiet shell. */
+/** "View products" disclosure for tagged store products. A native <details>,
+ *  so it needs no client JS. Paused products link to the product page but say
+ *  Coming soon; missing or deleted products render a quiet shell. */
 function ProductTagsSheet({ tags }: { tags: ProductTag[] }) {
     if (!tags || tags.length === 0) return null;
     const resolvable = tags.filter((t) => t.product);
 
     return (
-        <details
-            style={{
-                marginTop: 24,
-                border: '1px solid var(--line-mid)',
-                background: 'var(--bg-2)',
-            }}
-        >
-            <summary
-                style={{
-                    listStyle: 'none',
-                    cursor: 'pointer',
-                    padding: '12px 16px',
-                    fontFamily: 'var(--font-display)',
-                    fontSize: 11,
-                    letterSpacing: 'var(--track-wider)',
-                    color: 'var(--gold)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 8,
-                }}
-            >
-                <span><Columns2 /> VIEW PRODUCTS ({tags.length})</span>
+        <details className="gd-tags">
+            <summary>
+                <ShoppingBag size={18} strokeWidth={2} aria-hidden="true" />
+                View products ({tags.length})
+                <ChevronRight size={18} strokeWidth={2} className="ch" aria-hidden="true" />
             </summary>
-            <div style={{ display: 'flex', flexDirection: 'column', borderTop: '1px solid var(--line-mid)' }}>
+            <ul className="g-rows">
                 {tags.map((t) => {
                     const p = t.product;
                     if (!p) {
-                        return (
-                            <div
-                                key={t.id}
-                                style={{
-                                    padding: '12px 16px',
-                                    borderBottom: '1px solid var(--line)',
-                                    color: 'var(--text-2)',
-                                    fontFamily: 'var(--font-display)',
-                                    fontSize: 11,
-                                    letterSpacing: 'var(--track-wider)',
-                                }}
-                            >
-                                PRODUCT UNAVAILABLE
-                            </div>
-                        );
+                        return <Row key={t.id} icon={<PackageX size={20} strokeWidth={1.75} aria-hidden="true" />} label="Product unavailable" />;
                     }
                     return (
-                        <Link
+                        <Row
                             key={t.id}
+                            icon={<span className="gd-thumb" style={p.thumbnail ? { backgroundImage: `url(${p.thumbnail})` } : undefined} aria-hidden="true" />}
+                            label={p.title}
+                            sub={p.paused ? 'Coming soon' : formatMoney(p.price, p.currency)}
                             href={`/store/p/${p.handle}`}
-                            style={{
-                                display: 'flex',
-                                gap: 12,
-                                alignItems: 'center',
-                                padding: '12px 16px',
-                                borderBottom: '1px solid var(--line)',
-                                textDecoration: 'none',
-                            }}
-                        >
-                            <div
-                                style={{
-                                    width: 48,
-                                    height: 48,
-                                    flexShrink: 0,
-                                    background: p.thumbnail
-                                        ? `url(${p.thumbnail}) center/cover no-repeat`
-                                        : 'var(--bg-3)',
-                                    border: '1px solid var(--line)',
-                                }}
-                            />
-                            <div style={{ minWidth: 0, flex: 1 }}>
-                                <div style={{ color: 'var(--text)', fontSize: 14, letterSpacing: 0.3 }}>{p.title}</div>
-                                <div className="text-dim" style={{ fontSize: 12, marginTop: 2 }}>
-                                    {p.paused ? 'COMING SOON' : formatMoney(p.price, p.currency)}
-                                </div>
-                            </div>
-                            <span className="accent" style={{ fontSize: 16 }}><ArrowRight /></span>
-                        </Link>
+                            trailing={<ChevronRight size={18} strokeWidth={2} className="g-row-ch" aria-hidden="true" />}
+                        />
                     );
                 })}
-            </div>
+            </ul>
             {resolvable.length === 0 ? (
-                <div
-                    style={{
-                        padding: '10px 16px',
-                        color: 'var(--text-2)',
-                        fontSize: 11,
-                        fontFamily: 'var(--font-display)',
-                        letterSpacing: 'var(--track-wider)',
-                    }}
-                >
-                    NONE OF THESE PRODUCTS ARE AVAILABLE RIGHT NOW.
-                </div>
+                <p style={{ margin: 0, padding: '10px 16px 14px', fontSize: 13.5, color: 'var(--ink-2)' }}>None of these products are available right now.</p>
             ) : null}
         </details>
     );
