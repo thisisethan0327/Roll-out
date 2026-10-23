@@ -5,7 +5,8 @@ import { BrokerSignInButton } from '@/components/auth/BrokerSignInButton';
 import { BrokerHashSession } from '@/components/auth/BrokerHashSession';
 import { tenantForHost } from '@/lib/tenant-hosts';
 import { brandForSlug } from '@/lib/tenant-brand';
-import { ArrowRight } from '@/components/icons';
+import { CircleAlert } from 'lucide-react';
+import { AuthShell } from '@/components/glide-auth/AuthShell';
 
 // A sign-in / application door: crawlable, never a search result (no ?next= duplicates).
 export const metadata = { title: 'Shop · Sign In', robots: { index: false, follow: true } };
@@ -59,38 +60,46 @@ export default async function ShopLoginPage({
     const tenant = tenantForHost(host);
     const onTenantDoor = !!tenant;
     const brand = brandForSlug(tenant?.slug ?? null);
+    // On a tenant's own door the page carries that tenant's name and none of
+    // Rollout's imagery (lib/tenant-brand.ts: their staff never see "Rollout").
+    const note = (children: React.ReactNode) => (
+        <div className="ga-note">
+            <p className="g-note" role="alert">
+                <CircleAlert size={18} strokeWidth={2} aria-hidden="true" />
+                <span>{children}</span>
+            </p>
+        </div>
+    );
     return (
-        <div className="admin-login-wrap">
-            <div className="admin-login-card">
-                <div className="admin-login-stamp">
-                    <span className="accent">SHOP DASHBOARD</span>
-                    <span>{brand.tagline}</span>
-                </div>
-                {/* A broker hand-off arrives as tokens in the fragment, which
-                    survives the middleware 307 from "/" to here. Inert on a
-                    normal page load. */}
-                <BrokerHashSession successPath={safeNext(next)} />
-                <h1 className="admin-login-title">SIGN IN</h1>
-                <p className="admin-login-sub">
-                    Email OTP. Shop members only.
-                </p>
-                {error === 'not_member' && (
-                    <div className="admin-login-error">
+        <AuthShell
+            bare
+            barLabel={onTenantDoor ? brand.label : 'rollout'}
+            cover={!onTenantDoor}
+            edge={!onTenantDoor}
+            title="Shop sign in"
+            sub={
+                <>
+                    <b>{onTenantDoor ? brand.label : 'Shop dashboard'}.</b> We&apos;ll email you a 6-digit code. Shop members only.
+                </>
+            }
+        >
+            {/* A broker hand-off arrives as tokens in the fragment, which
+                survives the middleware 307 from "/" to here. Inert on a
+                normal page load. */}
+            <BrokerHashSession successPath={safeNext(next)} />
+            {error === 'not_member' &&
+                note(
+                    <>
                         Access denied. You&apos;re not a member of this shop.{' '}
                         {/* The apply route is Rollout's, and a tenant door refuses
                             it — so only offer it where it leads somewhere. */}
-                        {onTenantDoor ? null : (
-                            <a href="/shop/apply?commerce=1" style={{ textDecoration: 'underline' }}>Open a shop <ArrowRight /></a>
-                        )}
-                    </div>
+                        {onTenantDoor ? null : <a href="/shop/apply?commerce=1">Open a shop</a>}
+                    </>,
                 )}
-                {error === 'suspended' && (
-                    <div className="admin-login-error">
-                        This Rollout account is suspended. The shop console is closed to it.
-                    </div>
-                )}
-                {error === 'no_profile' && (
-                    <div className="admin-login-error">
+            {error === 'suspended' && note(<>This Rollout account is suspended. The shop console is closed to it.</>)}
+            {error === 'no_profile' &&
+                note(
+                    <>
                         {/* Name the shop. The card header says UNITY USA while
                             this sentence used to name no shop at all and point
                             at an "app" a UNITY staffer does not have (run 10,
@@ -98,23 +107,22 @@ export default async function ShopLoginPage({
                         {onTenantDoor
                             ? `That account is not a member of ${brand.label}. Ask the shop owner to add you.`
                             : 'That account is not a member of any shop yet. Ask a shop owner to add you.'}
-                    </div>
+                    </>,
                 )}
-                {brokerOrigin && brokerReturn && (
-                    <BrokerSignInButton
-                        brokerOrigin={brokerOrigin}
-                        returnUrl={brokerReturn}
-                        next={next ?? null}
-                    />
-                )}
-                <OtpLoginForm
-                    successPath={safeNext(next)}
-                    redirectSuffix="/shop/login"
-                    initialEmail={email ?? ''}
-                    startAtCode={startAtCode}
-                    notice={notice}
-                />
-            </div>
-        </div>
+            {brokerOrigin && brokerReturn && (
+                <>
+                    <BrokerSignInButton brokerOrigin={brokerOrigin} returnUrl={brokerReturn} next={next ?? null} look="glide" />
+                    <p className="ga-or">or</p>
+                </>
+            )}
+            <OtpLoginForm
+                successPath={safeNext(next)}
+                redirectSuffix="/shop/login"
+                initialEmail={email ?? ''}
+                startAtCode={startAtCode}
+                notice={notice}
+                look="glide"
+            />
+        </AuthShell>
     );
 }

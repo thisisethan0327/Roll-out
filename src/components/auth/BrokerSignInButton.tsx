@@ -13,20 +13,57 @@
  * page renders nothing here and the code form stands alone.
  */
 import { useState } from 'react';
+import { KeyRound, LoaderCircle } from 'lucide-react';
 
 export function BrokerSignInButton({
     brokerOrigin,
     returnUrl,
     next,
+    look = 'legacy',
 }: {
     brokerOrigin: string;
     returnUrl: string;
     /** Where to go once signed in, if the console sent them here with a ?next=. */
     next?: string | null;
+    /** Presentation only; 'glide' is the secondary pill of the Glide sign-in sheet. */
+    look?: 'legacy' | 'glide';
 }) {
     const [going, setGoing] = useState(false);
 
     if (!brokerOrigin || !returnUrl) return null;
+
+    const go = () => {
+        setGoing(true);
+        // The broker returns only to an allowlisted landing. Since
+        // storefront 343a53a it passes ONE sanitised ?next= through on
+        // such a landing (the unityusa.co configurator hand-off in
+        // lib/sso-handoff.ts relies on it); the console door keeps its
+        // own destination here, on this origin, and picks it up after.
+        try {
+            if (next && next.startsWith('/') && !next.startsWith('//')) {
+                window.sessionStorage.setItem('rollout:after-signin', next);
+            }
+        } catch {
+            // Private mode: they land on the console root instead.
+        }
+        window.location.assign(`${brokerOrigin}/id/start?return=${encodeURIComponent(returnUrl)}`);
+    };
+
+    if (look === 'glide') {
+        return (
+            <div className="ga-alt">
+                <button type="button" className="g-sec" disabled={going} aria-busy={going} onClick={go} data-testid="broker-signin-button">
+                    {going ? (
+                        <LoaderCircle size={18} strokeWidth={2} className="g-spin" aria-hidden="true" />
+                    ) : (
+                        <KeyRound size={18} strokeWidth={1.75} aria-hidden="true" />
+                    )}
+                    {going ? 'Taking you there' : 'Continue with your account'}
+                </button>
+                <p>Signed in on EMWRAPS, NeferStock or Rollout? This takes a second and asks for nothing.</p>
+            </div>
+        );
+    }
 
     return (
         <div style={{ marginBottom: 18 }}>
@@ -35,24 +72,7 @@ export function BrokerSignInButton({
                 className="admin-action-btn"
                 style={{ width: '100%' }}
                 disabled={going}
-                onClick={() => {
-                    setGoing(true);
-                    // The broker returns only to an allowlisted landing. Since
-                    // storefront 343a53a it passes ONE sanitised ?next= through on
-                    // such a landing (the unityusa.co configurator hand-off in
-                    // lib/sso-handoff.ts relies on it); the console door keeps its
-                    // own destination here, on this origin, and picks it up after.
-                    try {
-                        if (next && next.startsWith('/') && !next.startsWith('//')) {
-                            window.sessionStorage.setItem('rollout:after-signin', next);
-                        }
-                    } catch {
-                        // Private mode: they land on the console root instead.
-                    }
-                    window.location.assign(
-                        `${brokerOrigin}/id/start?return=${encodeURIComponent(returnUrl)}`,
-                    );
-                }}
+                onClick={go}
                 data-testid="broker-signin-button"
             >
                 {going ? 'TAKING YOU THERE…' : 'CONTINUE WITH YOUR ACCOUNT'}
