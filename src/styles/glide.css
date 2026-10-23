@@ -78,6 +78,19 @@ body:has(.glide-page) :focus-visible {
   outline: 2px solid var(--link);
   outline-offset: 3px;
 }
+/* Headings. globals.css gives every h1-h4 the old HUD voice: weight 700,
+   mixed case and wide fixed tracking (4px on h1, 2px on h2, 1.5px on h3).
+   Inside a Glide scope a bare heading is Glide display type instead. The
+   selector weighs the same as the legacy element rules (0,0,1) and loads
+   after them, so it beats them and loses to any class rule a page sets. */
+:where(.glide, body:has(.glide-page)) :is(h1, h2, h3, h4) {
+  font-family: var(--disp);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--title);
+}
+
 /* Legacy filled buttons nested in a Glide surface: ink on the accent fill and
    no hardcoded bright-gold hover. */
 .glide .btn {
