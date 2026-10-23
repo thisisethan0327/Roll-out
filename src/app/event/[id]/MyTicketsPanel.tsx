@@ -8,15 +8,19 @@
  * control cancels the whole order — it reuses the existing whole-order
  * cancelPaidRsvp action rather than the per-ticket API route, since
  * ticket_refund_quote() itself refuses seat 1 (see lib/event-tickets.ts).
+ *
+ * Glide: a seat list in the ticket panel (seat roundel · name · size and
+ * status · cancel). The cancel paths are unchanged.
  */
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { Check, ChevronRight, Clock, CircleX, Undo2 } from 'lucide-react';
 import type { MyTicketRow } from '@/lib/event-tickets';
 import { cancelPaidRsvp } from './actions';
 import { refundWindowOpen, refundPolicyShortLine, REFUND_POLICY_PATH, type ReservationPolicy } from '@/lib/refund-policy';
 import { isDeadTicketStatus } from '@/lib/event-tickets-shared';
-import { Check, ChevronRight, Dot } from '@/components/icons';
+import { ErrorLine, StatusChip, statusLabel } from '@/components/glide-tickets/parts';
 
 export function MyTicketsPanel({
     eventId,
@@ -43,37 +47,28 @@ export function MyTicketsPanel({
     const live = sorted.filter((t) => t.status === 'confirmed').length;
     const allDead = sorted.length > 0 && sorted.every((t) => isDeadTicketStatus(t.status));
     const header =
-        live > 0
-            ? <><Check /> YOU&apos;RE IN · {live} TICKET{live === 1 ? '' : 'S'}</>
-            : allDead
-                ? 'ORDER CANCELLED'
-                : <><Dot /> TICKETS PENDING · {sorted.length}</>;
+        live > 0 ? (
+            <>
+                You&apos;re in · <span className="g-w">{live}</span> {live === 1 ? 'ticket' : 'tickets'}
+            </>
+        ) : allDead ? (
+            'Order cancelled'
+        ) : (
+            <>
+                Tickets pending · <span className="g-w">{sorted.length}</span>
+            </>
+        );
 
     return (
-        <div
-            style={{
-                width: '100%',
-                maxWidth: 560,
-                border: '1px solid var(--line-mid)',
-                background: 'var(--bg-1)',
-                padding: '18px 20px',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 12,
-            }}
-        >
-            <div
-                style={{
-                    fontFamily: 'var(--font-display)',
-                    fontSize: 12,
-                    letterSpacing: 'var(--track-wider)',
-                    color: live > 0 ? 'var(--gold)' : 'var(--text-2)',
-                }}
-            >
-                {header}
+        <section className="gt-seats" aria-label="Your tickets">
+            <div className="gt-seats-h">
+                <span className="g-ic" aria-hidden="true">
+                    {live > 0 ? <Check size={20} strokeWidth={2.4} /> : allDead ? <CircleX size={20} strokeWidth={2} /> : <Clock size={20} strokeWidth={2} />}
+                </span>
+                <b>{header}</b>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div>
                 {sorted.map((t) => (
                     <TicketRow
                         key={t.ticketId}
@@ -86,27 +81,24 @@ export function MyTicketsPanel({
             </div>
 
             {allDead ? (
-                <p className="text-muted" style={{ fontSize: 11, margin: 0, lineHeight: 1.5 }}>
-                    You can reserve again above while spots are open.
-                </p>
+                <div className="gt-seats-foot">
+                    <p className="gt-fine">You can reserve again above while spots are open.</p>
+                </div>
             ) : null}
 
             {isBuyer && sorted.length > 0 && !allDead ? (
-                <p className="text-muted" style={{ fontSize: 10, margin: 0, lineHeight: 1.5 }}>
-                    {policyLine}{' '}
-                    <Link href={REFUND_POLICY_PATH} className="text-link" style={{ color: 'inherit', textDecoration: 'underline' }}>
-                        Full policy <ChevronRight />
-                    </Link>
-                </p>
+                <div className="gt-seats-foot">
+                    <p className="gt-fine">
+                        {policyLine}{' '}
+                        <Link href={REFUND_POLICY_PATH}>
+                            Full policy
+                            <ChevronRight size={14} strokeWidth={2} aria-hidden="true" />
+                        </Link>
+                    </p>
+                </div>
             ) : null}
-        </div>
+        </section>
     );
-}
-
-function statusColor(status: string): string {
-    if (status === 'confirmed') return 'var(--gold)';
-    if (status === 'cancelled' || status === 'expired') return 'var(--text-3)';
-    return 'var(--text-2)';
 }
 
 function TicketRow({
@@ -126,6 +118,7 @@ function TicketRow({
     const [err, setErr] = useState<string | null>(null);
 
     const canCancel = canManage && refundOpen && ticket.status === 'confirmed';
+    const dead = isDeadTicketStatus(ticket.status);
 
     const confirm = () => {
         setErr(null);
@@ -160,78 +153,50 @@ function TicketRow({
         });
     };
 
+    const who = ticket.attendeeName || (ticket.isBuyer ? 'You' : '—');
+
     return (
-        <div
-            style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: 10,
-                flexWrap: 'wrap',
-                padding: '8px 0',
-                borderTop: '1px solid var(--line)',
-                opacity: isDeadTicketStatus(ticket.status) ? 0.5 : 1,
-            }}
-        >
-            <div style={{ minWidth: 0 }}>
-                <div style={{ fontSize: 13, color: 'var(--text)' }}>
-                    SEAT {ticket.seat} · {ticket.attendeeName || (ticket.isBuyer ? 'You' : '—')}
-                    {!ticket.isBuyer && ticket.buyerName ? (
-                        <span className="text-dim" style={{ fontSize: 11 }}> · Ticket from {ticket.buyerName}</span>
-                    ) : null}
-                </div>
-                <div className="text-dim" style={{ fontSize: 11, marginTop: 2 }}>
+        <div className={`gt-seat${dead ? ' is-dead' : ''}`}>
+            <span className="gt-seat-n" aria-hidden="true">
+                {ticket.seat}
+            </span>
+            <span className="gt-seat-t">
+                <b>
+                    <span className="g-sr">Seat {ticket.seat}: </span>
+                    {who}
+                </b>
+                <small>
                     {ticket.sweaterSize ? `Sweater ${ticket.sweaterSize.toUpperCase()}` : 'No size on file'}
-                    {' · '}
-                    <span style={{ color: statusColor(ticket.status) }}>{ticket.status.toUpperCase()}</span>
-                </div>
-            </div>
+                    {!ticket.isBuyer && ticket.buyerName ? ` · Ticket from ${ticket.buyerName}` : ''}
+                </small>
+            </span>
+            <StatusChip label={statusLabel(ticket.status)} tone={ticket.status === 'confirmed' ? 'ok' : dead ? 'off' : 'wait'} />
 
             {canCancel ? (
                 armed ? (
-                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                        <button
-                            type="button"
-                            onClick={confirm}
-                            disabled={pending}
-                            className="font-display"
-                            style={{
-                                padding: '8px 12px',
-                                border: '1px solid var(--warn, #ff6b6b)',
-                                background: 'transparent',
-                                color: 'var(--warn, #ff6b6b)',
-                                fontSize: 9,
-                                letterSpacing: 'var(--track-wider)',
-                                cursor: pending ? 'wait' : 'pointer',
-                            }}
-                        >
-                            {pending ? 'REFUNDING…' : ticket.seat === 1 ? 'CONFIRM — CANCEL WHOLE ORDER' : 'CONFIRM — CANCEL & REFUND'}
+                    <span className="gt-armed">
+                        <button type="button" className="gt-mini" data-armed="true" onClick={confirm} disabled={pending}>
+                            {pending ? 'Refunding…' : ticket.seat === 1 ? 'Confirm: cancel whole order' : 'Confirm: cancel & refund'}
                         </button>
-                        <button
-                            type="button"
-                            onClick={() => setArmed(false)}
-                            disabled={pending}
-                            className="font-display"
-                            style={{ background: 'none', border: 'none', color: 'var(--text-3)', fontSize: 9, letterSpacing: 'var(--track-wider)', cursor: pending ? 'wait' : 'pointer', textDecoration: 'underline' }}
-                        >
-                            KEEP
+                        <button type="button" className="gt-mini gt-mini--line" onClick={() => setArmed(false)} disabled={pending}>
+                            Keep
                         </button>
-                    </div>
+                    </span>
                 ) : (
                     <button
                         type="button"
+                        className="gt-mini gt-mini--line"
                         onClick={() => setArmed(true)}
                         disabled={pending}
-                        className="font-display"
-                        style={{ background: 'none', border: 'none', color: 'var(--text-3)', fontSize: 9, letterSpacing: 'var(--track-wider)', cursor: 'pointer', textDecoration: 'underline', minHeight: 32 }}
                         title={ticket.seat === 1 ? 'Cancelling seat 1 cancels the whole order' : undefined}
                     >
-                        {ticket.seat === 1 ? 'CANCEL WHOLE ORDER' : 'CANCEL & REFUND'}
+                        <Undo2 size={16} strokeWidth={2} aria-hidden="true" />
+                        {ticket.seat === 1 ? 'Cancel whole order' : 'Cancel & refund'}
                     </button>
                 )
             ) : null}
 
-            {err ? <span style={{ color: 'var(--warn, #ff6b6b)', fontSize: 10, width: '100%' }}>{err}</span> : null}
+            {err ? <ErrorLine>{err}</ErrorLine> : null}
         </div>
     );
 }

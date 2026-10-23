@@ -3,19 +3,23 @@
  * Tier picker for tiered/paid events on /event/[id] (E2/E3).
  *
  * Replaces the flat Going/Maybe/Can't-Go strip ONLY when the event's rsvp_mode
- * is 'tiered' or 'paid' — free events keep RsvpControls untouched. Each active
- * tier renders as a card; a FREE tier (price_cents = 0) is a one-tap RSVP
- * through the same setRsvp/reserve_spot path (with p_tier), while a paid tier
- * goes through startPackageCheckout: reserve_spot holds the spot (~15 min TTL)
- * and the member is redirected into the event-package checkout to pay.
+ * is 'tiered' or 'paid' — free events keep RsvpControls untouched. A FREE tier
+ * (price_cents = 0) is a one-tap RSVP through the same setRsvp/reserve_spot
+ * path (with p_tier), while a paid tier goes through startPackageCheckout:
+ * reserve_spot holds the spot (~15 min TTL) and the member is redirected into
+ * the event-package checkout to pay.
  *
  * A live hold shows an MM:SS countdown to hold_expires_at (the D/H/M/S
  * Countdown.tsx is built for multi-day T-minus, not a 15-minute payment
  * window, so the compact timer lives here) plus COMPLETE PAYMENT + cancel.
  *
- * Styling is inline to match the hand-rolled HUD look of the event page.
+ * Glide (board G2 "Choose a ticket" / web event page): the tiers are a radio
+ * group of cards; the picked tier shows its photo, what's included, the ticket
+ * count and the slide-to-act control. The slide calls exactly what each tier's
+ * own button called before (chooseFree / chooseTickets / choosePaid), with the
+ * same arguments; nothing about the money path changed.
  */
-import { useEffect, useMemo, useState, useTransition } from 'react';
+import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -31,8 +35,10 @@ import {
     REFUND_POLICY_PATH,
     type ReservationPolicy,
 } from '@/lib/refund-policy';
-import styles from './cover-story.module.css';
-import { Check, ChevronRight, Dot, Scissors } from '@/components/icons';
+import { Check, ChevronRight, Clock, Hourglass, Ticket, Undo2 } from 'lucide-react';
+import { GlideButton } from '@/components/glide/primitives';
+import { SlideToAct } from '@/components/glide/SlideToAct';
+import { ErrorLine, Stepper } from '@/components/glide-tickets/parts';
 
 export type TierView = {
     id: string;
@@ -113,7 +119,7 @@ const ERROR_COPY: Record<RsvpError | 'config', string> = {
 };
 
 function formatPrice(cents: number, currency: string): string {
-    if (cents === 0) return 'FREE';
+    if (cents === 0) return 'Free';
     const cur = currency.toUpperCase();
     return `${cur === 'USD' ? '$' : cur + ' '}${(cents / 100).toFixed(2)}`;
 }
@@ -127,15 +133,13 @@ function formatRemaining(deadline: string, now: number): string {
     return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
+const pad3 = (n: number) => String(n).padStart(3, '0');
+
 /**
- * Tier card package photo — a 4:3 image up top, with a small clickable
- * thumbnail strip when the product has 2+ images. Plain <img> (not
- * next/image): this page renders its other remote images as CSS
- * background-image, not through the optimizer, so a plain tag matches how
- * images already render here and needs no next.config change. Renders a
- * dark placeholder (no broken-image icon) when there's no photo yet, and
- * keeps showing it under the fading-in <img> until the image finishes
- * loading.
+ * Tier package photo — a 4:3 image, with a strip of thumbnails when the
+ * product has 2+ images. Plain <img> (not next/image): this page renders its
+ * other remote images the same way and needs no next.config change. Keeps a
+ * plain ground under the fading-in <img> until it has loaded.
  *
  * Each src is the web-sized opt/*.webp twin; if that 404s (e.g. a
  * brand-new upload the batch optimiser hasn't reached yet) onError swaps
@@ -160,16 +164,8 @@ function TierMedia({ image, name }: { image: TierView['image']; name: string }) 
     const fallbackSrc = originals[active] ?? null;
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <div
-                style={{
-                    position: 'relative',
-                    aspectRatio: '4 / 3',
-                    background: 'var(--bg-2)',
-                    borderBottom: '1px solid var(--line)',
-                    overflow: 'hidden',
-                }}
-            >
+        <div className="gt-media">
+            <div className="gt-media-main">
                 {src ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
@@ -193,21 +189,13 @@ function TierMedia({ image, name }: { image: TierView['image']; name: string }) 
                             const el = e.currentTarget;
                             if (fallbackSrc && el.src !== fallbackSrc) el.src = fallbackSrc;
                         }}
-                        style={{
-                            position: 'absolute',
-                            inset: 0,
-                            width: '100%',
-                            height: '100%',
-                            objectFit: 'contain',
-                            opacity: loaded ? 1 : 0,
-                            transition: 'opacity 160ms ease',
-                        }}
+                        style={{ opacity: loaded ? 1 : 0 }}
                     />
                 ) : null}
             </div>
 
             {gallery.length > 1 ? (
-                <div style={{ display: 'flex', gap: 6, padding: '0 10px 2px', flexWrap: 'wrap' }}>
+                <div className="gt-media-thumbs">
                     {gallery.slice(0, 6).map((img, i) => {
                         const isActive = i === active;
                         const thumbFallback = originals[i] ?? null;
@@ -221,19 +209,6 @@ function TierMedia({ image, name }: { image: TierView['image']; name: string }) 
                                 }}
                                 aria-label={`View image ${i + 1} of ${gallery.length}`}
                                 aria-pressed={isActive}
-                                style={{
-                                    position: 'relative',
-                                    width: 36,
-                                    height: 27,
-                                    padding: 0,
-                                    flexShrink: 0,
-                                    cursor: 'pointer',
-                                    overflow: 'hidden',
-                                    background: 'var(--bg-2)',
-                                    border: `1px solid ${isActive ? 'var(--gold)' : 'var(--line)'}`,
-                                    opacity: isActive ? 1 : 0.72,
-                                    transition: 'opacity 120ms ease, border-color 120ms ease',
-                                }}
                             >
                                 {/* eslint-disable-next-line @next/next/no-img-element */}
                                 <img
@@ -244,7 +219,6 @@ function TierMedia({ image, name }: { image: TierView['image']; name: string }) 
                                         const el = e.currentTarget;
                                         if (thumbFallback && el.src !== thumbFallback) el.src = thumbFallback;
                                     }}
-                                    style={{ width: '100%', height: '100%', objectFit: 'contain' }}
                                 />
                             </button>
                         );
@@ -293,6 +267,25 @@ export function TiersSection({
     const [holdExpiresAt, setHoldExpiresAt] = useState<string | null>(initialHoldExpiresAt);
     const [msg, setMsg] = useState<string | null>(null);
     const [pending, startTransition] = useTransition();
+
+    // The tier the radio group has picked: the member's own tier if they have
+    // one, otherwise the first tier that can be taken right now.
+    const [picked, setPicked] = useState<string | null>(() => {
+        if (initialTierId && tiers.some((t) => t.id === initialTierId)) return initialTierId;
+        const open = tiers.find(
+            (t) => (t.priceCents === 0 || t.purchasable) && !(t.remaining != null && t.remaining <= 0),
+        );
+        return (open ?? tiers[0])?.id ?? null;
+    });
+
+    // The slide control is remounted after each attempt so a refused or
+    // failed write springs it back to the start (it holds its own drag state).
+    const [slideKey, setSlideKey] = useState(0);
+    const wasPending = useRef(false);
+    useEffect(() => {
+        if (wasPending.current && !pending) setSlideKey((k) => k + 1);
+        wasPending.current = pending;
+    }, [pending]);
 
     // 1s tick drives the hold countdown; starts server-safe (no Date.now in render path pre-mount).
     // `mounted` gates EXPIRY, not the banner: pre-mount `now` equals the expiry
@@ -417,367 +410,314 @@ export function TiersSection({
     // than risking a silent free release of a spot that was paid for.
     const myTierIsPaid = tierId != null && (myTier == null || myTier.priceCents > 0);
 
+    const showPicker = state !== 'confirmed' && state !== 'ticket_pending' && (state !== 'held' || holdExpired);
+    const tier = tiers.find((t) => t.id === picked) ?? tiers[0] ?? null;
+
+    // Arrow keys move the radio selection, as a native radio group would.
+    const radioRefs = useRef<(HTMLButtonElement | null)[]>([]);
+    const onRadioKey = (e: React.KeyboardEvent, i: number) => {
+        const keys = ['ArrowDown', 'ArrowRight', 'ArrowUp', 'ArrowLeft', 'Home', 'End'];
+        if (!keys.includes(e.key) || tiers.length === 0) return;
+        e.preventDefault();
+        let next = i;
+        if (e.key === 'Home') next = 0;
+        else if (e.key === 'End') next = tiers.length - 1;
+        else if (e.key === 'ArrowDown' || e.key === 'ArrowRight') next = (i + 1) % tiers.length;
+        else next = (i - 1 + tiers.length) % tiers.length;
+        setPicked(tiers[next].id);
+        radioRefs.current[next]?.focus();
+    };
+
+    const statusLine = msg
+        ? null
+        : holdExpired
+            ? 'Your hold expired. Pick a tier to try again.'
+            : !isLoggedIn
+                ? 'Sign in or sign up to RSVP. No app needed.'
+                : state == null && showPicker
+                    ? tiers.length > 1
+                        ? 'Pick a tier, then slide.'
+                        : 'Slide, tap or press Enter.'
+                    : null;
+
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 18, width: '100%' }}>
-            {/* MY STATUS — hold countdown / confirmed / waitlisted banner */}
+        <div className="gt-tiers">
+            {/* MY STATUS — hold countdown / confirmed / waitlisted */}
             {state === 'held' && !holdExpired ? (
-                <div
-                    style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        gap: 12,
-                        padding: '16px 22px',
-                        border: '1px solid var(--gold)',
-                        background: 'var(--gold-dim)',
-                    }}
-                >
-                    <div
-                        style={{
-                            fontFamily: 'var(--font-display)',
-                            fontSize: 12,
-                            letterSpacing: 'var(--track-wider)',
-                            color: 'var(--gold)',
-                        }}
-                    >
-                        <Dot /> SPOT HELD{spotNo != null ? ` · #${String(spotNo).padStart(3, '0')}` : ''} — COMPLETE PAYMENT IN{' '}
-                        <span style={{ color: 'var(--text)', fontWeight: 700 }}>
-                            {mounted && holdExpiresAt ? formatRemaining(holdExpiresAt, now) : '…'}
+                <>
+                    <div className="gt-state" role="status">
+                        <span className="gt-state-n" aria-hidden="true">
+                            <Hourglass size={22} strokeWidth={2} />
+                        </span>
+                        <span className="gt-state-t">
+                            <b>
+                                Spot held{spotNo != null ? <> · <span className="g-w">#{pad3(spotNo)}</span></> : null}
+                            </b>
+                            <small>
+                                Complete payment in{' '}
+                                <span className="g-w">{mounted && holdExpiresAt ? formatRemaining(holdExpiresAt, now) : '…'}</span>
+                                {myTierName ? ` · ${myTierName}` : ''}
+                            </small>
                         </span>
                     </div>
-                    <div style={{ display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'center' }}>
-                        <Link href={`/event/${eventId}/checkout`} className="btn btn-lg" style={{ textDecoration: 'none' }}>
-                            COMPLETE PAYMENT <ChevronRight />
-                        </Link>
-                        <button
-                            type="button"
-                            onClick={cancel}
-                            disabled={pending}
-                            className="font-display"
-                            style={{
-                                background: 'none',
-                                border: 'none',
-                                color: 'var(--text-3)',
-                                fontSize: 10,
-                                letterSpacing: 'var(--track-wider)',
-                                cursor: pending ? 'wait' : 'pointer',
-                                textDecoration: 'underline',
-                            }}
-                        >
-                            CANCEL RESERVATION
+                    <GlideButton href={`/event/${eventId}/checkout`} block>
+                        Complete payment
+                    </GlideButton>
+                    <div className="g-panel-acts">
+                        <button type="button" className="g-link" onClick={cancel} disabled={pending}>
+                            <Undo2 size={16} strokeWidth={2} aria-hidden="true" />
+                            Cancel reservation
                         </button>
                     </div>
-                </div>
+                </>
             ) : state === 'confirmed' && hasTicketOrder ? null : state === 'confirmed' ? (
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-                    <div
-                        style={{
-                            fontFamily: 'var(--font-display)',
-                            fontSize: 12,
-                            letterSpacing: 'var(--track-wider)',
-                            color: 'var(--gold)',
-                        }}
-                    >
-                        <Check /> YOU&apos;RE IN{spotNo != null ? ` · SPOT #${String(spotNo).padStart(3, '0')}` : ''}
-                        {myTierName ? ` · ${myTierName.toUpperCase()}` : ''}
+                <>
+                    <div className="gt-state" role="status">
+                        <span className="gt-state-n" aria-hidden="true">
+                            <Check size={24} strokeWidth={2.4} />
+                        </span>
+                        <span className="gt-state-t">
+                            <b>
+                                You&apos;re in{spotNo != null ? <> · spot <span className="g-w">#{pad3(spotNo)}</span></> : null}
+                            </b>
+                            {myTierName ? <small>{myTierName}</small> : null}
+                        </span>
                     </div>
                     {myTierIsPaid ? (
                         <PaidCancelControl eventId={eventId} refundOpen={refundOpen} policyLine={policyLine} />
                     ) : (
-                        <button
-                            type="button"
-                            onClick={cancel}
-                            disabled={pending}
-                            className="font-display"
-                            style={{
-                                background: 'none',
-                                border: 'none',
-                                color: 'var(--text-3)',
-                                fontSize: 10,
-                                letterSpacing: 'var(--track-wider)',
-                                cursor: pending ? 'wait' : 'pointer',
-                                textDecoration: 'underline',
-                                // This is the ONLY exit from a tiered RSVP and it
-                                // was 119x13 — under half the 44px minimum. The
-                                // text stays small; the target does not.
-                                minHeight: 44,
-                                padding: '0 16px',
-                            }}
-                        >
-                            CANCEL MY RSVP
-                        </button>
+                        <div className="g-panel-acts">
+                            <button type="button" className="g-link" onClick={cancel} disabled={pending}>
+                                <Undo2 size={16} strokeWidth={2} aria-hidden="true" />
+                                Cancel my RSVP
+                            </button>
+                        </div>
                     )}
-                </div>
+                </>
             ) : state === 'waitlisted' ? (
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-                    <div
-                        style={{
-                            fontFamily: 'var(--font-display)',
-                            fontSize: 12,
-                            letterSpacing: 'var(--track-wider)',
-                            color: 'var(--text-2)',
-                        }}
-                    >
-                        <Dot /> WAITLISTED{waitPos != null ? ` · #${waitPos} IN LINE` : ''}
-                        {myTierName ? ` · ${myTierName.toUpperCase()}` : ''}
-                    </div>
-                    <button
-                        type="button"
-                        onClick={cancel}
-                        disabled={pending}
-                        className="font-display"
-                        style={{
-                            background: 'none',
-                            border: 'none',
-                            color: 'var(--text-3)',
-                            fontSize: 10,
-                            letterSpacing: 'var(--track-wider)',
-                            cursor: pending ? 'wait' : 'pointer',
-                            textDecoration: 'underline',
-                        }}
-                    >
-                        LEAVE WAITLIST
+                <div className="gt-state" role="status">
+                    <span className="gt-state-n" aria-hidden="true">
+                        {waitPos != null ? `#${waitPos}` : <Clock size={22} strokeWidth={2} />}
+                    </span>
+                    <span className="gt-state-t">
+                        <b>{waitPos != null ? <>You&apos;re #{waitPos} on the waitlist</> : <>You&apos;re on the waitlist</>}</b>
+                        <small>
+                            Spots are offered in order.
+                            {myTierName ? ` ${myTierName}.` : ''}
+                        </small>
+                    </span>
+                    <button type="button" className="gt-mini" onClick={cancel} disabled={pending} aria-label="Leave the waitlist">
+                        Leave
                     </button>
                 </div>
             ) : state === 'ticket_pending' ? (
                 // Migration 080: the caller has a ticket on someone else's
                 // still-unpaid multi-ticket order — nothing for THEM to pay
                 // or reserve; they're just waiting on that buyer.
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-                    <div
-                        style={{
-                            fontFamily: 'var(--font-display)',
-                            fontSize: 12,
-                            letterSpacing: 'var(--track-wider)',
-                            color: 'var(--text-2)',
-                        }}
-                    >
-                        <Dot /> TICKET PENDING{myTierName ? ` · ${myTierName.toUpperCase()}` : ''}
-                    </div>
-                    <p className="text-muted" style={{ fontSize: 11, margin: 0, textAlign: 'center', maxWidth: 320 }}>
-                        You&apos;re on someone else&apos;s order for this meet — your spot confirms once they finish paying.
-                    </p>
+                <div className="gt-state gt-state--plain" role="status">
+                    <span className="gt-state-n" aria-hidden="true">
+                        <Clock size={22} strokeWidth={2} />
+                    </span>
+                    <span className="gt-state-t">
+                        <b>Ticket pending{myTierName ? ` · ${myTierName}` : ''}</b>
+                        <small>
+                            You&apos;re on someone else&apos;s order for this meet. Your spot confirms once they finish paying.
+                        </small>
+                    </span>
                 </div>
             ) : null}
 
-            {/* TIER CARDS — pick a tier (hidden once confirmed/held) */}
-            {state !== 'confirmed' && state !== 'ticket_pending' && (state !== 'held' || holdExpired) ? (
-                <div className={`${styles.tierGrid} ${tiers.length === 1 ? styles.tierGridSingle : ''}`}>
-                    {tiers.map((tier) => {
-                        const soldOut = tier.remaining != null && tier.remaining <= 0;
-                        const isFree = tier.priceCents === 0;
-                        const buyable = isFree || tier.purchasable;
-                        const hasImage = !!(tier.image && (tier.image.images.length > 0 || tier.image.thumbnail));
-                        const eyebrow = [
-                            tier.includes.length > 0 ? 'PACKAGE' : 'TIER',
-                            tier.reservedSpot ? 'RESERVED SPOT' : null,
-                        ]
-                            .filter(Boolean)
-                            .join(' · ');
-                        return (
-                            <div
-                                key={tier.id}
-                                className={`${styles.tierCard} ${hasImage ? styles.tierCardHasImage : ''}`}
-                                style={{ opacity: soldOut ? 0.65 : 1 }}
-                            >
-                                {hasImage ? (
-                                    <div className={styles.tierPhotoPanel}>
-                                        <TierMedia image={tier.image} name={tier.name} />
-                                        <div className={styles.tierPhotoCaption}>
-                                            <span className={styles.tierPhotoCap}>
-                                                {tier.includes.length > 0 ? "WHAT'S IN THE BOX" : tier.name.toUpperCase()}
-                                            </span>
-                                            {tier.includes.length > 0 ? (
-                                                <span className={styles.tierPhotoCapSub}>{tier.name}</span>
-                                            ) : null}
-                                        </div>
-                                    </div>
-                                ) : null}
-
-                                <div className={styles.tierCoupon}>
-                                <div className={styles.cutLineLabel} style={{ marginBottom: 6 }}>
-                                    <span aria-hidden="true"><Scissors /></span> CUT HERE
-                                </div>
-                                <hr className={styles.cutLine} />
-
-                                <div className={styles.tierCardBody}>
-                                <div className={styles.tierEyebrow}>{eyebrow}</div>
-                                <div className={styles.tierTitle}>{tier.name}</div>
-                                <div className={styles.tierPrice}>{formatPrice(tier.priceCents, tier.currency)}</div>
-
-                                {tier.capacity != null ? (
-                                    <div
-                                        className="text-muted"
-                                        style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: 'var(--track-wider)' }}
-                                    >
-                                        {soldOut
-                                            ? 'TIER FULL · JOINS WAITLIST'
-                                            : `${tier.remaining} OF ${tier.capacity} LEFT`}
-                                    </div>
-                                ) : null}
-
-                                {tier.includes.length > 0 ? (
-                                    <ul className={styles.includesList}>
-                                        {tier.includes.map((inc) => (
-                                            <li key={inc}>{inc}</li>
-                                        ))}
-                                    </ul>
-                                ) : null}
-
-                                {tier.notIncluded ? (
-                                    <div className={styles.notIncluded}>
-                                        <span className={styles.notIncludedLabel}>NOT INCLUDED</span>
-                                        {tier.notIncluded}
-                                    </div>
-                                ) : null}
-
-                                {!isLoggedIn ? (
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 4 }}>
-                                        <a
-                                            href={loginHref}
-                                            style={{
-                                                padding: '12px 16px',
-                                                border: '1px solid var(--gold)',
-                                                background: isFree ? 'transparent' : 'var(--gold)',
-                                                color: isFree ? 'var(--gold)' : 'var(--bg-0, #000)',
-                                                fontFamily: 'var(--font-display)',
-                                                fontSize: 11,
-                                                fontWeight: 700,
-                                                letterSpacing: 'var(--track-wider)',
-                                                textAlign: 'center',
-                                                textDecoration: 'none',
-                                            }}
-                                        >
-                                            {isFree ? 'SIGN IN TO RSVP' : 'SIGN IN TO RESERVE'} <ChevronRight />
-                                        </a>
-                                        <a
-                                            href={signupHref}
-                                            className="font-display"
-                                            style={{
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
-                                                minHeight: 44,
-                                                color: 'var(--text-2)',
-                                                fontSize: 10,
-                                                letterSpacing: 'var(--track-wider)',
-                                                textDecoration: 'underline',
-                                            }}
-                                        >
-                                            NEW TO ROLLOUT? SIGN UP <ChevronRight />
-                                        </a>
-                                    </div>
-                                ) : (
-                                <>
-                                {ticketsEnabled && !isFree && buyable && !soldOut ? (() => {
-                                    const max = Math.max(1, Math.min(MAX_TICKETS, tier.remaining ?? MAX_TICKETS));
-                                    const n = Math.max(1, Math.min(max, qty[tier.id] ?? 1));
-                                    return (
-                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginTop: 4 }}>
-                                            <span className="font-display" style={{ fontSize: 10, letterSpacing: 'var(--track-wider)', color: 'var(--text-2)' }}>
-                                                TICKETS
-                                            </span>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                                <button
-                                                    type="button"
-                                                    aria-label="Fewer tickets"
-                                                    disabled={n <= 1}
-                                                    onClick={() => setQty((q) => ({ ...q, [tier.id]: Math.max(1, n - 1) }))}
-                                                    style={{ width: 28, height: 28, border: '1px solid var(--line-mid)', background: 'transparent', color: 'var(--text)', cursor: n <= 1 ? 'not-allowed' : 'pointer', opacity: n <= 1 ? 0.4 : 1 }}
-                                                >
-                                                    −
-                                                </button>
-                                                <span style={{ minWidth: 18, textAlign: 'center', fontFamily: 'var(--font-display)', fontSize: 13, color: 'var(--text)' }}>
-                                                    {n}
-                                                </span>
-                                                <button
-                                                    type="button"
-                                                    aria-label="More tickets"
-                                                    disabled={n >= max}
-                                                    onClick={() => setQty((q) => ({ ...q, [tier.id]: Math.min(max, n + 1) }))}
-                                                    style={{ width: 28, height: 28, border: '1px solid var(--line-mid)', background: 'transparent', color: 'var(--text)', cursor: n >= max ? 'not-allowed' : 'pointer', opacity: n >= max ? 0.4 : 1 }}
-                                                >
-                                                    +
-                                                </button>
-                                            </div>
-                                        </div>
-                                    );
-                                })() : null}
+            {/* TIERS — pick one (hidden once confirmed/held) */}
+            {showPicker && tier ? (
+                <>
+                    <div className="gt-tks" role="radiogroup" aria-label="Tickets">
+                        {tiers.map((t, i) => {
+                            const soldOut = t.remaining != null && t.remaining <= 0;
+                            const on = t.id === tier.id;
+                            const sub = [
+                                t.capacity != null ? (soldOut ? 'Tier full, joins the waitlist' : `${t.remaining} of ${t.capacity} left`) : null,
+                                t.reservedSpot ? 'Reserved spot' : null,
+                            ]
+                                .filter(Boolean)
+                                .join(' · ') || (t.includes[0] ?? null);
+                            return (
                                 <button
-                                    type="button"
-                                    disabled={pending || !buyable}
-                                    onClick={() =>
-                                        isFree
-                                            ? chooseFree(tier)
-                                            : ticketsEnabled
-                                                ? chooseTickets(tier)
-                                                : choosePaid(tier)
-                                    }
-                                    style={{
-                                        marginTop: 4,
-                                        padding: '12px 16px',
-                                        border: '1px solid var(--gold)',
-                                        background: isFree ? 'transparent' : 'var(--gold)',
-                                        color: isFree ? 'var(--gold)' : 'var(--bg-0, #000)',
-                                        fontFamily: 'var(--font-display)',
-                                        fontSize: 11,
-                                        fontWeight: 700,
-                                        letterSpacing: 'var(--track-wider)',
-                                        cursor: pending || !buyable ? 'not-allowed' : 'pointer',
-                                        opacity: pending || !buyable ? 0.6 : 1,
-                                        transition: 'background 120ms, color 120ms',
+                                    key={t.id}
+                                    ref={(el) => {
+                                        radioRefs.current[i] = el;
                                     }}
+                                    type="button"
+                                    role="radio"
+                                    aria-checked={on}
+                                    tabIndex={on ? 0 : -1}
+                                    className={`gt-tk${soldOut ? ' is-out' : ''}`}
+                                    onClick={() => setPicked(t.id)}
+                                    onKeyDown={(e) => onRadioKey(e, i)}
                                 >
-                                    {!buyable
-                                        ? 'UNAVAILABLE'
-                                        : soldOut
-                                            ? 'JOIN WAITLIST'
-                                            : isFree
-                                                ? 'RSVP FREE'
-                                                : ticketsEnabled && (qty[tier.id] ?? 1) > 1
-                                                    ? <>RESERVE {Math.max(1, Math.min(MAX_TICKETS, tier.remaining ?? MAX_TICKETS, qty[tier.id] ?? 1))} + PAY <ChevronRight /></>
-                                                    : <>RESERVE + PAY <ChevronRight /></>}
+                                    <span className="gt-tk-t">
+                                        <b>{t.name}</b>
+                                        {sub ? <small>{sub}</small> : null}
+                                    </span>
+                                    <span className="gt-tk-pr g-w">{formatPrice(t.priceCents, t.currency)}</span>
+                                    <span className="gt-tk-rd" aria-hidden="true">
+                                        <Check size={14} strokeWidth={3} />
+                                    </span>
                                 </button>
-                                </>
-                                )}
+                            );
+                        })}
+                    </div>
 
-                                {!isFree ? (
-                                    <p className={styles.tierPolicy}>
-                                        {policyLine}{' '}
-                                        <Link href={REFUND_POLICY_PATH} className="text-link" style={{ color: 'var(--gold)', fontWeight: 700, textDecoration: 'underline' }}>
-                                            Full policy <ChevronRight />
-                                        </Link>
-                                    </p>
-                                ) : null}
-                                </div>
-                                </div>
-                            </div>
-                        );
-                    })}
+                    <PickedTier
+                        key={tier.id}
+                        tier={tier}
+                        isLoggedIn={isLoggedIn}
+                        ticketsEnabled={ticketsEnabled}
+                        qty={qty[tier.id] ?? 1}
+                        setQty={(n) => setQty((q) => ({ ...q, [tier.id]: n }))}
+                        pending={pending}
+                        slideKey={slideKey}
+                        loginHref={loginHref}
+                        signupHref={signupHref}
+                        policyLine={policyLine}
+                        onAct={() =>
+                            tier.priceCents === 0
+                                ? chooseFree(tier)
+                                : ticketsEnabled
+                                    ? chooseTickets(tier)
+                                    : choosePaid(tier)
+                        }
+                    />
+                </>
+            ) : null}
+
+            {msg ? <ErrorLine>{msg}</ErrorLine> : null}
+            {statusLine ? (
+                <p className="g-panel-status" role="status" aria-live="polite">
+                    {statusLine}
+                </p>
+            ) : null}
+        </div>
+    );
+}
+
+/** The picked tier's details and its one action. */
+function PickedTier({
+    tier,
+    isLoggedIn,
+    ticketsEnabled,
+    qty,
+    setQty,
+    pending,
+    slideKey,
+    loginHref,
+    signupHref,
+    policyLine,
+    onAct,
+}: {
+    tier: TierView;
+    isLoggedIn: boolean;
+    ticketsEnabled: boolean;
+    qty: number;
+    setQty: (n: number) => void;
+    pending: boolean;
+    slideKey: number;
+    loginHref: string;
+    signupHref: string;
+    policyLine: string;
+    onAct: () => void;
+}) {
+    const soldOut = tier.remaining != null && tier.remaining <= 0;
+    const isFree = tier.priceCents === 0;
+    const buyable = isFree || tier.purchasable;
+    const hasImage = !!(tier.image && (tier.image.images.length > 0 || tier.image.thumbnail));
+    const showQty = isLoggedIn && ticketsEnabled && !isFree && buyable && !soldOut;
+    const max = Math.max(1, Math.min(MAX_TICKETS, tier.remaining ?? MAX_TICKETS));
+    const n = Math.max(1, Math.min(max, qty));
+    const price = formatPrice(tier.priceCents, tier.currency);
+
+    const label = soldOut
+        ? 'Join the waitlist'
+        : isFree
+            ? 'Slide to RSVP'
+            : ticketsEnabled && n > 1
+                ? `Reserve ${n} + pay`
+                : 'Reserve + pay';
+
+    return (
+        <div className="gt-pick">
+            {hasImage ? <TierMedia image={tier.image} name={tier.name} /> : null}
+
+            {tier.includes.length > 0 ? (
+                <div className="gt-inc">
+                    <h3>What&apos;s included</h3>
+                    <ul>
+                        {tier.includes.map((inc) => (
+                            <li key={inc}>
+                                <Check size={16} strokeWidth={2.2} aria-hidden="true" />
+                                {inc}
+                            </li>
+                        ))}
+                    </ul>
                 </div>
             ) : null}
 
-            <p
-                className="text-muted"
-                style={{
-                    fontSize: 11,
-                    margin: 0,
-                    minHeight: 14,
-                    fontFamily: 'var(--font-display)',
-                    letterSpacing: 'var(--track-wider)',
-                    color: msg ? 'var(--gold)' : 'var(--text-3)',
-                }}
-            >
-                {msg
-                    ? msg.toUpperCase()
-                    : holdExpired
-                        ? 'YOUR HOLD EXPIRED — PICK A TIER TO TRY AGAIN'
-                        : !isLoggedIn
-                            ? 'SIGN IN OR SIGN UP TO RSVP · NO APP NEEDED'
-                            : state == null
-                                ? 'PICK A TIER TO RSVP'
-                                : ''}
-            </p>
+            {tier.notIncluded ? (
+                <p className="gt-notinc">
+                    <b>Not included:</b> {tier.notIncluded}
+                </p>
+            ) : null}
+
+            {showQty ? (
+                <div className="gt-qtyrow">
+                    <Ticket size={22} strokeWidth={1.5} aria-hidden="true" />
+                    <span className="gt-qtyrow-t">
+                        <b>Tickets</b>
+                        <small>{max > 1 ? `Up to ${max} per order` : 'One per order'}</small>
+                    </span>
+                    <Stepper value={n} max={max} onChange={(v) => setQty(Math.max(1, Math.min(max, v)))} label="tickets" disabled={pending} />
+                </div>
+            ) : null}
+
+            {!isLoggedIn ? (
+                <>
+                    <GlideButton href={loginHref} plain block>
+                        {isFree ? 'Sign in to RSVP' : 'Sign in to reserve'}
+                    </GlideButton>
+                    <div className="g-panel-acts">
+                        <a className="g-link" href={signupHref}>
+                            New to Rollout? Sign up
+                            <ChevronRight size={16} strokeWidth={2} aria-hidden="true" />
+                        </a>
+                    </div>
+                </>
+            ) : !buyable ? (
+                <button type="button" className="g-btn g-btn--block gt-btn-off" disabled>
+                    <span>Unavailable</span>
+                    <span className="g-btn-k" aria-hidden="true">
+                        <Ticket size={20} strokeWidth={2} />
+                    </span>
+                </button>
+            ) : (
+                <SlideToAct
+                    key={slideKey}
+                    label={label}
+                    sub={!isFree && !soldOut ? (n > 1 ? `${n} × ${price}` : price) : undefined}
+                    ariaLabel={`${label}: ${tier.name}${isFree ? '' : `, ${price}${n > 1 ? ` each, ${n} tickets` : ''}`}`}
+                    doneLabel={isFree ? "You're in" : 'Reserving'}
+                    busy={pending}
+                    onComplete={onAct}
+                />
+            )}
+
+            {!isFree ? (
+                <p className="gt-fine">
+                    {policyLine}{' '}
+                    <Link href={REFUND_POLICY_PATH}>
+                        Full policy
+                        <ChevronRight size={14} strokeWidth={2} aria-hidden="true" />
+                    </Link>
+                </p>
+            ) : null}
         </div>
     );
 }
@@ -805,20 +745,13 @@ function PaidCancelControl({
 
     if (!refundOpen) {
         return (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-                <span
-                    className="font-display"
-                    style={{ fontSize: 10, letterSpacing: 'var(--track-wider)', color: 'var(--text-3)' }}
-                >
-                    NON-REFUNDABLE WITHIN 72 HOURS OF THE START
-                </span>
-                <p className="text-muted" style={{ fontSize: 10, margin: 0, textAlign: 'center', maxWidth: 320 }}>
-                    {policyLine}{' '}
-                    <Link href={REFUND_POLICY_PATH} className="text-link" style={{ color: 'inherit', textDecoration: 'underline' }}>
-                        Full policy <ChevronRight />
-                    </Link>
-                </p>
-            </div>
+            <p className="gt-fine">
+                <b style={{ color: 'var(--ink)' }}>Non-refundable within 72 hours of the start.</b> {policyLine}{' '}
+                <Link href={REFUND_POLICY_PATH}>
+                    Full policy
+                    <ChevronRight size={14} strokeWidth={2} aria-hidden="true" />
+                </Link>
+            </p>
         );
     }
 
@@ -836,56 +769,32 @@ function PaidCancelControl({
     };
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+        <>
             {armed ? (
-                <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'center' }}>
-                    <button
-                        type="button"
-                        onClick={confirm}
-                        disabled={pending}
-                        className="font-display"
-                        style={{
-                            padding: '10px 16px',
-                            border: '1px solid var(--warn, #ff6b6b)',
-                            background: 'transparent',
-                            color: 'var(--warn, #ff6b6b)',
-                            fontSize: 10,
-                            letterSpacing: 'var(--track-wider)',
-                            cursor: pending ? 'wait' : 'pointer',
-                        }}
-                    >
-                        {pending ? 'REFUNDING…' : 'CONFIRM — CANCEL & REFUND'}
+                <div className="g-panel-sub" role="group" aria-label="Confirm the refund">
+                    <button type="button" className="g-sec" onClick={confirm} disabled={pending} aria-pressed="true">
+                        {pending ? 'Refunding…' : 'Confirm: cancel & refund'}
                     </button>
-                    <button
-                        type="button"
-                        onClick={() => setArmed(false)}
-                        disabled={pending}
-                        className="font-display"
-                        style={{ background: 'none', border: 'none', color: 'var(--text-3)', fontSize: 10, letterSpacing: 'var(--track-wider)', cursor: pending ? 'wait' : 'pointer', textDecoration: 'underline' }}
-                    >
-                        KEEP MY SPOT
+                    <button type="button" className="g-sec g-sec--ink" onClick={() => setArmed(false)} disabled={pending}>
+                        Keep my spot
                     </button>
                 </div>
             ) : (
-                <button
-                    type="button"
-                    onClick={() => setArmed(true)}
-                    disabled={pending}
-                    className="font-display"
-                    style={{ background: 'none', border: 'none', color: 'var(--text-3)', fontSize: 10, letterSpacing: 'var(--track-wider)', cursor: 'pointer', textDecoration: 'underline', minHeight: 44, padding: '0 16px' }}
-                >
-                    CANCEL & GET A FULL REFUND
-                </button>
+                <div className="g-panel-sub">
+                    <button type="button" className="g-sec g-sec--ink" onClick={() => setArmed(true)} disabled={pending}>
+                        <Undo2 size={18} strokeWidth={1.75} aria-hidden="true" />
+                        Cancel &amp; get a full refund
+                    </button>
+                </div>
             )}
-            <p className="text-muted" style={{ fontSize: 10, margin: 0, textAlign: 'center', maxWidth: 320 }}>
+            <p className="gt-fine">
                 Your spot is released immediately. {policyLine}{' '}
-                <Link href={REFUND_POLICY_PATH} className="text-link" style={{ color: 'inherit', textDecoration: 'underline' }}>
-                    Full policy <ChevronRight />
+                <Link href={REFUND_POLICY_PATH}>
+                    Full policy
+                    <ChevronRight size={14} strokeWidth={2} aria-hidden="true" />
                 </Link>
             </p>
-            {err ? (
-                <span style={{ color: 'var(--warn, #ff6b6b)', fontSize: 11 }}>{err}</span>
-            ) : null}
-        </div>
+            {err ? <ErrorLine>{err}</ErrorLine> : null}
+        </>
     );
 }
