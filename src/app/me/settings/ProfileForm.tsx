@@ -1,9 +1,10 @@
 'use client';
 import { useEffect, useRef, useState, useTransition } from 'react';
+import { Check, CircleAlert, CircleCheck, LoaderCircle } from 'lucide-react';
 import { checkHandleAction } from '@/app/signup/onboarding/actions';
 import { saveProfileSettingsAction } from './actions';
-import { PendingButton } from '@/components/feedback';
-import { Check, ChevronRight } from '@/components/icons';
+import { GlideButton } from '@/components/glide/primitives';
+import s from '@/components/glide-console/console.module.css';
 
 type HandleState = { kind: 'idle' } | { kind: 'checking' } | { kind: 'ok' } | { kind: 'bad'; reason: string };
 
@@ -39,20 +40,34 @@ export function ProfileForm({ initial }: { initial: { displayName: string; handl
         };
     }, [handle, initial.handle]);
 
+    const hintIc = { size: 15, strokeWidth: 2, 'aria-hidden': true } as const;
     const hint =
-        handleState.kind === 'checking'
-            ? { text: 'CHECKING…', color: 'var(--text-3)' }
-            : handleState.kind === 'ok'
-              ? { text: <><Check /> AVAILABLE · YOUR OLD HANDLE STOPS WORKING WHEN YOU SAVE</>, color: 'var(--gold)' }
-              : handleState.kind === 'bad'
-                ? { text: handleState.reason.toUpperCase(), color: '#e5484d' }
-                : { text: 'LETTERS, NUMBERS, UNDERSCORES · 3–20 CHARS', color: 'var(--text-3)' };
+        handleState.kind === 'checking' ? (
+            <p className={s.hint} aria-live="polite">
+                <LoaderCircle {...hintIc} className="g-spin" />
+                Checking…
+            </p>
+        ) : handleState.kind === 'ok' ? (
+            <p className={s.hint} aria-live="polite">
+                <Check {...hintIc} />
+                Available. Your old handle stops working when you save.
+            </p>
+        ) : handleState.kind === 'bad' ? (
+            <p className={`${s.hint} ${s.hintBad}`} aria-live="polite">
+                <CircleAlert {...hintIc} />
+                {handleState.reason}
+            </p>
+        ) : (
+            <p className={s.hint} aria-live="polite">
+                Letters, numbers and underscores, 3–20 characters.
+            </p>
+        );
 
     const canSave = !pending && displayName.trim().length > 0 && (!changedHandle || handleState.kind === 'ok');
 
     return (
         <form
-            className="admin-form"
+            className={s.form}
             onSubmit={(e) => {
                 e.preventDefault();
                 start(async () => {
@@ -62,30 +77,68 @@ export function ProfileForm({ initial }: { initial: { displayName: string; handl
                 });
             }}
         >
-            <div className="admin-form-label">DISPLAY NAME</div>
-            <input type="text" className="admin-form-input" value={displayName} onChange={(e) => setDisplayName(e.target.value)} maxLength={60} required />
-
-            <div className="admin-form-label">HANDLE</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ color: 'var(--text-3)', fontFamily: 'var(--font-mono, monospace)' }}>@</span>
-                <input type="text" className="admin-form-input" value={handle} onChange={(e) => setHandle(e.target.value)} autoCapitalize="none" autoCorrect="off" spellCheck={false} style={{ flex: 1 }} required />
+            <div className={s.grid2f}>
+                <div className={s.field}>
+                    <label className={s.label} htmlFor="pf-name">
+                        Display name
+                    </label>
+                    <input id="pf-name" type="text" className={s.input} value={displayName} onChange={(e) => setDisplayName(e.target.value)} maxLength={60} required />
+                </div>
+                <div className={s.field}>
+                    <label className={s.label} htmlFor="pf-handle">
+                        Handle
+                    </label>
+                    <div className={s.affix}>
+                        <span aria-hidden="true">@</span>
+                        <input
+                            id="pf-handle"
+                            type="text"
+                            className={s.input}
+                            value={handle}
+                            onChange={(e) => setHandle(e.target.value)}
+                            autoCapitalize="none"
+                            autoCorrect="off"
+                            spellCheck={false}
+                            aria-invalid={handleState.kind === 'bad' || undefined}
+                            aria-describedby="pf-handle-hint"
+                            required
+                        />
+                    </div>
+                    <div id="pf-handle-hint">{hint}</div>
+                </div>
             </div>
-            <div style={{ fontSize: 10, letterSpacing: 'var(--track-wider)', color: hint.color, fontFamily: 'var(--font-display)', minHeight: 14, marginBottom: 12 }}>{hint.text}</div>
 
-            <div className="admin-form-label">LOCATION</div>
-            <input type="text" className="admin-form-input" value={location} onChange={(e) => setLocation(e.target.value)} placeholder="City, ST" maxLength={80} />
+            <div className={s.field}>
+                <label className={s.label} htmlFor="pf-loc">
+                    Location
+                </label>
+                <input id="pf-loc" type="text" className={s.input} value={location} onChange={(e) => setLocation(e.target.value)} placeholder="City, ST" maxLength={80} />
+            </div>
 
-            <div className="admin-form-label">BIO</div>
-            <textarea className="admin-form-input" value={bio} onChange={(e) => setBio(e.target.value)} maxLength={280} rows={3} style={{ resize: 'vertical', fontFamily: 'inherit' }} />
+            <div className={s.field}>
+                <label className={s.label} htmlFor="pf-bio">
+                    Bio
+                </label>
+                <textarea id="pf-bio" className={s.input} value={bio} onChange={(e) => setBio(e.target.value)} maxLength={280} rows={3} />
+            </div>
 
             {msg ? (
-                <div className="admin-login-error" role="status" style={msg.ok ? { borderColor: 'var(--gold)', background: 'rgba(255,183,51,0.08)', color: 'var(--text)' } : undefined}>
+                <p className={`g-note ${s.msg}`} role="status">
+                    {msg.ok ? <CircleCheck size={20} strokeWidth={2} aria-hidden="true" /> : <CircleAlert size={20} strokeWidth={2} aria-hidden="true" />}
                     {msg.text}
-                </div>
+                </p>
             ) : null}
-            <PendingButton type="submit" pending={pending} pendingLabel="SAVING" disabled={!canSave} className="admin-login-btn">
-                SAVE PROFILE <ChevronRight />
-            </PendingButton>
+            <div>
+                <GlideButton
+                    type="submit"
+                    size="sm"
+                    disabled={!canSave}
+                    aria-busy={pending}
+                    icon={pending ? <LoaderCircle size={18} strokeWidth={2} className="g-spin" /> : undefined}
+                >
+                    {pending ? 'Saving…' : 'Save profile'}
+                </GlideButton>
+            </div>
         </form>
     );
 }

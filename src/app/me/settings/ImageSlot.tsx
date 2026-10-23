@@ -1,6 +1,9 @@
 'use client';
 import { useRef, useState, useTransition } from 'react';
+import { ImagePlus, LoaderCircle, Trash2 } from 'lucide-react';
 import { removeProfileImageAction, uploadProfileImageAction } from './actions';
+import s from '@/components/glide-console/console.module.css';
+import st from './settings.module.css';
 
 /** One image slot (avatar or banner): current image, pick a file, remove. */
 export function ImageSlot({ kind, current, label, hint }: { kind: 'avatar' | 'banner'; current: string | null; label: string; hint: string }) {
@@ -8,31 +11,27 @@ export function ImageSlot({ kind, current, label, hint }: { kind: 'avatar' | 'ba
     const [msg, setMsg] = useState<string | null>(null);
     const [pending, start] = useTransition();
     const input = useRef<HTMLInputElement>(null);
-    const box = kind === 'avatar' ? { width: 96, height: 96 } : { width: '100%', maxWidth: 420, aspectRatio: '21 / 9' as const };
+    const shape = kind === 'avatar' ? st.slotAvatar : st.slotBanner;
 
     return (
-        <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', flexWrap: 'wrap', marginBottom: 20 }}>
+        <div className={`${st.slot} ${kind === 'banner' ? st.slotWide : ''}`}>
             {src ? (
-                <div
-                    style={{ ...box, border: '1px solid var(--line-mid)', borderRadius: kind === 'avatar' ? '50%' : 0, background: `url(${src}) center/cover no-repeat`, flexShrink: 0 }}
-                    role="img"
-                    aria-label={`Current ${label.toLowerCase()}`}
-                />
+                <div className={shape} style={{ backgroundImage: `url(${src})` }} role="img" aria-label={`Current ${label.toLowerCase()}`} />
             ) : (
-                <div
-                    style={{ ...box, border: '1px dashed var(--line-mid)', borderRadius: kind === 'avatar' ? '50%' : 0, background: 'var(--bg-2)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-display)', fontSize: 9, letterSpacing: 'var(--track-wider)', color: 'var(--text-3)', textAlign: 'center', padding: 8 }}
-                >
-                    NO IMAGE YET
+                <div className={`${shape} ${st.slotEmpty}`}>
+                    <ImagePlus size={22} strokeWidth={1.75} aria-hidden="true" />
+                    <span>No {label.toLowerCase()} yet</span>
                 </div>
             )}
-            <div style={{ flex: 1, minWidth: 220 }}>
-                <div className="admin-form-label">{label}</div>
-                <div style={{ fontSize: 12, color: 'var(--text-2)', marginBottom: 10 }}>{hint}</div>
+            <div className={st.slotBody}>
+                <b className={st.slotLabel}>{label}</b>
+                <p className={s.small}>{hint}</p>
                 <input
                     ref={input}
                     type="file"
                     accept="image/jpeg,image/png,image/webp"
                     style={{ display: 'none' }}
+                    aria-label={`Choose a ${label.toLowerCase()} image`}
                     onChange={(e) => {
                         const f = e.target.files?.[0];
                         if (!f) return;
@@ -50,14 +49,15 @@ export function ImageSlot({ kind, current, label, hint }: { kind: 'avatar' | 'ba
                         });
                     }}
                 />
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                    <button type="button" className="admin-action-btn" disabled={pending} onClick={() => input.current?.click()}>
-                        {pending ? 'WORKING…' : src ? 'REPLACE' : 'UPLOAD'}
+                <div className={s.actRow} style={{ marginTop: 10 }}>
+                    <button type="button" className="g-sec" disabled={pending} aria-busy={pending} onClick={() => input.current?.click()}>
+                        {pending ? <LoaderCircle size={17} strokeWidth={2} className="g-spin" aria-hidden="true" /> : <ImagePlus size={17} strokeWidth={2} aria-hidden="true" />}
+                        {pending ? 'Working…' : src ? 'Replace' : 'Upload'}
                     </button>
                     {src ? (
                         <button
                             type="button"
-                            className="admin-action-btn muted"
+                            className={`g-sec ${s.danger}`}
                             disabled={pending}
                             onClick={() =>
                                 start(async () => {
@@ -67,11 +67,16 @@ export function ImageSlot({ kind, current, label, hint }: { kind: 'avatar' | 'ba
                                 })
                             }
                         >
-                            REMOVE
+                            <Trash2 size={17} strokeWidth={2} aria-hidden="true" />
+                            Remove
                         </button>
                     ) : null}
                 </div>
-                {msg ? <div style={{ fontSize: 11, marginTop: 8, color: 'var(--text-2)' }} role="status">{msg}</div> : null}
+                {msg ? (
+                    <p className={s.hint} role="status" style={{ marginTop: 8 }}>
+                        {msg}
+                    </p>
+                ) : null}
             </div>
         </div>
     );

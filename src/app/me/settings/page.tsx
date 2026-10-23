@@ -1,18 +1,24 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
+import { ChevronRight, MapPin, Palette, ShieldCheck, UserRound } from 'lucide-react';
 import { requireConsumer } from '@/lib/me-guard';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { ensureMedusaCustomerToken } from '@/lib/medusa-customer';
 import { listShippingAddresses } from '@/lib/medusa-address';
-import { Panel } from '../ui';
 import { ProfileForm } from './ProfileForm';
 import { ImageSlot } from './ImageSlot';
 import { AddressBook } from './AddressBook';
 import { AccountPanel } from './AccountPanel';
-import { Appearance } from '@/components/glide/Appearance';
+import { AppearancePanel } from '@/components/glide-console/AppearancePanel';
+import { Card, Row, SecButton } from '@/components/glide/primitives';
+import { CardHead, ConsoleHead } from '@/components/glide-console/parts';
+import s from '@/components/glide-console/console.module.css';
+import st from './settings.module.css';
 
 export const dynamic = 'force-dynamic';
 export const metadata: Metadata = { title: 'Settings · My Rollout', robots: { index: false } };
+
+const ic = { size: 22, strokeWidth: 1.75, 'aria-hidden': true } as const;
+const chev = <ChevronRight className="g-row-ch" size={18} strokeWidth={2} aria-hidden="true" />;
 
 export default async function SettingsPage() {
     const me = await requireConsumer('/me/settings');
@@ -27,45 +33,73 @@ export default async function SettingsPage() {
     const handle = String(p?.handle ?? me.handle).replace(/^@+/, '');
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
-            <div className="admin-page-head">
-                <div>
-                    <div className="admin-page-title">SETTINGS</div>
-                    <div className="admin-page-sub">Your profile, shipping addresses and account.</div>
+        <div className={s.scope}>
+            <ConsoleHead
+                title="Settings"
+                sub="Your profile, shipping addresses, appearance and account."
+                actions={
+                    <SecButton href={`/u/${handle}`}>
+                        <UserRound size={17} strokeWidth={2} aria-hidden="true" />
+                        Public profile
+                    </SecButton>
+                }
+            />
+
+            <div className={s.side}>
+                {/* Index: jumps to each section on this page. */}
+                <div className={`${s.col} ${s.sticky}`}>
+                    <Card as="section" aria-label="Settings sections">
+                        <ul className={`g-rows ${st.index}`}>
+                            <Row href="#profile" icon={<UserRound {...ic} />} label="Profile" sub="Name, handle, photo, bio" trailing={chev} />
+                            <Row
+                                href="#shipping"
+                                icon={<MapPin {...ic} />}
+                                label="Shipping addresses"
+                                sub={connected ? `${addresses.length} saved` : 'Added at checkout'}
+                                trailing={chev}
+                            />
+                            <Row href="#appearance" icon={<Palette {...ic} />} label="Appearance" sub="Theme and dark style" trailing={chev} />
+                            <Row href="#account" icon={<ShieldCheck {...ic} />} label="Account" sub="Email, sessions, delete" trailing={chev} />
+                        </ul>
+                    </Card>
                 </div>
-                <Link href={`/u/${handle}`} className="admin-action-btn muted" style={{ textDecoration: 'none' }}>
-                    PUBLIC PROFILE
-                </Link>
+
+                <div className={s.col}>
+                    <Card as="section" aria-labelledby="profile" style={{ scrollMarginTop: 20 }}>
+                        <CardHead id="profile" title="Profile" sub="Shown on your public page and next to your posts." />
+                        <div className={s.cardBody}>
+                            <div className={st.slots}>
+                                <ImageSlot kind="avatar" current={p?.avatar_url ?? null} label="Avatar" hint="Square, up to 5 MB — JPG, PNG or WebP. Resized to 512 px." />
+                                <ImageSlot kind="banner" current={p?.banner_url ?? null} label="Banner" hint="Wide, up to 5 MB — shown 21:9 at the top of your page. Resized to 1600 px." />
+                            </div>
+                            <ProfileForm initial={{ displayName: p?.display_name ?? me.displayName, handle, bio: p?.bio ?? '', location: p?.location ?? '' }} />
+                        </div>
+                    </Card>
+
+                    <Card as="section" aria-labelledby="shipping" style={{ scrollMarginTop: 20 }}>
+                        <CardHead id="shipping" title="Shipping addresses" sub="Used when you shop on Rollout. Your default prefills checkout." />
+                        <div className={s.cardBody}>
+                            <AddressBook initial={addresses} connected={connected} />
+                        </div>
+                    </Card>
+
+                    {/* Device-only: the choice lives in cookies on this browser. Saving it
+                        on the profile needs a migration (open decision). */}
+                    <Card as="section" aria-labelledby="appearance" style={{ scrollMarginTop: 20 }}>
+                        <CardHead id="appearance" title="Appearance" sub="Saved on this device." />
+                        <div className={s.cardBody}>
+                            <AppearancePanel />
+                        </div>
+                    </Card>
+
+                    <Card as="section" aria-labelledby="account" style={{ scrollMarginTop: 20 }}>
+                        <CardHead id="account" title="Account" />
+                        <div className={s.cardBody} style={{ paddingTop: 4 }}>
+                            <AccountPanel email={me.email} handle={handle} />
+                        </div>
+                    </Card>
+                </div>
             </div>
-
-            <Panel title="PROFILE">
-                <div className="admin-form" style={{ marginBottom: 14 }}>
-                    <ImageSlot kind="avatar" current={p?.avatar_url ?? null} label="AVATAR" hint="Square, up to 5 MB — JPG, PNG or WebP. Resized to 512 px." />
-                    <ImageSlot kind="banner" current={p?.banner_url ?? null} label="BANNER" hint="Wide, up to 5 MB — shown 21:9 at the top of your page. Resized to 1600 px." />
-                </div>
-                <ProfileForm initial={{ displayName: p?.display_name ?? me.displayName, handle, bio: p?.bio ?? '', location: p?.location ?? '' }} />
-            </Panel>
-
-            <Panel title="SHIPPING ADDRESSES">
-                <div style={{ fontSize: 12, color: 'var(--text-2)', marginBottom: 12 }}>Used when you shop on Rollout. Your default prefills checkout.</div>
-                <AddressBook initial={addresses} connected={connected} />
-            </Panel>
-
-            {/* Device-only: the choice lives in cookies on this browser. Saving it
-                on the profile needs a migration (open decision). The control is
-                Glide, so it carries its own .glide scope inside the old panel. */}
-            <Panel title="APPEARANCE">
-                <div className="glide" style={{ maxWidth: 440 }}>
-                    <Appearance idPrefix="settings-appearance" />
-                    <p className="g-appear-note" style={{ marginTop: 12 }}>
-                        Saved on this device.
-                    </p>
-                </div>
-            </Panel>
-
-            <Panel title="ACCOUNT">
-                <AccountPanel email={me.email} handle={handle} />
-            </Panel>
         </div>
     );
 }
