@@ -417,6 +417,7 @@ export function MeetsMap({
     activeId = null,
     onSelectEvent,
     glide = false,
+    overlayInset,
 }: {
     events: MapEvent[];
     shops: MapShop[];
@@ -428,6 +429,8 @@ export function MeetsMap({
     onSelectEvent?: (id: string) => void;
     /** Glide styling: theme-aware basemap, date-roundel pins, Glide popups. */
     glide?: boolean;
+    /** Space taken by controls floating over the map (px), kept clear when fitting the pins. */
+    overlayInset?: { top: number; bottom: number };
 }) {
     const containerRef = useRef<HTMLDivElement>(null);
     const mapRef = useRef<any>(null);
@@ -624,7 +627,12 @@ export function MeetsMap({
                 if (bounds.length === 1) {
                     map.setView(bounds[0], 13);
                 } else if (bounds.length > 1) {
-                    map.fitBounds(bounds, { padding: [48, 48], maxZoom: 14 });
+                    map.fitBounds(
+                        bounds,
+                        overlayInset
+                            ? { paddingTopLeft: [48, overlayInset.top], paddingBottomRight: [48, overlayInset.bottom], maxZoom: 14 }
+                            : { padding: [48, 48], maxZoom: 14 },
+                    );
                 } else {
                     // No pins at all: the national view, then the visitor's own area
                     // if the browser will say. Never a city the visitor may not be in.

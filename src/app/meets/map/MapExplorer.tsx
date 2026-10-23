@@ -43,7 +43,15 @@ export function MapExplorer({
 
     return (
         <div className="gd-mapx">
-            <MeetsMap events={events} shops={shops} fill glide activeId={activeId} onSelectEvent={select} />
+            <MeetsMap
+                events={events}
+                shops={shops}
+                fill
+                glide
+                activeId={activeId}
+                onSelectEvent={select}
+                overlayInset={{ top: 170, bottom: events.length > 0 ? 150 : 48 }}
+            />
 
             <div className="gd-mapx-top">
                 <div className="gd-mapx-title g-fp">
