@@ -1,4 +1,5 @@
 import { getPulse } from '@/lib/pulse';
+import { SectionHead } from '@/components/glide-admin/parts';
 
 /** $1,234 with cents only when the amount has them. */
 function money(n: number): string {
@@ -23,22 +24,12 @@ export default async function PulseSection() {
 
     return (
         <>
-            <div
-                className="admin-page-head"
-                style={{ marginTop: 12, borderBottom: 'none', paddingBottom: 0, marginBottom: 12 }}
-            >
-                <div>
-                    <div className="admin-page-title" style={{ fontSize: 14 }}>
-                        PULSE
-                    </div>
-                    <div className="admin-page-sub">CROSS-ECOSYSTEM KPIs · 7D / 30D · CACHED 5 MIN</div>
-                </div>
-            </div>
+            <SectionHead title="Pulse" sub="Cross-ecosystem numbers over 7 and 30 days, cached for 5 minutes." />
 
             <div className="admin-stat-grid">
                 {/* 1 · REVENUE (EMWRAPS) */}
                 <Tile
-                    label="REVENUE · EMWRAPS"
+                    label="Revenue · EMWRAPS"
                     value={p.revenue.error ? '—' : money(p.revenue.outstanding)}
                     accent="gold"
                     error={p.revenue.error}
@@ -58,18 +49,18 @@ export default async function PulseSection() {
 
                 {/* 2 · STORE REVENUE (Medusa, sandbox) */}
                 <Tile
-                    label="STORE REVENUE"
-                    tag={{ text: 'SANDBOX', kind: 'sandbox' }}
+                    label="Store revenue"
+                    tag={{ text: 'Sandbox', kind: 'sandbox' }}
                     value={p.store.error ? '—' : money(p.store.storeRevenue.d30.subtotal)}
                     accent="gold"
                     error={p.store.error}
                     sub={
                         p.store.error ? null : (
                             <>
-                                <span className="k">7D</span> {money(p.store.storeRevenue.d7.subtotal)} ·{' '}
+                                <span className="k">7d</span> {money(p.store.storeRevenue.d7.subtotal)} ·{' '}
                                 {p.store.storeRevenue.d7.count} orders
                                 <br />
-                                <span className="k">30D</span> {money(p.store.storeRevenue.d30.subtotal)} ·{' '}
+                                <span className="k">30d</span> {money(p.store.storeRevenue.d30.subtotal)} ·{' '}
                                 {p.store.storeRevenue.d30.count} orders <span className="sep">·</span> {currency} item
                                 subtotal
                             </>
@@ -79,7 +70,7 @@ export default async function PulseSection() {
 
                 {/* 3 · TICKETS */}
                 <Tile
-                    label="ACTIVE JOBS · EMWRAPS"
+                    label="Active jobs · EMWRAPS"
                     value={p.tickets.error ? '—' : p.tickets.active}
                     error={p.tickets.error}
                     sub={
@@ -98,7 +89,7 @@ export default async function PulseSection() {
 
                 {/* 4 · ORDERS AWAITING FULFILLMENT */}
                 <Tile
-                    label="ORDERS AWAITING FULFILLMENT"
+                    label="Orders awaiting fulfillment"
                     value={p.store.error ? '—' : p.store.unfulfilled.total}
                     accent={!p.store.error && p.store.unfulfilled.total > 0 ? 'warn' : undefined}
                     error={p.store.error}
@@ -120,7 +111,7 @@ export default async function PulseSection() {
 
                 {/* 5 · SIGNUPS */}
                 <Tile
-                    label="SIGNUPS · 7D"
+                    label="Signups · 7 days"
                     value={s.error ? '—' : signup7}
                     error={s.error}
                     sub={
@@ -138,7 +129,7 @@ export default async function PulseSection() {
 
                 {/* 6 · EVENTS */}
                 <Tile
-                    label="UPCOMING EVENTS"
+                    label="Upcoming events"
                     value={p.events.error ? '—' : p.events.upcomingEvents}
                     error={p.events.error}
                     sub={
@@ -154,7 +145,7 @@ export default async function PulseSection() {
 
                 {/* 7 · TRAFFIC (GA4) — degraded by default */}
                 <div className="admin-stat">
-                    <div className="admin-stat-lbl">TRAFFIC · GA4 · 7D</div>
+                    <div className="admin-stat-lbl">Traffic · GA4 · 7 days</div>
                     {p.ga4.connected ? (
                         <>
                             <div className="admin-stat-num">
@@ -169,7 +160,7 @@ export default async function PulseSection() {
                         </>
                     ) : (
                         <>
-                            <div className="admin-stat-connect">CONNECT GA4</div>
+                            <div className="admin-stat-connect">Connect GA4</div>
                             <div className="admin-stat-sub">
                                 Server-side GA4 not configured. Add a service account
                                 <br />

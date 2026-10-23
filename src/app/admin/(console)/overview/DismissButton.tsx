@@ -18,7 +18,7 @@ export function DismissButton({ id }: { id: string }) {
                 })
             }
         >
-            {pending ? '…' : 'DISMISS'}
+            {pending ? 'Dismissing…' : 'Dismiss'}
         </button>
     );
 }

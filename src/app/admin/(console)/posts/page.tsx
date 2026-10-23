@@ -1,6 +1,9 @@
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { PostActions } from './PostActions';
-import { CircleDot, Heart } from '@/components/icons';
+import { Eye, EyeOff, Heart, MessageCircle } from 'lucide-react';
+import { AdminHead, adminStyles as a, sentence } from '@/components/glide-admin/parts';
+
+const ic = { size: 15, strokeWidth: 2, 'aria-hidden': true } as const;
 
 export const metadata = { title: 'Posts' };
 
@@ -35,50 +38,44 @@ export default async function PostsPage({
 
     return (
         <>
-            <div className="admin-page-head">
-                <div>
-                    <div className="admin-page-title">POSTS</div>
-                    <div className="admin-page-sub">
-                        {items.length} SHOWN · {showDeleted ? 'INCLUDING DELETED' : 'LIVE ONLY'}
-                    </div>
-                </div>
-                <a
-                    href={`/admin/posts${showDeleted ? '' : '?deleted=1'}`}
-                    className="admin-action-btn muted"
-                    style={{ textDecoration: 'none' }}
-                >
-                    {showDeleted ? 'HIDE DELETED' : 'SHOW DELETED'}
-                </a>
-            </div>
-
+            <AdminHead
+                title="Posts"
+                sub={`${items.length} shown, newest first. ${showDeleted ? 'Including deleted posts.' : 'Live posts only.'}`}
+                actions={
+                    <a href={`/admin/posts${showDeleted ? '' : '?deleted=1'}`} className="admin-action-btn muted">
+                        {showDeleted ? <EyeOff {...ic} /> : <Eye {...ic} />}
+                        {showDeleted ? 'Hide deleted' : 'Show deleted'}
+                    </a>
+                }
+            />
             <div className="admin-table-wrap">
                 <table className="admin-table">
                     <thead>
                         <tr>
-                            <th>WHEN</th>
-                            <th>TYPE</th>
-                            <th>AUTHOR</th>
-                            <th>BODY</th>
-                            <th>STATS</th>
-                            <th>FLAGS</th>
-                            <th style={{ textAlign: 'right' }}>ACTIONS</th>
+                            <th>When</th>
+                            <th>Type</th>
+                            <th>Author</th>
+                            <th>Body</th>
+                            <th>Stats</th>
+                            <th>Flags</th>
+                            <th style={{ textAlign: 'right' }}>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         {items.length === 0 ? (
                             <tr>
                                 <td colSpan={7}>
-                                    <div className="admin-empty">NO POSTS</div>
+                                    <div className="admin-empty">No posts here.</div>
                                 </td>
                             </tr>
                         ) : (
                             items.map((p: any) => (
                                 <tr key={p.id}>
-                                    <td>
+                                    <td className={a.time}>
                                         {new Date(p.created_at).toISOString().slice(0, 16).replace('T', ' ')}
                                     </td>
                                     <td>
-                                        <span className="admin-pill">{p.type}</span>
+                                        <span className="admin-pill">{sentence(p.type)}</span>
                                     </td>
                                     <td>
                                         {p.author && (
@@ -88,7 +85,7 @@ export default async function PostsPage({
                                                 </a>
                                                 {p.author.kind === 'shop_page' && (
                                                     <span className="admin-pill gold" style={{ marginLeft: 6 }}>
-                                                        SHOP
+                                                        Shop
                                                     </span>
                                                 )}
                                             </>
@@ -102,17 +99,24 @@ export default async function PostsPage({
                                                 display: '-webkit-box',
                                                 WebkitLineClamp: 2,
                                                 WebkitBoxOrient: 'vertical',
-                                                color: 'var(--text)',
+                                                color: 'var(--ink)',
                                             }}
                                         >
                                             {p.body}
                                         </div>
                                     </td>
                                     <td>
-                                        <Heart fill="currentColor" /> {p.like_count} · <CircleDot /> {p.comment_count}
+                                        <span className={a.meta} style={{ flexWrap: 'nowrap' }}>
+                                            <span aria-label={`${p.like_count} likes`}>
+                                                <Heart {...ic} /> {p.like_count}
+                                            </span>
+                                            <span aria-label={`${p.comment_count} comments`}>
+                                                <MessageCircle {...ic} /> {p.comment_count}
+                                            </span>
+                                        </span>
                                     </td>
                                     <td>
-                                        {p.deleted_at && <span className="admin-pill warn">DELETED</span>}
+                                        {p.deleted_at && <span className="admin-pill warn">Deleted</span>}
                                     </td>
                                     <td style={{ textAlign: 'right' }}>
                                         {!p.deleted_at && <PostActions postId={p.id} />}

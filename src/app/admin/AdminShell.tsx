@@ -11,6 +11,8 @@
 import { getAttentionCount, getPendingAppealsCount, getPendingReportsCount } from '@/lib/admin-attention';
 import { AdminSidebar } from './AdminSidebar';
 import { JumpBar } from './JumpBar';
+import { AdminNav } from '@/components/glide-admin/AdminNav';
+import s from '@/components/glide-admin/admin.module.css';
 
 export async function AdminShell({
     adminHandle,
@@ -38,6 +40,36 @@ export async function AdminShell({
         getPendingReportsCount(),
         getPendingAppealsCount(),
     ]);
+    // Glide (web phase 3, admin lane): the platform-admin console renders in the
+    // Glide shell. The shop console's admin path (layoutClass 'shop-layout') is
+    // owned by the shop lanes and keeps its legacy chrome, unchanged.
+    if (layoutClass === 'admin-layout') {
+        return (
+            <div
+                className={`glide glide-page ${s.shell}${subnav ? ` ${s.hasSub}` : ''}`}
+            >
+                {prelude}
+                <AdminNav
+                    adminLabel={`@${adminHandle}`}
+                    attentionCount={attentionCount}
+                    reportsCount={reportsCount}
+                    appealsCount={appealsCount}
+                />
+                {subnav ? (
+                    <nav className={s.subnav} aria-label="Section navigation">
+                        <div className={s.subnavIn}>{subnav}</div>
+                    </nav>
+                ) : null}
+                <div className={s.main}>
+                    <div className={s.header}>
+                        <JumpBar glide />
+                    </div>
+                    {banner}
+                    <main className={s.page}>{children}</main>
+                </div>
+            </div>
+        );
+    }
     return (
         <div
             className={`${layoutClass}${subnav ? ' has-subnav' : ''}`}

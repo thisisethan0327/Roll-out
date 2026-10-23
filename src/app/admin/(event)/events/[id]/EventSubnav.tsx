@@ -7,7 +7,10 @@
  */
 import Link from 'next/link';
 import { SHOP_NAV, SHOP_NAV_SECTIONS } from '@/lib/shop-nav';
-import { ChevronRight } from '@/components/icons';
+import { ArrowUpRight, CalendarDays, ChevronRight, Pencil, Store, UserRound, Users, Eye, Ticket } from 'lucide-react';
+import { adminStyles as a, sentence } from '@/components/glide-admin/parts';
+
+const ic = { size: 18, strokeWidth: 1.9, 'aria-hidden': true } as const;
 
 export function ShopEventSubnav({
     slug,
@@ -32,22 +35,28 @@ export function ShopEventSubnav({
     const items = SHOP_NAV.filter((n) => on.has(n.module));
     return (
         <>
-            <div className="admin-subnav-head">
-                <div className="admin-subnav-eyebrow">ACTING AS @{slug.toUpperCase()}</div>
-                <div className="admin-subnav-title">{shopName}</div>
+            <div className={a.subHead}>
+                <div className={a.subKicker}>
+                    <Store size={15} strokeWidth={2} aria-hidden="true" />
+                    Acting as @{slug}
+                </div>
+                <div className={a.subTitle}>{shopName}</div>
                 {shopStatus && shopStatus !== 'verified' ? (
-                    <div style={{ marginTop: 6 }}>
-                        <span className="admin-pill warn">{shopStatus.toUpperCase()}</span>
+                    <div className={a.chipRow} style={{ marginTop: 8 }}>
+                        <span className="admin-pill warn">{sentence(shopStatus)}</span>
                     </div>
                 ) : null}
             </div>
 
-            <div className="admin-subnav-group">
-                <Link href={`/admin/events/${eventId}`} className="admin-sidebar-link active" aria-current="page">
-                    <span>THIS EVENT · ADMIN VIEW</span>
+            <div className={a.subGroup}>
+                <Link href={`/admin/events/${eventId}`} className={a.navLink} aria-current="page">
+                    <CalendarDays {...ic} />
+                    <span className={a.navLabel}>This event, admin view</span>
                 </Link>
-                <Link href={`/shop/${slug}/events/${eventId}`} className="admin-sidebar-link">
-                    <span>EDIT EVENT <ChevronRight /></span>
+                <Link href={`/shop/${slug}/events/${eventId}`} className={a.navLink}>
+                    <Pencil {...ic} />
+                    <span className={a.navLabel}>Edit event</span>
+                    <ChevronRight size={16} strokeWidth={2} aria-hidden="true" />
                 </Link>
             </div>
 
@@ -55,17 +64,17 @@ export function ShopEventSubnav({
                 const rows = items.filter((n) => n.section === sec);
                 if (rows.length === 0) return null;
                 return (
-                    <div key={sec} className="admin-subnav-group">
-                        <div className="admin-sidebar-section">{sec}</div>
+                    <div key={sec} className={a.subGroup}>
+                        <div className={a.navSec}>{sentence(sec)}</div>
                         {rows.map((n) => (
-                            <Link key={n.href} href={`/shop/${slug}/${n.href}`} className="admin-sidebar-link">
-                                <span>{n.label}</span>
+                            <Link key={n.href} href={`/shop/${slug}/${n.href}`} className={a.navLink}>
+                                <span className={a.navLabel}>{sentence(n.label)}</span>
                                 {adminOnlySet.has(n.module) ? (
                                     <span
+                                        className={a.adminTag}
                                         title="Hidden for this shop's tier; shown because you are a Rollout admin"
-                                        style={{ fontSize: 8, letterSpacing: 'var(--track-wider)', color: 'var(--text-3)', border: '1px solid var(--line)', padding: '1px 4px' }}
                                     >
-                                        ADMIN
+                                        Admin
                                     </span>
                                 ) : null}
                             </Link>
@@ -74,15 +83,16 @@ export function ShopEventSubnav({
                 );
             })}
 
-            <div className="admin-subnav-foot">
-                <Link href={`/admin/shops/${shopId}`} className="admin-sidebar-link" style={{ padding: '10px 0' }}>
-                    <span>ADMIN SHOP PAGE <ChevronRight /></span>
+            <div className={a.subFoot}>
+                <Link href={`/admin/shops/${shopId}`} className={a.navLink}>
+                    <Store {...ic} />
+                    <span className={a.navLabel}>Admin shop page</span>
+                    <ChevronRight size={16} strokeWidth={2} aria-hidden="true" />
                 </Link>
             </div>
         </>
     );
 }
-
 export function HostEventSubnav({
     handle,
     eventId,
@@ -94,31 +104,42 @@ export function HostEventSubnav({
 }) {
     return (
         <>
-            <div className="admin-subnav-head">
-                <div className="admin-subnav-eyebrow">HOST {handle ? `@${handle.toUpperCase()}` : ''} (MEMBER)</div>
-                <div className="admin-subnav-title">Member-hosted event</div>
+            <div className={a.subHead}>
+                <div className={a.subKicker}>
+                    <UserRound size={15} strokeWidth={2} aria-hidden="true" />
+                    Host {handle ? `@${handle}` : ''} (member)
+                </div>
+                <div className={a.subTitle}>Member-hosted event</div>
             </div>
-            <div className="admin-subnav-group">
-                <Link href={`/admin/events/${eventId}`} className="admin-sidebar-link active" aria-current="page">
-                    <span>THIS EVENT</span>
+            <div className={a.subGroup}>
+                <Link href={`/admin/events/${eventId}`} className={a.navLink} aria-current="page">
+                    <CalendarDays {...ic} />
+                    <span className={a.navLabel}>This event</span>
                 </Link>
-                <a href="#edit" className="admin-sidebar-link">
-                    <span>EDIT</span>
+                <a href="#edit" className={a.navLink}>
+                    <Pencil {...ic} />
+                    <span className={a.navLabel}>Edit</span>
                 </a>
-                <a href="#attendees" className="admin-sidebar-link">
-                    <span>ATTENDEES</span>
+                <a href="#attendees" className={a.navLink}>
+                    <Users {...ic} />
+                    <span className={a.navLabel}>Attendees</span>
                 </a>
                 {showTickets ? (
-                    <a href="#tickets" className="admin-sidebar-link">
-                        <span>TICKETS</span>
+                    <a href="#tickets" className={a.navLink}>
+                        <Ticket {...ic} />
+                        <span className={a.navLabel}>Tickets</span>
                     </a>
                 ) : null}
-                <Link href={`/event/${eventId}`} className="admin-sidebar-link">
-                    <span>VIEW PUBLIC <ChevronRight /></span>
+                <Link href={`/event/${eventId}`} className={a.navLink}>
+                    <Eye {...ic} />
+                    <span className={a.navLabel}>View public page</span>
+                    <ArrowUpRight size={16} strokeWidth={2} aria-hidden="true" />
                 </Link>
                 {handle ? (
-                    <Link href={`/admin/users?q=${encodeURIComponent(handle)}`} className="admin-sidebar-link">
-                        <span>HOST IN USERS <ChevronRight /></span>
+                    <Link href={`/admin/users?q=${encodeURIComponent(handle)}`} className={a.navLink}>
+                        <UserRound {...ic} />
+                        <span className={a.navLabel}>Host in Users</span>
+                        <ChevronRight size={16} strokeWidth={2} aria-hidden="true" />
                     </Link>
                 ) : null}
             </div>

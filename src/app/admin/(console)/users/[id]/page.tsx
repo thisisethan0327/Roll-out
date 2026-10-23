@@ -22,20 +22,13 @@ import { REFUNDING_STALE_MS } from '@/lib/ban-refunds';
 import { isBanSchemaMissing, isBannedUntil, describeBanEnd } from '@/lib/ban';
 import { loadAuditForProfile } from '@/lib/admin-audit';
 import { AdminAuditTable } from '@/components/AdminAuditTable';
-import { Check, ChevronLeft, ChevronRight } from '@/components/icons';
+import { Check, ChevronRight, MessagesSquare, ShieldAlert, TriangleAlert, UserRound } from 'lucide-react';
+import { AdminHead, DefList, SectionHead, Stat, adminStyles as a, sentence } from '@/components/glide-admin/parts';
+
+const ic = { size: 15, strokeWidth: 2, 'aria-hidden': true } as const;
 
 export const metadata = { title: 'User · Detail' };
 export const dynamic = 'force-dynamic';
-
-const LABEL_STYLE: React.CSSProperties = {
-    padding: '10px 0',
-    fontFamily: 'var(--font-display, monospace)',
-    fontSize: 10,
-    letterSpacing: '2px',
-    color: 'var(--text-3, #8a8a9a)',
-    width: 150,
-    verticalAlign: 'top',
-};
 
 const STATE_PILL: Record<string, string> = {
     pending: 'admin-pill gold',
@@ -252,10 +245,8 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
     if (!data) {
         return (
             <>
-                <div className="admin-empty">USER NOT FOUND</div>
-                <Link href="/admin/users" className="admin-action-btn muted" style={{ textDecoration: 'none' }}>
-                    <ChevronLeft /> ALL USERS
-                </Link>
+                <AdminHead title="User not found" back={{ href: '/admin/users', label: 'All users' }} />
+                <div className="admin-empty">No member has that id.</div>
             </>
         );
     }
@@ -291,46 +282,38 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
 
     return (
         <>
-            <div className="admin-page-head">
-                <div>
-                    <div className="admin-page-title">@{p.handle}</div>
-                    <div className="admin-page-sub">
-                        {String(p.display_name ?? '').toUpperCase()} · {p.kind === 'shop_page' ? 'SHOP PAGE' : 'USER'}
-                    </div>
-                </div>
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                    <Link href="/admin/users" className="admin-action-btn muted" style={{ textDecoration: 'none' }}>
-                        <ChevronLeft /> ALL USERS
-                    </Link>
-                    {p.kind === 'user' && (
-                        <Link
-                            href={`/admin/users/${p.id}/messages`}
-                            className="admin-action-btn muted"
-                            style={{ textDecoration: 'none' }}
-                        >
-                            MESSAGES <ChevronRight />
+            <AdminHead
+                back={{ href: '/admin/users', label: 'All users' }}
+                title={`@${p.handle}`}
+                sub={`${p.display_name ?? ''} · ${p.kind === 'shop_page' ? 'Shop page' : 'Member'}`}
+                actions={
+                    <>
+                        {p.kind === 'user' && (
+                            <Link href={`/admin/users/${p.id}/messages`} className="admin-action-btn muted">
+                                <MessagesSquare {...ic} /> Messages
+                            </Link>
+                        )}
+                        <Link href={`/u/${p.handle}`} className="admin-action-btn muted">
+                            <UserRound {...ic} /> Public profile
                         </Link>
-                    )}
-                    <Link href={`/u/${p.handle}`} className="admin-action-btn muted" style={{ textDecoration: 'none' }}>
-                        PUBLIC PROFILE <ChevronRight />
-                    </Link>
-                </div>
-            </div>
+                    </>
+                }
+            />
 
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', margin: '0 0 14px 0' }}>
+            <div className={a.chipRow}>
                 <span className={`admin-pill ${p.kind === 'shop_page' ? 'gold' : ''}`}>
-                    {p.kind === 'shop_page' ? 'SHOP' : 'USER'}
+                    {p.kind === 'shop_page' ? 'Shop' : 'User'}
                 </span>
-                {p.is_verified && <span className="admin-pill gold"><Check /> VERIFIED</span>}
-                {hostStatus === 'verified' && <span className="admin-pill neon">VERIFIED HOST</span>}
-                {hostStatus === 'pending' && <span className="admin-pill gold">HOST PENDING</span>}
-                {data.isPlatformAdmin && <span className="admin-pill warn">GOD</span>}
-                {data.isMeetCoordinator && <span className="admin-pill neon">MEET COORD</span>}
-                {p.deleted_at && <span className="admin-pill warn">DELETED</span>}
-                {p.deactivated_at && <span className="admin-pill warn">DEACTIVATED</span>}
-                {banned && <span className="admin-pill warn">BANNED</span>}
-                {authLocked && <span className="admin-pill warn">AUTH LOCKED</span>}
-                {auth && !auth.emailConfirmedAt && <span className="admin-pill">EMAIL UNCONFIRMED</span>}
+                {p.is_verified && <span className="admin-pill gold"><Check {...ic} /> Verified</span>}
+                {hostStatus === 'verified' && <span className="admin-pill neon">Verified host</span>}
+                {hostStatus === 'pending' && <span className="admin-pill gold">Host pending</span>}
+                {data.isPlatformAdmin && <span className="admin-pill warn">God mode</span>}
+                {data.isMeetCoordinator && <span className="admin-pill neon">Meet coordinator</span>}
+                {p.deleted_at && <span className="admin-pill warn">Deleted</span>}
+                {p.deactivated_at && <span className="admin-pill warn">Deactivated</span>}
+                {banned && <span className="admin-pill warn">Banned</span>}
+                {authLocked && <span className="admin-pill warn">Auth locked</span>}
+                {auth && !auth.emailConfirmedAt && <span className="admin-pill">Email unconfirmed</span>}
             </div>
 
             <UserActions
@@ -346,28 +329,29 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
             />
 
             {banned && (
-                <div className="admin-login-error" style={{ marginTop: 12 }}>
-                    BANNED {describeBanEnd(p.banned_until).toUpperCase()}
-                    {latestBan?.actor_profile_id
-                        ? ` · by @${actorHandles.get(latestBan.actor_profile_id) ?? 'unknown'}`
-                        : ''}
-                    {latestBan?.reason ? ` · ${latestBan.reason}` : ''}
+                <div className="admin-login-error" role="status">
+                    <ShieldAlert size={18} strokeWidth={2} aria-hidden="true" className={a.dangerIc} />
+                    <span>
+                        Banned {describeBanEnd(p.banned_until)}
+                        {latestBan?.actor_profile_id
+                            ? ` · by @${actorHandles.get(latestBan.actor_profile_id) ?? 'unknown'}`
+                            : ''}
+                        {latestBan?.reason ? ` · ${latestBan.reason}` : ''}
+                    </span>
                 </div>
             )}
 
             {p.kind === 'user' && (upcomingRsvps.length > 0 || upcomingHosted.length > 0) && (
-                <div style={{ border: '1px solid var(--line)', padding: '12px 16px', marginTop: 12, fontSize: 13 }}>
-                    <div className="admin-page-sub" style={{ marginBottom: 8 }}>
-                        UPCOMING COMMITMENTS · PERMANENT BAN: PAID TICKETS ARE CANCELLED AND REFUNDED · TEMPORARY BAN: KEPT
-                    </div>
-                    <div style={{ color: 'var(--text-2)', marginBottom: 8 }}>
-                        A permanent ban cancels and refunds upcoming paid tickets (unless an admin withheld the refund) and
-                        releases free RSVPs. A temporary ban keeps them and the member can request a refund. Hosted events
-                        are never touched: handle them with the event tools. Refund state is under TICKET REFUNDS below.
-                    </div>
+                <div className={`${a.card} ${a.cardPad} ${a.stack}`}>
+                    <p className={a.small} style={{ margin: 0, color: 'var(--ink)' }}>
+                        <b>Upcoming commitments.</b> A permanent ban cancels and refunds upcoming paid tickets (unless an
+                        admin withheld the refund) and releases free RSVPs. A temporary ban keeps them and the member can
+                        request a refund. Hosted events are never touched: handle them with the event tools. Refund state is
+                        under Ticket refunds below.
+                    </p>
                     {upcomingHosted.length > 0 && (
-                        <div style={{ marginBottom: 6 }}>
-                            <b>HOSTING ({upcomingHosted.length}):</b>{' '}
+                        <div className={a.small}>
+                            <b className={a.k}>Hosting ({upcomingHosted.length}):</b>{' '}
                             {upcomingHosted.map((e, i) => (
                                 <span key={e.id}>
                                     {i > 0 ? ' · ' : ''}
@@ -380,8 +364,8 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
                         </div>
                     )}
                     {upcomingRsvps.length > 0 && (
-                        <div>
-                            <b>RSVPED ({upcomingRsvps.length}):</b>{' '}
+                        <div className={a.small}>
+                            <b className={a.k}>RSVPed ({upcomingRsvps.length}):</b>{' '}
                             {upcomingRsvps.map((r, i) => {
                                 const ev = eventById.get(r.event_id);
                                 return (
@@ -391,7 +375,7 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
                                             {ev?.title ?? r.event_id}
                                         </Link>{' '}
                                         ({stamp(ev?.start_at).slice(0, 10)}
-                                        {r.payment_ref ? ', PAID' : ''})
+                                        {r.payment_ref ? ', paid' : ''})
                                     </span>
                                 );
                             })}
@@ -400,113 +384,130 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
                 </div>
             )}
 
-            <div className="admin-stat-grid" style={{ marginTop: 20 }}>
-                <Stat label="POSTS" value={n(counts?.posts)} />
-                <Stat label="VEHICLES" value={n(counts?.vehicles)} />
-                <Stat label="PLATES" value={n(counts?.plates)} />
-                <Stat label="COINS" value={n(counts?.coins)} />
-                <Stat label="FOLLOWERS" value={n(counts?.followers)} />
-                <Stat label="FOLLOWING" value={n(counts?.following)} />
-                <Stat label="RSVPS" value={n(counts?.rsvps)} />
-                <Stat label="HOSTED" value={n(counts?.hosted)} />
+            <div className="admin-stat-grid">
+                <Stat label="Posts" value={n(counts?.posts)} />
+                <Stat label="Vehicles" value={n(counts?.vehicles)} />
+                <Stat label="Plates" value={n(counts?.plates)} />
+                <Stat label="Coins" value={n(counts?.coins)} />
+                <Stat label="Followers" value={n(counts?.followers)} />
+                <Stat label="Following" value={n(counts?.following)} />
+                <Stat label="RSVPs" value={n(counts?.rsvps)} />
+                <Stat label="Hosted" value={n(counts?.hosted)} />
             </div>
 
-            <SectionHead title="ACCOUNT" sub="AUTH · SIGN-IN" />
-            <div style={{ border: '1px solid var(--line)', padding: '4px 16px' }}>
-                <table style={{ width: '100%' }}>
-                    <tbody>
-                        <Row label="EMAIL">{auth?.email ?? '—'}</Row>
-                        <Row label="EMAIL CONFIRMED">{auth ? (auth.emailConfirmedAt ? stamp(auth.emailConfirmedAt) : 'NO') : '—'}</Row>
-                        <Row label="ACCOUNT CREATED">{stampRel(auth?.createdAt ?? p.created_at)}</Row>
-                        <Row label="LAST SIGN-IN">{stampRel(auth?.lastSignInAt)}</Row>
-                        <Row label="SIGN-IN PROVIDER">
-                            {auth?.provider ?? '—'}
-                            {auth && auth.providers.length > 1 ? ` (${auth.providers.join(', ')})` : ''}
-                        </Row>
-                        <Row label="APP TAG">{auth?.appTag ?? '—'}</Row>
-                        <Row label="AUTH LOCKED UNTIL">{auth?.bannedUntil ? stamp(auth.bannedUntil) : '—'}</Row>
-                        <Row label="ROLLOUT BAN">
-                            {!banReady
-                                ? 'Needs migration 091'
-                                : banned
-                                  ? `Banned ${describeBanEnd(p.banned_until)}`
-                                  : '—'}
-                        </Row>
-                        <Row label="IDS">
-                            <span style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: 11, color: 'var(--text-3)', wordBreak: 'break-all' }}>
+            <SectionHead title="Account" sub="Auth and sign-in." />
+            <DefList
+                label="Account"
+                rows={[
+                    { k: 'Email', v: auth?.email ?? '—' },
+                    { k: 'Email confirmed', v: auth ? (auth.emailConfirmedAt ? stamp(auth.emailConfirmedAt) : 'No') : '—' },
+                    { k: 'Account created', v: stampRel(auth?.createdAt ?? p.created_at) },
+                    { k: 'Last sign-in', v: stampRel(auth?.lastSignInAt) },
+                    {
+                        k: 'Sign-in provider',
+                        v: (
+                            <>
+                                {auth?.provider ?? '—'}
+                                {auth && auth.providers.length > 1 ? ` (${auth.providers.join(', ')})` : ''}
+                            </>
+                        ),
+                    },
+                    { k: 'App tag', v: auth?.appTag ?? '—' },
+                    { k: 'Auth locked until', v: auth?.bannedUntil ? stamp(auth.bannedUntil) : '—' },
+                    {
+                        k: 'Rollout ban',
+                        v: !banReady ? 'Needs migration 091' : banned ? `Banned ${describeBanEnd(p.banned_until)}` : '—',
+                    },
+                    {
+                        k: 'IDs',
+                        v: (
+                            <span className={a.mono}>
                                 profile {p.id}
                                 {p.auth_user_id ? ` · auth ${p.auth_user_id}` : ''}
                             </span>
-                        </Row>
-                    </tbody>
-                </table>
-            </div>
+                        ),
+                    },
+                ]}
+            />
 
-            <SectionHead title="PROFILE" sub="PUBLIC FIELDS" />
-            <div style={{ border: '1px solid var(--line)', padding: '4px 16px' }}>
-                <table style={{ width: '100%' }}>
-                    <tbody>
-                        <Row label="AVATAR">
-                            {p.avatar_url ? (
-                                // eslint-disable-next-line @next/next/no-img-element
-                                <img
-                                    src={p.avatar_url}
-                                    alt=""
-                                    width={64}
-                                    height={64}
-                                    style={{ objectFit: 'cover', border: '1px solid var(--line)' }}
-                                />
-                            ) : (
-                                '—'
-                            )}
-                        </Row>
-                        <Row label="BIO">
-                            <span style={{ whiteSpace: 'pre-wrap' }}>{p.bio || '—'}</span>
-                        </Row>
-                        <Row label="LOCATION">{p.location || '—'}</Row>
-                        <Row label="SECTOR">{p.sector_code || '—'}</Row>
-                        <Row label="LEVEL">
-                            {p.level != null ? `L${p.level}` : '—'}
-                            {p.xp_total != null ? ` · ${p.xp_total} XP` : ''}
-                        </Row>
-                        <Row label="HOST STATUS">
-                            {hostStatus.toUpperCase()}
-                            {p.host_appointed_by_shop_id ? (
-                                <>
-                                    {' '}
-                                    · nominated by{' '}
-                                    <Link href={`/admin/shops/${p.host_appointed_by_shop_id}`} className="text-link">
-                                        shop #{p.host_appointed_by_shop_id}
-                                    </Link>
-                                </>
-                            ) : null}
-                        </Row>
-                        {p.kind === 'shop_page' && p.shop_id != null ? (
-                            <Row label="SHOP">
-                                <Link href={`/admin/shops/${p.shop_id}`} className="text-link">
-                                    shop #{p.shop_id}
-                                </Link>
-                            </Row>
-                        ) : null}
-                    </tbody>
-                </table>
-            </div>
+            <SectionHead title="Profile" sub="Public fields." />
+            <DefList
+                label="Profile"
+                rows={[
+                    {
+                        k: 'Avatar',
+                        v: p.avatar_url ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                                src={p.avatar_url}
+                                alt=""
+                                width={64}
+                                height={64}
+                                style={{ objectFit: 'cover', borderRadius: '50%', display: 'block' }}
+                            />
+                        ) : (
+                            '—'
+                        ),
+                    },
+                    { k: 'Bio', v: <span style={{ whiteSpace: 'pre-wrap' }}>{p.bio || '—'}</span> },
+                    { k: 'Location', v: p.location || '—' },
+                    { k: 'Sector', v: p.sector_code || '—' },
+                    {
+                        k: 'Level',
+                        v: (
+                            <>
+                                {p.level != null ? `L${p.level}` : '—'}
+                                {p.xp_total != null ? ` · ${p.xp_total} XP` : ''}
+                            </>
+                        ),
+                    },
+                    {
+                        k: 'Host status',
+                        v: (
+                            <>
+                                {sentence(hostStatus)}
+                                {p.host_appointed_by_shop_id ? (
+                                    <>
+                                        {' '}
+                                        · nominated by{' '}
+                                        <Link href={`/admin/shops/${p.host_appointed_by_shop_id}`} className="text-link">
+                                            shop #{p.host_appointed_by_shop_id}
+                                        </Link>
+                                    </>
+                                ) : null}
+                            </>
+                        ),
+                    },
+                    ...(p.kind === 'shop_page' && p.shop_id != null
+                        ? [
+                              {
+                                  k: 'Shop',
+                                  v: (
+                                      <Link href={`/admin/shops/${p.shop_id}`} className="text-link">
+                                          shop #{p.shop_id}
+                                      </Link>
+                                  ),
+                              },
+                          ]
+                        : []),
+                ]}
+            />
 
-            <SectionHead title="SHOPS" sub={`${memberships.length} MEMBERSHIPS`} />
+            <SectionHead title="Shops" sub={`${memberships.length} memberships.`} />
             <div className="admin-table-wrap">
                 <table className="admin-table">
                     <thead>
                         <tr>
-                            <th>SHOP</th>
-                            <th>ROLE</th>
-                            <th>JOINED</th>
+                            <th>Shop</th>
+                            <th>Role</th>
+                            <th>Joined</th>
                         </tr>
                     </thead>
                     <tbody>
                         {memberships.length === 0 ? (
                             <tr>
                                 <td colSpan={3}>
-                                    <div className="admin-empty">NOT ON ANY SHOP&rsquo;S STAFF</div>
+                                    <div className="admin-empty">Not on any shop&rsquo;s staff.</div>
                                 </td>
                             </tr>
                         ) : (
@@ -519,9 +520,9 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
                                         {m.shop?.slug ? <div className="admin-handle">@{m.shop.slug}</div> : null}
                                     </td>
                                     <td>
-                                        <span className="admin-pill">{String(m.role).toUpperCase()}</span>
+                                        <span className="admin-pill">{sentence(m.role)}</span>
                                     </td>
-                                    <td>{stamp(m.created_at)}</td>
+                                    <td className={a.time}>{stamp(m.created_at)}</td>
                                 </tr>
                             ))
                         )}
@@ -529,39 +530,39 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
                 </table>
             </div>
 
-            <SectionHead title="EVENTS HOSTED" sub={`${hosted.length} SHOWN`} />
+            <SectionHead title="Events hosted" sub={`${hosted.length} shown.`} />
             <div className="admin-table-wrap">
                 <table className="admin-table">
                     <thead>
                         <tr>
-                            <th>EVENT</th>
-                            <th>WHEN</th>
-                            <th>FLAGS</th>
+                            <th>Event</th>
+                            <th>When</th>
+                            <th>Flags</th>
                         </tr>
                     </thead>
                     <tbody>
                         {hosted.length === 0 ? (
                             <tr>
                                 <td colSpan={3}>
-                                    <div className="admin-empty">NO EVENTS HOSTED</div>
+                                    <div className="admin-empty">No events hosted.</div>
                                 </td>
                             </tr>
                         ) : (
                             hosted.map((e) => (
                                 <tr key={e.id}>
                                     <td>
-                                        <Link href={`/admin/events/${e.id}`} className="text-link" style={{ fontWeight: 700 }}>
+                                        <Link href={`/admin/events/${e.id}`} className="text-link">
                                             {e.title}
                                         </Link>
                                         {e.code ? <div className="admin-handle">{e.code}</div> : null}
                                     </td>
-                                    <td>{stamp(e.start_at)}</td>
+                                    <td className={a.time}>{stamp(e.start_at)}</td>
                                     <td>
-                                        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                                            {e.cancelled_at && <span className="admin-pill warn">CANCELLED</span>}
-                                            {e.visibility === 'private' && <span className="admin-pill warn">PRIVATE</span>}
-                                            {e.visibility === 'followers' && <span className="admin-pill">FOLLOWERS</span>}
-                                            {e.shop_id != null && <span className="admin-pill gold">SHOP EVENT</span>}
+                                        <div className={a.chipRow}>
+                                            {e.cancelled_at && <span className="admin-pill warn">Cancelled</span>}
+                                            {e.visibility === 'private' && <span className="admin-pill warn">Private</span>}
+                                            {e.visibility === 'followers' && <span className="admin-pill">Followers</span>}
+                                            {e.shop_id != null && <span className="admin-pill gold">Shop event</span>}
                                         </div>
                                     </td>
                                 </tr>
@@ -571,24 +572,24 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
                 </table>
             </div>
 
-            <SectionHead title="RSVPS" sub={`${rsvps.length} SHOWN · MOST RECENT FIRST`} />
+            <SectionHead title="RSVPs" sub={`${rsvps.length} shown, most recent first.`} />
             <div className="admin-table-wrap">
                 <table className="admin-table">
                     <thead>
                         <tr>
-                            <th>EVENT</th>
-                            <th>STATUS</th>
-                            <th>HOLD</th>
-                            <th>SEATS</th>
-                            <th>PAID</th>
-                            <th>RSVPED</th>
+                            <th>Event</th>
+                            <th>Status</th>
+                            <th>Hold</th>
+                            <th>Seats</th>
+                            <th>Paid</th>
+                            <th>RSVPed</th>
                         </tr>
                     </thead>
                     <tbody>
                         {rsvps.length === 0 ? (
                             <tr>
                                 <td colSpan={6}>
-                                    <div className="admin-empty">NO RSVPS</div>
+                                    <div className="admin-empty">No RSVPs.</div>
                                 </td>
                             </tr>
                         ) : (
@@ -602,16 +603,14 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
                                             </Link>
                                             {ev?.cancelled_at ? (
                                                 <span className="admin-pill warn" style={{ marginLeft: 6 }}>
-                                                    CANCELLED
+                                                    Cancelled
                                                 </span>
                                             ) : null}
                                         </td>
                                         <td>
-                                            <span className={RSVP_PILL[r.status] ?? 'admin-pill'}>
-                                                {String(r.status).toUpperCase()}
-                                            </span>
+                                            <span className={RSVP_PILL[r.status] ?? 'admin-pill'}>{sentence(r.status)}</span>
                                         </td>
-                                        <td>{r.hold_state ? String(r.hold_state).toUpperCase() : '—'}</td>
+                                        <td>{r.hold_state ? sentence(r.hold_state) : '—'}</td>
                                         <td>{r.seats ?? '—'}</td>
                                         <td>
                                             {r.payment_ref ? (
@@ -621,13 +620,13 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
                                                     rel="noopener noreferrer"
                                                     className="text-link"
                                                 >
-                                                    ORDER …{String(r.payment_ref).slice(-6)}
+                                                    Order …{String(r.payment_ref).slice(-6)}
                                                 </a>
                                             ) : (
                                                 '—'
                                             )}
                                         </td>
-                                        <td>{stamp(r.rsvped_at)}</td>
+                                        <td className={a.time}>{stamp(r.rsvped_at)}</td>
                                     </tr>
                                 );
                             })
@@ -636,34 +635,34 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
                 </table>
             </div>
 
-            <SectionHead title="TICKETS" sub={`${tickets.length} SHOWN · BOUGHT OR HELD BY THIS MEMBER`} />
+            <SectionHead title="Tickets" sub={`${tickets.length} shown, bought or held by this member.`} />
             <div className="admin-table-wrap">
                 <table className="admin-table">
                     <thead>
                         <tr>
-                            <th>EVENT</th>
-                            <th>SEAT</th>
-                            <th>ROLE</th>
-                            <th>ATTENDEE</th>
-                            <th>STATUS</th>
-                            <th>CHECKED IN</th>
-                            <th>CREATED</th>
-                            <th style={{ textAlign: 'right' }}>ACTIONS</th>
+                            <th>Event</th>
+                            <th>Seat</th>
+                            <th>Role</th>
+                            <th>Attendee</th>
+                            <th>Status</th>
+                            <th>Checked in</th>
+                            <th>Created</th>
+                            <th style={{ textAlign: 'right' }}>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         {tickets.length === 0 ? (
                             <tr>
                                 <td colSpan={8}>
-                                    <div className="admin-empty">NO TICKETS</div>
+                                    <div className="admin-empty">No tickets.</div>
                                 </td>
                             </tr>
                         ) : (
                             tickets.map((t) => {
                                 const ev = eventById.get(t.event_id);
                                 const roles = [
-                                    t.purchaser_profile_id === p.id ? 'BUYER' : null,
-                                    t.attendee_profile_id === p.id ? 'ATTENDEE' : null,
+                                    t.purchaser_profile_id === p.id ? 'Buyer' : null,
+                                    t.attendee_profile_id === p.id ? 'Attendee' : null,
                                 ].filter(Boolean);
                                 return (
                                     <tr key={t.id}>
@@ -673,7 +672,7 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
                                             </Link>
                                             {ev?.cancelled_at ? (
                                                 <span className="admin-pill warn" style={{ marginLeft: 6 }}>
-                                                    CANCELLED
+                                                    Cancelled
                                                 </span>
                                             ) : null}
                                         </td>
@@ -681,10 +680,10 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
                                         <td>{roles.join(' + ') || '—'}</td>
                                         <td>{t.attendee_name || '—'}</td>
                                         <td>
-                                            <span className="admin-pill">{String(t.status ?? '').toUpperCase() || '—'}</span>
+                                            <span className="admin-pill">{sentence(t.status) || '—'}</span>
                                         </td>
-                                        <td>{t.checked_in_at ? stamp(t.checked_in_at) : '—'}</td>
-                                        <td>{stamp(t.created_at)}</td>
+                                        <td className={a.time}>{t.checked_in_at ? stamp(t.checked_in_at) : '—'}</td>
+                                        <td className={a.time}>{stamp(t.created_at)}</td>
                                         <td style={{ textAlign: 'right' }}>
                                             {t.status === 'confirmed' && t.order_id && t.purchaser_profile_id === p.id ? (
                                                 <TicketRefundButton eventId={t.event_id} ticketId={t.id} />
@@ -701,19 +700,19 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
             </div>
 
             <SectionHead
-                title="BAN HISTORY"
-                sub={banReady ? `${bans.length} ENTRIES · ROLLOUT ONLY` : 'NEEDS MIGRATION 091'}
+                title="Ban history"
+                sub={banReady ? `${bans.length} entries. Rollout only.` : 'Needs migration 091.'}
             />
             <div className="admin-table-wrap">
                 <table className="admin-table">
                     <thead>
                         <tr>
-                            <th>WHEN</th>
-                            <th>ACTION</th>
-                            <th>UNTIL</th>
-                            <th>BY</th>
-                            <th>REASON</th>
-                            <th>NOTE</th>
+                            <th>When</th>
+                            <th>Action</th>
+                            <th>Until</th>
+                            <th>By</th>
+                            <th>Reason</th>
+                            <th>Note</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -721,23 +720,23 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
                             <tr>
                                 <td colSpan={6}>
                                     <div className="admin-empty">
-                                        {banReady ? 'NO BANS ON RECORD' : 'NEEDS MIGRATION 091'}
+                                        {banReady ? 'No bans on record.' : 'Needs migration 091.'}
                                     </div>
                                 </td>
                             </tr>
                         ) : (
                             bans.map((b) => (
                                 <tr key={b.id}>
-                                    <td>{stamp(b.created_at)}</td>
+                                    <td className={a.time}>{stamp(b.created_at)}</td>
                                     <td>
                                         <span className={b.action === 'ban' ? 'admin-pill warn' : 'admin-pill neon'}>
-                                            {String(b.action).toUpperCase()}
+                                            {sentence(b.action)}
                                         </span>
                                     </td>
-                                    <td>
+                                    <td className={a.time}>
                                         {b.action === 'ban'
                                             ? describeBanEnd(b.banned_until) === 'permanently'
-                                                ? 'PERMANENT'
+                                                ? 'Permanent'
                                                 : stamp(b.banned_until)
                                             : '—'}
                                     </td>
@@ -755,58 +754,54 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
             {(appeals.length > 0 || (bans.length > 0 && !appealsReady)) && (
                 <>
                     <SectionHead
-                        title="APPEAL"
+                        title="Appeal"
                         sub={
                             appealsReady
-                                ? `${appeals.length} ON RECORD · ONE PER BAN · DECIDE WITHIN ${APPEAL_BUSINESS_DAYS} BUSINESS DAYS`
-                                : 'NEEDS MIGRATION 093'
+                                ? `${appeals.length} on record. One per ban, decided within ${APPEAL_BUSINESS_DAYS} business days.`
+                                : 'Needs migration 093.'
                         }
                     />
                     {!appealsReady ? (
-                        <div className="admin-empty">NEEDS MIGRATION 093</div>
+                        <div className="admin-empty">Needs migration 093.</div>
                     ) : (
-                        <div style={{ display: 'grid', gap: 10 }}>
-                            {appeals.map((a) => {
-                                const open = a.status === 'submitted' || a.status === 'in_review';
-                                const due = addBusinessDays(new Date(a.created_at), APPEAL_BUSINESS_DAYS);
+                        <div className={a.stack}>
+                            {appeals.map((ap) => {
+                                const open = ap.status === 'submitted' || ap.status === 'in_review';
+                                const due = addBusinessDays(new Date(ap.created_at), APPEAL_BUSINESS_DAYS);
                                 return (
-                                    <div key={a.id} className="feature-card" style={{ padding: 14, display: 'grid', gap: 8 }}>
-                                        <div className="mono-row" style={{ fontSize: 11 }}>
+                                    <div key={ap.id} className={`${a.card} ${a.cardPad} ${a.stack}`}>
+                                        <div className={a.chipRow}>
                                             <span
                                                 className={
-                                                    a.status === 'overturned'
+                                                    ap.status === 'overturned'
                                                         ? 'admin-pill neon'
-                                                        : a.status === 'upheld'
+                                                        : ap.status === 'upheld'
                                                           ? 'admin-pill'
                                                           : 'admin-pill warn'
                                                 }
                                             >
-                                                {String(a.status).replace('_', ' ').toUpperCase()}
+                                                {sentence(ap.status)}
                                             </span>
-                                            {open && due.getTime() < Date.now() && <span className="admin-pill warn">OVERDUE</span>}
-                                            <span className="sep" />
-                                            <span>SUBMITTED {stamp(a.created_at)} UTC</span>
-                                            {open && (
-                                                <>
-                                                    <span className="sep" />
-                                                    <span>DUE {stamp(due.toISOString()).slice(0, 10)}</span>
-                                                </>
-                                            )}
+                                            {open && due.getTime() < Date.now() && <span className="admin-pill warn">Overdue</span>}
+                                            <span className={a.meta}>
+                                                <span>Submitted {stamp(ap.created_at)} UTC</span>
+                                                {open && <span>Due {stamp(due.toISOString()).slice(0, 10)}</span>}
+                                            </span>
                                         </div>
-                                        <div style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', fontSize: 14 }}>{a.body}</div>
-                                        <div className="admin-page-sub">
-                                            {a.contact_email ? `CONTACT ${a.contact_email} · ` : ''}
-                                            {a.reviewer_profile_id ? `REVIEWER @${actorHandles.get(a.reviewer_profile_id) ?? '—'} · ` : ''}
-                                            {a.decided_at
-                                                ? `DECIDED ${stamp(a.decided_at)} UTC BY @${actorHandles.get(a.decided_by) ?? '—'}${a.same_admin_override ? ' (SAME-ADMIN OVERRIDE)' : ''}`
-                                                : 'NOT DECIDED'}
-                                            {a.decision_note ? ` · NOTE: ${a.decision_note}` : ''}
-                                            {a.decision_public_note ? ` · SHOWN TO MEMBER: ${a.decision_public_note}` : ''}
+                                        <div className={a.quote}>{ap.body}</div>
+                                        <div className={a.small}>
+                                            {ap.contact_email ? `Contact ${ap.contact_email} · ` : ''}
+                                            {ap.reviewer_profile_id ? `Reviewer @${actorHandles.get(ap.reviewer_profile_id) ?? '—'} · ` : ''}
+                                            {ap.decided_at
+                                                ? `Decided ${stamp(ap.decided_at)} UTC by @${actorHandles.get(ap.decided_by) ?? '—'}${ap.same_admin_override ? ' (same-admin override)' : ''}`
+                                                : 'Not decided'}
+                                            {ap.decision_note ? ` · Note: ${ap.decision_note}` : ''}
+                                            {ap.decision_public_note ? ` · Shown to member: ${ap.decision_public_note}` : ''}
                                         </div>
                                         {open && (
                                             <div>
-                                                <Link href="/admin/appeals" className="admin-action-btn" style={{ textDecoration: 'none' }}>
-                                                    DECIDE IN THE APPEALS QUEUE <ChevronRight />
+                                                <Link href="/admin/appeals" className="admin-action-btn">
+                                                    Decide in the appeals queue <ChevronRight {...ic} />
                                                 </Link>
                                             </div>
                                         )}
@@ -822,12 +817,13 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
             {refundsReady && refundRows.length > 0 && (
                 <>
                     <SectionHead
-                        title="TICKET REFUNDS"
-                        sub={`${refundRows.length} ROWS · BAN REFUND LEDGER${dryRunMode ? ' · DRY RUN MODE ON: NOTHING IS SENT TO PAYMENTS' : ''}`}
+                        title="Ticket refunds"
+                        sub={`${refundRows.length} rows in the ban refund ledger.${dryRunMode ? ' Dry run mode is on: nothing is sent to payments.' : ''}`}
                     />
                     {dryRunMode && (
-                        <div className="admin-login-error" style={{ marginBottom: 10 }}>
-                            BAN_REFUND_DRY_RUN=1: runs only mark rows SKIPPED. No money moves.
+                        <div className="admin-login-error">
+                            <TriangleAlert size={18} strokeWidth={2} aria-hidden="true" />
+                            BAN_REFUND_DRY_RUN=1: runs only mark rows skipped. No money moves.
                         </div>
                     )}
                     <BanRefundControls
@@ -858,29 +854,32 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
                 </>
             )}
 
-            <SectionHead title="VERIFICATION REQUESTS" sub={`${verifs.length} TOTAL`} />
-            <div style={{ marginBottom: 8 }}>
-                <Link href="/admin/verifications" className="admin-action-btn" style={{ textDecoration: 'none' }}>
-                    OPEN VERIFICATION QUEUE <ChevronRight />
-                </Link>
-            </div>
+            <SectionHead
+                title="Verification requests"
+                sub={`${verifs.length} total.`}
+                action={
+                    <Link href="/admin/verifications" className="admin-action-btn">
+                        Open verification queue <ChevronRight {...ic} />
+                    </Link>
+                }
+            />
             <div className="admin-table-wrap">
                 <table className="admin-table">
                     <thead>
                         <tr>
-                            <th>KIND</th>
-                            <th>STATE</th>
-                            <th>WHY</th>
-                            <th>REVIEW NOTE</th>
-                            <th>CREATED</th>
-                            <th>DECIDED</th>
+                            <th>Kind</th>
+                            <th>State</th>
+                            <th>Why</th>
+                            <th>Review note</th>
+                            <th>Created</th>
+                            <th>Decided</th>
                         </tr>
                     </thead>
                     <tbody>
                         {verifs.length === 0 ? (
                             <tr>
                                 <td colSpan={6}>
-                                    <div className="admin-empty">NO VERIFICATION REQUESTS</div>
+                                    <div className="admin-empty">No verification requests.</div>
                                 </td>
                             </tr>
                         ) : (
@@ -889,7 +888,7 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
                                 return (
                                     <tr key={v.id}>
                                         <td>
-                                            <span className="admin-pill">{String(v.kind).toUpperCase()}</span>
+                                            <span className="admin-pill">{sentence(v.kind)}</span>
                                             {v.shop_id != null ? (
                                                 <div className="admin-handle">
                                                     <Link href={`/admin/shops/${v.shop_id}`} className="text-link">
@@ -899,20 +898,14 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
                                             ) : null}
                                         </td>
                                         <td>
-                                            <span className={STATE_PILL[v.state] ?? 'admin-pill'}>
-                                                {String(v.state).toUpperCase()}
-                                            </span>
+                                            <span className={STATE_PILL[v.state] ?? 'admin-pill'}>{sentence(v.state)}</span>
                                         </td>
                                         <td style={{ maxWidth: 280 }}>
-                                            {why ? (
-                                                <span style={{ fontStyle: 'italic' }}>“{String(why)}”</span>
-                                            ) : (
-                                                <span style={{ color: 'var(--text-3)' }}>No reason given</span>
-                                            )}
+                                            {why ? <span>“{String(why)}”</span> : <span className={a.small}>No reason given</span>}
                                         </td>
                                         <td style={{ maxWidth: 280 }}>{v.review_note || '—'}</td>
-                                        <td>{stamp(v.created_at)}</td>
-                                        <td>{stamp(v.decided_at)}</td>
+                                        <td className={a.time}>{stamp(v.created_at)}</td>
+                                        <td className={a.time}>{stamp(v.decided_at)}</td>
                                     </tr>
                                 );
                             })
@@ -924,15 +917,15 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
             {!audit.about.missing && (
                 <>
                     <SectionHead
-                        title="ADMIN ACTIVITY"
-                        sub={`${audit.about.rows.length} SHOWN · ACTIONS TAKEN ON THIS MEMBER BY ROLLOUT ADMINS`}
+                        title="Admin activity"
+                        sub={`${audit.about.rows.length} shown: actions taken on this member by Rollout admins.`}
                     />
                     <AdminAuditTable result={audit.about} />
                     {audit.by.rows.length > 0 && (
                         <>
                             <SectionHead
-                                title="ACTIONS BY THIS MEMBER AS ADMIN"
-                                sub={`${audit.by.rows.length} SHOWN · MOST RECENT FIRST`}
+                                title="Actions by this member as admin"
+                                sub={`${audit.by.rows.length} shown, most recent first.`}
                             />
                             <AdminAuditTable result={audit.by} showActor={false} />
                         </>
@@ -940,36 +933,5 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
                 </>
             )}
         </>
-    );
-}
-
-function SectionHead({ title, sub }: { title: string; sub?: string }) {
-    return (
-        <div className="admin-page-head" style={{ marginTop: 28, borderBottom: 'none', paddingBottom: 0, marginBottom: 12 }}>
-            <div>
-                <div className="admin-page-title" style={{ fontSize: 14 }}>
-                    {title}
-                </div>
-                {sub ? <div className="admin-page-sub">{sub}</div> : null}
-            </div>
-        </div>
-    );
-}
-
-function Stat({ label, value }: { label: string; value: string }) {
-    return (
-        <div className="admin-stat">
-            <div className="admin-stat-lbl">{label}</div>
-            <div className="admin-stat-num">{value}</div>
-        </div>
-    );
-}
-
-function Row({ label, children }: { label: string; children: React.ReactNode }) {
-    return (
-        <tr>
-            <td style={LABEL_STYLE}>{label}</td>
-            <td style={{ padding: '10px 0', fontSize: 14 }}>{children}</td>
-        </tr>
     );
 }

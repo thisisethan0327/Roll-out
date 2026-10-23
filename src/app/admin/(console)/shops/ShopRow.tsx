@@ -1,7 +1,10 @@
 'use client';
 import { useTransition } from 'react';
 import { setShopVerified } from './actions';
-import { Check, ChevronRight } from '@/components/icons';
+import { Check, ChevronRight } from 'lucide-react';
+import { adminStyles as a } from '@/components/glide-admin/parts';
+
+const ic = { size: 15, strokeWidth: 2, 'aria-hidden': true } as const;
 
 export function ShopRow({ shop }: { shop: any }) {
     const [pending, start] = useTransition();
@@ -25,7 +28,7 @@ export function ShopRow({ shop }: { shop: any }) {
 
     return (
         <tr>
-            <td>#{shop.id}</td>
+            <td className={a.num}>#{shop.id}</td>
             <td>
                 <a href={`/admin/shops/${shop.id}`} className="text-link">
                     {shop.slug}
@@ -35,7 +38,7 @@ export function ShopRow({ shop }: { shop: any }) {
                 {shop.name}
                 {notOnMap && (
                     <span className="admin-pill warn" style={{ marginLeft: 8 }}>
-                        NOT ON MAP
+                        Not on map
                     </span>
                 )}
             </td>
@@ -46,15 +49,15 @@ export function ShopRow({ shop }: { shop: any }) {
                         <span className="admin-handle"> {shop.page.display_name}</span>
                     </span>
                 ) : (
-                    <span className="admin-pill warn">MISSING</span>
+                    <span className="admin-pill warn">Missing</span>
                 )}
             </td>
             <td>{shop.memberCount}</td>
             <td>
                 {verified ? (
-                    <span className="admin-pill gold"><Check /> VERIFIED</span>
+                    <span className="admin-pill gold"><Check {...ic} /> Verified</span>
                 ) : (
-                    <span className="admin-pill">UNVERIFIED</span>
+                    <span className="admin-pill">Unverified</span>
                 )}
             </td>
             <td style={{ textAlign: 'right' }}>
@@ -64,10 +67,10 @@ export function ShopRow({ shop }: { shop: any }) {
                         disabled={pending || !shop.page}
                         onClick={handleVerify}
                     >
-                        {verified ? 'UNVERIFY' : <>VERIFY <Check /></>}
+                        {verified ? 'Unverify' : <><Check {...ic} /> Verify</>}
                     </button>
                     <a href={`/admin/shops/${shop.id}`} className="admin-action-btn">
-                        OPEN <ChevronRight />
+                        Open <ChevronRight {...ic} />
                     </a>
                 </div>
             </td>

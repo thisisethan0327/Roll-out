@@ -15,7 +15,10 @@ import {
     type DmMessage,
     type DmThread,
 } from './actions';
-import { ChevronRight } from '@/components/icons';
+import { ChevronRight, Eye, Paperclip, ShieldAlert } from 'lucide-react';
+import { adminStyles as a, adminStyles as st, sentence } from '@/components/glide-admin/parts';
+
+const ic = { size: 15, strokeWidth: 2, 'aria-hidden': true } as const;
 
 const REASON_MIN = 10;
 const REASON_MAX = 500;
@@ -38,11 +41,16 @@ function Gate({
     const [reason, setReason] = useState('');
     const ok = reason.trim().length >= REASON_MIN;
     return (
-        <div style={{ border: '1px solid var(--line)', padding: 16, display: 'grid', gap: 12, maxWidth: 640 }}>
-            <div className="admin-page-sub">PRIVATE MESSAGES · FOR DISPUTES ONLY · EVERY VIEW IS LOGGED WITH YOUR NAME AND REASON</div>
-            <label style={{ display: 'grid', gap: 6 }}>
+        <div className={`${a.card} ${a.formCard}`}>
+            <div className={a.note} style={{ boxShadow: 'none', padding: 0 }}>
+                <ShieldAlert size={20} strokeWidth={2} aria-hidden="true" />
+                <span>
+                    <b>Private messages, for disputes only.</b> Every view is logged with your name and reason.
+                </span>
+            </div>
+            <label className={a.field}>
                 <span className="admin-form-label">
-                    REASON FOR VIEWING ({REASON_MIN}–{REASON_MAX} CHARACTERS, REQUIRED)
+                    Reason for viewing ({REASON_MIN}–{REASON_MAX} characters, required)
                 </span>
                 <textarea
                     className="admin-form-input"
@@ -54,16 +62,15 @@ function Gate({
                     placeholder="e.g. Dispute #123: buyer says seller threatened them"
                 />
             </label>
-            {error && <div className="admin-login-error">{error}</div>}
+            {error && <div className="admin-login-error" role="alert">{error}</div>}
             <div>
                 <button className="admin-action-btn danger" disabled={pending || !ok} onClick={() => onSubmit(reason)}>
-                    {pending ? 'LOGGING…' : `LOG AND ${what}`}
+                    <Eye {...ic} /> {pending ? 'Logging…' : `Log and ${what}`}
                 </button>
             </div>
         </div>
     );
 }
-
 export function ThreadsGate({ profileId, handle }: { profileId: string; handle: string }) {
     const [pending, start] = useTransition();
     const [error, setError] = useState<string | null>(null);
@@ -72,7 +79,7 @@ export function ThreadsGate({ profileId, handle }: { profileId: string; handle: 
     if (!threads) {
         return (
             <Gate
-                what="LIST THREADS"
+                what="list threads"
                 pending={pending}
                 error={error}
                 onSubmit={(reason) =>
@@ -88,47 +95,51 @@ export function ThreadsGate({ profileId, handle }: { profileId: string; handle: 
     }
 
     return (
-        <div style={{ display: 'grid', gap: 10 }}>
-            <div className="admin-page-sub">
-                THIS VIEW IS LOGGED · {threads.length} THREAD{threads.length === 1 ? '' : 'S'} FOR @{handle.toUpperCase()}.
-                OPENING A THREAD ASKS FOR A REASON AGAIN.
+        <div className={a.stack}>
+            <div className={a.note} role="status">
+                <Eye size={18} strokeWidth={2} aria-hidden="true" />
+                <span>
+                    This view is logged. {threads.length} thread{threads.length === 1 ? '' : 's'} for @{handle}. Opening a
+                    thread asks for a reason again.
+                </span>
             </div>
             {threads.length === 0 ? (
-                <div className="admin-empty">NO THREADS</div>
+                <div className="admin-empty">No threads.</div>
             ) : (
                 <div className="admin-table-wrap">
                     <table className="admin-table">
                         <thead>
                             <tr>
-                                <th>THREAD</th>
-                                <th>KIND</th>
-                                <th>MEMBERS</th>
-                                <th>MESSAGES</th>
-                                <th>LAST MESSAGE</th>
-                                <th>THEIR STATE</th>
-                                <th />
+                                <th>Thread</th>
+                                <th>Kind</th>
+                                <th>Members</th>
+                                <th>Messages</th>
+                                <th>Last message</th>
+                                <th>Their state</th>
+                                <th>
+                                    <span className="g-sr">Open</span>
+                                </th>
                             </tr>
                         </thead>
                         <tbody>
                             {threads.map((t) => (
                                 <tr key={t.id}>
                                     <td>{t.name || `…${t.id.slice(-6)}`}</td>
-                                    <td>{String(t.kind ?? '—').toUpperCase()}</td>
+                                    <td>{t.kind ? sentence(t.kind) : '—'}</td>
                                     <td>
                                         {t.members
                                             .map((m) => (m.handle ? `@${m.handle}` : (m.display_name ?? '?')))
                                             .join(', ') || '—'}
                                     </td>
-                                    <td>{t.message_count}</td>
-                                    <td>{stamp(t.last_message_at)}</td>
+                                    <td className={a.num}>{t.message_count}</td>
+                                    <td className={a.time}>{stamp(t.last_message_at)}</td>
                                     <td>{t.state ?? '—'}</td>
                                     <td style={{ textAlign: 'right' }}>
                                         <Link
                                             href={`/admin/users/${profileId}/messages/${t.id}`}
                                             className="admin-action-btn"
-                                            style={{ textDecoration: 'none' }}
                                         >
-                                            OPEN <ChevronRight />
+                                            Open <ChevronRight {...ic} />
                                         </Link>
                                     </td>
                                 </tr>
@@ -166,7 +177,7 @@ export function ThreadGate({ profileId, threadId }: { profileId: string; threadI
         });
 
     if (!view || !reason) {
-        return <Gate what="READ THREAD" pending={pending} error={error} onSubmit={(r) => load(r)} />;
+        return <Gate what="read thread" pending={pending} error={error} onSubmit={(r) => load(r)} />;
     }
 
     const members: { profile_id: string; handle: string | null; display_name: string | null }[] =
@@ -174,123 +185,75 @@ export function ThreadGate({ profileId, threadId }: { profileId: string; threadI
     const oldest = view.messages[0]?.created_at ?? null;
 
     return (
-        <div style={{ display: 'grid', gap: 12 }}>
-            <div className="admin-page-sub">
-                THIS VIEW IS LOGGED · {view.thread.name ? `${String(view.thread.name).toUpperCase()} · ` : ''}
-                {members.map((m) => (m.handle ? `@${m.handle}` : (m.display_name ?? '?'))).join(', ')}
+        <div className={a.stack}>
+            <div className={a.note} role="status">
+                <Eye size={18} strokeWidth={2} aria-hidden="true" />
+                <span>
+                    This view is logged. {view.thread.name ? `${String(view.thread.name)} · ` : ''}
+                    {members.map((m) => (m.handle ? `@${m.handle}` : (m.display_name ?? '?'))).join(', ')}
+                </span>
             </div>
 
             {view.hasMore && oldest && (
                 <div>
                     <button className="admin-action-btn muted" disabled={pending} onClick={() => load(reason, oldest)}>
-                        {pending ? '…' : 'LOAD EARLIER (LOGGED AGAIN)'}
+                        {pending ? 'Loading…' : 'Load earlier (logged again)'}
                     </button>
                 </div>
             )}
-            {error && <div className="admin-login-error">{error}</div>}
+            {error && <div className="admin-login-error" role="alert">{error}</div>}
 
-            <div
-                style={{
-                    border: '1px solid var(--line-mid)',
-                    background: 'var(--bg-0)',
-                    padding: 16,
-                    minHeight: 320,
-                    maxHeight: '65vh',
-                    overflowY: 'auto',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: 8,
-                }}
-            >
+            <div className={a.thread}>
                 {view.messages.length === 0 ? (
                     <div className="admin-empty" style={{ margin: 'auto' }}>
-                        NO MESSAGES
+                        No messages.
                     </div>
                 ) : (
                     view.messages.map((m) => {
                         const mine = m.sender_id === profileId;
                         const deleted = !!m.deleted_at;
                         return (
-                            <div
-                                key={m.id}
-                                style={{
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    alignItems: mine ? 'flex-end' : 'flex-start',
-                                    gap: 2,
-                                    opacity: deleted ? 0.5 : 1,
-                                }}
-                            >
-                                <div
-                                    style={{
-                                        fontSize: 10,
-                                        color: 'var(--text-2)',
-                                        fontFamily: 'var(--font-display)',
-                                        letterSpacing: 'var(--track-wider)',
-                                    }}
-                                >
-                                    {m.sender_handle ? `@${m.sender_handle.toUpperCase()}` : '?'}
-                                    {deleted ? ' · DELETED' : ''}
-                                    {m.edited_at && !deleted ? ' · EDITED' : ''}
+                            <div key={m.id} className={[a.msg, mine ? a.msgMine : '', deleted ? a.msgGone : ''].join(' ')}>
+                                <div className={a.msgWho}>
+                                    {m.sender_handle ? `@${m.sender_handle}` : '?'}
+                                    {deleted ? ' · deleted' : ''}
+                                    {m.edited_at && !deleted ? ' · edited' : ''}
                                 </div>
-                                <div
-                                    style={{
-                                        maxWidth: '70%',
-                                        padding: '8px 12px',
-                                        background: mine ? 'var(--gold)' : 'var(--bg-2)',
-                                        color: mine ? 'var(--on-gold)' : 'var(--text)',
-                                        border: mine ? '1px solid var(--gold)' : '1px solid var(--line-mid)',
-                                        fontSize: 14,
-                                        lineHeight: 1.4,
-                                        whiteSpace: 'pre-wrap',
-                                        wordBreak: 'break-word',
-                                        textDecoration: deleted ? 'line-through' : 'none',
-                                    }}
-                                >
-                                    {m.body || (m.media_urls?.length ? '(attachment)' : '')}
-                                </div>
+                                <div className={a.bubble}>{m.body || (m.media_urls?.length ? '(attachment)' : '')}</div>
                                 {m.media_urls && m.media_urls.length > 0 && (
-                                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                                    <div className={a.actRow}>
                                         {m.media_urls.map((u) => (
-                                            <a key={u} href={u} target="_blank" rel="noopener noreferrer" className="text-link" style={{ fontSize: 11 }}>
-                                                ATTACHMENT <ChevronRight />
+                                            <a key={u} href={u} target="_blank" rel="noopener noreferrer" className="text-link">
+                                                <Paperclip {...ic} /> Attachment
                                             </a>
                                         ))}
                                     </div>
                                 )}
-                                <div
-                                    style={{
-                                        fontSize: 10,
-                                        color: 'var(--text-2)',
-                                        fontFamily: 'var(--font-display)',
-                                        letterSpacing: 'var(--track-wider)',
-                                    }}
-                                >
-                                    {stamp(m.created_at)} UTC
-                                </div>
+                                <div className={a.msgWho}>{stamp(m.created_at)} UTC</div>
                             </div>
                         );
                     })
                 )}
             </div>
-
-            <div className="admin-page-sub">LAST {view.audit.length} VIEWS OF THIS THREAD</div>
+            <div className={a.group}>Last {view.audit.length} views of this thread</div>
             <div className="admin-table-wrap">
                 <table className="admin-table">
                     <thead>
                         <tr>
-                            <th>WHEN (UTC)</th>
-                            <th>ADMIN</th>
-                            <th>ACTION</th>
-                            <th>REASON</th>
+                            <th>When (UTC)</th>
+                            <th>Admin</th>
+                            <th>Action</th>
+                            <th>Reason</th>
                         </tr>
                     </thead>
                     <tbody>
                         {view.audit.map((a, i) => (
                             <tr key={`${a.at}-${i}`}>
-                                <td>{stamp(a.at)}</td>
+                                <td className={st.time}>{stamp(a.at)}</td>
                                 <td>{a.actor ? `@${a.actor}` : '—'}</td>
-                                <td>{a.action}</td>
+                                <td>
+                                    <span className="admin-pill gold">{a.action}</span>
+                                </td>
                                 <td style={{ maxWidth: 360, whiteSpace: 'pre-wrap' }}>{a.reason ?? '—'}</td>
                             </tr>
                         ))}

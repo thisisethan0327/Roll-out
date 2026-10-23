@@ -4,6 +4,8 @@ import {
     revokePlatformAdmin,
     revokeMeetCoordinator,
 } from '../users/actions';
+import { ShieldOff } from 'lucide-react';
+import { adminStyles as a } from '@/components/glide-admin/parts';
 
 export function RevokeButton({
     kind,
@@ -35,7 +37,7 @@ export function RevokeButton({
             onClick={onClick}
             title={disabled ? "You can't revoke yourself." : ''}
         >
-            REVOKE
+            <ShieldOff size={15} strokeWidth={2} aria-hidden="true" className={a.dangerIc} /> Revoke
         </button>
     );
 }

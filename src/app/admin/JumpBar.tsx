@@ -10,10 +10,16 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { JumpGroup, JumpHit } from '@/lib/jump-search';
 import { ArrowUpRight, ChevronRight } from '@/components/icons';
+import { LoaderCircle, Search } from 'lucide-react';
+import { sentence } from '@/components/glide-admin/parts';
 
 const DEBOUNCE_MS = 220;
 
-export function JumpBar() {
+/**
+ * `glide`: the Glide admin shell's look (search icon, sentence-case copy). The
+ * shop console's admin path renders it without, exactly as before.
+ */
+export function JumpBar({ glide = false }: { glide?: boolean } = {}) {
     const router = useRouter();
     const inputRef = useRef<HTMLInputElement>(null);
     const boxRef = useRef<HTMLDivElement>(null);
@@ -133,31 +139,37 @@ export function JumpBar() {
     return (
         <div className="jump" ref={boxRef}>
             <div className="jump-inputwrap">
-                <span className="jump-slash">/</span>
+                {glide ? <Search size={19} strokeWidth={2} aria-hidden="true" /> : null}
+                <span className="jump-slash" aria-hidden={glide ? true : undefined}>/</span>
                 <input
                     ref={inputRef}
                     className="jump-input"
                     value={q}
-                    placeholder="JUMP — search customers, tickets, orders, shops, users…"
+                    placeholder={glide ? 'Jump to a customer, ticket, order, shop or user' : 'JUMP — search customers, tickets, orders, shops, users…'}
+                    aria-label={glide ? 'Jump: search everything (press / to focus)' : undefined}
                     onChange={(e) => setQ(e.target.value)}
                     onFocus={() => groups.length > 0 && setOpen(true)}
                     onKeyDown={onInputKey}
                     spellCheck={false}
                     autoComplete="off"
                 />
-                {loading && <span className="jump-spinner">…</span>}
+                {loading && (
+                    <span className="jump-spinner" role={glide ? 'status' : undefined} aria-label={glide ? 'Searching' : undefined}>
+                        {glide ? <LoaderCircle className="g-spin" size={18} strokeWidth={2} aria-hidden="true" /> : '…'}
+                    </span>
+                )}
             </div>
 
             {open && q.trim().length >= 2 && (
                 <div className="jump-drop">
                     {flat.length === 0 && !loading ? (
-                        <div className="jump-empty">NO MATCHES FOR “{q.trim()}”</div>
+                        <div className="jump-empty">{glide ? `No matches for “${q.trim()}”` : `NO MATCHES FOR “${q.trim()}”`}</div>
                     ) : (
                         groups.map((g) => (
                             <div key={g.key} className="jump-group">
                                 <div className="jump-group-label">
-                                    {g.label}
-                                    {g.error && <span className="jump-group-err">SOURCE ERROR</span>}
+                                    {glide ? sentence(g.label) : g.label}
+                                    {g.error && <span className="jump-group-err">{glide ? 'Source error' : 'SOURCE ERROR'}</span>}
                                 </div>
                                 {g.hits.map((hit) => {
                                     idx += 1;
@@ -177,7 +189,7 @@ export function JumpBar() {
                                                 )}
                                             </span>
                                             <span className="jump-hit-tags">
-                                                {hit.badge && <span className="jump-badge">{hit.badge}</span>}
+                                                {hit.badge && <span className="jump-badge">{glide ? sentence(hit.badge) : hit.badge}</span>}
                                                 {hit.external && <span className="jump-ext"><ArrowUpRight /></span>}
                                             </span>
                                         </button>
@@ -187,7 +199,7 @@ export function JumpBar() {
                         ))
                     )}
                     <button type="button" className="jump-seeall" onClick={seeAll}>
-                        SEE ALL RESULTS <ChevronRight />
+                        {glide ? 'See all results' : 'SEE ALL RESULTS'} <ChevronRight />
                     </button>
                 </div>
             )}

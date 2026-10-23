@@ -13,6 +13,7 @@ import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { APPEAL_BUSINESS_DAYS, addBusinessDays, describeBanEnd, isBanSchemaMissing } from '@/lib/ban';
 import { relativeTime } from '@/lib/admin-user-facts';
 import { AppealActions } from './AppealActions';
+import { AdminHead, Tabs, adminStyles as st, sentence } from '@/components/glide-admin/parts';
 
 export const metadata = { title: 'Appeals' };
 export const dynamic = 'force-dynamic';
@@ -28,7 +29,7 @@ const STATUS_PILL: Record<string, string> = {
     overturned: 'admin-pill neon',
 };
 
-const dim: React.CSSProperties = { color: 'var(--text-3, var(--text-2))' };
+const dim: React.CSSProperties = { color: 'var(--ink-2)' };
 
 type Prof = { id: string; handle: string; display_name: string | null };
 
@@ -121,25 +122,16 @@ export default async function AppealsPage({ searchParams }: { searchParams: Prom
     if (result.missing) {
         return (
             <>
-                <div className="admin-page-head">
-                    <div>
-                        <div className="admin-page-title">APPEALS</div>
-                        <div className="admin-page-sub">NEEDS MIGRATION 093</div>
-                    </div>
-                </div>
-                <div className="admin-empty">NEEDS MIGRATION 093</div>
+                <AdminHead title="Appeals" sub="Needs migration 093." />
+                <div className="admin-empty">The appeals table arrives with migration 093.</div>
             </>
         );
     }
     if (result.failed) {
         return (
             <>
-                <div className="admin-page-head">
-                    <div>
-                        <div className="admin-page-title">APPEALS</div>
-                    </div>
-                </div>
-                <div className="admin-empty">COULD NOT LOAD APPEALS</div>
+                <AdminHead title="Appeals" />
+                <div className="admin-empty">Could not load appeals.</div>
             </>
         );
     }
@@ -149,36 +141,28 @@ export default async function AppealsPage({ searchParams }: { searchParams: Prom
 
     return (
         <>
-            <div className="admin-page-head">
-                <div>
-                    <div className="admin-page-title">APPEALS</div>
-                    <div className="admin-page-sub">
-                        BAN APPEALS · ONE PER BAN · DECIDE WITHIN {APPEAL_BUSINESS_DAYS} BUSINESS DAYS · {appeals.length}{' '}
-                        SHOWN{appeals.length >= LIMIT ? ` (NEWEST ${LIMIT})` : ''}
-                    </div>
-                </div>
-            </div>
+            <AdminHead
+                title="Appeals"
+                sub={`Ban appeals: one per ban, decided within ${APPEAL_BUSINESS_DAYS} business days. ${appeals.length} shown${appeals.length >= LIMIT ? ` (newest ${LIMIT})` : ''}.`}
+            />
 
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 20 }}>
-                {TABS.map((t) => (
-                    <Link
-                        key={t}
-                        href={t === 'submitted' ? '/admin/appeals' : `/admin/appeals?status=${t}`}
-                        className={`admin-action-btn${t === tab ? '' : ' muted'}`}
-                        style={{ textDecoration: 'none' }}
-                    >
-                        {t.replace('_', ' ').toUpperCase()}
-                        {counts ? ` (${counts[t]})` : ''}
-                    </Link>
-                ))}
-            </div>
-
+            <Tabs
+                label="Filter by status"
+                items={TABS.map((t) => ({
+                    href: t === 'submitted' ? '/admin/appeals' : `/admin/appeals?status=${t}`,
+                    label: sentence(t),
+                    count: counts ? counts[t] : null,
+                    current: t === tab,
+                }))}
+            />
             {appeals.length === 0 ? (
                 <div className="admin-empty">
-                    {tab === 'submitted' ? 'NO NEW APPEALS — ALL CLEAR' : `NO ${tab.replace('_', ' ').toUpperCase()} APPEALS`}
+                    {tab === 'submitted'
+                        ? 'No new appeals. All clear.'
+                        : `No ${tab === 'all' ? '' : `${tab.replace('_', ' ')} `}appeals.`}
                 </div>
             ) : (
-                <div style={{ display: 'grid', gap: 12 }}>
+                <div className={st.stack}>
                     {appeals.map((a: any) => {
                         const ban = bans.get(a.ban_id);
                         const member = byId.get(a.profile_id) ?? null;
@@ -189,95 +173,77 @@ export default async function AppealsPage({ searchParams }: { searchParams: Prom
                         const due = addBusinessDays(new Date(a.created_at), APPEAL_BUSINESS_DAYS);
                         const overdue = open && due.getTime() < now;
                         return (
-                            <div key={a.id} className="feature-card" style={{ padding: 16, display: 'grid', gap: 12 }}>
-                                <div className="mono-row" style={{ fontSize: 11 }}>
-                                    <span className={STATUS_PILL[a.status] ?? 'admin-pill'}>
-                                        {String(a.status).replace('_', ' ').toUpperCase()}
+                            <article key={a.id} className={`${st.card} ${st.cardPad} ${st.stack}`} aria-label="Ban appeal">
+                                <div className={st.chipRow}>
+                                    <span className={STATUS_PILL[a.status] ?? 'admin-pill'}>{sentence(a.status)}</span>
+                                    {overdue && <span className="admin-pill warn">Overdue</span>}
+                                    <span className={st.meta}>
+                                        <span>{relativeTime(a.created_at)}</span>
+                                        <span>Submitted {stamp(a.created_at)} UTC</span>
+                                        {open && <span>Due {stamp(due.toISOString()).slice(0, 10)}</span>}
                                     </span>
-                                    {overdue && <span className="admin-pill warn">OVERDUE</span>}
-                                    <span className="sep" />
-                                    <span>{relativeTime(a.created_at)}</span>
-                                    <span className="sep" />
-                                    <span>SUBMITTED {stamp(a.created_at)} UTC</span>
-                                    {open && (
-                                        <>
-                                            <span className="sep" />
-                                            <span>DUE {stamp(due.toISOString()).slice(0, 10)}</span>
-                                        </>
-                                    )}
                                 </div>
 
-                                <div style={{ display: 'grid', gap: 4, fontSize: 13 }}>
+                                <div className={st.facts}>
                                     <div>
-                                        <span style={dim}>MEMBER </span>
+                                        <span style={dim}>Member </span>
                                         <UserLink p={member} />
                                         {member?.display_name ? <span style={dim}> · {member.display_name}</span> : null}
                                     </div>
                                     {ban && (
                                         <div>
-                                            <span style={dim}>BAN </span>
+                                            <span style={dim}>Ban </span>
                                             {describeBanEnd(ban.banned_until) === 'permanently'
-                                                ? 'PERMANENT'
-                                                : `UNTIL ${stamp(ban.banned_until)}`}
+                                                ? 'Permanent'
+                                                : `Until ${stamp(ban.banned_until)}`}
                                             <span style={dim}> · issued {stamp(ban.created_at)} by </span>
                                             <UserLink p={issuer} />
                                         </div>
                                     )}
                                     {ban?.reason ? (
                                         <div style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
-                                            <span style={dim}>INTERNAL REASON </span>
+                                            <span style={dim}>Internal reason </span>
                                             {ban.reason}
                                         </div>
                                     ) : null}
                                     {ban?.public_note ? (
                                         <div style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
-                                            <span style={dim}>NOTE SHOWN TO MEMBER </span>
+                                            <span style={dim}>Note shown to member </span>
                                             {ban.public_note}
                                         </div>
                                     ) : null}
                                     {a.contact_email ? (
                                         <div>
-                                            <span style={dim}>CONTACT </span>
+                                            <span style={dim}>Contact </span>
                                             {a.contact_email}
                                         </div>
                                     ) : null}
                                 </div>
 
-                                <div
-                                    style={{
-                                        border: '1px solid var(--line)',
-                                        background: 'var(--bg-1)',
-                                        padding: 12,
-                                        whiteSpace: 'pre-wrap',
-                                        overflowWrap: 'anywhere',
-                                        fontSize: 14,
-                                    }}
-                                >
-                                    {a.body}
-                                </div>
+                                <div className={st.quote}>{a.body}</div>
 
                                 {(reviewer || a.decided_at) && (
-                                    <div style={{ ...dim, fontSize: 12 }}>
+                                    <div className={st.small}>
                                         {reviewer ? (
                                             <>
-                                                REVIEWER <UserLink p={reviewer} />
+                                                Reviewer <UserLink p={reviewer} />
                                             </>
                                         ) : null}
                                         {a.decided_at ? (
                                             <>
                                                 {reviewer ? ' · ' : ''}
-                                                DECIDED {stamp(a.decided_at)} UTC
+                                                Decided {stamp(a.decided_at)} UTC
                                                 {decider ? (
                                                     <>
                                                         {' '}
-                                                        BY <UserLink p={decider} />
+                                                        by <UserLink p={decider} />
                                                     </>
                                                 ) : null}
-                                                {a.same_admin_override ? ' · SAME-ADMIN OVERRIDE' : ''}
+                                                {a.same_admin_override ? ' · same-admin override' : ''}
                                             </>
                                         ) : null}
-                                        {a.decision_note ? ` · NOTE: ${a.decision_note}` : ''}
-                                        {a.decision_public_note ? ` · SHOWN TO MEMBER: ${a.decision_public_note}` : ''}
+                                        {a.decision_note ? ` · Note: ${a.decision_note}` : ''}
+                                        {a.decision_public_note ? ` · Shown to member: ${a.decision_public_note}` : ''}
                                     </div>
                                 )}
 
@@ -286,7 +252,7 @@ export default async function AppealsPage({ searchParams }: { searchParams: Prom
                                     status={a.status}
                                     issuedByMe={!!ban?.actor_profile_id && ban.actor_profile_id === me.profileId}
                                 />
-                            </div>
+                            </article>
                         );
                     })}
                 </div>

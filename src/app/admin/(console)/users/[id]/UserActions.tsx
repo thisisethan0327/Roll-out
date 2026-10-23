@@ -17,15 +17,18 @@ import {
     banUser,
     unbanUser,
 } from '../actions';
-import { Check } from '@/components/icons';
+import { Ban, Check, Lock, ShieldOff } from 'lucide-react';
+import { adminStyles as a } from '@/components/glide-admin/parts';
+
+const ic = { size: 15, strokeWidth: 2, 'aria-hidden': true } as const;
 
 type Duration = '24h' | '7d' | '30d' | 'date' | 'permanent';
 const DURATION_LABEL: Record<Duration, string> = {
-    '24h': '24 HOURS',
-    '7d': '7 DAYS',
-    '30d': '30 DAYS',
-    date: 'UNTIL DATE',
-    permanent: 'PERMANENT',
+    '24h': '24 hours',
+    '7d': '7 days',
+    '30d': '30 days',
+    date: 'Until a date',
+    permanent: 'Permanent',
 };
 const DURATION_MS: Partial<Record<Duration, number>> = {
     '24h': 24 * 3600_000,
@@ -124,8 +127,8 @@ export function UserActions({
                 const r = res.refunds;
                 setBanNotice(
                     r.note
-                        ? `BANNED. REFUND JOB DID NOT RUN: ${r.note}`
-                        : `BANNED. REFUNDS${r.dryRun ? ' (DRY RUN, NOTHING SENT)' : ''}: ${r.refunded} REFUNDED · ${r.failed} FAILED · ${r.withheld} WITHHELD. SEE TICKET REFUNDS BELOW.`,
+                        ? `Banned. The refund job did not run: ${r.note}`
+                        : `Banned. Refunds${r.dryRun ? ' (dry run, nothing sent)' : ''}: ${r.refunded} refunded · ${r.failed} failed · ${r.withheld} withheld. See Ticket refunds below.`,
                 );
             } else {
                 setBanNotice(null);
@@ -155,104 +158,101 @@ export function UserActions({
     };
 
     return (
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-            <button
-                className={`admin-action-btn ${isVerified ? 'muted' : ''}`}
-                disabled={pending}
-                onClick={() => run(() => setVerified(profileId, !isVerified))}
-            >
-                {isVerified ? 'UNVERIFY' : <>VERIFY <Check /></>}
-            </button>
-            {kind === 'user' &&
-                (isPlatformAdmin ? (
-                    <button
-                        className="admin-action-btn danger"
-                        disabled={pending || isMe}
-                        onClick={() =>
-                            confirm('Revoke god mode from @' + handle + '?') &&
-                            run(() => revokePlatformAdmin(profileId))
-                        }
-                        title={isMe ? "You can't revoke your own admin." : ''}
-                    >
-                        REVOKE GOD
-                    </button>
-                ) : (
-                    <button
-                        className="admin-action-btn"
-                        disabled={pending}
-                        onClick={() => run(() => grantPlatformAdmin(profileId, adminProfileId))}
-                    >
-                        + GOD
-                    </button>
-                ))}
-            {kind === 'user' &&
-                (isMeetCoordinator ? (
+        <div className={a.stack}>
+            <div className={a.actRow}>
+                <button
+                    className={`admin-action-btn ${isVerified ? 'muted' : ''}`}
+                    disabled={pending}
+                    onClick={() => run(() => setVerified(profileId, !isVerified))}
+                >
+                    {isVerified ? 'Unverify' : <><Check {...ic} /> Verify</>}
+                </button>
+                {kind === 'user' &&
+                    (isPlatformAdmin ? (
+                        <button
+                            className="admin-action-btn danger"
+                            disabled={pending || isMe}
+                            onClick={() =>
+                                confirm('Revoke god mode from @' + handle + '?') &&
+                                run(() => revokePlatformAdmin(profileId))
+                            }
+                            title={isMe ? "You can't revoke your own admin." : ''}
+                        >
+                            <ShieldOff {...ic} className={a.dangerIc} /> Revoke god mode
+                        </button>
+                    ) : (
+                        <button
+                            className="admin-action-btn"
+                            disabled={pending}
+                            onClick={() => run(() => grantPlatformAdmin(profileId, adminProfileId))}
+                        >
+                            Grant god mode
+                        </button>
+                    ))}
+                {kind === 'user' &&
+                    (isMeetCoordinator ? (
+                        <button
+                            className="admin-action-btn muted"
+                            disabled={pending}
+                            onClick={() => run(() => revokeMeetCoordinator(profileId))}
+                        >
+                            Remove coordinator
+                        </button>
+                    ) : (
+                        <button
+                            className="admin-action-btn"
+                            disabled={pending}
+                            onClick={() => run(() => grantMeetCoordinator(profileId, adminProfileId))}
+                        >
+                            Make coordinator
+                        </button>
+                    ))}
+                {kind === 'user' &&
+                    (isBanned ? (
+                        <button
+                            className="admin-action-btn"
+                            disabled={pending || !banReady}
+                            onClick={submitUnban}
+                            title={!banReady ? NEEDS_091 : 'Lift the Rollout ban'}
+                        >
+                            Unban
+                        </button>
+                    ) : (
+                        <button
+                            className="admin-action-btn danger"
+                            disabled={pending || !!banDisabledWhy}
+                            onClick={() => setPanelOpen((o) => !o)}
+                            title={banDisabledWhy || 'Ban this member from Rollout'}
+                            aria-expanded={panelOpen}
+                        >
+                            <Ban {...ic} className={a.dangerIc} /> Ban
+                        </button>
+                    ))}
+                {kind === 'user' && (
                     <button
                         className="admin-action-btn muted"
-                        disabled={pending}
-                        onClick={() => run(() => revokeMeetCoordinator(profileId))}
+                        disabled
+                        title="A later feature: locks the login on every app (Rollout, EMWRAPS, NeferStock, UNITY)."
                     >
-                        − COORD
+                        <Lock {...ic} /> Account-wide lock, all apps: coming later
                     </button>
-                ) : (
-                    <button
-                        className="admin-action-btn"
-                        disabled={pending}
-                        onClick={() => run(() => grantMeetCoordinator(profileId, adminProfileId))}
-                    >
-                        + COORD
-                    </button>
-                ))}
-            {kind === 'user' &&
-                (isBanned ? (
-                    <button
-                        className="admin-action-btn"
-                        disabled={pending || !banReady}
-                        onClick={submitUnban}
-                        title={!banReady ? NEEDS_091 : 'Lift the Rollout ban'}
-                    >
-                        UNBAN
-                    </button>
-                ) : (
-                    <button
-                        className="admin-action-btn danger"
-                        disabled={pending || !!banDisabledWhy}
-                        onClick={() => setPanelOpen((o) => !o)}
-                        title={banDisabledWhy || 'Ban this member from Rollout'}
-                    >
-                        BAN
-                    </button>
-                ))}
-            {kind === 'user' && (
-                <button
-                    className="admin-action-btn muted"
-                    disabled
-                    title="A later feature: locks the login on every app (Rollout, EMWRAPS, NeferStock, UNITY)."
-                >
-                    ACCOUNT-WIDE LOCK · ALL APPS — coming later
-                </button>
+                )}
+            </div>
+            {kind === 'user' && !banReady && <div className={a.small}>{NEEDS_091}</div>}
+            {banNotice && (
+                <div className={a.note} role="status">
+                    {banNotice}
+                </div>
             )}
-            {kind === 'user' && !banReady && (
-                <div style={{ flexBasis: '100%', fontSize: 11, color: 'var(--text-3)' }}>{NEEDS_091}</div>
-            )}
-            {banNotice && <div style={{ flexBasis: '100%', fontSize: 12 }}>{banNotice}</div>}
 
             {panelOpen && !isBanned && !banDisabledWhy && (
-                <div
-                    style={{
-                        flexBasis: '100%',
-                        border: '1px solid var(--line)',
-                        padding: 14,
-                        display: 'grid',
-                        gap: 12,
-                        marginTop: 6,
-                    }}
-                >
-                    <div className="admin-page-sub">
-                        BAN @{handle} FROM ROLLOUT · THE MEMBER CAN SIGN IN ONLY TO THE SUSPENDED SCREEN · POSTS AND COMMENTS HIDE WHILE BANNED · HOSTED EVENTS STAY
-                    </div>
-                    <label style={{ display: 'grid', gap: 6 }}>
-                        <span className="admin-form-label">REASON (INTERNAL, REQUIRED)</span>
+                <div className={`${a.card} ${a.formCard}`} role="group" aria-label={`Ban @${handle}`}>
+                    <p className={a.small} style={{ margin: 0 }}>
+                        <b style={{ color: 'var(--ink)' }}>Ban @{handle} from Rollout.</b> The member can sign in only to
+                        the suspended screen. Posts and comments hide while banned. Hosted events stay.
+                    </p>
+                    <label className={a.field}>
+                        <span className="admin-form-label">Reason (internal, required)</span>
                         <textarea
                             className="admin-search-input"
                             rows={3}
@@ -262,11 +262,13 @@ export function UserActions({
                             disabled={pending}
                         />
                     </label>
-                    <div style={{ display: 'grid', gap: 6 }}>
-                        <span className="admin-form-label">DURATION</span>
-                        <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', fontSize: 12 }}>
+                    <fieldset className={a.field} style={{ border: 0, margin: 0, padding: 0 }}>
+                        <legend className="admin-form-label" style={{ marginBottom: 7 }}>
+                            Duration
+                        </legend>
+                        <div className={a.choices}>
                             {(Object.keys(DURATION_LABEL) as Duration[]).map((d) => (
-                                <label key={d} style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                                <label key={d} className={a.choice}>
                                     <input
                                         type="radio"
                                         name={`ban-duration-${profileId}`}
@@ -282,41 +284,46 @@ export function UserActions({
                             <input
                                 type="date"
                                 className="admin-search-input"
+                                aria-label="Ban ends on"
                                 value={untilDate}
                                 min={new Date(Date.now() + 86_400_000).toISOString().slice(0, 10)}
                                 onChange={(e) => setUntilDate(e.target.value)}
                                 disabled={pending}
-                                style={{ maxWidth: 220 }}
+                                style={{ maxWidth: 240 }}
                             />
                         )}
-                    </div>
+                    </fieldset>
                     {duration === 'permanent' ? (
-                        <div style={{ display: 'grid', gap: 8 }}>
-                            <span className="admin-form-label">UPCOMING PAID TICKETS (PERMANENT BAN)</span>
-                            <label style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 12 }}>
-                                <input
-                                    type="radio"
-                                    name={`ban-refund-${profileId}`}
-                                    checked={refundMode === 'auto'}
-                                    onChange={() => setRefundMode('auto')}
-                                    disabled={pending}
-                                />
-                                CANCEL AND REFUND UPCOMING PAID TICKETS (DEFAULT)
-                            </label>
-                            <label style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 12 }}>
-                                <input
-                                    type="radio"
-                                    name={`ban-refund-${profileId}`}
-                                    checked={refundMode === 'withhold'}
-                                    onChange={() => setRefundMode('withhold')}
-                                    disabled={pending}
-                                />
-                                WITHHOLD REFUNDS
-                            </label>
+                        <fieldset className={a.field} style={{ border: 0, margin: 0, padding: 0 }}>
+                            <legend className="admin-form-label" style={{ marginBottom: 7 }}>
+                                Upcoming paid tickets (permanent ban)
+                            </legend>
+                            <div className={`${a.choices} ${a.choiceCol}`}>
+                                <label className={a.choice}>
+                                    <input
+                                        type="radio"
+                                        name={`ban-refund-${profileId}`}
+                                        checked={refundMode === 'auto'}
+                                        onChange={() => setRefundMode('auto')}
+                                        disabled={pending}
+                                    />
+                                    Cancel and refund upcoming paid tickets (default)
+                                </label>
+                                <label className={a.choice}>
+                                    <input
+                                        type="radio"
+                                        name={`ban-refund-${profileId}`}
+                                        checked={refundMode === 'withhold'}
+                                        onChange={() => setRefundMode('withhold')}
+                                        disabled={pending}
+                                    />
+                                    Withhold refunds
+                                </label>
+                            </div>
                             {refundMode === 'withhold' && (
-                                <label style={{ display: 'grid', gap: 6 }}>
+                                <label className={a.field}>
                                     <span className="admin-form-label">
-                                        WHY WITHHOLD (INTERNAL, REQUIRED: FRAUD, CHARGEBACKS, ABUSE AT AN EVENT…)
+                                        Why withhold (internal, required: fraud, chargebacks, abuse at an event…)
                                     </span>
                                     <textarea
                                         className="admin-search-input"
@@ -328,17 +335,17 @@ export function UserActions({
                                     />
                                 </label>
                             )}
-                            <div style={{ fontSize: 11, color: 'var(--text-3)' }}>
+                            <div className={a.small}>
                                 Free upcoming RSVPs are released either way. The member never sees the withhold reason.
                             </div>
-                        </div>
+                        </fieldset>
                     ) : (
-                        <div style={{ fontSize: 12, color: 'var(--text-2)' }}>
+                        <div className={a.small}>
                             Tickets are kept; the member can request a refund from the suspended screen.
                         </div>
                     )}
-                    <label style={{ display: 'grid', gap: 6 }}>
-                        <span className="admin-form-label">NOTE SHOWN TO THE MEMBER (OPTIONAL, MAX 300)</span>
+                    <label className={a.field}>
+                        <span className="admin-form-label">Note shown to the member (optional, max 300)</span>
                         <input
                             className="admin-search-input"
                             maxLength={300}
@@ -347,10 +354,10 @@ export function UserActions({
                             disabled={pending}
                         />
                     </label>
-                    {banError && <div className="admin-login-error">{banError}</div>}
-                    <div style={{ display: 'flex', gap: 6 }}>
+                    {banError && <div className="admin-login-error" role="alert">{banError}</div>}
+                    <div className={a.actRow}>
                         <button className="admin-action-btn danger" disabled={pending} onClick={submitBan}>
-                            {pending ? 'BANNING…' : 'CONFIRM BAN'}
+                            <Ban {...ic} className={a.dangerIc} /> {pending ? 'Banning…' : 'Confirm ban'}
                         </button>
                         <button
                             className="admin-action-btn muted"
@@ -360,7 +367,7 @@ export function UserActions({
                                 setBanError(null);
                             }}
                         >
-                            CANCEL
+                            Cancel
                         </button>
                     </div>
                 </div>

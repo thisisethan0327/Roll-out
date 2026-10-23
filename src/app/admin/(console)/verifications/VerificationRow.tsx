@@ -4,6 +4,9 @@ import { useState, useTransition } from 'react';
 import { decideVerification, getKycDocuments, type CommerceRegistry } from './actions';
 import type { UserFacts } from '@/lib/admin-user-facts';
 import { isBannedUntil } from '@/lib/ban';
+import { Check, FileText } from 'lucide-react';
+import { GlideButton } from '@/components/glide/primitives';
+import { adminStyles as a, sentence } from '@/components/glide-admin/parts';
 
 type KycDoc = {
     id: string;
@@ -94,36 +97,30 @@ export function VerificationRow({ req }: { req: VReq }) {
     const facts = req.facts;
 
     return (
-        <div className="feature-card vrow" style={{ padding: 16, display: 'grid', gap: 10 }}>
-            <div className="mono-row" style={{ fontSize: 11 }}>
-                <span className="accent">{req.kind.toUpperCase()}</span>
-                <span className="sep" />
-                <span>{(req.origin_app ?? req.shop?.origin_app ?? 'rollout').toUpperCase()}</span>
-                <span className="sep" />
-                <span>{new Date(req.created_at).toLocaleDateString()}</span>
+        <article className={`${a.card} ${a.cardPad} ${a.stack}`} aria-label={`${sentence(req.kind)} verification`}>
+            <div className={a.chipRow}>
+                <span className="admin-pill gold">{sentence(req.kind)}</span>
+                <span className={a.meta}>
+                    <span>{originName(req.origin_app ?? req.shop?.origin_app ?? 'rollout')}</span>
+                    <span>{new Date(req.created_at).toLocaleDateString()}</span>
+                </span>
             </div>
 
-            <div style={{ fontSize: 17, letterSpacing: 0.4 }}>{title}</div>
+            <div className={a.vTitle}>{title}</div>
 
-            <div style={{ fontSize: 13, color: 'var(--text-2)', display: 'grid', gap: 3 }}>
+            <div className={a.facts} style={{ color: 'var(--ink-2)' }}>
                 {req.kind !== 'host' && req.shop ? (
                     <div>
-                        Owner {applicantLink} · handle <b>{req.shop.slug}</b>
+                        Owner {applicantLink} · handle <b style={{ color: 'var(--ink)' }}>{req.shop.slug}</b>
                     </div>
                 ) : null}
-                {req.kind === 'host' && req.nominatedBy ? (
-                    <div>Nominated by @{req.nominatedBy.handle}</div>
-                ) : null}
+                {req.kind === 'host' && req.nominatedBy ? <div>Nominated by @{req.nominatedBy.handle}</div> : null}
                 {req.kind === 'host' ? (
                     <>
-                        {req.applicant?.display_name ? <div>{req.applicant.display_name}</div> : null}
+                        {req.applicant?.display_name ? <div style={{ color: 'var(--ink)' }}>{req.applicant.display_name}</div> : null}
                         <div>
-                            <span style={{ color: 'var(--text-3, var(--text-2))' }}>WHY: </span>
-                            {why ? (
-                                <span style={{ fontStyle: 'italic' }}>“{why}”</span>
-                            ) : (
-                                <span style={{ color: 'var(--text-3, var(--text-2))' }}>No reason given</span>
-                            )}
+                            <span>Why: </span>
+                            {why ? <span style={{ color: 'var(--ink)' }}>“{why}”</span> : <span>No reason given</span>}
                         </div>
                         <FactsBlock facts={facts} />
                     </>
@@ -132,94 +129,87 @@ export function VerificationRow({ req }: { req: VReq }) {
                     <>
                         {payloadLine(req.payload, 'category') && <div>Category: {payloadLine(req.payload, 'category')}</div>}
                         {payloadLine(req.payload, 'city') && (
-                            <div>Location: {[payloadLine(req.payload, 'city'), payloadLine(req.payload, 'state_region')].filter(Boolean).join(', ')}</div>
+                            <div>
+                                Location:{' '}
+                                {[payloadLine(req.payload, 'city'), payloadLine(req.payload, 'state_region')].filter(Boolean).join(', ')}
+                            </div>
                         )}
                         {payloadLine(req.payload, 'website_url') && <div>Web: {payloadLine(req.payload, 'website_url')}</div>}
-                        {payloadLine(req.payload, 'description') && <div style={{ fontStyle: 'italic' }}>“{payloadLine(req.payload, 'description')}”</div>}
+                        {payloadLine(req.payload, 'description') && (
+                            <div style={{ color: 'var(--ink)' }}>“{payloadLine(req.payload, 'description')}”</div>
+                        )}
                     </>
                 ) : null}
                 {req.kind === 'commerce' ? (
                     <>
                         {payloadLine(req.payload, 'legal_name') && <div>Legal name: {payloadLine(req.payload, 'legal_name')}</div>}
                         {payloadLine(req.payload, 'ubi') && <div>UBI: {payloadLine(req.payload, 'ubi')}</div>}
-                        <div style={{ marginTop: 4 }}>
+                        <div style={{ marginTop: 6 }}>
                             {docs === null ? (
-                                <button
-                                    type="button"
-                                    className="admin-action-btn muted"
-                                    disabled={docsPending}
-                                    onClick={loadDocs}
-                                >
-                                    {docsPending ? 'LOADING…' : 'VIEW KYC DOCUMENTS'}
+                                <button type="button" className="admin-action-btn muted" disabled={docsPending} onClick={loadDocs}>
+                                    <FileText size={15} strokeWidth={2} aria-hidden="true" />
+                                    {docsPending ? 'Loading…' : 'View KYC documents'}
                                 </button>
                             ) : docs.length === 0 ? (
-                                <div style={{ color: 'var(--text-3, var(--text-2))' }}>No documents uploaded.</div>
+                                <div>No documents uploaded.</div>
                             ) : (
-                                <ul style={{ margin: '4px 0 0', paddingLeft: 16, display: 'grid', gap: 3 }}>
+                                <ul style={{ margin: '4px 0 0', paddingLeft: 18, display: 'grid', gap: 4 }}>
                                     {docs.map((d) => (
-                                        <li key={d.id} style={{ fontSize: 12 }}>
+                                        <li key={d.id}>
                                             {d.signedUrl ? (
-                                                <a href={d.signedUrl} target="_blank" rel="noopener noreferrer" className="accent" style={{ textDecoration: 'underline' }}>
+                                                <a href={d.signedUrl} target="_blank" rel="noopener noreferrer" className="text-link">
                                                     {d.docType.replace(/_/g, ' ')}
                                                 </a>
                                             ) : (
                                                 <span>{d.docType.replace(/_/g, ' ')} (missing)</span>
                                             )}
-                                            {d.originalName ? <span style={{ color: 'var(--text-3, var(--text-2))' }}> — {d.originalName}</span> : null}
+                                            {d.originalName ? <span> — {d.originalName}</span> : null}
                                         </li>
                                     ))}
                                 </ul>
                             )}
-                            {docsErr ? <div style={{ color: 'var(--danger, #d33)', fontSize: 12 }}>{docsErr}</div> : null}
-                            {docs && docs.length > 0 ? (
-                                <div style={{ color: 'var(--text-3, var(--text-2))', fontSize: 10, marginTop: 3 }}>
-                                    Links expire in ~5 min.
+                            {docsErr ? (
+                                <div className="admin-login-error" role="alert" style={{ marginTop: 8 }}>
+                                    {docsErr}
                                 </div>
                             ) : null}
+                            {docs && docs.length > 0 ? <div className={a.small}>Links expire in about 5 minutes.</div> : null}
                         </div>
                     </>
                 ) : null}
             </div>
 
             {req.kind === 'commerce' ? (
-                <div
-                    style={{
-                        display: 'grid',
-                        gap: 12,
-                        border: '1px solid var(--line)',
-                        background: 'var(--bg-1)',
-                        padding: 14,
-                    }}
-                >
-                    <div className="eyebrow eyebrow-gold" style={{ fontSize: 10 }}>／ REGISTRY WIRING (on approve)</div>
-                    <Field label="COMMERCE TIER">
+                <div className={a.quote} style={{ display: 'grid', gap: 12, whiteSpace: 'normal' }}>
+                    <div className={a.formSub} style={{ margin: 0, padding: 0, border: 0 }}>
+                        Registry wiring (applied on approve)
+                    </div>
+                    <Field label="Commerce tier">
                         <select className="admin-form-input" value={tier} onChange={(e) => setTier(e.target.value)}>
                             <option value="1">1 — storefront</option>
                             <option value="2">2 — +customers</option>
                             <option value="3">3 — full ops</option>
                         </select>
                     </Field>
-                    <Field label="MEDUSA CATEGORY HANDLES" hint="comma-separated">
+                    <Field label="Medusa category handles" hint="comma-separated">
                         <input className="admin-form-input" value={handles} onChange={(e) => setHandles(e.target.value)} placeholder="nac, tees" />
                     </Field>
-                    <Field label="SENDER EMAIL">
-                        <input className="admin-form-input" value={senderEmail} onChange={(e) => setSenderEmail(e.target.value)} placeholder="orders@send.neferstock.com" />
-                    </Field>
-                    <label style={{ display: 'flex', gap: 10, alignItems: 'center', cursor: 'pointer' }}>
+                    <Field label="Sender email">
                         <input
-                            type="checkbox"
-                            checked={sellsProducts}
-                            onChange={(e) => setSellsProducts(e.target.checked)}
-                            style={{ width: 16, height: 16, accentColor: 'var(--gold)', flexShrink: 0, margin: 0 }}
+                            className="admin-form-input"
+                            value={senderEmail}
+                            onChange={(e) => setSenderEmail(e.target.value)}
+                            placeholder="orders@send.neferstock.com"
                         />
-                        <span style={{ fontSize: 13, color: 'var(--text-2)' }}>
-                            Mark shop as selling products (sells_products)
-                        </span>
+                    </Field>
+                    <label className={a.choice} style={{ alignSelf: 'start' }}>
+                        <input type="checkbox" checked={sellsProducts} onChange={(e) => setSellsProducts(e.target.checked)} />
+                        Mark shop as selling products (sells_products)
                     </label>
                 </div>
             ) : null}
 
-            <Field label="REVIEW NOTE" hint="reason — shown to applicant on reject">
+            <Field label="Review note" hint="the reason, shown to the applicant on reject">
                 <input
                     className="admin-form-input"
                     value={note}
@@ -228,25 +218,28 @@ export function VerificationRow({ req }: { req: VReq }) {
                 />
             </Field>
 
-            {err ? <div style={{ color: 'var(--danger, #d33)', fontSize: 12 }}>{err}</div> : null}
+            {err ? (
+                <div className="admin-login-error" role="alert">
+                    {err}
+                </div>
+            ) : null}
 
-            <div style={{ display: 'flex', gap: 10 }}>
-                <button className="btn" disabled={pending} onClick={() => run(true)}>
-                    {pending ? '…' : 'Approve'}
-                </button>
-                <button className="btn btn-ghost" disabled={pending} onClick={() => run(false)}>
+            <div className={a.actRow}>
+                <GlideButton size="sm" disabled={pending} aria-disabled={pending || undefined} onClick={() => run(true)} icon={<Check size={18} strokeWidth={2} />}>
+                    {pending ? 'Working…' : 'Approve'}
+                </GlideButton>
+                <button type="button" className="admin-action-btn muted" disabled={pending} onClick={() => run(false)}>
                     Reject
                 </button>
             </div>
-
-            <style>{`
-                .vrow .admin-form-input { width: 100%; box-sizing: border-box; }
-                .vrow select.admin-form-input { appearance: none; -webkit-appearance: none; cursor: pointer; }
-            `}</style>
-        </div>
+        </article>
     );
 }
 
+function originName(app: string): string {
+    const k = app.toLowerCase();
+    return k === 'neferstock' ? 'NeferStock' : k === 'emwraps' ? 'EMWRAPS' : k === 'rollout' ? 'Rollout' : sentence(app);
+}
 function relative(iso: string | null | undefined): string {
     if (!iso) return '—';
     const days = Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000);
@@ -256,40 +249,30 @@ function relative(iso: string | null | undefined): string {
 
 function FactsBlock({ facts }: { facts: UserFacts | null }) {
     if (!facts) {
-        return <div style={{ color: 'var(--text-3, var(--text-2))' }}>No account details found.</div>;
+        return <div>No account details found.</div>;
     }
     const c = facts.counts;
     const n = (v: number | null) => (v == null ? '—' : String(v));
-    const dim = { color: 'var(--text-3, var(--text-2))' } as const;
+    const dim = { color: 'var(--ink-2)' } as const;
     return (
-        <div
-            style={{
-                display: 'grid',
-                gap: 3,
-                border: '1px solid var(--line)',
-                background: 'var(--bg-1)',
-                padding: '8px 10px',
-                fontSize: 12,
-                marginTop: 4,
-            }}
-        >
+        <div className={a.quote} style={{ display: 'grid', gap: 4, fontSize: 13.5, marginTop: 6, whiteSpace: 'normal' }}>
             {isBannedUntil(facts.profileBannedUntil) ? (
                 <div>
-                    <span className="admin-pill warn">BANNED</span>
+                    <span className="admin-pill warn">Banned</span>
                     <span style={dim}> Rollout-suspended: approving is refused until the ban is lifted.</span>
                 </div>
             ) : null}
             <div>
-                <span style={dim}>EMAIL </span>
+                <span style={dim}>Email </span>
                 {facts.auth?.email ?? '—'}
                 {facts.auth && !facts.auth.emailConfirmedAt ? <span style={dim}> (unconfirmed)</span> : null}
             </div>
             <div>
-                <span style={dim}>JOINED </span>
+                <span style={dim}>Joined </span>
                 {relative(facts.auth?.createdAt ?? facts.profileCreatedAt)}
             </div>
             <div>
-                <span style={dim}>LAST SIGN-IN </span>
+                <span style={dim}>Last sign-in </span>
                 {relative(facts.auth?.lastSignInAt)}
             </div>
             <div>
@@ -310,12 +293,10 @@ function Field({
     children: React.ReactNode;
 }) {
     return (
-        <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <label className={a.field}>
             <span className="admin-form-label">
                 {label}
-                {hint ? (
-                    <span style={{ color: 'var(--text-3)', textTransform: 'none', marginLeft: 6 }}>· {hint}</span>
-                ) : null}
+                {hint ? <span className={a.hint}> · {hint}</span> : null}
             </span>
             {children}
         </label>

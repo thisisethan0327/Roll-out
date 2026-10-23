@@ -14,7 +14,8 @@ import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { relativeTime } from '@/lib/admin-user-facts';
 import { ReportActions } from './ReportActions';
 import type { ReportStatus } from './actions';
-import { ChevronRight } from '@/components/icons';
+import { ChevronRight } from 'lucide-react';
+import { AdminHead, Tabs, adminStyles as a, sentence } from '@/components/glide-admin/parts';
 
 export const metadata = { title: 'Reports' };
 export const dynamic = 'force-dynamic';
@@ -40,7 +41,7 @@ type Preview = {
     postId?: string | null;
 };
 
-const dim: React.CSSProperties = { color: 'var(--text-3, var(--text-2))' };
+const dim: React.CSSProperties = { color: 'var(--ink-2)' };
 
 function uniq(xs: (string | null | undefined)[]): string[] {
     return [...new Set(xs.filter((x): x is string => !!x))];
@@ -188,15 +189,16 @@ function Target({ type, targetId, pv }: { type: string; targetId: string; pv: Pr
         overflowWrap: 'anywhere',
         maxHeight: 140,
         overflow: 'auto',
-        color: 'var(--text)',
-        fontSize: 14,
+        color: 'var(--ink)',
+        fontSize: 14.5,
+        lineHeight: 1.5,
     };
     return (
-        <div style={{ display: 'grid', gap: 6 }}>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', fontSize: 12 }}>
-                <span className="admin-pill">{type.toUpperCase()}</span>
-                {!pv.live && type !== 'profile' && <span className="admin-pill warn">REMOVED / GONE</span>}
-                {type === 'profile' && !pv.live && <span className="admin-pill warn">PROFILE NOT FOUND</span>}
+        <div style={{ display: 'grid', gap: 8 }}>
+            <div className={a.chipRow} style={{ fontSize: 14 }}>
+                <span className="admin-pill">{sentence(type)}</span>
+                {!pv.live && type !== 'profile' && <span className="admin-pill warn">Removed or gone</span>}
+                {type === 'profile' && !pv.live && <span className="admin-pill warn">Profile not found</span>}
                 {pv.author && (
                     <span>
                         by <UserLink p={pv.author} />
@@ -210,7 +212,7 @@ function Target({ type, targetId, pv }: { type: string; targetId: string; pv: Pr
                 )}
                 {type === 'event' && (
                     <Link href={`/admin/events/${targetId}`} className="text-link">
-                        OPEN EVENT <ChevronRight />
+                        Open event <ChevronRight size={15} strokeWidth={2} aria-hidden="true" />
                     </Link>
                 )}
             </div>
@@ -229,13 +231,13 @@ function Target({ type, targetId, pv }: { type: string; targetId: string; pv: Pr
                                 width={72}
                                 height={72}
                                 loading="lazy"
-                                style={{ objectFit: 'cover', border: '1px solid var(--line)' }}
+                                style={{ objectFit: 'cover', borderRadius: 12, display: 'block' }}
                             />
                         </a>
                     ))}
                 </div>
             )}
-            <div style={{ ...dim, fontSize: 10, letterSpacing: 1 }}>ID {targetId}</div>
+            <div className={a.mono}>ID {targetId}</div>
         </div>
     );
 }
@@ -256,58 +258,43 @@ export default async function ReportsPage({
 
     return (
         <>
-            <div className="admin-page-head">
-                <div>
-                    <div className="admin-page-title">REPORTS</div>
-                    <div className="admin-page-sub">
-                        USER-SUBMITTED CONTENT REPORTS · 24H RESPONSE TARGET · {reports.length} SHOWN
-                        {reports.length >= LIMIT ? ` (NEWEST ${LIMIT})` : ''}
-                    </div>
-                </div>
-            </div>
+            <AdminHead
+                title="Reports"
+                sub={`User-submitted content reports, with a 24-hour response target. ${reports.length} shown${reports.length >= LIMIT ? ` (newest ${LIMIT})` : ''}.`}
+            />
 
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 20 }}>
-                {TABS.map((t) => (
-                    <Link
-                        key={t}
-                        href={t === 'pending' ? '/admin/reports' : `/admin/reports?status=${t}`}
-                        className={`admin-action-btn${t === tab ? '' : ' muted'}`}
-                        style={{ textDecoration: 'none' }}
-                    >
-                        {t.toUpperCase()} ({counts[t]})
-                    </Link>
-                ))}
-            </div>
-
+            <Tabs
+                label="Filter by status"
+                items={TABS.map((t) => ({
+                    href: t === 'pending' ? '/admin/reports' : `/admin/reports?status=${t}`,
+                    label: sentence(t),
+                    count: counts[t],
+                    current: t === tab,
+                }))}
+            />
             {reports.length === 0 ? (
                 <div className="admin-empty">
-                    {tab === 'pending' ? 'NO PENDING REPORTS — ALL CLEAR' : `NO ${tab.toUpperCase()} REPORTS`}
+                    {tab === 'pending' ? 'No pending reports. All clear.' : `No ${tab === 'all' ? '' : `${tab} `}reports.`}
                 </div>
             ) : (
-                <div style={{ display: 'grid', gap: 12 }}>
+                <div className={a.stack}>
                     {reports.map((r: any) => {
                         const pv = previews.get(r.id) ?? { live: true };
                         const reporter = byAuth.get(r.reporter_auth_id) ?? null;
                         const reviewer = r.reviewed_by ? (byId.get(r.reviewed_by) ?? null) : null;
                         return (
-                            <div
-                                key={r.id}
-                                className="feature-card"
-                                style={{ padding: 16, display: 'grid', gap: 12 }}
-                            >
-                                <div className="mono-row" style={{ fontSize: 11 }}>
-                                    <span className={STATUS_PILL[r.status] ?? 'admin-pill'}>
-                                        {String(r.status).toUpperCase()}
+                            <article key={r.id} className={`${a.card} ${a.cardPad} ${a.stack}`} aria-label={`Report: ${r.reason}`}>
+                                <div className={a.chipRow}>
+                                    <span className={STATUS_PILL[r.status] ?? 'admin-pill'}>{sentence(r.status)}</span>
+                                    <span className={a.meta}>
+                                        <span>{relativeTime(r.created_at)}</span>
+                                        <span>{stamp(r.created_at)} UTC</span>
                                     </span>
-                                    <span className="sep" />
-                                    <span>{relativeTime(r.created_at)}</span>
-                                    <span className="sep" />
-                                    <span>{stamp(r.created_at)} UTC</span>
                                 </div>
 
-                                <div style={{ display: 'grid', gap: 4, fontSize: 13 }}>
+                                <div className={a.facts}>
                                     <div>
-                                        <span style={dim}>REPORTED BY </span>
+                                        <span style={dim}>Reported by </span>
                                         {reporter ? (
                                             <UserLink p={reporter} />
                                         ) : (
@@ -317,31 +304,25 @@ export default async function ReportsPage({
                                         )}
                                     </div>
                                     <div>
-                                        <span style={dim}>REASON </span>
+                                        <span style={dim}>Reason </span>
                                         <b>{r.reason}</b>
                                     </div>
                                     {r.details ? (
                                         <div style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
-                                            <span style={dim}>DETAILS </span>
+                                            <span style={dim}>Details </span>
                                             {r.details}
                                         </div>
                                     ) : null}
                                 </div>
 
-                                <div
-                                    style={{
-                                        border: '1px solid var(--line)',
-                                        background: 'var(--bg-1)',
-                                        padding: 12,
-                                    }}
-                                >
+                                <div className={a.quote} style={{ whiteSpace: 'normal' }}>
                                     <Target type={r.target_type} targetId={r.target_id} pv={pv} />
                                 </div>
 
                                 {(r.reviewed_at || r.action_taken) && (
-                                    <div style={{ ...dim, fontSize: 12 }}>
-                                        {r.reviewed_at ? `REVIEWED ${stamp(r.reviewed_at)} UTC` : 'REVIEWED'}
-                                        {reviewer ? ` BY @${reviewer.handle}` : ''}
+                                    <div className={a.small}>
+                                        {r.reviewed_at ? `Reviewed ${stamp(r.reviewed_at)} UTC` : 'Reviewed'}
+                                        {reviewer ? ` by @${reviewer.handle}` : ''}
                                         {r.action_taken ? ` · ${r.action_taken}` : ''}
                                     </div>
                                 )}
@@ -352,7 +333,7 @@ export default async function ReportsPage({
                                     targetType={r.target_type}
                                     targetLive={pv.live}
                                 />
-                            </div>
+                            </article>
                         );
                     })}
                 </div>

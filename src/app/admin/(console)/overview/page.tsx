@@ -3,7 +3,8 @@ import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { DismissButton } from './DismissButton';
 import PulseSection from './PulseSection';
 import LauncherSection from './LauncherSection';
-import { ChevronRight } from '@/components/icons';
+import { ChevronRight, CircleAlert } from 'lucide-react';
+import { AdminHead, SectionHead, Stat, adminStyles as a, sentence } from '@/components/glide-admin/parts';
 
 export const metadata = { title: 'Overview' };
 
@@ -101,6 +102,9 @@ async function getStats() {
     };
 }
 
+// Group keys are uppercase app keys; shown as the products' own names.
+const APP_NAME: Record<string, string> = { ROLLOUT: 'Rollout', EMWRAPS: 'EMWRAPS', NEFERSTOCK: 'NeferStock' };
+
 function timeAgo(iso: string): string {
     const then = new Date(iso).getTime();
     const secs = Math.max(0, Math.floor((Date.now() - then) / 1000));
@@ -123,85 +127,62 @@ export default async function OverviewPage() {
 
     return (
         <>
-            <div className="admin-page-head">
-                <div>
-                    <div className="admin-page-title">OVERVIEW</div>
-                    <div className="admin-page-sub">PLATFORM SNAPSHOT · LIVE COUNTS</div>
-                </div>
-            </div>
+            <AdminHead title="Overview" sub="Platform snapshot with live counts." />
 
             {/* ── NEEDS ATTENTION — persistent action items + derived signals ── */}
-            <div className="admin-page-head" style={{ borderBottom: 'none', paddingBottom: 0, marginBottom: 12 }}>
-                <div>
-                    <div className="admin-page-title" style={{ fontSize: 14 }}>
-                        NEEDS ATTENTION
-                        {attentionCount > 0 && (
-                            <span className="admin-pill warn" style={{ marginLeft: 10, verticalAlign: 'middle' }}>
-                                {attentionCount}
-                            </span>
-                        )}
-                    </div>
-                    <div className="admin-page-sub">OPEN ACTION ITEMS · RESOLVE OR DISMISS</div>
-                </div>
-            </div>
+            <SectionHead
+                title={
+                    <>
+                        Needs attention
+                        {attentionCount > 0 && <span className="admin-pill warn">{attentionCount}</span>}
+                    </>
+                }
+                sub="Open action items. Resolve or dismiss them."
+            />
 
             {s.pendingVerifications > 0 && (
-                <Link href="/admin/verifications" className="admin-attention-derived">
-                    <span className="admin-pill gold">{s.pendingVerifications}</span>
+                <Link href="/admin/verifications" className={a.derived}>
+                    <span className={a.num}>{s.pendingVerifications}</span>
                     <span>
-                        {s.pendingVerifications === 1
-                            ? 'verification pending'
-                            : 'verifications pending'}{' '}
-                        — review now <ChevronRight />
+                        {s.pendingVerifications === 1 ? 'Verification pending' : 'Verifications pending'}: review now
                     </span>
+                    <ChevronRight size={18} strokeWidth={2} aria-hidden="true" />
                 </Link>
             )}
 
             {s.actionItems.length === 0 && s.pendingVerifications === 0 ? (
-                <div className="admin-empty" style={{ marginBottom: 28 }}>
-                    ALL CLEAR — NOTHING NEEDS ATTENTION
-                </div>
+                <div className="admin-empty">All clear. Nothing needs attention.</div>
             ) : (
                 groupByApp(s.actionItems).map((group) => (
-                    <div key={group.label} style={{ marginBottom: 8 }}>
-                        <div
-                            className="admin-sidebar-section"
-                            style={{ padding: '4px 0', marginTop: 4 }}
-                        >
-                            {group.label}
-                        </div>
-                        <div className="admin-attention-list">
+                    <section key={group.label} aria-label={group.label} className={a.stack}>
+                        <div className={a.group}>{APP_NAME[group.label] ?? group.label}</div>
+                        <ul className={`${a.card} ${a.att}`}>
                             {group.items.map((item) => (
-                                <div key={item.id} className="admin-attention-item">
-                                    <div className="admin-attention-body">
-                                        <div className="admin-attention-title">
-                                            {item.href ? (
-                                                <Link href={item.href} className="text-link">
-                                                    {item.title}
-                                                </Link>
-                                            ) : (
-                                                item.title
-                                            )}
-                                        </div>
-                                        {item.body && (
-                                            <div className="admin-attention-desc">{item.body}</div>
-                                        )}
-                                        <div className="admin-attention-meta">
-                                            {item.kind.toUpperCase().replace(/_/g, ' ')} · {timeAgo(item.created_at)}
+                                <li key={item.id}>
+                                    <div className={a.attBody}>
+                                        <span className="g-ic g-ic--sm" aria-hidden="true">
+                                            <CircleAlert size={18} strokeWidth={2} />
+                                        </span>
+                                        <div style={{ minWidth: 0 }}>
+                                            <b>{item.href ? <Link href={item.href}>{item.title}</Link> : item.title}</b>
+                                            {item.body && <p>{item.body}</p>}
+                                            <small>
+                                                {sentence(item.kind)} · {timeAgo(item.created_at)}
+                                            </small>
                                         </div>
                                     </div>
-                                    <div className="admin-attention-actions">
+                                    <div className={a.attActs}>
                                         {item.href && (
                                             <Link href={item.href} className="admin-action-btn">
-                                                OPEN <ChevronRight />
+                                                Open <ChevronRight size={16} strokeWidth={2} aria-hidden="true" />
                                             </Link>
                                         )}
                                         <DismissButton id={item.id} />
                                     </div>
-                                </div>
+                                </li>
                             ))}
-                        </div>
-                    </div>
+                        </ul>
+                    </section>
                 ))
             )}
 
@@ -211,58 +192,36 @@ export default async function OverviewPage() {
             {/* ── LAUNCHER + HEALTH ROW (Console Phase C3) ── */}
             <LauncherSection />
 
-            <div className="admin-page-head" style={{ marginTop: 12, borderBottom: 'none', paddingBottom: 0 }}>
-                <div>
-                    <div className="admin-page-title" style={{ fontSize: 14 }}>PLATFORM SNAPSHOT</div>
-                </div>
-            </div>
+            <SectionHead title="Platform snapshot" />
             <div className="admin-stat-grid">
-                <Stat label="USERS"                value={usersCount} />
-                <Stat label="SHOP PAGES"           value={s.shopPages} />
-                <Stat label="VERIFIED SHOPS"       value={s.verifiedShops} accent="gold" />
-                <Stat label="GARAGES"              value={s.counts.vehicles} />
-                <Stat label="POSTS"                value={s.counts.posts} />
-                <Stat label="EVENTS"               value={s.counts.events} />
+                <Stat label="Users" value={usersCount} />
+                <Stat label="Shop pages" value={s.shopPages} />
+                <Stat label="Verified shops" value={s.verifiedShops} />
+                <Stat label="Garages" value={s.counts.vehicles} />
+                <Stat label="Posts" value={s.counts.posts} />
+                <Stat label="Events" value={s.counts.events} />
             </div>
 
-            <div className="admin-page-head" style={{ marginTop: 12, borderBottom: 'none', paddingBottom: 0 }}>
-                <div>
-                    <div className="admin-page-title" style={{ fontSize: 14 }}>QUEUES</div>
-                </div>
-            </div>
+            <SectionHead title="Queues" />
             <div className="admin-stat-grid">
-                <Stat label="PENDING APPOINTMENTS" value={s.pendingAppts} accent="gold" />
-                <Link href="/admin/reports" style={{ textDecoration: 'none', color: 'inherit' }}>
-                    <Stat label={<>OPEN CONTENT REPORTS <ChevronRight /></>} value={s.openReports} accent={s.openReports > 0 ? 'warn' : undefined} />
+                <Stat label="Pending appointments" value={s.pendingAppts} />
+                <Link href="/admin/reports" className={a.statLink}>
+                    <Stat
+                        label={
+                            <>
+                                Open content reports <ChevronRight size={15} strokeWidth={2} aria-hidden="true" />
+                            </>
+                        }
+                        value={s.openReports}
+                    />
                 </Link>
             </div>
 
-            <div className="admin-page-head" style={{ marginTop: 12, borderBottom: 'none', paddingBottom: 0 }}>
-                <div>
-                    <div className="admin-page-title" style={{ fontSize: 14 }}>ROLES</div>
-                </div>
-            </div>
+            <SectionHead title="Roles" />
             <div className="admin-stat-grid">
-                <Stat label="PLATFORM ADMINS"   value={s.counts.platform_admins} />
-                <Stat label="MEET COORDINATORS" value={s.counts.meet_coordinators} />
+                <Stat label="Platform admins" value={s.counts.platform_admins} />
+                <Stat label="Meet coordinators" value={s.counts.meet_coordinators} />
             </div>
         </>
-    );
-}
-
-function Stat({
-    label,
-    value,
-    accent,
-}: {
-    label: React.ReactNode;
-    value: number | string;
-    accent?: 'gold' | 'warn';
-}) {
-    return (
-        <div className="admin-stat">
-            <div className="admin-stat-lbl">{label}</div>
-            <div className={`admin-stat-num ${accent ?? ''}`}>{value}</div>
-        </div>
     );
 }

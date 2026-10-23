@@ -12,7 +12,7 @@ import { requirePlatformAdmin } from '@/lib/auth-guard';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { UUID_RE } from '@/lib/admin-user-facts';
 import { ThreadsGate } from './ReasonGate';
-import { ChevronLeft } from '@/components/icons';
+import { AdminHead } from '@/components/glide-admin/parts';
 
 export const metadata = { title: 'Messages' };
 export const dynamic = 'force-dynamic';
@@ -28,15 +28,11 @@ export default async function AdminUserMessagesPage({ params }: { params: Promis
 
     return (
         <>
-            <div className="admin-page-head">
-                <div>
-                    <div className="admin-page-title">@{p.handle} · MESSAGES</div>
-                    <div className="admin-page-sub">PRIVATE DMS · REASON REQUIRED · EVERY VIEW IS LOGGED</div>
-                </div>
-                <Link href={`/admin/users/${p.id}`} className="admin-action-btn muted" style={{ textDecoration: 'none' }}>
-                    <ChevronLeft /> BACK TO USER
-                </Link>
-            </div>
+            <AdminHead
+                back={{ href: `/admin/users/${p.id}`, label: `Back to @${p.handle}` }}
+                title={`@${p.handle} · Messages`}
+                sub="Private DMs. A reason is required and every view is logged."
+            />
             <ThreadsGate profileId={p.id} handle={p.handle} />
         </>
     );

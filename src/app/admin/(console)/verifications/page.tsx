@@ -10,6 +10,7 @@ import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { VerificationRow, type VReq } from './VerificationRow';
 import { EventVerificationRow, type EventVReq } from './EventVerificationRow';
 import { loadUserFacts } from '@/lib/admin-user-facts';
+import { AdminHead, SectionHead, adminStyles as a } from '@/components/glide-admin/parts';
 
 export const metadata = { title: 'Verifications' };
 export const dynamic = 'force-dynamic';
@@ -110,23 +111,20 @@ async function loadEventQueue(): Promise<EventVReq[]> {
 
 function Section({ title, reqs }: { title: string; reqs: VReq[] }) {
     return (
-        <div style={{ marginBottom: 32 }}>
-            <div className="admin-page-sub" style={{ marginBottom: 12 }}>
-                {title} · {reqs.length} PENDING
-            </div>
+        <section className={a.stack} aria-label={title}>
+            <SectionHead title={title} sub={`${reqs.length} pending.`} />
             {reqs.length === 0 ? (
-                <div className="admin-empty">NOTHING IN THIS QUEUE</div>
+                <div className="admin-empty">Nothing in this queue.</div>
             ) : (
-                <div style={{ display: 'grid', gap: 14, gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))' }}>
+                <div className={a.grid2}>
                     {reqs.map((r) => (
                         <VerificationRow key={r.id} req={r} />
                     ))}
                 </div>
             )}
-        </div>
+        </section>
     );
 }
-
 export default async function VerificationsPage() {
     const [all, events] = await Promise.all([loadQueue(), loadEventQueue()]);
     const eventsPending = events.filter((e) => e.status === 'requested');
@@ -137,38 +135,38 @@ export default async function VerificationsPage() {
 
     return (
         <>
-            <div className="admin-page-head">
-                <div>
-                    <div className="admin-page-title">VERIFICATIONS</div>
-                    <div className="admin-page-sub">
-                        {all.length + eventsPending.length} OPEN · SHOP LISTING · COMMERCE KYC · HOST · EVENTS
-                    </div>
-                </div>
-            </div>
+            <AdminHead
+                title="Verifications"
+                sub={`${all.length + eventsPending.length} open across shop listings, commerce KYC, hosts and events.`}
+            />
 
-            <Section title="SHOP LISTING" reqs={shop} />
-            <Section title="COMMERCE (SELL ON NEFERSTOCK)" reqs={commerce} />
-            <Section title="INDIVIDUAL HOSTS" reqs={host} />
-            <div style={{ marginBottom: 32 }}>
-                <div className="admin-page-sub" style={{ marginBottom: 12 }}>EVENT VERIFICATIONS · {eventsPending.length} PENDING</div>
+            <Section title="Shop listing" reqs={shop} />
+            <Section title="Commerce (sell on NeferStock)" reqs={commerce} />
+            <Section title="Individual hosts" reqs={host} />
+            <section className={a.stack} aria-label="Event verifications">
+                <SectionHead title="Event verifications" sub={`${eventsPending.length} pending.`} />
                 {eventsPending.length === 0 ? (
-                    <div className="admin-empty">NOTHING IN THIS QUEUE</div>
+                    <div className="admin-empty">Nothing in this queue.</div>
                 ) : (
-                    <div style={{ display: 'grid', gap: 14, gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))' }}>
-                        {eventsPending.map((e) => <EventVerificationRow key={e.eventId} req={e} />)}
+                    <div className={a.grid2}>
+                        {eventsPending.map((e) => (
+                            <EventVerificationRow key={e.eventId} req={e} />
+                        ))}
                     </div>
                 )}
-            </div>
-            <div style={{ marginBottom: 32 }}>
-                <div className="admin-page-sub" style={{ marginBottom: 12 }}>VERIFIED EVENTS · {eventsVerified.length} · REVOKE OR ENABLE THE COIN</div>
+            </section>
+            <section className={a.stack} aria-label="Verified events">
+                <SectionHead title="Verified events" sub={`${eventsVerified.length}. Revoke or enable the coin.`} />
                 {eventsVerified.length === 0 ? (
-                    <div className="admin-empty">NO VERIFIED EVENTS YET</div>
+                    <div className="admin-empty">No verified events yet.</div>
                 ) : (
-                    <div style={{ display: 'grid', gap: 14, gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))' }}>
-                        {eventsVerified.map((e) => <EventVerificationRow key={e.eventId} req={e} />)}
+                    <div className={a.grid2}>
+                        {eventsVerified.map((e) => (
+                            <EventVerificationRow key={e.eventId} req={e} />
+                        ))}
                     </div>
                 )}
-            </div>
+            </section>
         </>
     );
 }

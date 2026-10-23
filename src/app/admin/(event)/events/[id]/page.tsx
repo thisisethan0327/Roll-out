@@ -43,17 +43,20 @@ import {
     type AdminTicket,
     type ProfileLite,
 } from './data';
-import { ArrowDown, Check, ChevronLeft, ChevronRight } from '@/components/icons';
+import { ArrowDown, Check, ChevronRight, Eye, Pencil } from 'lucide-react';
+import { AdminHead, DefList, SectionHead, Stat, adminStyles as a, sentence } from '@/components/glide-admin/parts';
+
+const ic = { size: 15, strokeWidth: 2, 'aria-hidden': true } as const;
 
 export const metadata = { title: 'Event Detail' };
 export const dynamic = 'force-dynamic';
 
 const TYPE_LABEL: Record<string, string> = {
-    NIGHT_RUN: 'NIGHT RUN',
-    CAR_MEET: 'CAR MEET',
-    TRACK_DAY: 'TRACK DAY',
-    CRUISE: 'CRUISE',
-    SHOW: 'SHOW',
+    NIGHT_RUN: 'Night run',
+    CAR_MEET: 'Car meet',
+    TRACK_DAY: 'Track day',
+    CRUISE: 'Cruise',
+    SHOW: 'Show',
 };
 
 const TYPE_PILL: Record<string, string> = {
@@ -100,16 +103,6 @@ const COHOST_PILL: Record<string, string> = {
     removed: 'admin-pill warn',
 };
 
-const LABEL_STYLE: React.CSSProperties = {
-    padding: '10px 0',
-    fontFamily: 'var(--font-display, monospace)',
-    fontSize: 10,
-    letterSpacing: '2px',
-    color: 'var(--text-3, #8a8a9a)',
-    width: 130,
-    verticalAlign: 'top',
-};
-
 function stamp(iso: string | null | undefined): string {
     return iso ? new Date(iso).toISOString().slice(0, 16).replace('T', ' ') : '—';
 }
@@ -129,10 +122,8 @@ export default async function AdminEventDetailPage({ params }: { params: Promise
     if (!event) {
         return (
             <>
-                <div className="admin-empty">EVENT NOT FOUND</div>
-                <Link href="/admin/events" className="admin-action-btn muted" style={{ textDecoration: 'none' }}>
-                    <ChevronLeft /> ALL EVENTS
-                </Link>
+                <AdminHead title="Event not found" back={{ href: '/admin/events', label: 'All events' }} />
+                <div className="admin-empty">No event has that id.</div>
             </>
         );
     }
@@ -151,223 +142,175 @@ export default async function AdminEventDetailPage({ params }: { params: Promise
     ]);
     const { tickets, profiles } = ticketData;
     const counts = deriveCounts(event, rsvps, tickets, checkins);
-    const tierName = new Map(tiers.map((t) => [t.id, t.name ?? 'TIER']));
+    const tierName = new Map(tiers.map((t) => [t.id, t.name ?? 'Tier']));
 
     const isPast = new Date(event.start_at).getTime() < Date.now();
     const isTiered = event.rsvp_mode === 'tiered' || event.rsvp_mode === 'paid';
     const showTickets = tickets.length > 0 || isTiered;
-    const typeLabel = TYPE_LABEL[event.type] ?? String(event.type ?? '').replace(/_/g, ' ');
-    const rsvpModeLabel = isTiered ? (event.rsvp_mode === 'paid' ? 'PAID' : 'TIERED') : 'FREE';
+    const typeLabel = TYPE_LABEL[event.type] ?? sentence(String(event.type ?? ''));
+    const rsvpModeLabel = isTiered ? (event.rsvp_mode === 'paid' ? 'paid' : 'tiered') : 'free';
 
     return (
         <>
-            <div className="admin-page-head">
-                <div>
-                    <div className="admin-page-title">{(event.title ?? 'EVENT').toUpperCase()}</div>
-                    <div className="admin-page-sub">
-                        {event.code ?? typeLabel} · {typeLabel} · {formatEventTime(event.start_at, event.time_zone)}
-                    </div>
-                </div>
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                    <Link href="/admin/events" className="admin-action-btn muted" style={{ textDecoration: 'none' }}>
-                        <ChevronLeft /> ALL EVENTS
-                    </Link>
-                    <Link href={`/event/${event.id}`} className="admin-action-btn muted" style={{ textDecoration: 'none' }}>
-                        VIEW PUBLIC <ChevronRight />
-                    </Link>
-                    {isShopEvent && shop ? (
-                        <Link
-                            href={`/shop/${shop.slug}/events/${event.id}`}
-                            className="admin-action-btn"
-                            style={{ textDecoration: 'none', borderColor: 'var(--gold)', color: 'var(--gold)' }}
-                        >
-                            EDIT IN @{shop.slug.toUpperCase()} CONSOLE <ChevronRight />
+            <AdminHead
+                back={{ href: '/admin/events', label: 'All events' }}
+                title={event.title ?? 'Event'}
+                sub={`${event.code ?? typeLabel} · ${typeLabel} · ${formatEventTime(event.start_at, event.time_zone)}`}
+                actions={
+                    <>
+                        <Link href={`/event/${event.id}`} className="admin-action-btn muted">
+                            <Eye {...ic} /> View public page
                         </Link>
-                    ) : !isShopEvent ? (
-                        <a
-                            href="#edit"
-                            className="admin-action-btn"
-                            style={{ textDecoration: 'none', borderColor: 'var(--gold)', color: 'var(--gold)' }}
-                        >
-                            EDIT BELOW <ArrowDown />
-                        </a>
-                    ) : null}
-                </div>
-            </div>
+                        {isShopEvent && shop ? (
+                            <Link href={`/shop/${shop.slug}/events/${event.id}`} className="admin-action-btn">
+                                <Pencil {...ic} /> Edit in @{shop.slug} console <ChevronRight {...ic} />
+                            </Link>
+                        ) : !isShopEvent ? (
+                            <a href="#edit" className="admin-action-btn">
+                                <Pencil {...ic} /> Edit below <ArrowDown {...ic} />
+                            </a>
+                        ) : null}
+                    </>
+                }
+            />
 
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', margin: '0 0 14px 0' }}>
+            <div className={a.chipRow}>
                 <span className={TYPE_PILL[event.type] ?? 'admin-pill'}>{typeLabel}</span>
                 <span className={VIS_PILL[String(event.visibility)] ?? 'admin-pill'}>
-                    {String(event.visibility ?? 'public').toUpperCase()}
+                    {sentence(String(event.visibility ?? 'public'))}
                 </span>
-                {event.is_official && <span className="admin-pill gold">OFFICIAL</span>}
-                {event.cancelled_at && <span className="admin-pill warn">CANCELLED</span>}
-                {isPast && <span className="admin-pill">PAST</span>}
+                {event.is_official && <span className="admin-pill gold">Official</span>}
+                {event.cancelled_at && <span className="admin-pill warn">Cancelled</span>}
+                {isPast && <span className="admin-pill">Past</span>}
                 {event.verification_status === 'verified' && (
-                    <span className="admin-pill neon">VERIFIED{event.coin_enabled ? ' · COIN' : ''}</span>
+                    <span className="admin-pill neon">Verified{event.coin_enabled ? ' · coin' : ''}</span>
                 )}
-                {event.verification_status === 'requested' && <span className="admin-pill">VERIFICATION PENDING</span>}
-                {event.verification_status === 'revoked' && <span className="admin-pill warn">VERIFICATION REVOKED</span>}
+                {event.verification_status === 'requested' && <span className="admin-pill">Verification pending</span>}
+                {event.verification_status === 'revoked' && <span className="admin-pill warn">Verification revoked</span>}
                 <span className="admin-pill">RSVP: {rsvpModeLabel}</span>
                 {isShopEvent ? (
                     shop ? (
-                        <span className="admin-pill gold">SHOP EVENT</span>
+                        <span className="admin-pill gold">Shop event</span>
                     ) : (
-                        <span className="admin-pill warn">SHOP #{event.shop_id} (MISSING)</span>
+                        <span className="admin-pill warn">Shop #{event.shop_id} (missing)</span>
                     )
                 ) : (
-                    <span className="admin-pill">MEMBER-HOSTED</span>
+                    <span className="admin-pill">Member-hosted</span>
                 )}
             </div>
 
             <div className="admin-stat-grid">
                 <Stat
-                    label="CONFIRMED SEATS"
+                    label="Confirmed seats"
                     value={counts.capacity ? `${counts.confirmedSeats} / ${counts.capacity}` : String(counts.confirmedSeats)}
-                    accent={counts.confirmedSeats > 0 ? 'gold' : undefined}
                 />
-                <Stat label="HOLDS" value={counts.holds} />
-                <Stat label="WAITLIST" value={counts.waitlist} />
-                <Stat label="MAYBE" value={counts.maybe} />
-                <Stat label="PAID" value={counts.paid} />
-                {showTickets && (
-                    <Stat
-                        label="TICKETS"
-                        value={`${counts.tickets.confirmed} / ${counts.tickets.total}`}
-                    />
-                )}
-                <Stat label="CHECKED IN" value={counts.checkedIn} accent={counts.checkedIn > 0 ? 'gold' : undefined} />
-                <Stat label="DB COUNTER" value={counts.attendingCounter} />
+                <Stat label="Holds" value={counts.holds} />
+                <Stat label="Waitlist" value={counts.waitlist} />
+                <Stat label="Maybe" value={counts.maybe} />
+                <Stat label="Paid" value={counts.paid} />
+                {showTickets && <Stat label="Tickets" value={`${counts.tickets.confirmed} / ${counts.tickets.total}`} />}
+                <Stat label="Checked in" value={counts.checkedIn} />
+                <Stat label="DB counter" value={counts.attendingCounter} />
             </div>
 
-            <div style={{ marginTop: 20, minWidth: 0 }}>
-                <div style={{ minWidth: 0 }}>
+            <div style={{ display: 'contents' }}>
+                <div style={{ display: 'contents' }}>
                     {/* CONTEXT */}
-                    <SectionHead title="CONTEXT" sub="HOST · SHOP · LOCATION · TIERS" />
-                    <div style={{ border: '1px solid var(--line)', padding: '4px 16px' }}>
-                        <table style={{ width: '100%' }}>
-                            <tbody>
-                                <tr>
-                                    <td style={LABEL_STYLE}>HOST</td>
-                                    <td style={{ padding: '10px 0', fontSize: 14 }}>
-                                        {event.host ? (
-                                            <>
-                                                <Link
-                                                    href={`/admin/users?q=${encodeURIComponent(event.host.handle)}`}
-                                                    className="text-link"
-                                                >
-                                                    @{event.host.handle}
-                                                </Link>
-                                                {event.host.display_name ? ` · ${event.host.display_name}` : ''}
-                                                {event.host.kind === 'shop_page' && (
-                                                    <span className="admin-pill gold" style={{ marginLeft: 6 }}>
-                                                        SHOP
-                                                    </span>
-                                                )}
-                                            </>
-                                        ) : (
-                                            '—'
-                                        )}
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td style={LABEL_STYLE}>SHOP</td>
-                                    <td style={{ padding: '10px 0', fontSize: 14 }}>
-                                        {shop ? (
-                                            <>
-                                                <Link href={`/admin/shops/${shop.id}`} className="text-link">
-                                                    @{shop.slug}
-                                                </Link>
-                                                {shop.status && shop.status !== 'verified' && (
-                                                    <span className="admin-pill warn" style={{ marginLeft: 6 }}>
-                                                        {shop.status.toUpperCase()}
-                                                    </span>
-                                                )}
-                                            </>
-                                        ) : isShopEvent ? (
-                                            <span className="admin-pill warn">SHOP #{event.shop_id} (MISSING)</span>
-                                        ) : (
-                                            'None (member-hosted)'
-                                        )}
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td style={LABEL_STYLE}>LOCATION</td>
-                                    <td style={{ padding: '10px 0', fontSize: 14 }}>
-                                        {[event.location_name, event.location_detail].filter(Boolean).join(' · ') || '—'}
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td style={LABEL_STYLE}>AREA LABEL</td>
-                                    <td style={{ padding: '10px 0', fontSize: 14 }}>{event.area_label ?? '—'}</td>
-                                </tr>
-                                <tr>
-                                    <td style={LABEL_STYLE}>DESCRIPTION</td>
-                                    <td style={{ padding: '10px 0', fontSize: 14, whiteSpace: 'pre-wrap' }}>
-                                        {event.description || '—'}
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td style={LABEL_STYLE}>TAGS</td>
-                                    <td style={{ padding: '10px 0', fontSize: 14 }}>
-                                        {event.tags && event.tags.length ? (
-                                            <span style={{ display: 'inline-flex', gap: 4, flexWrap: 'wrap' }}>
-                                                {event.tags.map((t) => (
-                                                    <span key={t} className="admin-pill">
-                                                        {t}
-                                                    </span>
-                                                ))}
+                    <SectionHead title="Context" sub="Host, shop, location and tiers." />
+                    <DefList
+                        label="Event context"
+                        rows={[
+                            {
+                                k: 'Host',
+                                v: event.host ? (
+                                    <>
+                                        <Link
+                                            href={`/admin/users?q=${encodeURIComponent(event.host.handle)}`}
+                                            className="text-link"
+                                        >
+                                            @{event.host.handle}
+                                        </Link>
+                                        {event.host.display_name ? ` · ${event.host.display_name}` : ''}
+                                        {event.host.kind === 'shop_page' && (
+                                            <span className="admin-pill gold" style={{ marginLeft: 6 }}>
+                                                Shop
                                             </span>
-                                        ) : (
-                                            '—'
                                         )}
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td style={LABEL_STYLE}>TIERS</td>
-                                    <td style={{ padding: '10px 0', fontSize: 14 }}>
-                                        {tiers.length === 0 ? (
-                                            '—'
-                                        ) : (
-                                            tiers.map((t) => (
-                                                <div key={t.id} style={{ opacity: t.active === false ? 0.5 : 1 }}>
-                                                    {t.name ?? 'TIER'} · {money(t.price_cents, t.currency)}
-                                                    {t.capacity != null ? ` · cap ${t.capacity}` : ''}
-                                                    {t.reserved_spot ? ' · reserved spot' : ''}
-                                                    {t.active === false ? ' · RETIRED' : ''}
-                                                </div>
-                                            ))
+                                    </>
+                                ) : (
+                                    '—'
+                                ),
+                            },
+                            {
+                                k: 'Shop',
+                                v: shop ? (
+                                    <>
+                                        <Link href={`/admin/shops/${shop.id}`} className="text-link">
+                                            @{shop.slug}
+                                        </Link>
+                                        {shop.status && shop.status !== 'verified' && (
+                                            <span className="admin-pill warn" style={{ marginLeft: 6 }}>
+                                                {sentence(shop.status)}
+                                            </span>
                                         )}
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td style={LABEL_STYLE}>IDS</td>
-                                    <td
-                                        style={{
-                                            padding: '10px 0',
-                                            fontSize: 11,
-                                            fontFamily: 'var(--font-mono, monospace)',
-                                            color: 'var(--text-3)',
-                                            wordBreak: 'break-all',
-                                        }}
-                                    >
+                                    </>
+                                ) : isShopEvent ? (
+                                    <span className="admin-pill warn">Shop #{event.shop_id} (missing)</span>
+                                ) : (
+                                    'None (member-hosted)'
+                                ),
+                            },
+                            {
+                                k: 'Location',
+                                v: [event.location_name, event.location_detail].filter(Boolean).join(' · ') || '—',
+                            },
+                            { k: 'Area label', v: event.area_label ?? '—' },
+                            { k: 'Description', v: <span style={{ whiteSpace: 'pre-wrap' }}>{event.description || '—'}</span> },
+                            {
+                                k: 'Tags',
+                                v:
+                                    event.tags && event.tags.length ? (
+                                        <span className={a.chipRow}>
+                                            {event.tags.map((t) => (
+                                                <span key={t} className="admin-pill">
+                                                    {t}
+                                                </span>
+                                            ))}
+                                        </span>
+                                    ) : (
+                                        '—'
+                                    ),
+                            },
+                            {
+                                k: 'Tiers',
+                                v:
+                                    tiers.length === 0
+                                        ? '—'
+                                        : tiers.map((t) => (
+                                              <div key={t.id} style={{ color: t.active === false ? 'var(--ink-2)' : undefined }}>
+                                                  {t.name ?? 'Tier'} · {money(t.price_cents, t.currency)}
+                                                  {t.capacity != null ? ` · cap ${t.capacity}` : ''}
+                                                  {t.reserved_spot ? ' · reserved spot' : ''}
+                                                  {t.active === false ? ' · retired' : ''}
+                                              </div>
+                                          )),
+                            },
+                            {
+                                k: 'IDs',
+                                v: (
+                                    <span className={a.mono}>
                                         event {event.id}
                                         {event.host_id ? ` · host ${event.host_id}` : ''}
                                         {event.shop_id != null ? ` · shop #${event.shop_id}` : ''}
                                         <br />
                                         created {stamp(event.created_at)} · updated {stamp(event.updated_at)}
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-
-                    {/* ATTENDEES */}
-                    <div id="attendees" style={{ scrollMarginTop: 80 }} />
-                    <SectionHead
-                        title="ATTENDEES (RSVPS)"
-                        sub={`${rsvps.length} SHOWN · MOST RECENT FIRST`}
+                                    </span>
+                                ),
+                            },
+                        ]}
                     />
+                    {/* ATTENDEES */}
+                    <SectionHead id="attendees" title="Attendees (RSVPs)" sub={`${rsvps.length} shown, most recent first.`} />
                     <RsvpTable
                         eventId={event.id}
                         rsvps={rsvps}
@@ -376,18 +319,18 @@ export default async function AdminEventDetailPage({ params }: { params: Promise
                         timeZone={event.time_zone}
                     />
                     {rsvps.length >= RSVP_LIMIT && (
-                        <div className="admin-page-sub" style={{ marginTop: 8 }}>
-                            SHOWING THE {RSVP_LIMIT} MOST RECENT RSVPS — OLDER ROWS ARE NOT LISTED.
+                        <div className={a.small}>
+                            Showing the {RSVP_LIMIT} most recent RSVPs. Older rows are not listed.
                         </div>
                     )}
 
                     {/* TICKETS */}
                     {showTickets && (
                         <>
-                            <div id="tickets" style={{ scrollMarginTop: 80 }} />
                             <SectionHead
-                                title="TICKETS"
-                                sub={`${counts.tickets.total} TOTAL · ${counts.tickets.confirmed} CONFIRMED · ${counts.tickets.held} HELD · ${counts.tickets.cancelled} CANCELLED`}
+                                id="tickets"
+                                title="Tickets"
+                                sub={`${counts.tickets.total} total · ${counts.tickets.confirmed} confirmed · ${counts.tickets.held} held · ${counts.tickets.cancelled} cancelled.`}
                             />
                             <TicketTable
                                 eventId={event.id}
@@ -411,21 +354,21 @@ export default async function AdminEventDetailPage({ params }: { params: Promise
                     />
 
                     {/* CO-HOSTS */}
-                    <SectionHead title="CO-HOSTS" sub={`${cohosts.length} TOTAL`} />
+                    <SectionHead title="Co-hosts" sub={`${cohosts.length} total.`} />
                     <div className="admin-table-wrap">
                         <table className="admin-table">
                             <thead>
                                 <tr>
-                                    <th>SHOP</th>
-                                    <th>STATUS</th>
-                                    <th style={{ textAlign: 'right' }}>ACTIONS</th>
+                                    <th>Shop</th>
+                                    <th>Status</th>
+                                    <th style={{ textAlign: 'right' }}>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {cohosts.length === 0 ? (
                                     <tr>
                                         <td colSpan={3}>
-                                            <div className="admin-empty">NO CO-HOSTS</div>
+                                            <div className="admin-empty">No co-hosts.</div>
                                         </td>
                                     </tr>
                                 ) : (
@@ -439,7 +382,7 @@ export default async function AdminEventDetailPage({ params }: { params: Promise
                                             </td>
                                             <td>
                                                 <span className={COHOST_PILL[c.status] ?? 'admin-pill'}>
-                                                    {String(c.status).toUpperCase()}
+                                                    {sentence(c.status)}
                                                 </span>
                                             </td>
                                             <td style={{ textAlign: 'right' }}>
@@ -447,9 +390,8 @@ export default async function AdminEventDetailPage({ params }: { params: Promise
                                                     <Link
                                                         href={`/shop/${c.slug}/events/${event.id}`}
                                                         className="admin-action-btn"
-                                                        style={{ textDecoration: 'none' }}
                                                     >
-                                                        OPEN AS CO-HOST <ChevronRight />
+                                                        Open as co-host <ChevronRight {...ic} />
                                                     </Link>
                                                 )}
                                             </td>
@@ -463,12 +405,14 @@ export default async function AdminEventDetailPage({ params }: { params: Promise
                     {/* ADMIN ACTIONS */}
                     {!event.cancelled_at && (
                         <>
-                            <SectionHead title="ADMIN ACTIONS" sub="PLATFORM-LEVEL OVERRIDE" />
+                            <SectionHead title="Admin actions" sub="Platform-level override." />
+                            <div className={a.actRow}>
                             <EventActions
                                 eventId={event.id}
                                 eventTitle={event.title ?? ''}
                                 isPaid={isTiered}
                             />
+                            </div>
                         </>
                     )}
 
@@ -476,8 +420,8 @@ export default async function AdminEventDetailPage({ params }: { params: Promise
                     {!audit.missing && (
                         <>
                             <SectionHead
-                                title="ADMIN ACTIVITY"
-                                sub={`${audit.rows.length} SHOWN · ACTIONS TAKEN ON THIS EVENT AS A ROLLOUT ADMIN`}
+                                title="Admin activity"
+                                sub={`${audit.rows.length} shown: actions taken on this event as a Rollout admin.`}
                             />
                             <AdminAuditTable result={audit} showSubject={false} />
                         </>
@@ -485,14 +429,11 @@ export default async function AdminEventDetailPage({ params }: { params: Promise
 
                     {/* MEMBER-HOSTED: edit here */}
                     {!isShopEvent && (
-                        <div id="edit" style={{ scrollMarginTop: 80 }}>
+                        <div id="edit" className={a.stack} style={{ scrollMarginTop: 96 }}>
                             <SectionHead
-                                title="EDIT EVENT (AS HOST)"
-                                sub="MEMBER-HOSTED · SAVES ARE MADE AS PLATFORM ADMIN"
+                                title="Edit event (as host)"
+                                sub="Member-hosted. Saves are made as platform admin. Invites are sent under the host’s name from /me/events and are not available here."
                             />
-                            <div className="admin-page-sub" style={{ marginBottom: 12 }}>
-                                INVITES ARE SENT UNDER THE HOST&rsquo;S NAME FROM /ME/EVENTS AND ARE NOT AVAILABLE HERE.
-                            </div>
                             <HostEventEditForm
                                 event={event}
                                 isPaidEvent={isPaidEvent}
@@ -511,36 +452,6 @@ export default async function AdminEventDetailPage({ params }: { params: Promise
     );
 }
 
-function SectionHead({ title, sub }: { title: string; sub?: string }) {
-    return (
-        <div className="admin-page-head" style={{ marginTop: 28, borderBottom: 'none', paddingBottom: 0, marginBottom: 12 }}>
-            <div>
-                <div className="admin-page-title" style={{ fontSize: 14 }}>
-                    {title}
-                </div>
-                {sub ? <div className="admin-page-sub">{sub}</div> : null}
-            </div>
-        </div>
-    );
-}
-
-function Stat({
-    label,
-    value,
-    accent,
-}: {
-    label: string;
-    value: number | string;
-    accent?: 'gold' | 'warn';
-}) {
-    return (
-        <div className="admin-stat">
-            <div className="admin-stat-lbl">{label}</div>
-            <div className={`admin-stat-num ${accent ?? ''}`}>{value}</div>
-        </div>
-    );
-}
-
 function HandleLink({ p }: { p: { handle: string } | null | undefined }) {
     if (!p?.handle) return <>—</>;
     return (
@@ -554,7 +465,7 @@ function CheckedIn({ c, timeZone }: { c: AdminCheckin | undefined; timeZone: str
     if (!c) return <>—</>;
     return (
         <span className="admin-pill neon">
-            <Check /> {c.method ? `${String(c.method).toUpperCase()} · ` : ''}
+            <Check {...ic} /> {c.method ? `${String(c.method).toUpperCase()} · ` : ''}
             {c.checked_in_at ? formatClock(c.checked_in_at, timeZone) : ''}
         </span>
     );
@@ -578,23 +489,23 @@ function RsvpTable({
             <table className="admin-table">
                 <thead>
                     <tr>
-                        <th>HANDLE / NAME</th>
-                        <th>STATUS</th>
-                        <th>HOLD</th>
-                        <th>SEATS</th>
-                        <th>SPOT #</th>
-                        <th>TIER</th>
-                        <th>PAID</th>
-                        <th>CHECKED IN</th>
-                        <th>RSVPED</th>
-                        <th style={{ textAlign: 'right' }}>ACTIONS</th>
+                        <th>Handle / name</th>
+                        <th>Status</th>
+                        <th>Hold</th>
+                        <th>Seats</th>
+                        <th>Spot #</th>
+                        <th>Tier</th>
+                        <th>Paid</th>
+                        <th>Checked in</th>
+                        <th>RSVPed</th>
+                        <th style={{ textAlign: 'right' }}>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     {rsvps.length === 0 ? (
                         <tr>
                             <td colSpan={10}>
-                                <div className="admin-empty">NO RSVPS YET</div>
+                                <div className="admin-empty">No RSVPs yet.</div>
                             </td>
                         </tr>
                     ) : (
@@ -607,19 +518,17 @@ function RsvpTable({
                                     ) : null}
                                 </td>
                                 <td>
-                                    <span className={RSVP_PILL[r.status] ?? 'admin-pill'}>
-                                        {String(r.status).toUpperCase()}
-                                    </span>
+                                    <span className={RSVP_PILL[r.status] ?? 'admin-pill'}>{sentence(r.status)}</span>
                                 </td>
                                 <td>
                                     {r.hold_state ? (
                                         <>
                                             <span className={HOLD_PILL[r.hold_state] ?? 'admin-pill'}>
-                                                {r.hold_state.toUpperCase()}
+                                                {sentence(r.hold_state)}
                                             </span>
                                             {r.hold_state === 'held' && r.hold_expires_at ? (
                                                 <div className="admin-handle">
-                                                    EXP {formatClock(r.hold_expires_at, timeZone)}
+                                                    Expires {formatClock(r.hold_expires_at, timeZone)}
                                                 </div>
                                             ) : null}
                                         </>
@@ -638,7 +547,7 @@ function RsvpTable({
                                             rel="noopener noreferrer"
                                             className="text-link"
                                         >
-                                            ORDER …{r.payment_ref.slice(-6)}
+                                            Order …{r.payment_ref.slice(-6)}
                                         </a>
                                     ) : (
                                         '—'
@@ -647,7 +556,7 @@ function RsvpTable({
                                 <td>
                                     <CheckedIn c={checkins.get(r.profile_id)} timeZone={timeZone} />
                                 </td>
-                                <td>{stamp(r.rsvped_at)}</td>
+                                <td className={a.time}>{stamp(r.rsvped_at)}</td>
                                 <td style={{ textAlign: 'right' }}>
                                     {r.status === 'declined' ? (
                                         '—'
@@ -695,24 +604,24 @@ function TicketTable({
             <table className="admin-table">
                 <thead>
                     <tr>
-                        <th>SEAT</th>
-                        <th>ATTENDEE</th>
-                        <th>EMAIL</th>
-                        <th>SIZE</th>
-                        <th>STATUS</th>
-                        <th>SPOT #</th>
-                        <th>TIER</th>
-                        <th>CLAIMED</th>
-                        <th>CHECKED IN</th>
-                        <th>REFUND</th>
-                        <th style={{ textAlign: 'right' }}>ACTIONS</th>
+                        <th>Seat</th>
+                        <th>Attendee</th>
+                        <th>Email</th>
+                        <th>Size</th>
+                        <th>Status</th>
+                        <th>Spot #</th>
+                        <th>Tier</th>
+                        <th>Claimed</th>
+                        <th>Checked in</th>
+                        <th>Refund</th>
+                        <th style={{ textAlign: 'right' }}>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     {tickets.length === 0 ? (
                         <tr>
                             <td colSpan={11}>
-                                <div className="admin-empty">NO TICKETS YET</div>
+                                <div className="admin-empty">No tickets yet.</div>
                             </td>
                         </tr>
                     ) : (
@@ -760,19 +669,10 @@ function TicketGroup({
     return (
         <>
             <tr>
-                <td
-                    colSpan={11}
-                    style={{
-                        background: 'var(--bg-2)',
-                        fontFamily: 'var(--font-display)',
-                        fontSize: 10,
-                        letterSpacing: 'var(--track-wider)',
-                        color: 'var(--text-3)',
-                    }}
-                >
+                <td colSpan={11} className={a.groupRow}>
                     {first.order_id ? (
                         <>
-                            ORDER{' '}
+                            Order{' '}
                             <a
                                 href={`${MEDUSA_URL}/app/orders/${first.order_id}`}
                                 target="_blank"
@@ -783,9 +683,9 @@ function TicketGroup({
                             </a>
                         </>
                     ) : (
-                        <>HOLD …{groupKey.slice(-6)} (UNPAID)</>
+                        <>Hold …{groupKey.slice(-6)} (unpaid)</>
                     )}{' '}
-                    · BUYER {buyer ? <HandleLink p={buyer} /> : '—'} · {money(first.order_paid_cents)} ·{' '}
+                    · buyer {buyer ? <HandleLink p={buyer} /> : '—'} · {money(first.order_paid_cents)} ·{' '}
                     {stamp(first.created_at)}
                 </td>
             </tr>
@@ -798,16 +698,16 @@ function TicketGroup({
                         <td>{t.attendee_email ?? '—'}</td>
                         <td>{t.sweater_size ?? '—'}</td>
                         <td>
-                            <span className={TICKET_PILL[t.status] ?? 'admin-pill'}>
-                                {String(t.status).toUpperCase()}
-                            </span>
+                            <span className={TICKET_PILL[t.status] ?? 'admin-pill'}>{sentence(t.status)}</span>
                         </td>
                         <td>{t.spot_no ?? '—'}</td>
                         <td>{t.tier_id ? (tierName.get(t.tier_id) ?? '—') : '—'}</td>
                         <td>{t.attendee_profile_id ? <HandleLink p={claimed} /> : '—'}</td>
                         <td>
                             {t.checked_in_at ? (
-                                <span className="admin-pill neon"><Check /> {formatClock(t.checked_in_at, timeZone)}</span>
+                                <span className="admin-pill neon">
+                                    <Check {...ic} /> {formatClock(t.checked_in_at, timeZone)}
+                                </span>
                             ) : (
                                 '—'
                             )}

@@ -1,5 +1,6 @@
 import { getSystemHealth, type HealthStatus } from '@/lib/system-health';
-import { ArrowUpRight } from '@/components/icons';
+import { ArrowUpRight, CircleAlert, CircleCheck, CircleDashed, CircleX } from 'lucide-react';
+import { SectionHead, adminStyles as a } from '@/components/glide-admin/parts';
 
 /**
  * LAUNCHER + HEALTH ROW (Console Phase C3) — one card per system in the
@@ -9,52 +10,54 @@ import { ArrowUpRight } from '@/components/icons';
  * never throws — a failed check just paints the dot amber/red.
  */
 const DOT_LABEL: Record<HealthStatus, string> = {
-    ok: 'ONLINE',
-    degraded: 'DEGRADED',
-    down: 'UNREACHABLE',
-    unknown: 'UNKNOWN',
+    ok: 'Online',
+    degraded: 'Degraded',
+    down: 'Unreachable',
+    unknown: 'Unknown',
 };
+
+const ic = { size: 16, strokeWidth: 2, 'aria-hidden': true } as const;
+const DOT_ICON: Record<HealthStatus, React.ReactNode> = {
+    ok: <CircleCheck {...ic} />,
+    degraded: <CircleAlert {...ic} />,
+    down: <CircleX {...ic} />,
+    unknown: <CircleDashed {...ic} />,
+};
+
+/** The system labels are uppercase constants in lib/system-health; show them as names. */
+function systemName(label: string): string {
+    return label
+        .split(' ')
+        .map((w) =>
+            /^(EMWRAPS|CMS)$/.test(w) ? w : w === 'NEFERSTOCK' ? 'NeferStock' : w.charAt(0) + w.slice(1).toLowerCase(),
+        )
+        .join(' ');
+}
 
 export default async function LauncherSection() {
     const { systems, coolifyChecked } = await getSystemHealth();
 
     return (
         <>
-            <div
-                className="admin-page-head"
-                style={{ marginTop: 12, borderBottom: 'none', paddingBottom: 0, marginBottom: 12 }}
-            >
-                <div>
-                    <div className="admin-page-title" style={{ fontSize: 14 }}>
-                        LAUNCHER
-                    </div>
-                    <div className="admin-page-sub">
-                        SYSTEMS · HEALTH PINGED SERVER-SIDE · CACHED 2 MIN
-                        {coolifyChecked ? ' · COOLIFY LINKED' : ' · COOLIFY OFFLINE'}
-                    </div>
-                </div>
-            </div>
+            <SectionHead
+                title="Launcher"
+                sub={`Systems, health pinged server-side and cached for 2 minutes. ${coolifyChecked ? 'Coolify linked.' : 'Coolify offline.'}`}
+            />
 
-            <div className="launcher-grid">
+            <div className={a.launch}>
                 {systems.map((s) => (
-                    <a
-                        key={s.key}
-                        href={s.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="launcher-card"
-                    >
-                        <div className="launcher-top">
-                            <span className={`launcher-dot ${s.status}`} title={DOT_LABEL[s.status]} />
-                            <span className="launcher-label">{s.label}</span>
-                            <span className="launcher-open"><ArrowUpRight /></span>
-                        </div>
-                        <div className="launcher-host">{s.host}</div>
-                        <div className={`launcher-status ${s.status}`}>
+                    <a key={s.key} href={s.url} target="_blank" rel="noopener noreferrer" className={a.launchCard}>
+                        <span className={a.launchTop}>
+                            <span>{systemName(s.label)}</span>
+                            <ArrowUpRight size={16} strokeWidth={2} aria-hidden="true" />
+                        </span>
+                        <span className={a.launchHost}>{s.host}</span>
+                        <span className={a.launchStatus}>
+                            {DOT_ICON[s.status]}
                             {DOT_LABEL[s.status]}
-                            {s.coolify && <span className="launcher-coolify"> · {s.coolify}</span>}
-                        </div>
-                        {s.note && <div className="launcher-note">{s.note}</div>}
+                            {s.coolify && <span className={a.launchHost}> · {s.coolify}</span>}
+                        </span>
+                        {s.note && <span className={a.small}>{s.note}</span>}
                     </a>
                 ))}
             </div>

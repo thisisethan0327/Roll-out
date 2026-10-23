@@ -8,7 +8,10 @@ import {
     grantMeetCoordinator,
     revokeMeetCoordinator,
 } from './actions';
-import { Check } from '@/components/icons';
+import { Check, ShieldOff } from 'lucide-react';
+import { adminStyles as a } from '@/components/glide-admin/parts';
+
+const ic = { size: 15, strokeWidth: 2, 'aria-hidden': true } as const;
 
 export type UserRowData = {
     id: string;
@@ -61,29 +64,29 @@ export function UserRow({
             </td>
             <td>
                 <span className={`admin-pill ${user.kind === 'shop_page' ? 'gold' : ''}`}>
-                    {user.kind === 'shop_page' ? 'SHOP' : 'USER'}
+                    {user.kind === 'shop_page' ? 'Shop' : 'User'}
                 </span>
             </td>
             <td>
                 <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                    {user.is_verified && <span className="admin-pill gold"><Check /> VERIFIED</span>}
-                    {user.isPlatformAdmin && <span className="admin-pill warn">GOD</span>}
-                    {user.isMeetCoordinator && <span className="admin-pill neon">MEET COORD</span>}
-                    {isBannedUntil(user.banned_until) && <span className="admin-pill warn">BANNED</span>}
+                    {user.is_verified && <span className="admin-pill gold"><Check {...ic} /> Verified</span>}
+                    {user.isPlatformAdmin && <span className="admin-pill warn">God mode</span>}
+                    {user.isMeetCoordinator && <span className="admin-pill neon">Meet coordinator</span>}
+                    {isBannedUntil(user.banned_until) && <span className="admin-pill warn">Banned</span>}
                 </div>
             </td>
             <td>
-                L{user.level} · {user.xp_total} XP
+                <span className={a.num}>L{user.level}</span> <span className={a.time}>· {user.xp_total} XP</span>
             </td>
-            <td>{new Date(user.created_at).toISOString().slice(0, 10)}</td>
+            <td className={a.time}>{new Date(user.created_at).toISOString().slice(0, 10)}</td>
             <td style={{ textAlign: 'right' }}>
-                <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
                     <button
                         className={`admin-action-btn ${user.is_verified ? 'muted' : ''}`}
                         disabled={pending}
                         onClick={() => handleAction(() => setVerified(user.id, !user.is_verified))}
                     >
-                        {user.is_verified ? 'UNVERIFY' : <>VERIFY <Check /></>}
+                        {user.is_verified ? 'Unverify' : <><Check {...ic} /> Verify</>}
                     </button>
                     {user.kind === 'user' && (
                         user.isPlatformAdmin ? (
@@ -96,7 +99,7 @@ export function UserRow({
                                 }
                                 title={isMe ? "You can't revoke your own admin." : ''}
                             >
-                                REVOKE GOD
+                                <ShieldOff {...ic} className={a.dangerIc} /> Revoke god mode
                             </button>
                         ) : (
                             <button
@@ -104,7 +107,7 @@ export function UserRow({
                                 disabled={pending}
                                 onClick={() => handleAction(() => grantPlatformAdmin(user.id, adminProfileId))}
                             >
-                                + GOD
+                                Grant god mode
                             </button>
                         )
                     )}
@@ -115,7 +118,7 @@ export function UserRow({
                                 disabled={pending}
                                 onClick={() => handleAction(() => revokeMeetCoordinator(user.id))}
                             >
-                                − COORD
+                                Remove coordinator
                             </button>
                         ) : (
                             <button
@@ -123,7 +126,7 @@ export function UserRow({
                                 disabled={pending}
                                 onClick={() => handleAction(() => grantMeetCoordinator(user.id, adminProfileId))}
                             >
-                                + COORD
+                                Make coordinator
                             </button>
                         )
                     )}

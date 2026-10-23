@@ -1,14 +1,15 @@
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { AdminHead, Tabs, adminStyles as st, sentence } from '@/components/glide-admin/parts';
 
 export const metadata = { title: 'Appointments' };
 
 const SERVICE_LABEL: Record<string, string> = {
-    WRAP: 'VINYL WRAP',
+    WRAP: 'Vinyl wrap',
     PPF: 'PPF',
-    TINT: 'WINDOW TINT',
-    CERAMIC: 'CERAMIC',
-    PARTS: 'PARTS / INSTALL',
-    OTHER: 'OTHER',
+    TINT: 'Window tint',
+    CERAMIC: 'Ceramic',
+    PARTS: 'Parts / install',
+    OTHER: 'Other',
 };
 
 const STATUS_CLASS: Record<string, string> = {
@@ -48,54 +49,43 @@ export default async function AppointmentsPage({
 
     return (
         <>
-            <div className="admin-page-head">
-                <div>
-                    <div className="admin-page-title">APPOINTMENTS</div>
-                    <div className="admin-page-sub">
-                        ALL SHOPS · {items.length} SHOWN · {current.toUpperCase()}
-                    </div>
-                </div>
-            </div>
+            <AdminHead
+                title="Appointments"
+                sub={`Booking requests across all shops. ${items.length} shown${current === 'all' ? '' : `, ${current}`}.`}
+            />
 
-            <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
-                {(['all', 'pending', 'accepted', 'declined', 'cancelled'] as const).map(
-                    (s) => (
-                        <a
-                            key={s}
-                            href={`/admin/appointments?status=${s}`}
-                            className={`admin-action-btn ${current === s ? '' : 'muted'}`}
-                            style={{ textDecoration: 'none' }}
-                        >
-                            {s.toUpperCase()}
-                        </a>
-                    ),
-                )}
-            </div>
-
+            <Tabs
+                label="Filter by status"
+                items={(['all', 'pending', 'accepted', 'declined', 'cancelled'] as const).map((s) => ({
+                    href: `/admin/appointments?status=${s}`,
+                    label: sentence(s),
+                    current: current === s,
+                }))}
+            />
             <div className="admin-table-wrap">
                 <table className="admin-table">
                     <thead>
                         <tr>
-                            <th>WHEN</th>
-                            <th>SHOP</th>
-                            <th>CUSTOMER</th>
-                            <th>SERVICE</th>
-                            <th>VEHICLE</th>
-                            <th>PREFERRED</th>
-                            <th>STATUS</th>
+                            <th>Requested</th>
+                            <th>Shop</th>
+                            <th>Customer</th>
+                            <th>Service</th>
+                            <th>Vehicle</th>
+                            <th>Preferred</th>
+                            <th>Status</th>
                         </tr>
                     </thead>
                     <tbody>
                         {items.length === 0 ? (
                             <tr>
                                 <td colSpan={7}>
-                                    <div className="admin-empty">NONE</div>
+                                    <div className="admin-empty">No appointment requests here.</div>
                                 </td>
                             </tr>
                         ) : (
                             items.map((a: any) => (
                                 <tr key={a.id}>
-                                    <td>
+                                    <td className={st.time}>
                                         {new Date(a.created_at).toISOString().slice(0, 16).replace('T', ' ')}
                                     </td>
                                     <td>
@@ -126,7 +116,7 @@ export default async function AppointmentsPage({
                                     <td>{a.preferred_at ?? '—'}</td>
                                     <td>
                                         <span className={`admin-pill ${STATUS_CLASS[a.status] ?? ''}`}>
-                                            {a.status.toUpperCase()}
+                                            {sentence(a.status)}
                                         </span>
                                     </td>
                                 </tr>

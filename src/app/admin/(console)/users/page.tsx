@@ -2,7 +2,8 @@ import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { requirePlatformAdmin } from '@/lib/auth-guard';
 import { UserRow } from './UserRow';
 import { selectWithBan } from '@/lib/ban-server';
-import { ChevronRight } from '@/components/icons';
+import { Search } from 'lucide-react';
+import { AdminHead } from '@/components/glide-admin/parts';
 
 export const metadata = { title: 'Users' };
 
@@ -51,24 +52,18 @@ export default async function UsersPage({
 
     return (
         <>
-            <div className="admin-page-head">
-                <div>
-                    <div className="admin-page-title">USERS</div>
-                    <div className="admin-page-sub">
-                        ALL PROFILES · {users.length} SHOWN
-                    </div>
-                </div>
-            </div>
+            <AdminHead title="Users" sub={`All profiles, newest first. ${users.length} shown.`} />
 
             <form className="admin-search" action="/admin/users">
                 <input
                     name="q"
                     defaultValue={q ?? ''}
                     className="admin-search-input"
-                    placeholder="SEARCH HANDLE OR DISPLAY NAME"
+                    placeholder="Search handle or display name"
+                    aria-label="Search handle or display name"
                 />
                 <button type="submit" className="admin-action-btn">
-                    SEARCH <ChevronRight />
+                    <Search size={16} strokeWidth={2} aria-hidden="true" /> Search
                 </button>
             </form>
 
@@ -76,20 +71,20 @@ export default async function UsersPage({
                 <table className="admin-table">
                     <thead>
                         <tr>
-                            <th>HANDLE</th>
-                            <th>NAME</th>
-                            <th>KIND</th>
-                            <th>FLAGS</th>
-                            <th>LEVEL</th>
-                            <th>JOINED</th>
-                            <th style={{ textAlign: 'right' }}>ACTIONS</th>
+                            <th>Handle</th>
+                            <th>Name</th>
+                            <th>Kind</th>
+                            <th>Flags</th>
+                            <th>Level</th>
+                            <th>Joined</th>
+                            <th style={{ textAlign: 'right' }}>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         {users.length === 0 ? (
                             <tr>
                                 <td colSpan={7}>
-                                    <div className="admin-empty">NO USERS MATCH</div>
+                                    <div className="admin-empty">No users match that search.</div>
                                 </td>
                             </tr>
                         ) : (

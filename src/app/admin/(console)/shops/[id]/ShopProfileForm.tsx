@@ -2,6 +2,8 @@
 import { useState, useTransition } from 'react';
 import { updateShopProfile } from '../actions';
 import { SHOP_CATEGORIES } from '@/lib/shop-categories';
+import { CircleCheck } from 'lucide-react';
+import { adminStyles as a } from '@/components/glide-admin/parts';
 
 type PrecisionOpt = {
     value: 'exact' | 'area' | 'off';
@@ -71,87 +73,87 @@ export function ShopProfileForm({
     };
 
     return (
-        <form onSubmit={submit} className="admin-form" style={{ maxWidth: 620, marginTop: 24 }}>
-            <div className="admin-form-label" style={{ color: 'var(--gold)', fontSize: 11 }}>
-                EDIT PROFILE
-            </div>
-            <p style={{ color: 'var(--text-2)', fontSize: 12, lineHeight: 1.5, margin: '0 0 6px' }}>
-                Fix any field of this shop&apos;s public profile on the owner&apos;s behalf. Slug,
-                commerce tier/handles/fees, and Stripe are intentionally not editable here.
+        <form onSubmit={submit} className="admin-form" aria-labelledby={`edit-shop-${shopId}`}>
+            <h2 className={a.formTitle} id={`edit-shop-${shopId}`}>
+                Edit profile
+            </h2>
+            <p className={a.small} style={{ margin: 0 }}>
+                Fix any field of this shop&apos;s public profile on the owner&apos;s behalf. Slug, commerce
+                tier/handles/fees, and Stripe are intentionally not editable here.
             </p>
 
-            <div className="admin-form-label">SHOP NAME</div>
-            <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="admin-form-input"
-                placeholder="EMWRAPS"
-            />
+            <label className={a.field}>
+                <span className="admin-form-label">Shop name</span>
+                <input
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="admin-form-input"
+                    placeholder="EMWRAPS"
+                />
+            </label>
 
-            <div style={{ display: 'flex', gap: 8 }}>
-                <div style={{ flex: 1 }}>
-                    <div className="admin-form-label">CATEGORY</div>
-                    <select
-                        value={category}
-                        onChange={(e) => setCategory(e.target.value)}
-                        className="admin-form-input"
-                        style={{ width: '100%', appearance: 'none', WebkitAppearance: 'none', cursor: 'pointer' }}
-                    >
+            <div className={a.fieldRow}>
+                <label className={a.field}>
+                    <span className="admin-form-label">Category</span>
+                    <select value={category} onChange={(e) => setCategory(e.target.value)} className="admin-form-input">
                         <option value="">Select…</option>
                         {SHOP_CATEGORIES.map((c) => (
-                            <option key={c} value={c}>{c}</option>
+                            <option key={c} value={c}>
+                                {c}
+                            </option>
                         ))}
                     </select>
-                </div>
-                <div style={{ flex: 1 }}>
-                    <div className="admin-form-label">REGION</div>
+                </label>
+                <label className={a.field}>
+                    <span className="admin-form-label">Region</span>
                     <input
                         type="text"
                         value={region}
                         onChange={(e) => setRegion(e.target.value)}
                         className="admin-form-input"
                         placeholder="PNW"
-                        style={{ width: '100%' }}
                     />
-                </div>
+                </label>
             </div>
 
-            <div className="admin-form-label">BIO / DESCRIPTION</div>
-            <textarea
-                value={bioText}
-                onChange={(e) => setBioText(e.target.value)}
-                className="admin-form-input"
-                rows={3}
-                placeholder="Short description of the shop…"
-                style={{ resize: 'vertical', fontFamily: 'var(--font-body)' }}
-            />
+            <label className={a.field}>
+                <span className="admin-form-label">Bio / description</span>
+                <textarea
+                    value={bioText}
+                    onChange={(e) => setBioText(e.target.value)}
+                    className="admin-form-input"
+                    rows={3}
+                    placeholder="Short description of the shop…"
+                />
+            </label>
 
-            <div className="admin-form-label">SUPPORT EMAIL</div>
-            <input
-                type="email"
-                value={supportEmail}
-                onChange={(e) => setSupportEmail(e.target.value)}
-                className="admin-form-input"
-                placeholder="hello@shop.com"
-                autoCapitalize="none"
-                autoCorrect="off"
-            />
+            <label className={a.field}>
+                <span className="admin-form-label">Support email</span>
+                <input
+                    type="email"
+                    value={supportEmail}
+                    onChange={(e) => setSupportEmail(e.target.value)}
+                    className="admin-form-input"
+                    placeholder="hello@shop.com"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                />
+            </label>
 
-            <div style={{ display: 'flex', gap: 8 }}>
-                <div style={{ flex: 1 }}>
-                    <div className="admin-form-label">SUPPORT PHONE</div>
+            <div className={a.fieldRow}>
+                <label className={a.field}>
+                    <span className="admin-form-label">Support phone</span>
                     <input
                         type="tel"
                         value={contactPhone}
                         onChange={(e) => setContactPhone(e.target.value)}
                         className="admin-form-input"
                         placeholder="(206) 555-0100"
-                        style={{ width: '100%' }}
                     />
-                </div>
-                <div style={{ flex: 1 }}>
-                    <div className="admin-form-label">WEBSITE</div>
+                </label>
+                <label className={a.field}>
+                    <span className="admin-form-label">Website</span>
                     <input
                         type="text"
                         value={websiteUrl}
@@ -160,40 +162,31 @@ export function ShopProfileForm({
                         placeholder="https://shop.com"
                         autoCapitalize="none"
                         autoCorrect="off"
-                        style={{ width: '100%' }}
                     />
-                </div>
+                </label>
             </div>
 
-            <div
-                style={{
-                    marginTop: 10,
-                    paddingTop: 14,
-                    borderTop: '1px solid var(--line)',
-                    fontFamily: 'var(--font-display)',
-                    fontSize: 11,
-                    letterSpacing: 'var(--track-wider)',
-                    color: 'var(--gold)',
-                }}
-            >
-                LOCATION · MAP
+            <div className={a.formSub} role="heading" aria-level={3}>
+                Location and map
             </div>
 
             <PrecisionSelector value={precision} onChange={setPrecision} />
 
-            <div className="admin-form-label">STREET ADDRESS</div>
-            <input
-                type="text"
-                value={addressLine}
-                onChange={(e) => setAddressLine(e.target.value)}
-                className="admin-form-input"
-                placeholder="1900 Airport Way S #103"
-                disabled={precision === 'off'}
-            />
+            <label className={a.field}>
+                <span className="admin-form-label">Street address</span>
+                <input
+                    type="text"
+                    value={addressLine}
+                    onChange={(e) => setAddressLine(e.target.value)}
+                    className="admin-form-input"
+                    placeholder="1900 Airport Way S #103"
+                    disabled={precision === 'off'}
+                />
+            </label>
 
-            <div style={{ display: 'flex', gap: 8 }}>
-                <div style={{ flex: 2 }}>
-                    <div className="admin-form-label">CITY</div>
+            <div className={a.fieldRow}>
+                <label className={a.field}>
+                    <span className="admin-form-label">City</span>
                     <input
                         type="text"
                         value={city}
@@ -201,11 +194,10 @@ export function ShopProfileForm({
                         className="admin-form-input"
                         placeholder="Seattle"
                         disabled={precision === 'off'}
-                        style={{ width: '100%' }}
                     />
-                </div>
-                <div style={{ flex: 1 }}>
-                    <div className="admin-form-label">STATE</div>
+                </label>
+                <label className={a.field}>
+                    <span className="admin-form-label">State</span>
                     <input
                         type="text"
                         value={stateRegion}
@@ -213,11 +205,10 @@ export function ShopProfileForm({
                         className="admin-form-input"
                         placeholder="WA"
                         disabled={precision === 'off'}
-                        style={{ width: '100%' }}
                     />
-                </div>
-                <div style={{ flex: 1 }}>
-                    <div className="admin-form-label">ZIP</div>
+                </label>
+                <label className={a.field}>
+                    <span className="admin-form-label">ZIP</span>
                     <input
                         type="text"
                         value={postal}
@@ -225,45 +216,34 @@ export function ShopProfileForm({
                         className="admin-form-input"
                         placeholder="98134"
                         disabled={precision === 'off'}
-                        style={{ width: '100%' }}
                     />
-                </div>
+                </label>
             </div>
 
-            <p style={{ color: 'var(--text-3)', fontSize: 11, lineHeight: 1.5, margin: '2px 0 0' }}>
+            <p className={a.small} style={{ margin: 0 }}>
                 {precision === 'area'
-                    ? 'Coordinates are resolved on save from the CITY (the region above is used only if no city is set). A good pin is never overwritten if the lookup fails.'
+                    ? 'Coordinates are resolved on save from the city (the region above is used only if no city is set). A good pin is never overwritten if the lookup fails.'
                     : 'Coordinates are resolved automatically on save from the full street address. A good pin is never overwritten if the lookup fails.'}
             </p>
 
             {err && (
-                <div className="admin-login-error" style={{ padding: 8 }}>
+                <div className="admin-login-error" role="alert">
                     {err}
                 </div>
             )}
             {ok && (
-                <div
-                    style={{
-                        padding: 8,
-                        border: '1px solid var(--gold)',
-                        background: 'var(--gold-glow)',
-                        color: 'var(--gold)',
-                        fontFamily: 'var(--font-display)',
-                        fontSize: 11,
-                        letterSpacing: 'var(--track-wide)',
-                    }}
-                >
-                    SAVED.
+                <div className={a.note} role="status">
+                    <CircleCheck size={18} strokeWidth={2} aria-hidden="true" />
+                    Saved.
                 </div>
             )}
 
             <button type="submit" disabled={pending} className="admin-form-btn">
-                {pending ? 'SAVING…' : 'SAVE PROFILE'}
+                {pending ? 'Saving…' : 'Save profile'}
             </button>
         </form>
     );
 }
-
 function PrecisionSelector({
     value,
     onChange,
@@ -272,50 +252,30 @@ function PrecisionSelector({
     onChange: (v: 'exact' | 'area' | 'off') => void;
 }) {
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <div className="admin-form-label">MAP PRESENCE</div>
-            {PRECISIONS.map((p) => {
-                const on = value === p.value;
-                return (
-                    <label
-                        key={p.value}
-                        style={{
-                            display: 'flex',
-                            gap: 10,
-                            alignItems: 'flex-start',
-                            padding: '10px 12px',
-                            border: `1px solid ${on ? 'var(--gold)' : 'var(--line-mid)'}`,
-                            background: on ? 'var(--gold-glow)' : 'var(--bg-2)',
-                            cursor: 'pointer',
-                        }}
-                    >
-                        <input
-                            type="radio"
-                            name="location_precision"
-                            value={p.value}
-                            checked={on}
-                            onChange={() => onChange(p.value)}
-                            style={{ marginTop: 2 }}
-                        />
-                        <span style={{ minWidth: 0 }}>
-                            <span
-                                style={{
-                                    display: 'block',
-                                    fontFamily: 'var(--font-display)',
-                                    fontSize: 12,
-                                    letterSpacing: 'var(--track-wide)',
-                                    color: on ? 'var(--gold)' : 'var(--text)',
-                                }}
-                            >
-                                {p.label.toUpperCase()}
+        <fieldset className={a.field} style={{ border: 0, margin: 0, padding: 0 }}>
+            <legend className="admin-form-label" style={{ marginBottom: 7 }}>
+                Map presence
+            </legend>
+            <div className={`${a.choices} ${a.choiceCol}`}>
+                {PRECISIONS.map((p) => {
+                    const on = value === p.value;
+                    return (
+                        <label key={p.value} className={a.choice}>
+                            <input
+                                type="radio"
+                                name="location_precision"
+                                value={p.value}
+                                checked={on}
+                                onChange={() => onChange(p.value)}
+                            />
+                            <span style={{ minWidth: 0 }}>
+                                {p.label}
+                                <small>{p.hint}</small>
                             </span>
-                            <span style={{ display: 'block', color: 'var(--text-2)', fontSize: 12, marginTop: 2 }}>
-                                {p.hint}
-                            </span>
-                        </span>
-                    </label>
-                );
-            })}
-        </div>
+                        </label>
+                    );
+                })}
+            </div>
+        </fieldset>
     );
 }

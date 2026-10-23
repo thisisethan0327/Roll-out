@@ -1,6 +1,8 @@
 'use client';
 import { useState, useTransition } from 'react';
 import { decideAppeal, takeAppeal } from './actions';
+import { Gavel, ShieldCheck } from 'lucide-react';
+import { adminStyles as a } from '@/components/glide-admin/parts';
 
 /**
  * TAKE (submitted -> in review) and DECIDE (uphold / overturn) controls for one
@@ -58,17 +60,18 @@ export function AppealActions({
     };
 
     return (
-        <div style={{ display: 'grid', gap: 8 }}>
+        <div className={a.stack} style={{ gap: 10 }}>
             {status === 'submitted' && (
                 <div>
                     <button className="admin-action-btn muted" disabled={pending} onClick={take}>
-                        {pending ? '…' : 'TAKE FOR REVIEW'}
+                        {pending ? 'Taking…' : 'Take for review'}
                     </button>
                 </div>
             )}
             <textarea
                 className="admin-form-input"
                 placeholder="Internal note (optional, admins only)"
+                aria-label="Internal note (optional, admins only)"
                 rows={2}
                 maxLength={1000}
                 value={note}
@@ -78,6 +81,7 @@ export function AppealActions({
             <textarea
                 className="admin-form-input"
                 placeholder="Note to the member (optional, shown on /suspended and emailed)"
+                aria-label="Note to the member (optional, shown on /suspended and emailed)"
                 rows={2}
                 maxLength={600}
                 value={publicNote}
@@ -85,7 +89,7 @@ export function AppealActions({
                 disabled={pending}
             />
             {needsOverride && (
-                <label style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 12 }}>
+                <label className={a.choice} style={{ alignSelf: 'start' }}>
                     <input
                         type="checkbox"
                         checked={override}
@@ -95,15 +99,15 @@ export function AppealActions({
                     No other admin is available — decide anyway (logged)
                 </label>
             )}
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            <div className={a.actRow}>
                 <button className="admin-action-btn" disabled={pending} onClick={() => decide('overturned')}>
-                    OVERTURN · LIFT BAN
+                    <ShieldCheck size={15} strokeWidth={2} aria-hidden="true" /> Overturn and lift ban
                 </button>
                 <button className="admin-action-btn danger" disabled={pending} onClick={() => decide('upheld')}>
-                    UPHOLD
+                    <Gavel size={15} strokeWidth={2} aria-hidden="true" className={a.dangerIc} /> Uphold
                 </button>
             </div>
-            {err && <div style={{ color: 'var(--warn)', fontSize: 12 }}>{err}</div>}
+            {err && <div className="admin-login-error" role="alert">{err}</div>}
         </div>
     );
 }
