@@ -734,6 +734,30 @@ a.note:hover {
   color: var(--ink-2);
 }
 
+.kvRow {
+  display: grid;
+  grid-template-columns: minmax(96px, 128px) minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 14.5px;
+  line-height: 1.4;
+}
+.kvRow > span:first-child {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+.kvRow > span:last-child {
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.kvRow + div:not(.kvRow) {
+  margin-top: 12px;
+}
+
 /* ── Pre-formatted notes ───────────────────────────────────────────────── */
 .pre {
   margin: 0;
@@ -874,7 +898,7 @@ a.note:hover {
   gap: 10px;
   margin-top: 3px;
 }
-.threadBot span {
+.threadBot > span:first-child {
   flex: 1;
   min-width: 0;
   font-size: 14.5px;
@@ -883,7 +907,7 @@ a.note:hover {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.threadBot span.on {
+.threadBot > span.on {
   color: var(--ink);
 }
 .unread {

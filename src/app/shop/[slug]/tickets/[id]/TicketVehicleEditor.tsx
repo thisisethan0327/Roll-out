@@ -1,4 +1,5 @@
 'use client';
+import { shopStyles as sh } from '@/components/glide-shop/parts';
 /**
  * Detail-page VEHICLE panel with edit capability: shows the linked vehicle and
  * (for managers) a toggle to pick one of the customer's vehicles or add a new
@@ -76,7 +77,7 @@ export function TicketVehicleEditor({
 
     if (!editing) {
         return (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
                 <KV label="Year / make / model" value={vehicleLabel || '—'} />
                 <KV label="Trim" value={current.trim ?? '—'} />
                 <KV label="Color" value={current.color ?? '—'} />
@@ -118,29 +119,11 @@ export function TicketVehicleEditor({
     );
 }
 
-function KV({ label, value, mono }: { label: string; value: React.ReactNode; mono?: boolean }) {
+function KV({ label, value }: { label: string; value: React.ReactNode; mono?: boolean }) {
     return (
-        <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: 10, fontSize: 12, lineHeight: 1.5 }}>
-            <div
-                style={{
-                    fontFamily: 'var(--font-display)',
-                    fontSize: 9,
-                    letterSpacing: 'var(--track-wider)',
-                    color: 'var(--text-3)',
-                    paddingTop: 2,
-                }}
-            >
-                {label}
-            </div>
-            <div
-                style={{
-                    fontFamily: mono ? 'var(--font-mono, monospace)' : 'var(--font-body)',
-                    color: 'var(--text)',
-                    wordBreak: 'break-word',
-                }}
-            >
-                {value}
-            </div>
+        <div className={sh.kvRow}>
+            <span>{label}</span>
+            <span>{value}</span>
         </div>
     );
 }
