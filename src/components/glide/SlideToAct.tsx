@@ -11,6 +11,17 @@
  *
  * Controlled: the parent owns `done` (it usually reflects a server write) and
  * `busy`. Reduced motion: the CSS drops the spring and the chevron pulse.
+ *
+ * When the action does not go through (refused, failed, cancelled), the knob
+ * has to come back from the end. Three ways, all optional:
+ *  - return `false` from onComplete;
+ *  - return a Promise from onComplete: the knob shows the busy state while it
+ *    runs and springs back if it rejects or resolves `false`. Resolving to
+ *    anything else leaves it at the end for `done` (or a navigation) to take
+ *    over;
+ *  - change `resetOn` (an attempt counter, an error message, ...): the knob
+ *    returns to wherever `done` says.
+ * Remounting with a new `key` still works too.
  */
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { ArrowRight, Check, ChevronRight, CircleCheck, LoaderCircle } from 'lucide-react';
@@ -29,6 +40,7 @@ export function SlideToAct({
     disabled = false,
     onComplete,
     onUndo,
+    resetOn,
     className,
 }: {
     /** Idle label, e.g. "Slide to RSVP". */
@@ -44,8 +56,11 @@ export function SlideToAct({
     done?: boolean;
     busy?: boolean;
     disabled?: boolean;
-    onComplete: () => void;
+    /** Return `false`, or a Promise that rejects or resolves `false`, to send the knob back. */
+    onComplete: () => void | boolean | Promise<unknown>;
     onUndo?: () => void;
+    /** Any value; when it changes the knob returns to the `done` position. */
+    resetOn?: unknown;
     className?: string;
 }) {
     const rootRef = useRef<HTMLDivElement>(null);
@@ -54,6 +69,16 @@ export function SlideToAct({
     const lastUp = useRef(0);
     const [p, setP] = useState(done ? 1 : 0);
     const [dragging, setDragging] = useState(false);
+    const [waiting, setWaiting] = useState(false);
+    const doneRef = useRef(done);
+    doneRef.current = done;
+    const mounted = useRef(true);
+    useEffect(() => {
+        mounted.current = true;
+        return () => {
+            mounted.current = false;
+        };
+    }, []);
 
     const travel = useCallback(() => {
         const r = rootRef.current;
@@ -78,7 +103,56 @@ export function SlideToAct({
         if (!drag.current) setP(done ? 1 : 0);
     }, [done]);
 
-    const inert = disabled || busy;
+    // An explicit reset from the parent (skipped on mount).
+    const firstReset = useRef(true);
+    useEffect(() => {
+        if (firstReset.current) {
+            firstReset.current = false;
+            return;
+        }
+        drag.current = null;
+        setDragging(false);
+        setWaiting(false);
+        setP(doneRef.current ? 1 : 0);
+    }, [resetOn]);
+
+    const back = () => {
+        if (mounted.current && !doneRef.current) setP(0);
+    };
+
+    // Run the action; a refusal (false, a rejection) springs the knob back.
+    const fire = () => {
+        setP(1);
+        let r: unknown;
+        try {
+            r = onComplete();
+        } catch (err) {
+            back();
+            throw err;
+        }
+        if (r === false) {
+            back();
+            return;
+        }
+        if (r && typeof (r as Promise<unknown>).then === 'function') {
+            setWaiting(true);
+            (r as Promise<unknown>).then(
+                (v) => {
+                    if (!mounted.current) return;
+                    setWaiting(false);
+                    if (v === false) back();
+                },
+                () => {
+                    if (!mounted.current) return;
+                    setWaiting(false);
+                    back();
+                },
+            );
+        }
+    };
+
+    const working = busy || waiting;
+    const inert = disabled || working;
 
     const onPointerDown = (e: React.PointerEvent<HTMLButtonElement>) => {
         if (done || inert || e.button !== 0) return;
@@ -109,8 +183,7 @@ export function SlideToAct({
             return;
         }
         if (p >= SLIDE_THRESHOLD || !d.moved) {
-            setP(1);
-            onComplete();
+            fire();
         } else {
             setP(0);
         }
@@ -124,11 +197,10 @@ export function SlideToAct({
             onUndo?.();
             return;
         }
-        setP(1);
-        onComplete();
+        fire();
     };
 
-    const cls = ['g-slide', done && 'is-done', dragging && 'is-dragging', busy && 'is-busy', disabled && 'is-disabled', className]
+    const cls = ['g-slide', done && 'is-done', dragging && 'is-dragging', working && 'is-busy', disabled && 'is-disabled', className]
         .filter(Boolean)
         .join(' ');
 
@@ -161,7 +233,7 @@ export function SlideToAct({
                 className="g-slide-knob"
                 aria-label={done ? (doneAriaLabel ?? ariaLabel) : ariaLabel}
                 aria-pressed={done}
-                aria-busy={busy || undefined}
+                aria-busy={working || undefined}
                 disabled={disabled || (done && !onUndo)}
                 onPointerDown={onPointerDown}
                 onPointerMove={onPointerMove}
@@ -169,7 +241,7 @@ export function SlideToAct({
                 onPointerCancel={() => finish(true)}
                 onClick={onClick}
             >
-                {busy ? (
+                {working ? (
                     <LoaderCircle size={22} strokeWidth={2.2} className="g-spin" aria-hidden="true" />
                 ) : done ? (
                     <Check size={22} strokeWidth={2.2} aria-hidden="true" />
