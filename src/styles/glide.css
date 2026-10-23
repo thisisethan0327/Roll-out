@@ -445,7 +445,11 @@ body:has(.glide-page) :focus-visible {
   height: 1px;
   background: var(--line);
 }
-.g-row:last-child::after { display: none; }
+/* No hairline under the last row. A linked row (<Row href>) is an <a> that is
+   always the last child of its <li>, so the test is on the <li>, not on the
+   row; a bare `li.g-row` (or a row outside a list) tests itself. */
+.g-row:where(:last-child:not(li > *))::after,
+.g-row:where(li:last-child > *)::after { display: none; }
 .g-row > svg:first-child { color: var(--icon); flex: none; }
 .g-row-t { flex: 1; min-width: 0; }
 .g-row-t b {
