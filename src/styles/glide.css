@@ -925,7 +925,7 @@ a.g-tchip:hover { color: var(--ink); text-decoration: none; }
 .g-foot li a {
   display: inline-flex;
   align-items: center;
-  min-height: 40px;
+  min-height: 44px;
   font-size: 14.5px;
   color: var(--ink-2);
 }
