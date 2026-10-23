@@ -1,0 +1,288 @@
+/* /me/events/[id], the host console for one event (board G3 web). */
+
+/* Summary card (G3 `.hc-dt`) */
+.sum {
+  display: grid;
+  grid-template-columns: 300px minmax(0, 1fr);
+  gap: 24px;
+  padding: 12px 12px 0;
+}
+.cv {
+  position: relative;
+  border-radius: 20px;
+  overflow: hidden;
+  min-height: 190px;
+  background: var(--surface-2) center / cover no-repeat;
+}
+.sumBd {
+  padding: 8px 12px 20px 0;
+  min-width: 0;
+}
+.sumBd h1 {
+  margin: 12px 0 0;
+  font-family: var(--disp);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.015em;
+  font-size: 34px;
+  line-height: 1;
+  color: var(--title);
+  overflow-wrap: anywhere;
+}
+.meta {
+  margin: 8px 0 0;
+  font-size: 14.5px;
+  line-height: 1.45;
+  color: var(--ink-2);
+}
+.meta :global(.g-w) {
+  font-size: 11.5px;
+  color: var(--title);
+}
+.acts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+}
+.cancelled {
+  filter: grayscale(0.6);
+}
+
+/* Section jump rows beside the form */
+.jump {
+  padding: 6px 0;
+}
+
+/* Route editor */
+.destRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: end;
+}
+.subH {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 6px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+.subH h3 {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--disp);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  font-size: 16px;
+  color: var(--title);
+}
+.subH h3 :global(.g-w) {
+  font-size: 11px;
+  color: var(--ink-2);
+}
+.stops {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.stop {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 22px;
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.stopBad {
+  box-shadow: inset 0 0 0 2px var(--ink);
+}
+.stopTop {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.kind {
+  width: 150px;
+  flex: none;
+}
+.stopGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 2fr);
+  gap: 10px;
+}
+.stopActs {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 6px;
+}
+.map {
+  aspect-ratio: auto !important;
+  height: 340px;
+}
+.newStop {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  border-radius: 22px;
+  background: var(--tint);
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+.newStopH {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  color: var(--on-tint);
+}
+.newStopH b {
+  font-family: var(--disp);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  font-size: 15px;
+}
+.newStopH :global(.g-w) {
+  font-size: 10.5px;
+}
+
+/* Invitations */
+.inv {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+.styles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.chipBox {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-height: 52px;
+  padding: 8px 10px;
+  border-radius: 16px;
+  background: var(--card);
+  box-shadow: inset 0 0 0 1px var(--line-strong);
+}
+.chipBox:focus-within {
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+.chipBox input {
+  flex: 1;
+  min-width: 180px;
+  min-height: 36px;
+  border: 0;
+  outline: none;
+  background: transparent;
+  font-family: var(--ui);
+  font-size: 16px;
+  color: var(--ink);
+}
+.chipBox input::placeholder {
+  color: var(--ink-2);
+}
+.mail {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: 32px;
+  padding: 0 2px 0 12px;
+  border-radius: 16px;
+  background: var(--tint);
+  color: var(--on-tint);
+  font-size: 13.5px;
+  font-weight: 600;
+}
+.mailBad {
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: inset 0 0 0 1.5px var(--line-strong);
+}
+.mailBad svg:first-child {
+  color: var(--stripe-3);
+}
+.mail button {
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: inherit;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+.mail button:hover {
+  background: rgba(var(--shadow), 0.08);
+}
+.preview {
+  width: 100%;
+  height: 620px;
+  border: 0;
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: 0 0 0 1px var(--line);
+}
+
+@media (max-width: 1100px) {
+  .inv {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 900px) {
+  .sum {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+  .cv {
+    min-height: 0;
+    aspect-ratio: 16 / 9;
+  }
+  .sumBd {
+    padding: 4px 8px 18px;
+  }
+  .sumBd h1 {
+    font-size: 28px;
+  }
+  .destRow {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+  .destRow > button {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
+  .stopTop {
+    flex-wrap: wrap;
+  }
+  .stopTop > input {
+    flex: 1 1 160px;
+  }
+  .kind {
+    width: 100%;
+  }
+  .stopGrid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+  .stopGrid > :last-child {
+    grid-column: 1 / -1;
+  }
+  .map {
+    height: 260px;
+  }
+}

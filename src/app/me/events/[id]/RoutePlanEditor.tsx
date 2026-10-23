@@ -32,6 +32,13 @@ import RouteMapLoader from '@/app/event/[id]/RouteMapLoader';
 import { buildRoutePoints, type RoutePlanStop } from '@/lib/route-plan';
 import { setEventRoutePlan, type RoutePlanStopInput, type SetRoutePlanResult } from '../actions';
 import { ArrowDown, ArrowUp, Check, MapPin } from '@/components/icons';
+import { CircleAlert, LoaderCircle, MapPinned, Plus, Route as RouteIcon, Trash2, X } from 'lucide-react';
+import { GlideButton } from '@/components/glide/primitives';
+import { FormSection } from '@/components/glide-console/parts';
+import s from '@/components/glide-console/console.module.css';
+import r from './host-event.module.css';
+
+const ETA_PLACEHOLDER = 'ETA, e.g. "11:55 AM"';
 
 const KIND_OPTIONS: { value: string; label: string }[] = [
     { value: 'stop', label: 'STOP' },
@@ -86,6 +93,7 @@ export function RoutePlanEditor({
     initialStops,
     disabled = false,
     saveAction = setEventRoutePlan,
+    glide = false,
 }: {
     eventId: string;
     startLat: number | null;
@@ -102,6 +110,9 @@ export function RoutePlanEditor({
     /** Defaults to the host's own setEventRoutePlan; the admin event page
      *  passes its admin-scoped action. Same signature, same result. */
     saveAction?: (eventId: string, stops: RoutePlanStopInput[]) => Promise<SetRoutePlanResult>;
+    /** Glide markup for the /me host console. The admin event page keeps the
+     *  legacy markup (no prop). Same state, handlers and test ids. */
+    glide?: boolean;
 }) {
     const router = useRouter();
     const [stops, setStops] = useState<StopDraft[]>(() => initialStops.map(toDraft));
@@ -230,6 +241,279 @@ export function RoutePlanEditor({
     };
 
     const busy = disabled || saving;
+
+    if (glide) {
+        const kindSelect = (value: string, onChange: (v: string) => void, testId?: string) => (
+            <select data-testid={testId} className={s.input} value={value} onChange={(e) => onChange(e.target.value)} disabled={busy} aria-label="Stop type">
+                {KIND_OPTIONS.map((k) => (
+                    <option key={k.value} value={k.value}>
+                        {k.label.charAt(0) + k.label.slice(1).toLowerCase()}
+                    </option>
+                ))}
+            </select>
+        );
+        return (
+            <FormSection id="route" title="Route" sub="Destination and stops for the convoy. The stop list saves on its own with Save route.">
+                <div className={s.field}>
+                    <label className={s.label} htmlFor="rt-dest">
+                        Destination name
+                    </label>
+                    <input
+                        id="rt-dest"
+                        name="destination_name"
+                        className={s.input}
+                        placeholder="e.g. Chuckanut Manor Seafood & Grill"
+                        maxLength={80}
+                        value={destinationName}
+                        onChange={(e) => onDestinationChange({ name: e.target.value })}
+                        disabled={busy}
+                    />
+                </div>
+                <div className={r.destRow}>
+                    <div className={s.field}>
+                        <label className={s.label} htmlFor="rt-dlat">
+                            Destination latitude
+                        </label>
+                        <input
+                            id="rt-dlat"
+                            type="number"
+                            step="any"
+                            name="destination_lat"
+                            className={s.input}
+                            value={destinationLat ?? ''}
+                            onChange={(e) => onDestinationChange({ lat: e.target.value === '' ? null : Number(e.target.value) })}
+                            disabled={busy}
+                        />
+                    </div>
+                    <div className={s.field}>
+                        <label className={s.label} htmlFor="rt-dlng">
+                            Destination longitude
+                        </label>
+                        <input
+                            id="rt-dlng"
+                            type="number"
+                            step="any"
+                            name="destination_lng"
+                            className={s.input}
+                            value={destinationLng ?? ''}
+                            onChange={(e) => onDestinationChange({ lng: e.target.value === '' ? null : Number(e.target.value) })}
+                            disabled={busy}
+                        />
+                    </div>
+                    <button type="button" className="g-sec" aria-pressed={pickMode === 'destination'} onClick={() => setPickMode('destination')} disabled={busy}>
+                        <MapPinned size={17} strokeWidth={2} aria-hidden="true" />
+                        Pick on map
+                    </button>
+                </div>
+
+                <div className={r.subH}>
+                    <h3>
+                        Stops <span className="g-w">{stops.length}</span>
+                    </h3>
+                    <button type="button" className="g-sec" aria-pressed={pickMode === 'new-stop'} onClick={() => setPickMode('new-stop')} disabled={busy}>
+                        <Plus size={17} strokeWidth={2} aria-hidden="true" />
+                        Add stop · click the map
+                    </button>
+                </div>
+
+                {stops.length === 0 ? (
+                    <p className={s.hint}>No stops yet — pick a spot on the map below and add one.</p>
+                ) : (
+                    <ol className={r.stops}>
+                        {stops.map((st, i) => (
+                            <li key={st.tempId} data-testid="stop-row" data-stop-index={i} className={`${r.stop}${errorStopIndex === i ? ` ${r.stopBad}` : ''}`}>
+                                <div className={r.stopTop}>
+                                    <span className={s.stepNum} aria-hidden="true">
+                                        {i + 1}
+                                    </span>
+                                    <input
+                                        className={s.input}
+                                        placeholder="Stop name"
+                                        aria-label={`Stop ${i + 1} name`}
+                                        maxLength={80}
+                                        value={st.name}
+                                        onChange={(e) => updateStop(i, { name: e.target.value })}
+                                        disabled={busy}
+                                    />
+                                    <div className={r.kind}>{kindSelect(st.kind, (v) => updateStop(i, { kind: v }))}</div>
+                                </div>
+                                <div className={r.stopGrid}>
+                                    <input
+                                        className={s.input}
+                                        placeholder={ETA_PLACEHOLDER}
+                                        aria-label={`Stop ${i + 1} ETA`}
+                                        value={st.etaLocal}
+                                        onChange={(e) => updateStop(i, { etaLocal: e.target.value })}
+                                        disabled={busy}
+                                    />
+                                    <input
+                                        type="number"
+                                        min={0}
+                                        className={s.input}
+                                        placeholder="Dwell (min)"
+                                        aria-label={`Stop ${i + 1} dwell in minutes`}
+                                        value={st.dwellMin}
+                                        onChange={(e) => updateStop(i, { dwellMin: e.target.value.replace(/[^0-9]/g, '') })}
+                                        disabled={busy}
+                                    />
+                                    <input
+                                        className={s.input}
+                                        placeholder="Note (optional)"
+                                        aria-label={`Stop ${i + 1} note`}
+                                        value={st.note}
+                                        onChange={(e) => updateStop(i, { note: e.target.value })}
+                                        disabled={busy}
+                                    />
+                                </div>
+                                <div className={r.stopActs}>
+                                    <button type="button" data-testid="stop-move-up" className="g-cb g-cb--fill" onClick={() => moveStop(i, -1)} disabled={busy || i === 0} aria-label="Move stop up">
+                                        <ArrowUp />
+                                    </button>
+                                    <button
+                                        type="button"
+                                        data-testid="stop-move-down"
+                                        className="g-cb g-cb--fill"
+                                        onClick={() => moveStop(i, 1)}
+                                        disabled={busy || i === stops.length - 1}
+                                        aria-label="Move stop down"
+                                    >
+                                        <ArrowDown />
+                                    </button>
+                                    <button type="button" data-testid="stop-remove" className={`g-sec ${s.danger}`} onClick={() => removeStop(i)} disabled={busy}>
+                                        <Trash2 size={16} strokeWidth={2} aria-hidden="true" />
+                                        Remove
+                                    </button>
+                                </div>
+                                {errorStopIndex === i && saveError ? (
+                                    <p className={`${s.hint} ${s.hintBad}`} role="alert">
+                                        <CircleAlert size={15} strokeWidth={2} aria-hidden="true" />
+                                        {saveError}
+                                    </p>
+                                ) : null}
+                            </li>
+                        ))}
+                    </ol>
+                )}
+
+                {/* PICKER MAP — always mounted; `pickMode` decides what a click sets. */}
+                <div data-testid="route-picker-map" className={`route-stage ${r.map}`}>
+                    <RoutePickerMapLoader
+                        glide
+                        lat={pickMode === 'destination' ? destinationLat : newStop?.lat ?? null}
+                        lng={pickMode === 'destination' ? destinationLng : newStop?.lng ?? null}
+                        fallbackLat={startLat}
+                        fallbackLng={startLng}
+                        onPick={handlePick}
+                        label={pickMode === 'destination' ? 'Click the map to set the destination' : 'Click the map to drop a new stop'}
+                    />
+                </div>
+
+                {newStop ? (
+                    <div data-testid="new-stop-panel" className={r.newStop}>
+                        <div className={r.newStopH}>
+                            <b>New stop</b>
+                            <span className="g-w">
+                                {newStop.lat.toFixed(5)}, {newStop.lng.toFixed(5)}
+                            </span>
+                        </div>
+                        <div className={r.stopTop}>
+                            <input
+                                data-testid="new-stop-name"
+                                className={s.input}
+                                placeholder="Stop name"
+                                aria-label="New stop name"
+                                maxLength={80}
+                                autoFocus
+                                value={newStop.name}
+                                onChange={(e) => setNewStop({ ...newStop, name: e.target.value })}
+                                disabled={busy}
+                            />
+                            <div className={r.kind}>{kindSelect(newStop.kind, (v) => setNewStop({ ...newStop, kind: v }), 'new-stop-kind')}</div>
+                        </div>
+                        <div className={r.stopGrid}>
+                            <input
+                                data-testid="new-stop-eta"
+                                className={s.input}
+                                placeholder={ETA_PLACEHOLDER}
+                                aria-label="New stop ETA"
+                                value={newStop.etaLocal}
+                                onChange={(e) => setNewStop({ ...newStop, etaLocal: e.target.value })}
+                                disabled={busy}
+                            />
+                            <input
+                                type="number"
+                                min={0}
+                                className={s.input}
+                                placeholder="Dwell (min)"
+                                aria-label="New stop dwell in minutes"
+                                value={newStop.dwellMin}
+                                onChange={(e) => setNewStop({ ...newStop, dwellMin: e.target.value.replace(/[^0-9]/g, '') })}
+                                disabled={busy}
+                            />
+                            <input
+                                className={s.input}
+                                placeholder="Note (optional)"
+                                aria-label="New stop note"
+                                value={newStop.note}
+                                onChange={(e) => setNewStop({ ...newStop, note: e.target.value })}
+                                disabled={busy}
+                            />
+                        </div>
+                        <div className={s.actRow}>
+                            <button type="button" data-testid="new-stop-confirm" className="g-sec" onClick={confirmNewStop} disabled={busy || !newStop.name.trim()}>
+                                <Plus size={17} strokeWidth={2} aria-hidden="true" />
+                                Add stop
+                            </button>
+                            <button type="button" className="g-sec g-sec--ink" onClick={cancelNewStop} disabled={busy}>
+                                <X size={17} strokeWidth={2} aria-hidden="true" />
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                ) : null}
+
+                <div className={r.subH}>
+                    <h3>Preview</h3>
+                </div>
+                {previewPoints.length >= 1 ? (
+                    <div className={`route-stage ${r.map}`}>
+                        <RouteMapLoader points={previewPoints} polyline={previewPolyline} glide />
+                    </div>
+                ) : (
+                    <p className={s.hint}>Set a start location (Location, above) to preview the route.</p>
+                )}
+
+                <div className={s.actRow}>
+                    <GlideButton
+                        data-testid="save-route"
+                        size="sm"
+                        onClick={onSaveRoute}
+                        disabled={busy}
+                        aria-busy={saving}
+                        icon={
+                            savedFlash ? (
+                                <Check />
+                            ) : saving ? (
+                                <LoaderCircle size={18} strokeWidth={2} className="g-spin" />
+                            ) : (
+                                <RouteIcon size={18} strokeWidth={2} />
+                            )
+                        }
+                    >
+                        {savedFlash ? 'Route saved' : saving ? 'Saving…' : 'Save route'}
+                    </GlideButton>
+                    {dirty && !saving && !savedFlash ? <span className={s.saveNote}>Unsaved stop changes</span> : null}
+                    {saveError && errorStopIndex === null ? (
+                        <span className={`${s.hint} ${s.hintBad}`} role="alert">
+                            <CircleAlert size={15} strokeWidth={2} aria-hidden="true" />
+                            {saveError}
+                        </span>
+                    ) : null}
+                </div>
+                <p className={s.hint}>Save route writes the stop list only. The destination and the other details save with Save changes.</p>
+            </FormSection>
+        );
+    }
 
     return (
         <div id="route" style={{ scrollMarginTop: 24 }}>

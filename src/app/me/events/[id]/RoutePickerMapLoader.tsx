@@ -33,6 +33,7 @@ export default function RoutePickerMapLoader({
     fallbackLng,
     onPick,
     label,
+    glide,
 }: {
     lat: number | null;
     lng: number | null;
@@ -40,6 +41,7 @@ export default function RoutePickerMapLoader({
     fallbackLng?: number | null;
     onPick: (lat: number, lng: number) => void;
     label?: string;
+    glide?: boolean;
 }) {
     return (
         <RoutePickerMap
@@ -49,6 +51,7 @@ export default function RoutePickerMapLoader({
             fallbackLng={fallbackLng}
             onPick={onPick}
             label={label}
+            glide={glide}
         />
     );
 }

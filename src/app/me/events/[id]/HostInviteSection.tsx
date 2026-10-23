@@ -4,6 +4,9 @@
  * (style picker + live WYSIWYG preview + recipient chips) but dispatches through
  * sendHostInvites → send-platform-notification with a neutral Rollout branding
  * object. No opt-out/co-host machinery (host events have no shop).
+ *
+ * Glide: a section card with the style chips, the recipient field and the live
+ * preview beside it.
  */
 import { useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
@@ -15,6 +18,11 @@ import {
     type InviteStyleKey,
 } from '@/lib/event-invites';
 import { sendHostInvites, type HostInviteResult } from '../actions';
+import { CircleAlert, CircleCheck, CircleX, LoaderCircle, Send, X } from 'lucide-react';
+import { GlideButton } from '@/components/glide/primitives';
+import { FormSection } from '@/components/glide-console/parts';
+import s from '@/components/glide-console/console.module.css';
+import r from './host-event.module.css';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -91,76 +99,133 @@ export function HostInviteSection({
     };
 
     return (
-        <div style={{ marginTop: 24 }}>
-            <div className="admin-page-head" style={{ borderBottom: 'none', paddingBottom: 0 }}>
-                <div>
-                    <div className="admin-page-title" style={{ fontSize: 14 }}>INVITATIONS</div>
-                    <div className="admin-page-sub">INVITE PEOPLE · SENT AS {hostName.toUpperCase()} VIA ROLLOUT</div>
-                </div>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)', gap: 18, marginTop: 12 }} className="invite-grid">
-                <div>
-                    <label style={lbl}>STYLE</label>
-                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 14 }}>
-                        {INVITE_STYLES.map((s) => (
-                            <button key={s.key} type="button" className={`admin-action-btn ${style === s.key ? '' : 'muted'}`} onClick={() => setStyle(s.key)} title={s.blurb}>
-                                {s.name.toUpperCase()}
-                            </button>
-                        ))}
+        <FormSection
+            id="invitations"
+            title="Invitations"
+            sub={`Invite people by email. Sent as ${hostName} via Rollout.`}
+        >
+            <div className={r.inv}>
+                <div className={s.form}>
+                    <div className={s.field}>
+                        <span className={s.label} id="inv-style">
+                            Style
+                        </span>
+                        <div className={r.styles} role="group" aria-labelledby="inv-style">
+                            {INVITE_STYLES.map((st) => (
+                                <button key={st.key} type="button" className="g-sec" aria-pressed={style === st.key} onClick={() => setStyle(st.key)} title={st.blurb}>
+                                    {st.name}
+                                </button>
+                            ))}
+                        </div>
                     </div>
 
-                    <label style={lbl}>RECIPIENTS</label>
-                    <div style={chipBox}>
-                        {chips.map((c, i) => {
-                            const bad = !EMAIL_RE.test(c);
-                            return (
-                                <span key={`${c}-${i}`} style={bad ? chipBad : chip}>
-                                    {c}
-                                    <button type="button" onClick={() => removeChip(i)} style={chipX}>×</button>
-                                </span>
-                            );
-                        })}
-                        <input
-                            value={entry}
-                            onChange={(e) => setEntry(e.target.value)}
-                            onKeyDown={onEntryKey}
-                            onBlur={() => commitEntry(entry)}
-                            onPaste={(e) => {
-                                const text = e.clipboardData.getData('text');
-                                if (/[\s,;]/.test(text)) { e.preventDefault(); commitEntry(text); }
-                            }}
-                            placeholder={chips.length ? '' : 'paste or type emails, Enter to add'}
-                            style={chipInput}
-                        />
+                    <div className={s.field}>
+                        <label className={s.label} htmlFor="inv-to">
+                            Recipients
+                        </label>
+                        <div className={r.chipBox}>
+                            {chips.map((c, i) => {
+                                const bad = !EMAIL_RE.test(c);
+                                return (
+                                    <span key={`${c}-${i}`} className={`${r.mail}${bad ? ` ${r.mailBad}` : ''}`}>
+                                        {bad ? <CircleAlert size={14} strokeWidth={2} aria-label="Not a valid email" /> : null}
+                                        {c}
+                                        <button type="button" onClick={() => removeChip(i)} aria-label={`Remove ${c}`}>
+                                            <X size={15} strokeWidth={2} aria-hidden="true" />
+                                        </button>
+                                    </span>
+                                );
+                            })}
+                            <input
+                                id="inv-to"
+                                value={entry}
+                                onChange={(e) => setEntry(e.target.value)}
+                                onKeyDown={onEntryKey}
+                                onBlur={() => commitEntry(entry)}
+                                onPaste={(e) => {
+                                    const text = e.clipboardData.getData('text');
+                                    if (/[\s,;]/.test(text)) {
+                                        e.preventDefault();
+                                        commitEntry(text);
+                                    }
+                                }}
+                                placeholder={chips.length ? '' : 'Paste or type emails, Enter to add'}
+                            />
+                        </div>
+                        <p className={s.hint} aria-live="polite">
+                            <span className="g-w" style={{ fontSize: 10.5 }}>
+                                {validCount}
+                            </span>{' '}
+                            valid
+                            {badCount ? (
+                                <>
+                                    {' · '}
+                                    <span className="g-w" style={{ fontSize: 10.5 }}>
+                                        {badCount}
+                                    </span>{' '}
+                                    not valid
+                                </>
+                            ) : null}
+                        </p>
                     </div>
-                    <div style={hint}>{validCount} VALID{badCount ? ` · ${badCount} INVALID` : ''}</div>
 
-                    <label style={lbl}>GREETING NAME (OPTIONAL)</label>
-                    <input value={invitedName} onChange={(e) => setInvitedName(e.target.value)} placeholder="e.g. Kazuki (applied to all)" style={field} />
+                    <div className={s.field}>
+                        <label className={s.label} htmlFor="inv-name">
+                            Greeting name <span style={{ fontWeight: 500 }}>(optional)</span>
+                        </label>
+                        <input id="inv-name" className={s.input} value={invitedName} onChange={(e) => setInvitedName(e.target.value)} placeholder="e.g. Kazuki (applied to all)" />
+                    </div>
 
-                    <label style={lbl}>PERSONAL NOTE (OPTIONAL)</label>
-                    <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={3} placeholder="A line from you — shown in the invite." style={{ ...field, resize: 'vertical' }} />
+                    <div className={s.field}>
+                        <label className={s.label} htmlFor="inv-note">
+                            Personal note <span style={{ fontWeight: 500 }}>(optional)</span>
+                        </label>
+                        <textarea id="inv-note" className={s.input} value={note} onChange={(e) => setNote(e.target.value)} rows={3} placeholder="A line from you — shown in the invite." />
+                    </div>
 
-                    <button type="button" className="admin-action-btn" disabled={pending || validCount === 0} onClick={onSend} style={{ marginTop: 14 }}>
-                        {pending ? 'SENDING…' : `SEND ${validCount || ''} INVITE${validCount === 1 ? '' : 'S'}`}
-                    </button>
+                    <div>
+                        <GlideButton
+                            size="sm"
+                            disabled={pending || validCount === 0}
+                            aria-busy={pending}
+                            onClick={onSend}
+                            icon={pending ? <LoaderCircle size={18} strokeWidth={2} className="g-spin" /> : <Send size={18} strokeWidth={2} />}
+                        >
+                            {pending ? 'Sending…' : `Send ${validCount || ''} invite${validCount === 1 ? '' : 's'}`}
+                        </GlideButton>
+                    </div>
 
                     {result && (
-                        <div style={{ marginTop: 12 }}>
+                        <div role="status">
                             {!result.ok ? (
-                                <div className="admin-pill warn">{result.error}</div>
+                                <p className="g-note">
+                                    <CircleAlert size={20} strokeWidth={2} aria-hidden="true" />
+                                    {result.error}
+                                </p>
                             ) : (
                                 <>
-                                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                                        <span className="admin-pill neon">{result.sent} SENT</span>
-                                        {result.failed > 0 && <span className="admin-pill warn">{result.failed} FAILED</span>}
+                                    <div className="g-chips">
+                                        <span className="g-chip g-chip--tint">
+                                            <CircleCheck size={14} strokeWidth={2} aria-hidden="true" />
+                                            <span className="g-w">{result.sent}</span> sent
+                                        </span>
+                                        {result.failed > 0 && (
+                                            <span className="g-chip">
+                                                <CircleX size={14} strokeWidth={2} aria-hidden="true" />
+                                                <span className="g-w">{result.failed}</span> failed
+                                            </span>
+                                        )}
                                     </div>
                                     {result.failed > 0 && (
-                                        <ul style={resultList}>
-                                            {result.results.filter((r) => r.status !== 'sent').map((r, i) => (
-                                                <li key={i}>{r.email} — {r.status}{r.reason ? ` (${r.reason})` : ''}</li>
-                                            ))}
+                                        <ul className={s.small} style={{ margin: '10px 0 0', paddingLeft: 18 }}>
+                                            {result.results
+                                                .filter((x) => x.status !== 'sent')
+                                                .map((x, i) => (
+                                                    <li key={i}>
+                                                        {x.email} — {x.status}
+                                                        {x.reason ? ` (${x.reason})` : ''}
+                                                    </li>
+                                                ))}
                                         </ul>
                                     )}
                                 </>
@@ -169,22 +234,11 @@ export function HostInviteSection({
                     )}
                 </div>
 
-                <div>
-                    <label style={lbl}>LIVE PREVIEW</label>
-                    <iframe title="Invitation preview" srcDoc={previewHtml} style={{ width: '100%', height: 620, border: '1px solid var(--line, #1a1a28)', background: '#fff', borderRadius: 4 }} />
+                <div className={s.field}>
+                    <span className={s.label}>Live preview</span>
+                    <iframe title="Invitation preview" srcDoc={previewHtml} className={r.preview} />
                 </div>
             </div>
-            <style>{`@media (max-width: 860px){ .invite-grid{ grid-template-columns: 1fr !important; } }`}</style>
-        </div>
+        </FormSection>
     );
 }
-
-const lbl: React.CSSProperties = { display: 'block', fontFamily: 'var(--font-display, monospace)', fontSize: 10, letterSpacing: '2px', color: 'var(--text-dim, #8a8a9a)', marginBottom: 6 };
-const field: React.CSSProperties = { width: '100%', padding: '9px 11px', background: 'var(--bg-2, #0c0c14)', border: '1px solid var(--line, #1a1a28)', color: 'var(--text, #f0f0f0)', fontSize: 14, marginBottom: 14, borderRadius: 3, boxSizing: 'border-box' };
-const chipBox: React.CSSProperties = { display: 'flex', flexWrap: 'wrap', gap: 6, padding: 8, minHeight: 44, background: 'var(--bg-2, #0c0c14)', border: '1px solid var(--line, #1a1a28)', borderRadius: 3, alignItems: 'center' };
-const chip: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '3px 8px', background: 'var(--bg-hover, #1a1a28)', border: '1px solid var(--line, #2a2a3a)', borderRadius: 3, fontSize: 12, color: 'var(--text, #f0f0f0)' };
-const chipBad: React.CSSProperties = { ...chip, borderColor: '#c0392b', color: '#e88' };
-const chipX: React.CSSProperties = { background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', fontSize: 15, lineHeight: 1, padding: 0 };
-const chipInput: React.CSSProperties = { flex: 1, minWidth: 160, border: 'none', outline: 'none', background: 'transparent', color: 'var(--text, #f0f0f0)', fontSize: 14 };
-const hint: React.CSSProperties = { fontFamily: 'var(--font-display, monospace)', fontSize: 10, letterSpacing: '1px', color: 'var(--text-dim, #8a8a9a)', margin: '6px 0 14px' };
-const resultList: React.CSSProperties = { margin: '10px 0 0', paddingLeft: 18, fontSize: 12, color: 'var(--text-dim, #8a8a9a)', lineHeight: 1.6 };
