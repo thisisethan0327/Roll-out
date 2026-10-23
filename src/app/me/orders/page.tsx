@@ -4,12 +4,17 @@
  * for a Medusa customer JWT (loadMyOrders). A fresh identity with no linked
  * Medusa customer renders a graceful empty state — the exchange still validates
  * the plumbing.
+ *
+ * Glide (board G5 "Orders"): one card per order — number, date and seller,
+ * total and status chips, its lines, and the way into the detail.
  */
 import Link from 'next/link';
+import { ChevronRight, Package, Ticket, Unplug } from 'lucide-react';
 import { requireConsumer } from '@/lib/me-guard';
 import { loadMyOrders, formatMoney } from '@/lib/medusa-customer';
-import { fmtDay, StatusPill, EmptyRow } from '../ui';
-import { ChevronRight } from '@/components/icons';
+import { fmtDay, statusVariant } from '../ui';
+import { EmptyState, PageHead, StatusChip, statusLabel, toneFromVariant } from '@/components/glide-tickets/parts';
+import { GlideButton } from '@/components/glide/primitives';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,155 +23,78 @@ export default async function OrdersPage() {
     const { orders, note, exchanged } = await loadMyOrders();
 
     return (
-        <div>
-            <div className="admin-page-head">
-                <div>
-                    <div className="admin-page-title">ORDERS</div>
-                    <div className="admin-page-sub text-dim">
-                        Your purchases — store orders and event packages.
-                    </div>
-                </div>
-            </div>
+        <div className="glide glide-page gt-page--me">
+            <PageHead title="Orders" sub="Your purchases: store orders and event packages." />
 
             {orders.length === 0 ? (
-                <div>
-                    <EmptyRow text={exchanged ? 'NO ORDERS YET' : 'STORE ACCOUNT NOT CONNECTED'} art="empty-orders" />
-                    {note && (
-                        <div className="text-dim" style={{ fontSize: 12, marginTop: 8 }}>
-                            {note}
-                        </div>
-                    )}
-                    {exchanged && !note && (
-                        <div className="text-dim" style={{ fontSize: 12, marginTop: 8 }}>
-                            When you order from a Rollout shop, it shows up here.
-                        </div>
-                    )}
-                </div>
+                <EmptyState
+                    icon={exchanged ? <Package size={28} strokeWidth={1.5} /> : <Unplug size={28} strokeWidth={1.5} />}
+                    title={exchanged ? 'No orders yet' : 'Store account not connected'}
+                    action={exchanged && !note ? <GlideButton href="/store">Browse the store</GlideButton> : undefined}
+                >
+                    {note ? note : exchanged ? 'When you order from a Rollout shop, it shows up here.' : null}
+                </EmptyState>
             ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                <ul className="gt-list">
                     {orders.map((o) => (
-                        <Link
-                            key={o.id}
-                            href={`/me/orders/${o.id}`}
-                            style={{
-                                display: 'block',
-                                border: '1px solid var(--line)',
-                                background: 'var(--bg-1)',
-                                padding: 16,
-                                textDecoration: 'none',
-                            }}
-                        >
-                            <div
-                                style={{
-                                    display: 'flex',
-                                    justifyContent: 'space-between',
-                                    alignItems: 'flex-start',
-                                    gap: 12,
-                                    flexWrap: 'wrap',
-                                }}
-                            >
-                                <div>
-                                    <div
-                                        style={{
-                                            color: 'var(--text)',
-                                            fontSize: 14,
-                                            fontFamily: 'var(--font-mono, monospace)',
-                                        }}
-                                    >
-                                        #{o.display_id ?? o.id.slice(-8)}
-                                    </div>
-                                    <div className="text-dim" style={{ fontSize: 11, marginTop: 2 }}>
-                                        {fmtDay(o.created_at)}
-                                        {o.is_event ? ' · Event package' : o.vendor ? ` · ${o.vendor}` : ''}
-                                    </div>
-                                </div>
-                                <div style={{ textAlign: 'right' }}>
-                                    <div
-                                        style={{
-                                            fontFamily: 'var(--font-mono, monospace)',
-                                            color: 'var(--gold)',
-                                            fontSize: 15,
-                                        }}
-                                    >
-                                        {formatMoney(o.total, o.currency_code)}
-                                    </div>
-                                    <div style={{ display: 'flex', gap: 4, marginTop: 4, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-                                        {o.payment_status && <StatusPill status={o.payment_status} />}
-                                        {o.fulfillment_status && <StatusPill status={o.fulfillment_status} />}
-                                    </div>
-                                </div>
-                            </div>
-
-                            {o.items.length > 0 && (
-                                <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                    {o.items.map((it) => (
-                                        <div
-                                            key={it.id}
-                                            style={{
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: 10,
-                                                borderTop: '1px solid var(--line)',
-                                                paddingTop: 8,
-                                            }}
-                                        >
-                                            {it.thumbnail ? (
-                                                // eslint-disable-next-line @next/next/no-img-element
-                                                <img
-                                                    src={it.thumbnail}
-                                                    alt=""
-                                                    style={{
-                                                        width: 40,
-                                                        height: 40,
-                                                        objectFit: 'cover',
-                                                        border: '1px solid var(--line)',
-                                                    }}
-                                                />
-                                            ) : (
-                                                <div
-                                                    style={{
-                                                        width: 40,
-                                                        height: 40,
-                                                        background: 'var(--bg-2)',
-                                                        border: '1px solid var(--line)',
-                                                    }}
+                        <li key={o.id}>
+                            <Link href={`/me/orders/${o.id}`} className="g-card gt-order">
+                                <span className="gt-order-h">
+                                    <span className="g-ic" aria-hidden="true">
+                                        {o.is_event ? <Ticket size={20} strokeWidth={1.75} /> : <Package size={20} strokeWidth={1.75} />}
+                                    </span>
+                                    <span className="gt-li-t">
+                                        <b>#{o.display_id ?? o.id.slice(-8)}</b>
+                                        <small>
+                                            {fmtDay(o.created_at)}
+                                            {o.is_event ? ' · Event package' : o.vendor ? ` · ${o.vendor}` : ''}
+                                        </small>
+                                    </span>
+                                    <span className="gt-li-r is-keep">
+                                        <span className="g-w">{formatMoney(o.total, o.currency_code)}</span>
+                                        <span className="gt-statuses">
+                                            {o.payment_status && (
+                                                <StatusChip label={statusLabel(o.payment_status)} tone={toneFromVariant(statusVariant(o.payment_status))} />
+                                            )}
+                                            {o.fulfillment_status && (
+                                                <StatusChip
+                                                    label={statusLabel(o.fulfillment_status)}
+                                                    tone={toneFromVariant(statusVariant(o.fulfillment_status))}
                                                 />
                                             )}
-                                            <div style={{ flex: 1, minWidth: 0 }}>
-                                                <div style={{ fontSize: 13, color: 'var(--text)' }}>
-                                                    {it.title ?? 'Item'}
-                                                </div>
-                                                <div className="text-dim" style={{ fontSize: 11 }}>
-                                                    Qty {it.quantity ?? 1}
-                                                </div>
-                                            </div>
-                                            <div
-                                                className="text-dim"
-                                                style={{ fontSize: 12, fontFamily: 'var(--font-mono, monospace)' }}
-                                            >
-                                                {formatMoney(it.unit_price, o.currency_code)}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                            <div
-                                style={{
-                                    marginTop: 12,
-                                    paddingTop: 10,
-                                    borderTop: '1px solid var(--line)',
-                                    textAlign: 'right',
-                                    fontFamily: 'var(--font-display)',
-                                    fontSize: 10,
-                                    letterSpacing: 'var(--track-wider)',
-                                    color: 'var(--gold)',
-                                }}
-                            >
-                                VIEW DETAILS <ChevronRight />
-                            </div>
-                        </Link>
+                                        </span>
+                                    </span>
+                                </span>
+
+                                {o.items.length > 0 && (
+                                    <span className="gt-lines" style={{ display: 'block' }}>
+                                        {o.items.map((it) => (
+                                            <span key={it.id} className="gt-line">
+                                                <span className="gt-thumb" aria-hidden="true">
+                                                    {it.thumbnail ? (
+                                                        // eslint-disable-next-line @next/next/no-img-element
+                                                        <img src={it.thumbnail} alt="" />
+                                                    ) : (
+                                                    <Package size={20} strokeWidth={1.5} />
+                                                )}
+                                                </span>
+                                                <span className="gt-line-t">
+                                                    <b>{it.title ?? 'Item'}</b>
+                                                    <small>Qty {it.quantity ?? 1}</small>
+                                                </span>
+                                                <span className="gt-line-v g-w">{formatMoney(it.unit_price, o.currency_code)}</span>
+                                            </span>
+                                        ))}
+                                    </span>
+                                )}
+                                <span className="gt-order-f">
+                                    View details
+                                    <ChevronRight size={18} strokeWidth={2} aria-hidden="true" />
+                                </span>
+                            </Link>
+                        </li>
                     ))}
-                </div>
+                </ul>
             )}
         </div>
     );

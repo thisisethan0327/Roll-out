@@ -1,31 +1,27 @@
 /** Skeleton for a single /me/orders/[id] — the Medusa single-order round-trip
  *  (token exchange + expanded fetch) is slow, so feedback is immediate. */
-import { Skeleton, SkeletonText, SkeletonCard, SkeletonRows } from '@/components/feedback';
+import { Skel } from '@/components/glide-tickets/parts';
 
 export default function OrderDetailLoading() {
     return (
-        <div>
-            <div className="admin-page-head">
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    <Skeleton width={90} height={12} />
-                    <Skeleton width={160} height={22} />
-                    <Skeleton width={220} height={12} />
+        <div className="glide glide-page gt-page--me" aria-busy="true">
+            <div className="gt-head">
+                <div className="gt-head-t">
+                    <Skel w={110} h={14} />
+                    <Skel w={180} h={30} style={{ marginTop: 12 }} />
+                    <Skel w={260} h={14} style={{ marginTop: 12 }} />
                 </div>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 18 }}>
-                <section style={{ border: '1px solid var(--line)', background: 'var(--bg-1)', padding: 16 }}>
-                    <Skeleton width="40%" height={10} style={{ marginBottom: 14 }} />
-                    <SkeletonRows rows={3} cols={3} />
-                </section>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-                    <SkeletonCard lines={3} />
-                    <SkeletonCard lines={2} />
+            <div className="gt-cols">
+                <div className="gt-stack">
+                    <Skel h={320} r={28} />
+                    <Skel h={260} r={28} />
+                </div>
+                <div className="gt-stack">
+                    <Skel h={200} r={28} />
+                    <Skel h={160} r={28} />
                 </div>
             </div>
-            <section style={{ border: '1px solid var(--line)', background: 'var(--bg-1)', padding: 16, marginTop: 18 }}>
-                <Skeleton width="40%" height={10} style={{ marginBottom: 14 }} />
-                <SkeletonText lines={3} />
-            </section>
         </div>
     );
 }

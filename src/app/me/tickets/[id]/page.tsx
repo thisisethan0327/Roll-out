@@ -6,35 +6,29 @@
  * Every read is via the anon SSR client (RLS-enforced). loadTicketDetail returns
  * null when the ticket isn't the caller's → notFound(). A member hitting another
  * member's ticket id therefore gets a 404, not their data.
+ *
+ * Glide: page head with the ticket number and status, cards of rows on the
+ * left (vehicle, services, inspections, messages) and status, invoices and
+ * activity on the right.
  */
-import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requireConsumer } from '@/lib/me-guard';
 import { loadTicketDetail } from '@/lib/me-data';
-import { fmtDate, fmtDay, money, StatusPill, EmptyRow, KV } from '../../ui';
+import { fmtDate, fmtDay, money, statusVariant } from '../../ui';
 import { PortalChat } from './PortalChat';
 import { parseServices, lineTotal, visibleLines, serviceDisplayName } from '@/lib/ticket-services';
-import { ChevronLeft } from '@/components/icons';
+import { Card } from '@/components/glide/primitives';
+import { PageHead, StatusChip, statusLabel, toneFromVariant } from '@/components/glide-tickets/parts';
 
 export const dynamic = 'force-dynamic';
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-    return (
-        <section style={{ border: '1px solid var(--line)', background: 'var(--bg-1)', padding: 16 }}>
-            <div
-                style={{
-                    fontFamily: 'var(--font-display)',
-                    fontSize: 10,
-                    letterSpacing: 'var(--track-widest)',
-                    color: 'var(--text-3)',
-                    marginBottom: 10,
-                }}
-            >
-                {title}
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>{children}</div>
-        </section>
-    );
+function Status({ status }: { status: string | null | undefined }) {
+    if (!status) return null;
+    return <StatusChip label={statusLabel(status)} tone={toneFromVariant(statusVariant(status))} />;
+}
+
+function Empty({ children }: { children: React.ReactNode }) {
+    return <p className="gt-card-sub" style={{ paddingTop: 8, paddingBottom: 22 }}>{children}</p>;
 }
 
 export default async function MeTicketDetail({
@@ -59,238 +53,210 @@ export default async function MeTicketDetail({
     }));
 
     return (
-        <div>
-            <div className="admin-page-head">
-                <div>
-                    <Link
-                        href="/me/tickets"
-                        className="text-link"
-                        style={{
-                            fontFamily: 'var(--font-display)',
-                            fontSize: 11,
-                            letterSpacing: 'var(--track-wider)',
-                            textDecoration: 'none',
-                        }}
-                    >
-                        <ChevronLeft /> ALL TICKETS
-                    </Link>
-                    <div className="admin-page-title" style={{ fontFamily: 'var(--font-mono, monospace)' }}>
-                        {t.ticket_id ?? '—'}
-                    </div>
-                    <div className="admin-page-sub" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <StatusPill status={t.status} />
-                        <span className="text-dim" style={{ fontSize: 12 }}>
-                            {shop?.name ?? 'Shop'}
-                        </span>
-                    </div>
-                </div>
-            </div>
+        <div className="glide glide-page gt-page--me">
+            <PageHead
+                back={{ href: '/me/tickets', label: 'All tickets' }}
+                title={t.ticket_id ?? '—'}
+                code
+                meta={
+                    <>
+                        <Status status={t.status} />
+                        <span>{shop?.name ?? 'Shop'}</span>
+                    </>
+                }
+            />
 
-            <div
-                style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'minmax(0, 2fr) minmax(240px, 1fr)',
-                    gap: 20,
-                    alignItems: 'start',
-                }}
-            >
+            <div className="gt-cols">
                 {/* LEFT */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-                    <Section title="VEHICLE">
-                        <KV label="VEHICLE" value={vehicle || '—'} />
-                        <KV label="TRIM" value={t.trim ?? '—'} />
-                        <KV label="COLOR" value={t.color ?? '—'} />
-                        {t.vin && <KV label="VIN" value={t.vin} mono />}
-                    </Section>
+                <div className="gt-stack">
+                    <Card as="section" className="gt-card" aria-labelledby="tk-vehicle">
+                        <h2 className="g-card-h" id="tk-vehicle">
+                            Vehicle
+                        </h2>
+                        <ul className="gt-kv">
+                            <li>
+                                <span>Vehicle</span>
+                                <b>{vehicle || '—'}</b>
+                            </li>
+                            <li>
+                                <span>Trim</span>
+                                <b>{t.trim ?? '—'}</b>
+                            </li>
+                            <li>
+                                <span>Color</span>
+                                <b>{t.color ?? '—'}</b>
+                            </li>
+                            {t.vin && (
+                                <li>
+                                    <span>VIN</span>
+                                    <b className="g-w">{t.vin}</b>
+                                </li>
+                            )}
+                        </ul>
+                    </Card>
 
-                    <Section title="SERVICES">
+                    <Card as="section" className="gt-card" aria-labelledby="tk-services">
+                        <h2 className="g-card-h" id="tk-services">
+                            Services
+                        </h2>
                         {services.length === 0 ? (
-                            <EmptyRow text="NO SERVICES LISTED" />
+                            <Empty>No services listed.</Empty>
                         ) : (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                            <ul className="gt-kv">
                                 {services.map((s, i) => (
-                                    <div
-                                        key={i}
-                                        style={{
-                                            display: 'flex',
-                                            justifyContent: 'space-between',
-                                            gap: 10,
-                                            fontSize: 13,
-                                            borderBottom: '1px solid var(--line)',
-                                            padding: '6px 0',
-                                        }}
-                                    >
-                                        <span style={{ color: 'var(--text)' }}>
+                                    <li key={i}>
+                                        <span style={{ flex: 1, minWidth: 0, color: 'var(--ink)' }}>
                                             {s.name || 'Service'}
                                             {s.quantity && s.quantity > 1 ? ` ×${s.quantity}` : ''}
                                         </span>
-                                        {s.total != null && (
-                                            <span
-                                                className="text-dim"
-                                                style={{ fontFamily: 'var(--font-mono, monospace)' }}
-                                            >
-                                                ${Number(s.total).toFixed(2)}
-                                            </span>
-                                        )}
-                                    </div>
+                                        {s.total != null && <b className="g-w">${Number(s.total).toFixed(2)}</b>}
+                                    </li>
                                 ))}
-                            </div>
+                            </ul>
                         )}
                         {t.total_price != null && (
-                            <div
-                                style={{
-                                    display: 'flex',
-                                    justifyContent: 'space-between',
-                                    marginTop: 8,
-                                    fontFamily: 'var(--font-display)',
-                                    fontSize: 12,
-                                    letterSpacing: 'var(--track-wider)',
-                                }}
-                            >
-                                <span style={{ color: 'var(--text-3)' }}>TOTAL</span>
-                                <span style={{ color: 'var(--gold)' }}>{money(t.total_price)}</span>
-                            </div>
+                            <ul className="gt-sum" style={{ marginBottom: 18 }}>
+                                <li className="is-all">
+                                    <span>Total</span>
+                                    <span className="g-w">{money(t.total_price)}</span>
+                                </li>
+                            </ul>
                         )}
-                    </Section>
+                    </Card>
 
-                    <Section title="INSPECTIONS">
+                    <Card as="section" className="gt-card" aria-labelledby="tk-insp" style={{ paddingBottom: 16 }}>
+                        <h2 className="g-card-h" id="tk-insp">
+                            Inspections
+                        </h2>
                         {checkins.length === 0 ? (
-                            <EmptyRow text="NO INSPECTION RECORDS" />
+                            <Empty>No inspection records yet.</Empty>
                         ) : (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                            <ul className="gt-insp">
                                 {checkins.map((c: any) => {
                                     const media = Array.isArray(c.media) ? c.media : [];
                                     return (
-                                        <div
-                                            key={c.id}
-                                            style={{ border: '1px solid var(--line)', background: 'var(--bg-2)', padding: 10 }}
-                                        >
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-                                                <span className="admin-pill neon">
-                                                    {String(c.label ?? c.type ?? 'CHECK').toUpperCase()}
-                                                </span>
-                                                <span className="text-dim" style={{ fontSize: 11 }}>
-                                                    {fmtDate(c.created_at)}
-                                                </span>
+                                        <li key={c.id}>
+                                            <div className="gt-insp-h">
+                                                <StatusChip label={statusLabel(String(c.label ?? c.type ?? 'Check'))} tone="ok" />
+                                                <small>{fmtDate(c.created_at)}</small>
                                             </div>
                                             {(c.odometer || c.fuel_level) && (
-                                                <div className="text-dim" style={{ fontSize: 11, marginTop: 6 }}>
+                                                <p>
                                                     {c.odometer ? `Odometer: ${c.odometer}` : ''}
                                                     {c.odometer && c.fuel_level ? ' · ' : ''}
                                                     {c.fuel_level ? `Fuel: ${c.fuel_level}` : ''}
-                                                </div>
+                                                </p>
                                             )}
-                                            {c.condition_notes && (
-                                                <div style={{ fontSize: 12, marginTop: 6, color: 'var(--text-2)' }}>
-                                                    {c.condition_notes}
-                                                </div>
-                                            )}
+                                            {c.condition_notes && <p style={{ color: 'var(--ink)' }}>{c.condition_notes}</p>}
                                             {media.length > 0 && (
-                                                <div
-                                                    style={{
-                                                        display: 'grid',
-                                                        gridTemplateColumns: 'repeat(auto-fill, minmax(84px, 1fr))',
-                                                        gap: 6,
-                                                        marginTop: 8,
-                                                    }}
-                                                >
+                                                <div className="gt-photos">
                                                     {media.map((m: any, i: number) =>
                                                         m?.url ? (
-                                                            // eslint-disable-next-line @next/next/no-img-element
                                                             <a key={i} href={m.url} target="_blank" rel="noreferrer">
-                                                                <img
-                                                                    src={m.url}
-                                                                    alt={`Photo ${i + 1}`}
-                                                                    style={{
-                                                                        width: '100%',
-                                                                        aspectRatio: '1',
-                                                                        objectFit: 'cover',
-                                                                        border: '1px solid var(--line)',
-                                                                    }}
-                                                                />
+                                                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                                                <img src={m.url} alt={`Photo ${i + 1}`} />
                                                             </a>
                                                         ) : null,
                                                     )}
                                                 </div>
                                             )}
-                                        </div>
+                                        </li>
                                     );
                                 })}
-                            </div>
+                            </ul>
                         )}
-                    </Section>
+                    </Card>
 
-                    <Section title="MESSAGES">
+                    <Card as="section" className="gt-card" aria-labelledby="tk-msgs" style={{ paddingBottom: 18 }}>
+                        <h2 className="g-card-h" id="tk-msgs">
+                            Messages
+                        </h2>
                         <PortalChat ticketId={t.id} messages={messages as any} />
-                    </Section>
+                    </Card>
                 </div>
 
                 {/* RIGHT */}
-                <aside style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-                    <Section title="STATUS">
-                        <div><StatusPill status={t.status} /></div>
-                        {t.service_day && <KV label="SERVICE DAY" value={fmtDay(t.service_day)} />}
-                        {t.end_date && <KV label="ESTIMATED DONE" value={fmtDay(t.end_date)} />}
-                        <KV label="OPENED" value={fmtDay(t.created_at)} />
-                    </Section>
+                <aside className="gt-stack">
+                    <Card as="section" className="gt-card" aria-labelledby="tk-status">
+                        <h2 className="g-card-h" id="tk-status">
+                            Status
+                        </h2>
+                        <ul className="gt-kv">
+                            <li>
+                                <span>Status</span>
+                                <Status status={t.status} />
+                            </li>
+                            {t.service_day && (
+                                <li>
+                                    <span>Service day</span>
+                                    <b>{fmtDay(t.service_day)}</b>
+                                </li>
+                            )}
+                            {t.end_date && (
+                                <li>
+                                    <span>Estimated done</span>
+                                    <b>{fmtDay(t.end_date)}</b>
+                                </li>
+                            )}
+                            <li>
+                                <span>Opened</span>
+                                <b>{fmtDay(t.created_at)}</b>
+                            </li>
+                        </ul>
+                    </Card>
 
-                    <Section title="INVOICES">
+                    <Card as="section" className="gt-card" aria-labelledby="tk-inv">
+                        <h2 className="g-card-h" id="tk-inv">
+                            Invoices
+                        </h2>
                         {invoices.length === 0 ? (
-                            <EmptyRow text="NO INVOICES" />
+                            <Empty>No invoices yet.</Empty>
                         ) : (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                            <ul className="gt-lines">
                                 {invoices.map((inv: any) => (
-                                    <div
-                                        key={inv.id}
-                                        style={{ border: '1px solid var(--line)', background: 'var(--bg-2)', padding: 10 }}
-                                    >
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-                                            <StatusPill status={inv.status} />
-                                            <span
-                                                style={{
-                                                    fontFamily: 'var(--font-mono, monospace)',
-                                                    color: 'var(--gold)',
-                                                    fontSize: 13,
-                                                }}
-                                            >
-                                                {money(inv.amount)}
+                                    <li key={inv.id} className="gt-line" style={{ paddingLeft: 24 }}>
+                                        <span className="gt-line-t">
+                                            <b>
+                                                {inv.type ? `${statusLabel(String(inv.type))} · ` : ''}
+                                                {inv.invoice_date ? fmtDay(inv.invoice_date) : fmtDay(inv.created_at)}
+                                            </b>
+                                            {inv.amount_paid != null && Number(inv.amount_paid) > 0 && (
+                                                <small>
+                                                    Paid {money(inv.amount_paid)}
+                                                    {inv.paid_at ? ` · ${fmtDay(inv.paid_at)}` : ''}
+                                                </small>
+                                            )}
+                                            <span style={{ display: 'block', marginTop: 6 }}>
+                                                <Status status={inv.status} />
                                             </span>
-                                        </div>
-                                        <div className="text-dim" style={{ fontSize: 11, marginTop: 6 }}>
-                                            {inv.type ? `${String(inv.type).toUpperCase()} · ` : ''}
-                                            {inv.invoice_date ? fmtDay(inv.invoice_date) : fmtDay(inv.created_at)}
-                                        </div>
-                                        {inv.amount_paid != null && Number(inv.amount_paid) > 0 && (
-                                            <div className="text-dim" style={{ fontSize: 11 }}>
-                                                Paid: {money(inv.amount_paid)}
-                                                {inv.paid_at ? ` · ${fmtDay(inv.paid_at)}` : ''}
-                                            </div>
-                                        )}
-                                    </div>
+                                        </span>
+                                        <span className="gt-line-v g-w">{money(inv.amount)}</span>
+                                    </li>
                                 ))}
-                            </div>
+                            </ul>
                         )}
-                    </Section>
+                    </Card>
 
-                    <Section title="ACTIVITY">
+                    <Card as="section" className="gt-card" aria-labelledby="tk-act">
+                        <h2 className="g-card-h" id="tk-act">
+                            Activity
+                        </h2>
                         {activity.length === 0 ? (
-                            <EmptyRow text="NO ACTIVITY" />
+                            <Empty>No activity yet.</Empty>
                         ) : (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                            <ul className="gt-activity">
                                 {activity.map((a: any) => (
-                                    <div key={a.id} style={{ fontSize: 11, borderBottom: '1px solid var(--line)', padding: '5px 0' }}>
-                                        <div className="text-dim" style={{ fontFamily: 'var(--font-mono, monospace)' }}>
-                                            {fmtDate(a.created_at)}
-                                        </div>
-                                        <div style={{ color: 'var(--text-2)', marginTop: 2 }}>
+                                    <li key={a.id}>
+                                        <small>{fmtDate(a.created_at)}</small>
+                                        <p>
                                             {a.title ?? a.type}
                                             {a.description ? ` — ${a.description}` : ''}
-                                        </div>
-                                    </div>
+                                        </p>
+                                    </li>
                                 ))}
-                            </div>
+                            </ul>
                         )}
-                    </Section>
+                    </Card>
                 </aside>
             </div>
         </div>

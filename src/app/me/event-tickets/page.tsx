@@ -10,12 +10,17 @@
  * pre-existing feature. Reusing the path would have silently replaced it.
  * notFound()s outright when the feature is disabled, matching how a
  * not-yet-shipped route behaves anywhere else in this app.
+ *
+ * Glide: a list of rows (seat roundel · event · attendee and size · date ·
+ * status chip · chevron).
  */
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { ChevronRight, Ticket } from 'lucide-react';
 import { requireConsumer } from '@/lib/me-guard';
 import { multiTicketsEnabled, myTickets as loadMyEventTickets, sizeLabel } from '@/lib/event-tickets';
-import { fmtDay, StatusPill, EmptyRow } from '../ui';
+import { fmtDay, statusVariant } from '../ui';
+import { EmptyState, PageHead, StatusChip, statusLabel, toneFromVariant } from '@/components/glide-tickets/parts';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,51 +31,49 @@ export default async function EventTicketsPage() {
     const tickets = await loadMyEventTickets();
 
     return (
-        <div>
-            <div className="admin-page-head">
-                <div>
-                    <div className="admin-page-title">EVENT TICKETS</div>
-                    <div className="admin-page-sub text-dim">
-                        Every event ticket tied to your account — bought, or claimed from a buyer.
-                    </div>
-                </div>
-            </div>
+        <div className="glide glide-page gt-page--me">
+            <PageHead title="Event tickets" sub="Every event ticket tied to your account, bought or claimed from a buyer." />
 
             {tickets.length === 0 ? (
-                <EmptyRow text="NO EVENT TICKETS YET" />
-            ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                    {tickets.map((t) => (
-                        <Link
-                            key={t.ticketId}
-                            href={`/event/${t.eventId}`}
-                            style={{
-                                display: 'grid',
-                                gridTemplateColumns: 'minmax(0,1fr) auto',
-                                gap: 12,
-                                alignItems: 'center',
-                                border: '1px solid var(--line)',
-                                background: 'var(--bg-1)',
-                                padding: 14,
-                                textDecoration: 'none',
-                            }}
-                        >
-                            <div style={{ minWidth: 0 }}>
-                                <div style={{ color: 'var(--text)', fontSize: 14 }}>
-                                    {t.eventTitle ?? 'Event'}
-                                </div>
-                                <div className="text-dim" style={{ fontSize: 12, marginTop: 2 }}>
-                                    SEAT {t.seat} · {t.attendeeName || '—'} · Sweater {sizeLabel(t.sweaterSize)}
-                                </div>
-                                <div className="text-dim" style={{ fontSize: 11, marginTop: 2 }}>
-                                    {t.startAt ? fmtDay(t.startAt) : 'Date TBA'}
-                                    {t.isBuyer ? ' · Your order' : t.buyerName ? ` · Ticket from ${t.buyerName}` : ''}
-                                </div>
-                            </div>
-                            <StatusPill status={t.status} />
+                <EmptyState
+                    icon={<Ticket size={28} strokeWidth={1.5} />}
+                    title="No event tickets yet"
+                    action={
+                        <Link href="/meets" className="g-sec">
+                            Find a meet
                         </Link>
+                    }
+                >
+                    Tickets you buy, or that someone buys for you, show up here.
+                </EmptyState>
+            ) : (
+                <ul className="gt-list">
+                    {tickets.map((t) => (
+                        <li key={t.ticketId}>
+                            <Link href={`/event/${t.eventId}`} className="gt-li">
+                                <span className="gt-seat-n gt-seat-n--lg" aria-hidden="true">
+                                    {t.seat}
+                                </span>
+                                <span className="gt-li-t">
+                                    <b>{t.eventTitle ?? 'Event'}</b>
+                                    <small>
+                                        Seat {t.seat} · {t.attendeeName || '—'} · Sweater {sizeLabel(t.sweaterSize)}
+                                    </small>
+                                    <small>
+                                        {t.startAt ? fmtDay(t.startAt) : 'Date TBA'}
+                                        {t.isBuyer ? ' · Your order' : t.buyerName ? ` · Ticket from ${t.buyerName}` : ''}
+                                    </small>
+                                </span>
+                                {t.status ? (
+                                    <span className="gt-li-r is-keep">
+                                        <StatusChip label={statusLabel(t.status)} tone={toneFromVariant(statusVariant(t.status))} />
+                                    </span>
+                                ) : null}
+                                <ChevronRight className="g-row-ch" size={20} strokeWidth={2} aria-hidden="true" />
+                            </Link>
+                        </li>
                     ))}
-                </div>
+                </ul>
             )}
         </div>
     );
