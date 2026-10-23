@@ -1,0 +1,644 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   GLIDE · AUTH LANE (web phase 2)
+
+   Sign in, sign up, onboarding, the auth callback, the shop doors (apply,
+   login, picker), /suspended, /sign-in-on-phone, help and the long-form legal
+   pages. Board: G1 "Sign in" (redesign-2026-10/glide/src/G1.src.html, §2).
+
+   Built only from the kit's tokens (glide-tokens.css) and classes (glide.css);
+   everything here is prefixed `ga-` and lives inside a Glide scope.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Shell: cover panel + sheet card ───────────────────────────────────── */
+.ga-page { padding: 8px 0 24px; }
+.ga-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  height: 88px;
+}
+.ga-bar-back { color: var(--link); }
+
+.ga-auth {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 520px);
+  gap: 24px;
+  align-items: stretch;
+  min-height: min(680px, calc(100dvh - 140px));
+}
+.ga-auth.is-solo { grid-template-columns: minmax(0, 560px); justify-content: center; min-height: 0; padding-top: 24px; }
+.ga-auth.is-wide { grid-template-columns: minmax(0, 1fr) minmax(0, 640px); }
+
+.ga-cover {
+  position: relative;
+  border-radius: 32px;
+  overflow: hidden;
+  background: var(--surface-2);
+  min-height: 520px;
+}
+.ga-cover picture,
+.ga-cover img { position: absolute; inset: 0; width: 100%; height: 100%; }
+.ga-cover img { object-fit: cover; object-position: 50% 62%; }
+.ga-cover-head { position: absolute; left: 40px; right: 40px; top: 44px; z-index: 1; }
+.ga-mark {
+  margin: 0;
+  font-family: var(--wide);
+  font-weight: 400;
+  font-size: clamp(34px, 3.4vw, 52px);
+  line-height: 1;
+  letter-spacing: 0.02em;
+  color: var(--title);
+}
+.ga-mark-tri {
+  display: block;
+  width: 148px;
+  height: 7px;
+  margin-top: 20px;
+  background: linear-gradient(var(--stripe-1) 0 3px, var(--stripe-2) 3px 5px, var(--stripe-3) 5px 7px);
+}
+.ga-mark-line {
+  margin: 20px 0 0;
+  font-size: 21px;
+  line-height: 1.35;
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.ga-sheet {
+  display: flex;
+  flex-direction: column;
+  padding: 40px 40px 44px;
+  align-self: center;
+}
+.ga-auth:not(.is-solo) .ga-sheet { align-self: stretch; justify-content: center; }
+.ga-sheet-in { width: 100%; max-width: 420px; margin: 0 auto; }
+.ga-auth.is-wide .ga-sheet-in { max-width: 520px; }
+.ga-auth.is-solo .ga-sheet-in { max-width: none; }
+.ga-h {
+  margin: 0;
+  font-family: var(--disp);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.015em;
+  font-size: 34px;
+  line-height: 1.02;
+  color: var(--title);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.ga-sub { margin: 10px 0 0; font-size: 15.5px; line-height: 1.5; color: var(--ink-2); max-width: 40ch; }
+.ga-sub b { color: var(--ink); font-weight: 600; }
+.ga-body { margin-top: 8px; }
+.ga-foot {
+  margin: 22px 0 0;
+  font-size: 14.5px;
+  line-height: 1.5;
+  color: var(--ink-2);
+  text-align: center;
+}
+.ga-foot a,
+.ga-a {
+  color: var(--link);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+}
+.ga-foot a:hover,
+.ga-a:hover { text-decoration-thickness: 2px; }
+.ga-foot .ga-inline {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 4px;
+}
+.ga-terms { margin: 18px 0 0; font-size: 13px; line-height: 1.5; color: var(--ink-2); text-align: center; }
+.ga-terms a { color: var(--link); font-weight: 600; text-decoration: underline; text-underline-offset: 2px; }
+
+/* ── Fields (board .fl / .fld) ─────────────────────────────────────────── */
+.ga-form { display: flex; flex-direction: column; }
+.ga-label {
+  display: block;
+  margin: 20px 0 8px 4px;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--ink);
+}
+.ga-label small { font-weight: 500; color: var(--ink-2); font-size: 13px; }
+.ga-fld {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 56px;
+  border-radius: 28px;
+  background: var(--surface);
+  /* ink-3, not the board's line-strong: a field edge needs 3:1 (DESIGN.md). */
+  box-shadow: inset 0 0 0 1.5px var(--ink-3);
+  padding: 0 6px 0 18px;
+  transition: box-shadow 0.15s ease-out;
+}
+.ga-fld:focus-within { box-shadow: inset 0 0 0 2px var(--accent); }
+.ga-fld[data-invalid='true'] { box-shadow: inset 0 0 0 2px var(--accent); }
+.ga-fld > svg { flex: none; color: var(--icon); }
+.ga-fld-pre { flex: none; font-size: 16px; font-weight: 600; color: var(--ink-2); }
+.ga-fld input {
+  flex: 1;
+  min-width: 0;
+  height: 54px;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 16px;
+  color: var(--ink);
+  outline: none;
+  caret-color: var(--accent);
+  padding: 0;
+}
+.ga-fld input::placeholder { color: var(--ink-2); opacity: 1; }
+.ga-fld input:disabled { opacity: 0.7; }
+.glide .ga-fld input:focus-visible { outline: none; }
+.ga-clr {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 0;
+  background: none;
+  display: grid;
+  place-items: center;
+  color: var(--ink-2);
+  flex: none;
+  cursor: pointer;
+  padding: 0;
+}
+.ga-clr:hover { color: var(--ink); background: var(--surface-2); }
+.glide .ga-clr:focus-visible { outline-offset: -2px; }
+
+/* Plain inputs, selects and textareas in the same skin. */
+.ga-in {
+  display: block;
+  width: 100%;
+  min-height: 56px;
+  border: 0;
+  border-radius: 28px;
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1.5px var(--ink-3);
+  padding: 0 20px;
+  font: inherit;
+  font-size: 16px;
+  color: var(--ink);
+  caret-color: var(--accent);
+  transition: box-shadow 0.15s ease-out;
+}
+.ga-in::placeholder { color: var(--ink-2); opacity: 1; }
+.ga-in:focus { outline: none; box-shadow: inset 0 0 0 2px var(--accent); }
+.glide .ga-in:focus-visible { outline: none; }
+.ga-in:disabled { opacity: 0.7; }
+textarea.ga-in { min-height: 112px; padding: 15px 20px; border-radius: 22px; line-height: 1.5; resize: vertical; }
+.ga-sel { position: relative; display: block; }
+.ga-sel select.ga-in { appearance: none; -webkit-appearance: none; padding-right: 48px; cursor: pointer; }
+.ga-sel > svg {
+  position: absolute;
+  right: 18px;
+  top: 50%;
+  margin-top: -9px;
+  color: var(--icon);
+  pointer-events: none;
+}
+.ga-in option { color: #1a2333; background: #ffffff; }
+:root[data-theme='dark'] .ga-in option { color: #eef2f7; background: #111d33; }
+:root[data-theme='dark'][data-dark='graphite'] .ga-in option { background: #222222; color: #f2f2f2; }
+
+.ga-grid { display: grid; gap: 10px; }
+.ga-grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.ga-grid-3 { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr); }
+.ga-stack { display: flex; flex-direction: column; gap: 10px; }
+
+/* Code entry: Michroma numerals, wide tracking. */
+.ga-code input {
+  font-family: var(--wide);
+  font-size: 22px;
+  letter-spacing: 0.38em;
+  text-align: center;
+  padding-left: 0.38em;
+}
+.ga-code input::placeholder { letter-spacing: 0.38em; color: var(--ink-2); }
+.ga-code { padding: 0 18px; }
+
+/* Messages (board .msg): icon + line, never red text. */
+.ga-msg {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 10px 4px 0;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--ink);
+}
+.ga-msg > svg { flex: none; margin-top: 1px; color: var(--icon); }
+.ga-msg b { font-weight: 600; }
+.ga-msg.is-quiet { color: var(--ink-2); }
+.ga-hint { margin: 8px 4px 0; min-height: 20px; font-size: 13px; line-height: 1.4; color: var(--ink-2); display: flex; align-items: center; gap: 6px; }
+.ga-hint svg { flex: none; color: var(--icon); }
+.ga-hint.is-ok { color: var(--ink); }
+.ga-hint.is-bad { color: var(--ink); font-weight: 600; }
+
+.ga-note { margin: 18px 0 0; }
+.ga-note + .ga-note { margin-top: 10px; }
+.ga-note .g-note { align-items: flex-start; line-height: 1.45; font-weight: 500; }
+.ga-note .g-note b { font-weight: 700; }
+.ga-note .g-note a { color: var(--link); font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
+
+.ga-sent {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 18px 0 0;
+  padding: 14px 16px;
+  border-radius: 22px;
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.ga-sent b { display: block; font-size: 14.5px; font-weight: 600; color: var(--ink); overflow-wrap: anywhere; }
+.ga-sent small { display: block; font-size: 13px; color: var(--ink-2); margin-top: 1px; }
+
+.ga-form .g-btn { margin-top: 20px; }
+.ga-btn-lead { display: inline-flex; align-items: center; gap: 10px; }
+.ga-acts { display: flex; flex-wrap: wrap; justify-content: center; gap: 0 22px; margin-top: 10px; }
+.ga-acts .g-link:disabled { color: var(--ink-2); cursor: default; text-decoration: none; }
+
+.ga-or {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 20px 4px 4px;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.ga-or::before,
+.ga-or::after { content: ''; flex: 1; height: 1px; background: var(--line-strong); }
+.ga-alt { display: flex; flex-direction: column; gap: 8px; margin-top: 22px; }
+.ga-alt .g-sec { width: 100%; color: var(--ink); min-height: 52px; border-radius: 26px; }
+.ga-alt p { margin: 2px 8px 0; font-size: 13px; line-height: 1.45; color: var(--ink-2); text-align: center; }
+
+.ga-section { margin-top: 28px; padding-top: 22px; border-top: 1px solid var(--line); }
+.ga-section h2 {
+  margin: 0;
+  font-family: var(--disp);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  font-size: 18px;
+  color: var(--title);
+}
+.ga-section > p { margin: 6px 0 0; font-size: 14px; line-height: 1.5; color: var(--ink-2); }
+
+/* Legacy auth messages the shared broker component still renders. */
+.ga-sheet .admin-login-error {
+  margin: 0 0 14px;
+  padding: 12px 16px;
+  border: 0;
+  border-radius: 18px;
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1.5px var(--line-strong);
+  color: var(--ink);
+  font-family: var(--ui);
+  font-size: 14px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.ga-sheet .admin-login-sub { font-family: var(--ui); color: var(--ink-2); letter-spacing: 0; text-transform: none; font-size: 14px; }
+
+/* Picker rows */
+.ga-rows { margin: 22px -40px 0; border-top: 1px solid var(--line); }
+.ga-rows .g-row { padding-left: 40px; padding-right: 28px; min-height: 68px; }
+.ga-rows .g-row::after { left: 100px; }
+/* Kit: .g-row:last-child hides the hairline, and a linked row is always the
+   last child of its <li>; restore it between items. */
+.ga-rows li:not(:last-child) > .g-row::after { display: block; }
+.ga-rows .g-row-t small { font-family: var(--ui); }
+
+/* ── Read mode: help, legal, licenses, sign-in help, suspended ─────────── */
+.ga-read { padding: 16px 0 8px; }
+.ga-read-grid {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+  max-width: 1180px;
+  margin: 0 auto;
+}
+.ga-read-grid.is-single { grid-template-columns: minmax(0, 1fr); max-width: 880px; margin: 0 auto; }
+.ga-toc { position: sticky; top: 20px; padding: 18px 0 14px; }
+.ga-toc h2 {
+  margin: 0;
+  padding: 0 22px 8px;
+  font-family: var(--disp);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 14px;
+  color: var(--title);
+}
+.ga-toc ol { list-style: none; margin: 0; padding: 0; }
+.ga-toc a {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 6px 22px;
+  font-size: 14px;
+  line-height: 1.3;
+  font-weight: 500;
+  color: var(--ink-2);
+}
+.ga-toc a:hover { color: var(--ink); background: var(--surface); }
+
+.ga-doc { padding: 48px 56px 52px; }
+.ga-doc-h h1 {
+  margin: 0;
+  font-family: var(--disp);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.01em;
+  font-size: clamp(32px, 3.4vw, 46px);
+  line-height: 1;
+  color: var(--title);
+  text-wrap: balance;
+}
+.ga-doc-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 16px 0 0; font-size: 14px; color: var(--ink-2); }
+.ga-doc-meta .g-chip { height: 32px; padding: 0 12px 0 10px; border-radius: 16px; }
+.ga-doc-meta .g-w { font-size: 11px; color: var(--title); }
+.ga-doc-lede { margin: 18px 0 0; font-size: 17px; line-height: 1.6; color: var(--ink-2); max-width: 64ch; }
+.ga-doc-lede code,
+.ga-prose code {
+  font-family: var(--wide);
+  font-size: 0.78em;
+  letter-spacing: 0.02em;
+  color: var(--title);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--line);
+  border-radius: 8px;
+  padding: 2px 7px;
+}
+.ga-doc .g-tri--thin { margin: 28px 0 0; max-width: 148px; }
+
+.ga-prose { max-width: 68ch; }
+.ga-prose section { scroll-margin-top: 24px; }
+.ga-prose h2 {
+  margin: 44px 0 0;
+  font-family: var(--disp);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  font-size: 21px;
+  line-height: 1.15;
+  color: var(--title);
+}
+.ga-prose p { margin: 12px 0 0; font-size: 17px; line-height: 1.68; color: var(--ink); overflow-wrap: anywhere; }
+.ga-prose a { color: var(--link); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+.ga-prose h2 + p { margin-top: 10px; }
+
+.ga-doc-foot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px 16px;
+  margin-top: 56px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+  font-size: 13.5px;
+  color: var(--ink-2);
+}
+.ga-doc-foot a { display: inline-flex; align-items: center; min-height: 44px; gap: 6px; color: var(--link); font-weight: 600; }
+.ga-doc-foot a:hover { text-decoration: underline; text-underline-offset: 3px; }
+
+/* FAQ: rows that open in place */
+.ga-faq { margin-top: 28px; border-top: 1px solid var(--line); }
+.ga-faq details { border-bottom: 1px solid var(--line); }
+.ga-faq summary {
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-height: 64px;
+  padding: 10px 4px;
+  cursor: pointer;
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--ink);
+}
+.ga-faq summary::-webkit-details-marker { display: none; }
+.ga-faq summary span { flex: 1; min-width: 0; }
+.ga-faq summary svg { flex: none; color: var(--icon); transition: transform 0.2s var(--g-ease); }
+.ga-faq details[open] summary svg { transform: rotate(45deg); }
+.ga-faq summary:hover span { text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
+.glide .ga-faq summary:focus-visible { outline-offset: -2px; border-radius: 12px; }
+.ga-faq details p { margin: 0; padding: 0 48px 22px 4px; font-size: 16.5px; line-height: 1.65; color: var(--ink-2); max-width: 68ch; }
+
+.ga-cta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px 24px;
+  margin-top: 20px;
+  padding: 26px 30px 32px;
+}
+.ga-cta h2 {
+  margin: 0;
+  font-family: var(--disp);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  font-size: 22px;
+  color: var(--title);
+}
+.ga-cta p { margin: 6px 0 0; font-size: 15px; line-height: 1.5; color: var(--ink-2); max-width: 52ch; }
+.ga-cta-act { display: flex; flex-wrap: wrap; gap: 10px; }
+
+/* Licenses table as rows */
+.ga-lic { margin: 28px 0 0; padding: 0; list-style: none; border-top: 1px solid var(--line); }
+.ga-lic li {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) 92px minmax(0, 1.6fr);
+  gap: 16px;
+  align-items: center;
+  min-height: 56px;
+  padding: 8px 4px;
+  border-bottom: 1px solid var(--line);
+  font-size: 15px;
+}
+.ga-lic li.is-head { min-height: 44px; font-size: 13px; font-weight: 700; color: var(--ink-2); }
+.ga-lic b { font-weight: 600; color: var(--ink); }
+.ga-lic span { color: var(--ink-2); }
+.ga-lic .g-chip { justify-self: start; }
+
+/* Numbered steps (the order is the information) */
+.ga-steps { list-style: none; margin: 28px 0 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.ga-steps li {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  padding: 18px 20px;
+  border-radius: 24px;
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.ga-steps .ga-n {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  flex: none;
+  display: grid;
+  place-items: center;
+  background: var(--nav-on);
+  color: var(--on-nav-on);
+  font-family: var(--wide);
+  font-size: 12px;
+}
+.ga-steps p { margin: 6px 0 0; font-size: 16.5px; line-height: 1.6; color: var(--ink-2); max-width: 62ch; }
+.ga-steps strong { font-weight: 600; color: var(--ink); }
+
+/* Suspended */
+.ga-sus { max-width: 720px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+.ga-sus-h { padding: 34px 36px 38px; }
+.ga-sus-h h1 {
+  margin: 16px 0 0;
+  font-family: var(--disp);
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: clamp(30px, 3vw, 40px);
+  letter-spacing: 0.01em;
+  line-height: 1.02;
+  color: var(--title);
+}
+.ga-sus-h p { margin: 10px 0 0; font-size: 16px; line-height: 1.55; color: var(--ink-2); }
+.ga-sus-h p.ga-sus-who { font-size: 17px; color: var(--ink); font-weight: 600; }
+.ga-quote {
+  margin: 16px 0 0;
+  padding: 14px 18px;
+  border-radius: 20px;
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--line);
+  font-size: 15.5px;
+  line-height: 1.55;
+  color: var(--ink);
+  white-space: pre-wrap;
+}
+.ga-box { padding: 4px 0 24px; }
+.ga-box > .g-card-h { padding-bottom: 0; }
+.ga-box > p { margin: 8px 0 0; padding: 0 24px; font-size: 15px; line-height: 1.55; color: var(--ink-2); }
+.ga-box > .ga-box-in { padding: 14px 24px 0; }
+.ga-box .g-rows { margin-top: 14px; border-top: 1px solid var(--line); }
+.ga-box .g-row { padding-right: 20px; flex-wrap: wrap; }
+.ga-box .g-row::after { left: 24px; }
+.ga-ticket-act { display: inline-grid; gap: 4px; justify-items: end; flex: none; }
+.ga-ticket-act small { font-size: 13px; color: var(--ink-2); max-width: 28ch; text-align: right; }
+.ga-sus-acts { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 8px; }
+.ga-sus-acts form { display: contents; }
+.ga-count { display: block; margin: 8px 4px 0; font-size: 13px; color: var(--ink-2); }
+.ga-count .g-w { font-size: 11px; color: var(--ink); }
+
+/* Shop apply */
+.ga-apply { display: grid; grid-template-columns: minmax(0, 420px) minmax(0, 780px); justify-content: center; gap: 24px; align-items: start; }
+.ga-apply-intro { position: sticky; top: 20px; padding: 8px 8px 30px; }
+.ga-apply-intro .g-door-im { height: 180px; }
+.ga-apply-intro-bd { padding: 20px 18px 0; }
+.ga-apply-intro h1 {
+  margin: 0;
+  font-family: var(--disp);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.01em;
+  font-size: clamp(30px, 2.8vw, 40px);
+  line-height: 1;
+  color: var(--title);
+}
+.ga-apply-intro p { margin: 12px 0 0; font-size: 15.5px; line-height: 1.55; color: var(--ink-2); }
+.ga-apply-form { padding: 6px 0 32px; }
+.ga-apply-form .ga-section:first-of-type { margin-top: 0; border-top: 0; }
+.ga-apply-form .ga-section { padding-left: 32px; padding-right: 32px; }
+.ga-apply-form .ga-label { margin-top: 18px; }
+.ga-sell {
+  margin: 28px 32px 0;
+  padding: 20px 20px 22px;
+  border-radius: 24px;
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--line-strong);
+}
+.ga-sell .ga-in { background: var(--card); }
+.ga-sell h2 { font-size: 18px; }
+.ga-sell .ga-label:first-of-type { margin-top: 14px; }
+.ga-apply-submit { padding: 26px 32px 0; }
+.ga-apply-submit .g-btn { margin-top: 0; }
+.ga-apply-submit p { margin: 12px 4px 0; font-size: 13.5px; line-height: 1.5; color: var(--ink-2); }
+
+/* ── Narrow ────────────────────────────────────────────────────────────── */
+@media (max-width: 1100px) {
+  .ga-read-grid { grid-template-columns: minmax(0, 1fr); }
+  .ga-toc { display: none; }
+  .ga-apply { grid-template-columns: minmax(0, 1fr); }
+  .ga-apply-intro { position: relative; top: auto; }
+}
+@media (max-width: 900px) {
+  .ga-page { padding-top: 0; }
+  .ga-bar { height: 72px; }
+  .ga-auth,
+  .ga-auth.is-wide {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+    min-height: 0;
+  }
+  .ga-auth.is-solo { padding-top: 4px; }
+  .ga-cover { min-height: 0; height: 240px; border-radius: 24px 24px 0 0; }
+  .ga-cover img { object-position: 50% 64%; }
+  .ga-cover-head { display: none; }
+  .ga-auth:not(.is-solo) .ga-sheet { margin-top: -40px; border-radius: 30px; }
+  .ga-sheet { padding: 26px 20px 30px; }
+  .ga-h { font-size: 28px; }
+  .ga-rows { margin-left: -20px; margin-right: -20px; }
+  .ga-rows .g-row { padding-left: 20px; padding-right: 12px; }
+  .ga-rows .g-row::after { left: 80px; }
+  .ga-doc { padding: 28px 20px 30px; }
+  .ga-prose p { font-size: 16.5px; }
+  .ga-prose h2 { margin-top: 36px; font-size: 19px; }
+  .ga-faq details p { padding-right: 8px; }
+  .ga-cta { padding: 22px 20px 28px; }
+  .ga-lic li { grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; }
+  .ga-lic li > span:last-child { grid-column: 1 / -1; font-size: 14px; }
+  .ga-lic li.is-head > span:last-child { display: none; }
+  .ga-sus-h { padding: 26px 20px 30px; }
+  .ga-box .g-row { padding-left: 20px; padding-top: 12px; padding-bottom: 12px; row-gap: 8px; }
+  .ga-box .g-row-t { flex: 1 1 calc(100% - 64px); }
+  .ga-box .g-row > .g-chip,
+  .ga-box .g-row > .ga-ticket-act { margin-left: 50px; justify-items: start; }
+  .ga-ticket-act small { text-align: left; }
+  .ga-box > p,
+  .ga-box > .ga-box-in { padding-left: 20px; padding-right: 20px; }
+  .ga-box > .g-card-h { padding-left: 20px; padding-right: 20px; }
+  .ga-apply-form .ga-section { padding-left: 20px; padding-right: 20px; }
+  .ga-sell { margin: 20px 12px 0; padding: 18px 16px 20px; }
+  .ga-apply-submit { padding: 22px 20px 0; }
+  .ga-grid-2,
+  .ga-grid-3 { grid-template-columns: minmax(0, 1fr); }
+  .ga-grid-2.keep { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ga-fld,
+  .ga-in,
+  .ga-faq summary svg { transition: none; }
+}
+
+.ga-section h2 small.ga-opt {
+  margin-left: 6px;
+  font-family: var(--ui);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ink-2);
+}

@@ -13,6 +13,7 @@ import { redirect } from 'next/navigation';
 import { getConsumerProfile } from '@/lib/consumer';
 import { isProfileBanned } from '@/lib/ban';
 import { OnboardingForm } from './OnboardingForm';
+import { AuthShell } from '@/components/glide-auth/AuthShell';
 
 export const metadata = { title: 'Set Up Your Profile', robots: { index: false, follow: false } };
 export const dynamic = 'force-dynamic';
@@ -55,21 +56,16 @@ export default async function OnboardingPage({
             : (profile.email ? profile.email.split('@')[0] : '');
 
     return (
-        <div className="admin-login-wrap">
-            <div className="admin-login-card" style={{ maxWidth: 520 }}>
-                <div className="admin-login-stamp">
-                    <span className="accent">WELCOME TO ROLLOUT</span>
-                    <span>SET UP YOUR PROFILE</span>
-                </div>
-                <h1 className="admin-login-title">CLAIM YOUR HANDLE</h1>
-                <p className="admin-login-sub">
-                    This is how the community finds you at rollout.club/u/&lt;handle&gt;.
-                </p>
-                <OnboardingForm
-                    suggestedName={suggestedName}
-                    next={cleanNext ?? undefined}
-                />
-            </div>
-        </div>
+        <AuthShell
+            wide
+            title="Claim your handle"
+            sub={
+                <>
+                    This is how the community finds you at <b>rollout.club/u/&lt;handle&gt;</b>.
+                </>
+            }
+        >
+            <OnboardingForm suggestedName={suggestedName} next={cleanNext ?? undefined} />
+        </AuthShell>
     );
 }

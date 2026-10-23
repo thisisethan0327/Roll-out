@@ -11,7 +11,9 @@
  * destination server components themselves.
  */
 import Link from 'next/link';
+import { CalendarCheck } from 'lucide-react';
 import { OtpLoginForm } from '@/components/auth/OtpLoginForm';
+import { AuthShell } from '@/components/glide-auth/AuthShell';
 
 // A sign-in / application door: crawlable, never a search result (no ?next= duplicates).
 export const metadata = { title: 'Sign In', robots: { index: false, follow: true } };
@@ -45,44 +47,40 @@ export default async function ConsumerLoginPage({
             : '/signup';
 
     return (
-        <div className="admin-login-wrap">
-            <div className="admin-login-card">
-                <div className="admin-login-stamp">
-                    <span className="accent">ROLLOUT</span>
-                    <span>MEMBER ACCESS · MEETS + RSVP</span>
-                </div>
-                <h1 className="admin-login-title">SIGN IN</h1>
-                <p className="admin-login-sub">
-                    Email OTP — no password.
-                </p>
-                {error === 'rsvp' && (
-                    <div className="admin-login-error">
-                        Sign in to RSVP to this meet.
-                    </div>
-                )}
-                <OtpLoginForm
-                    successPath={successPath}
-                    redirectSuffix="/login"
-                    allowSignup
-                    initialEmail={email ?? ''}
-                    startAtCode={startAtCode}
-                    notice={notice}
-                />
-
-                <p
-                    style={{
-                        marginTop: 16,
-                        fontSize: 12,
-                        color: 'var(--text-2, var(--text-3))',
-                        textAlign: 'center',
-                    }}
-                >
+        <AuthShell
+            title="Sign in"
+            sub="We'll email you a 6-digit code. Enter it here and you're in, no password."
+            foot={
+                <>
                     New here?{' '}
-                    <Link href={signupHref} style={{ color: 'var(--gold)', textDecoration: 'none' }}>
+                    <Link href={signupHref} className="ga-inline">
                         Create your account
                     </Link>
-                </p>
-            </div>
-        </div>
+                </>
+            }
+            terms={
+                <>
+                    By continuing you agree to the <Link href="/terms">Terms</Link> and <Link href="/privacy">Privacy Policy</Link>.
+                </>
+            }
+        >
+            {error === 'rsvp' && (
+                <div className="ga-note">
+                    <p className="g-note" role="status">
+                        <CalendarCheck size={18} strokeWidth={2} aria-hidden="true" />
+                        <span>Sign in to RSVP to this meet.</span>
+                    </p>
+                </div>
+            )}
+            <OtpLoginForm
+                successPath={successPath}
+                redirectSuffix="/login"
+                allowSignup
+                initialEmail={email ?? ''}
+                startAtCode={startAtCode}
+                notice={notice}
+                look="glide"
+            />
+        </AuthShell>
     );
 }

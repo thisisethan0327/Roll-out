@@ -10,29 +10,26 @@
  */
 import { Suspense } from 'react';
 import { AuthCallbackClient } from './AuthCallbackClient';
-import { Dots } from '@/components/feedback';
+import { LoaderCircle } from 'lucide-react';
+import { AuthShell } from '@/components/glide-auth/AuthShell';
 
 export const metadata = { title: 'Signing you in' };
 export const dynamic = 'force-dynamic';
 
 export default function AuthCallbackPage() {
     return (
-        <div className="admin-login-wrap">
-            <div className="admin-login-card">
-                <div className="admin-login-stamp">
-                    <span className="accent">ROLLOUT</span>
-                    <span>VERIFYING ACCESS</span>
-                </div>
-                <h1 className="admin-login-title" style={{ display: 'inline-flex', alignItems: 'center', gap: 12 }}>
-                    SIGNING YOU IN <Dots />
-                </h1>
-                <p className="admin-login-sub">
-                    Hold tight — consuming your secure link.
-                </p>
-                <Suspense fallback={null}>
-                    <AuthCallbackClient />
-                </Suspense>
-            </div>
-        </div>
+        <AuthShell
+            title={
+                <>
+                    Signing you in
+                    <LoaderCircle size={26} strokeWidth={2} className="g-spin" aria-hidden="true" />
+                </>
+            }
+            sub="Hold tight while we check your secure link."
+        >
+            <Suspense fallback={null}>
+                <AuthCallbackClient />
+            </Suspense>
+        </AuthShell>
     );
 }
