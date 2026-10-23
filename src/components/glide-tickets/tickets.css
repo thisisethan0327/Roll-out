@@ -873,3 +873,13 @@ a.gt-order:hover { box-shadow: 0 0 0 1.5px var(--link), 0 14px 30px -22px rgba(v
 .gt-step .g-btn:disabled .g-btn-k,
 .gt-sumcard .g-btn:disabled .g-btn-k { background: var(--card); color: var(--ink-2); }
 .gt-thumb { display: grid; place-items: center; color: var(--icon); }
+/* The field box carries the focus ring; no second outline on the control. */
+.gt-fld input:focus-visible,
+.gt-fld select:focus-visible,
+.gt-fld textarea:focus-visible { outline: none; }
+/* Notices lay out on a grid so the text column never drops under the icon. */
+.gt-ann { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; align-items: start; }
+.gt-ann .g-sec { grid-column: 3; }
+@media (max-width: 640px) {
+  .gt-ann .g-sec { grid-column: 1 / -1; width: 100%; }
+}

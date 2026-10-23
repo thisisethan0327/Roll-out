@@ -74,9 +74,10 @@ export default async function StoreIndexPage({
                         Check back soon.
                     </EmptyState>
                 ) : (
-                    catalogs.map(({ shop, products, error }) => (
+                    catalogs.map(({ shop, products, error }, bi) => (
                         <ShopBlock
                             key={shop.slug}
+                            first={bi === 0}
                             shopName={shop.name}
                             shopHandle={shop.handle}
                             products={products}
@@ -102,7 +103,9 @@ function ShopBlock({
     shopHandle,
     products,
     error,
+    first = false,
 }: {
+    first?: boolean;
     shopName: string;
     shopHandle: string;
     products: MedusaProduct[];
@@ -127,9 +130,9 @@ function ShopBlock({
                 </EmptyState>
             ) : (
                 <ul className="gt-grid">
-                    {products.map((p) => (
+                    {products.map((p, i) => (
                         <li key={p.id}>
-                            <StoreProductCard product={p} />
+                            <StoreProductCard product={p} priority={first && i < 5} />
                         </li>
                     ))}
                 </ul>

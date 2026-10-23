@@ -18,9 +18,12 @@ import './tickets.css';
 export function StoreProductCard({
     product,
     revealDealerPrice = false,
+    priority = false,
 }: {
     product: MedusaProduct;
     revealDealerPrice?: boolean;
+    /** First row above the fold: load eagerly (it is the largest paint). */
+    priority?: boolean;
 }) {
     const { paused } = product;
     const hidePrice = product.dealerOnly && !revealDealerPrice;
@@ -32,7 +35,7 @@ export function StoreProductCard({
                         src={product.thumbnail}
                         alt=""
                         fill
-                        loading="lazy"
+                        {...(priority ? { priority: true } : { loading: 'lazy' as const })}
                         sizes="(max-width: 900px) 50vw, (max-width: 1440px) 25vw, 300px"
                     />
                 ) : (
