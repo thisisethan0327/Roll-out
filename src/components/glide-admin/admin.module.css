@@ -11,9 +11,8 @@
    files. Only the AdminShell's admin path carries `.shell`: the shop console's
    admin path (layoutClass 'shop-layout') is untouched.
 
-   --adm-line: outlines of fields and outlined buttons. Non-text UI needs 3:1;
-   ink-3 measures 3.8 (Light), 3.9 (Midnight) and 3.6 (Graphite) on cards.
-   Swap for the kit's field-line token once the kit lane lands one.
+   --adm-line: outlines of fields and outlined buttons: the kit's field-line
+   (3:1 on card, surface and surface-2 in every palette; GLIDE.md).
    ══════════════════════════════════════════════════════════════════════════ */
 
 /* ── Shell ─────────────────────────────────────────────────────────────── */
@@ -21,7 +20,7 @@
   --warn: var(--ink);
   --danger: var(--ink);
   --neon: var(--link);
-  --adm-line: var(--ink-3);
+  --adm-line: var(--field-line);
   display: grid;
   grid-template-columns: 272px minmax(0, 1fr);
   min-height: 100dvh;

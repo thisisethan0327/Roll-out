@@ -70,7 +70,7 @@ const UNITY_BRAND: ConsoleBrand = {
             tint: '#E8E8E8', 'on-tint': '#141414', done: '#E8E8E8', 'on-done': '#141414',
             'stripe-1': '#8A8A8A', 'stripe-2': '#141414', 'stripe-3': '#8A8A8A',
             // Neutral greys instead of Glide's blue-tinted light surfaces.
-            surface: '#F1F1F1', 'surface-2': '#E6E6E6', line: '#E3E3E3', 'line-strong': '#CFCFCF',
+            surface: '#F1F1F1', 'surface-2': '#E6E6E6', line: '#E3E3E3', 'line-strong': '#CFCFCF', 'field-line': '#7A7A7A',
             ink: '#161616', 'ink-2': '#5A5A5A', 'ink-3': '#7A7A7A', 'float-ink': '#141414',
             card: '#FFFFFF', float: '#FFFFFF', hud: '#141414',
         },
@@ -85,7 +85,7 @@ const UNITY_BRAND: ConsoleBrand = {
             // Charcoal in both dark styles: UNITY's register has no navy.
             surface: '#161718', 'surface-2': '#2D2D2D', card: '#222222', float: '#2A2A2B',
             'float-ink': '#F2F2F2', ink: '#F2F2F2', 'ink-2': '#9A9A9A', 'ink-3': '#787878',
-            line: '#2A2B2C', 'line-strong': '#404142', hud: '#2D2D2D',
+            line: '#2A2B2C', 'line-strong': '#404142', 'field-line': '#787878', hud: '#2D2D2D',
         },
     },
 };

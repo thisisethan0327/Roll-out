@@ -27,9 +27,9 @@
   flex-direction: column;
 }
 .page {
-  /* Field and control outlines at 3:1 against cards (the kit's line-strong
-     is ~1.5:1; see the lane report). */
-  --biz-field: #5a6f92;
+  /* Field and control outlines: the kit's field-line (3:1 on cards in every
+     palette). Tenant skins below set their own neutral value. */
+  --biz-field: var(--field-line);
   background: var(--surface);
   color: var(--ink);
   min-width: 0;
@@ -45,17 +45,6 @@
 @media (max-width: 900px) {
   :global(.admin-main) > .frame > .page {
     padding: 24px 16px 64px;
-  }
-}
-:global(:root[data-dark='graphite']) .page {
-  --biz-field: #6e6e6e;
-}
-:global(:root[data-theme='light']) .page {
-  --biz-field: #7f8a9c;
-}
-@media (prefers-color-scheme: light) {
-  :global(:root:not([data-theme])) .page {
-    --biz-field: #7f8a9c;
   }
 }
 /* Form controls drawn by the /me console's .input, with the 3:1 outline. */

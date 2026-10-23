@@ -116,7 +116,7 @@
   align-items: center;
   gap: 12px;
   background: var(--card);
-  box-shadow: inset 0 0 0 1px var(--line-strong);
+  box-shadow: inset 0 0 0 1px var(--field-line);
   color: var(--ink);
   font: inherit;
   text-align: left;
@@ -132,7 +132,7 @@
   width: 24px;
   height: 24px;
   border-radius: 50%;
-  box-shadow: inset 0 0 0 2px var(--line-strong);
+  box-shadow: inset 0 0 0 2px var(--field-line);
   display: grid;
   place-items: center;
   flex: none;
@@ -275,7 +275,7 @@ label.gt-tk:has(input:disabled) { cursor: default; opacity: 0.6; }
 }
 .gt-mini:hover { box-shadow: inset 0 0 0 1.5px var(--link); }
 .gt-mini:disabled { opacity: 0.6; cursor: default; }
-.gt-mini--line { box-shadow: inset 0 0 0 1.5px var(--line-strong); }
+.gt-mini--line { box-shadow: inset 0 0 0 1.5px var(--field-line); }
 .gt-mini[data-armed='true'] { background: var(--accent); color: var(--on-accent); box-shadow: none; }
 .gt-mini[data-armed='true'] svg { color: var(--stripe-3); }
 .gt-armed { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
@@ -316,7 +316,7 @@ label.gt-tk:has(input:disabled) { cursor: default; opacity: 0.6; }
 .gt-seats-foot { padding: 10px 16px 14px; border-top: 1px solid var(--line); }
 
 /* ── Fields (G2 .cardf / .fld) ─────────────────────────────────────────── */
-.gt-fields { border-radius: 20px; background: var(--card); box-shadow: inset 0 0 0 1px var(--line-strong); }
+.gt-fields { border-radius: 20px; background: var(--card); box-shadow: inset 0 0 0 1px var(--field-line); }
 .gt-fld {
   position: relative;
   display: flex;
@@ -372,7 +372,7 @@ label.gt-tk:has(input:disabled) { cursor: default; opacity: 0.6; }
   height: 24px;
   margin-top: 1px;
   border-radius: 8px;
-  box-shadow: inset 0 0 0 2px var(--line-strong);
+  box-shadow: inset 0 0 0 2px var(--field-line);
   display: grid;
   place-items: center;
   flex: none;
@@ -491,7 +491,7 @@ label.gt-tk:has(input:disabled) { cursor: default; opacity: 0.6; }
   padding: 0 18px;
   border-radius: 22px;
   background: var(--card);
-  box-shadow: inset 0 0 0 1px var(--line-strong);
+  box-shadow: inset 0 0 0 1px var(--field-line);
   font-size: 14px;
   font-weight: 600;
   color: var(--ink);
@@ -594,7 +594,7 @@ a.gt-cartpill:hover { box-shadow: 0 0 0 1.5px var(--link), 0 8px 20px -8px rgba(
   border: 0;
   border-radius: 22px;
   background: var(--card);
-  box-shadow: inset 0 0 0 1px var(--line-strong);
+  box-shadow: inset 0 0 0 1px var(--field-line);
   font: 600 14px/1 var(--ui);
   color: var(--ink);
   cursor: pointer;

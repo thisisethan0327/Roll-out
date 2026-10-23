@@ -12,8 +12,8 @@
    page's own module (`.scope :global(.admin-x)`) loads later and wins a tie.
    ══════════════════════════════════════════════════════════════════════════ */
 
-/* A field and chip outline that reaches 3:1 against cards in every palette.
-   The kit lane is adding a shared `--field-line`; when it lands it wins. */
+/* Fallback field outline for anything outside the Glide token scope; the
+   kit's `--field-line` wins wherever it is defined. */
 .shell,
 .sheetNav,
 .sheetFoot {
@@ -202,7 +202,7 @@
   font-size: 11.5px;
   font-weight: 700;
   color: var(--ink);
-  box-shadow: inset 0 0 0 1px var(--sh-field);
+  box-shadow: inset 0 0 0 1px var(--field-line, var(--sh-field));
 }
 .link[aria-current='page'] .adminTag {
   color: var(--on-nav-on);

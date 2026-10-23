@@ -134,8 +134,8 @@
   min-height: 56px;
   border-radius: 28px;
   background: var(--surface);
-  /* ink-3, not the board's line-strong: a field edge needs 3:1 (DESIGN.md). */
-  box-shadow: inset 0 0 0 1.5px var(--ink-3);
+  /* field-line, not the board's line-strong: a field edge needs 3:1 (GLIDE.md). */
+  box-shadow: inset 0 0 0 1.5px var(--field-line);
   padding: 0 6px 0 18px;
   transition: box-shadow 0.15s ease-out;
 }
@@ -183,7 +183,7 @@
   border: 0;
   border-radius: 28px;
   background: var(--surface);
-  box-shadow: inset 0 0 0 1.5px var(--ink-3);
+  box-shadow: inset 0 0 0 1.5px var(--field-line);
   padding: 0 20px;
   font: inherit;
   font-size: 16px;
