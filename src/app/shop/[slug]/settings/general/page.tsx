@@ -2,6 +2,12 @@ import { redirect } from 'next/navigation';
 import { requireShopMemberBySlug } from '@/lib/auth-guard';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { GeneralSettingsForm } from './GeneralSettingsForm';
+import { AtSign, Hash } from 'lucide-react';
+import { BizPage } from '@/components/glide-shopbiz/BizPage';
+import { cx } from '@/components/glide-shopbiz/parts';
+import bz from '@/components/glide-shopbiz/biz.module.css';
+import { CardHead, ConsoleHead } from '@/components/glide-console/parts';
+import cs from '@/components/glide-console/console.module.css';
 
 export const metadata = { title: 'General Settings' };
 
@@ -30,38 +36,34 @@ export default async function GeneralSettingsPage({
     const row = await loadShop(shop.shopId);
 
     return (
-        <>
-            <div className="admin-page-head">
-                <div>
-                    <div className="admin-page-title">GENERAL</div>
-                    <div className="admin-page-sub">
-                        {shop.name.toUpperCase()} · CORE INFO
-                    </div>
-                </div>
-            </div>
+        <BizPage slug={slug}>
+            <ConsoleHead title="General" sub={`${shop.name} · Core info`} />
 
-            <div className="admin-stat-grid" style={{ marginBottom: 16 }}>
-                <div className="admin-stat">
-                    <div className="admin-stat-lbl">SLUG (READ-ONLY)</div>
-                    <div
-                        className="admin-stat-num"
-                        style={{ fontSize: 16 }}
-                    >
-                        @{shop.slug}
-                    </div>
-                </div>
-                <div className="admin-stat">
-                    <div className="admin-stat-lbl">SHOP ID</div>
-                    <div
-                        className="admin-stat-num"
-                        style={{ fontSize: 16 }}
-                    >
-                        #{shop.shopId}
-                    </div>
-                </div>
-            </div>
+            <div className={bz.split}>
+                <GeneralSettingsForm shopId={shop.shopId} slug={slug} row={row} />
 
-            <GeneralSettingsForm shopId={shop.shopId} slug={slug} row={row} />
-        </>
+                <aside className={cx('g-card', cs.sticky)} aria-labelledby="gen-rec-h">
+                    <CardHead id="gen-rec-h" title="Shop record" sub="Read-only." />
+                    <ul className={cx('g-rows', cs.cardRows)}>
+                        <li className="g-row">
+                            <AtSign size={20} strokeWidth={2} aria-hidden="true" />
+                            <span className="g-row-t">
+                                <b>Slug</b>
+                                <small>Your console and page address</small>
+                            </span>
+                            <span className={cs.rowValue}>@{shop.slug}</span>
+                        </li>
+                        <li className="g-row">
+                            <Hash size={20} strokeWidth={2} aria-hidden="true" />
+                            <span className="g-row-t">
+                                <b>Shop ID</b>
+                                <small>Quote it to support</small>
+                            </span>
+                            <span className={cs.rowValue}>#{shop.shopId}</span>
+                        </li>
+                    </ul>
+                </aside>
+            </div>
+        </BizPage>
     );
 }

@@ -3,6 +3,11 @@ import { requireShopMemberBySlug } from '@/lib/auth-guard';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { StaffRow } from './StaffRow';
 import { InviteStaffForm } from './InviteStaffForm';
+import { Users } from 'lucide-react';
+import { BizPage } from '@/components/glide-shopbiz/BizPage';
+import { CardEmpty, CountStrip } from '@/components/glide-shopbiz/parts';
+import { ConsoleHead } from '@/components/glide-console/parts';
+import cs from '@/components/glide-console/console.module.css';
 
 export const metadata = { title: 'Staff' };
 
@@ -54,70 +59,52 @@ export default async function StaffPage({
     ).length;
 
     return (
-        <>
-            <div className="admin-page-head">
-                <div>
-                    <div className="admin-page-title">STAFF</div>
-                    <div className="admin-page-sub">
-                        {shop.name.toUpperCase()} · MEMBERSHIP CONTROL
-                    </div>
-                </div>
-            </div>
+        <BizPage slug={slug}>
+            <ConsoleHead title="Staff" sub={`${shop.name} · Membership control`} />
 
-            <div className="admin-stat-grid">
-                <div className="admin-stat">
-                    <div className="admin-stat-lbl">TOTAL STAFF</div>
-                    <div className="admin-stat-num">{total}</div>
-                </div>
-                <div className="admin-stat">
-                    <div className="admin-stat-lbl">OWNERS</div>
-                    <div className="admin-stat-num gold">{owners}</div>
-                </div>
-                <div className="admin-stat">
-                    <div className="admin-stat-lbl">MANAGERS</div>
-                    <div className="admin-stat-num">{managers}</div>
-                </div>
-                <div className="admin-stat">
-                    <div className="admin-stat-lbl">INSTALLERS</div>
-                    <div className="admin-stat-num">{installers}</div>
-                </div>
-            </div>
+            <CountStrip
+                label="Staff totals"
+                items={[
+                    { label: 'Total staff', value: total },
+                    { label: 'Owners', value: owners },
+                    { label: 'Managers', value: managers },
+                    { label: 'Installers', value: installers },
+                ]}
+            />
 
-            <div className="admin-table-wrap">
-                <table className="admin-table">
-                    <thead>
-                        <tr>
-                            <th>HANDLE</th>
-                            <th>NAME</th>
-                            <th>ROLE</th>
-                            <th>JOINED</th>
-                            <th style={{ textAlign: 'right' }}>ACTIONS</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {memberships.length === 0 ? (
-                            <tr>
-                                <td colSpan={5}>
-                                    <div className="admin-empty">
-                                        NO STAFF YET — INVITE BELOW.
-                                    </div>
-                                </td>
-                            </tr>
-                        ) : (
-                            memberships.map((m: any) => (
-                                <StaffRow
-                                    key={m.profile_id}
-                                    m={m}
-                                    shopId={shop.shopId}
-                                    slug={slug}
-                                />
-                            ))
-                        )}
-                    </tbody>
-                </table>
-            </div>
+            <section className="g-card" aria-label="Staff">
+                    {memberships.length === 0 ? (
+                        <CardEmpty
+                            icon={<Users size={22} strokeWidth={1.75} />}
+                            title="No staff yet"
+                            body="Add your team by email. They sign in with that address and see the console for their role."
+                        />
+                    ) : (
+                        <div className={cs.tblWrap}>
+                            <table className={cs.tbl}>
+                                <thead>
+                                    <tr>
+                                        <th scope="col">Member</th>
+                                        <th scope="col">Role</th>
+                                        <th scope="col" className={cs.mHide}>
+                                            Joined
+                                        </th>
+                                        <th scope="col">
+                                            <span className="g-sr">Actions</span>
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {memberships.map((m: any) => (
+                                        <StaffRow key={m.profile_id} m={m} shopId={shop.shopId} slug={slug} />
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+            </section>
 
             <InviteStaffForm shopId={shop.shopId} slug={slug} />
-        </>
+        </BizPage>
     );
 }

@@ -1,6 +1,12 @@
 'use client';
 import { useState, useTransition } from 'react';
 import { updateShopEmail } from './actions';
+import { Eye, Globe, Mail } from 'lucide-react';
+import { GlideButton } from '@/components/glide/primitives';
+import { CardHead, Field, FormSection } from '@/components/glide-console/parts';
+import cs from '@/components/glide-console/console.module.css';
+import { Notice, cx } from '@/components/glide-shopbiz/parts';
+import bz from '@/components/glide-shopbiz/biz.module.css';
 
 export function EmailSettingsForm({
     shopId,
@@ -42,156 +48,97 @@ export function EmailSettingsForm({
     };
 
     const displayFrom = fromName.trim() || shopName;
+    const inp = cx(cs.input, bz.in);
 
     return (
-        <div
-            style={{
-                display: 'grid',
-                gridTemplateColumns: 'minmax(0, 1fr) minmax(320px, 420px)',
-                gap: 24,
-                alignItems: 'start',
-            }}
-        >
-            <form onSubmit={submit} className="admin-form">
-                <div className="admin-form-label">FROM NAME</div>
-                <input
-                    type="text"
-                    value={fromName}
-                    onChange={(e) => setFromName(e.target.value)}
-                    className="admin-form-input"
-                    placeholder={shopName}
-                />
-                <div
-                    style={{
-                        fontFamily: 'var(--font-display)',
-                        fontSize: 10,
-                        letterSpacing: 'var(--track-wider)',
-                        color: 'var(--text-2)',
-                        marginTop: -8,
-                        marginBottom: 12,
-                    }}
-                >
-                    DEFAULTS TO SHOP NAME WHEN BLANK.
-                </div>
-
-                <div className="admin-form-label">SUPPORT EMAIL (REPLY-TO)</div>
-                <input
-                    type="email"
-                    value={supportEmail}
-                    onChange={(e) => setSupportEmail(e.target.value)}
-                    className="admin-form-input"
-                    placeholder="hello@yourshop.com"
-                    autoCapitalize="none"
-                    autoCorrect="off"
-                />
-
-                <div className="admin-form-label">EMAIL LOGO URL</div>
-                <input
-                    type="text"
-                    value={logoUrl}
-                    onChange={(e) => setLogoUrl(e.target.value)}
-                    className="admin-form-input"
-                    placeholder="https://… (64px tall recommended)"
-                />
-
-                <div className="admin-form-label">EMAIL SIGNATURE</div>
-                <textarea
-                    value={signature}
-                    onChange={(e) => setSignature(e.target.value)}
-                    className="admin-form-input"
-                    rows={4}
-                    style={{ resize: 'vertical', minHeight: 84 }}
-                    placeholder={'— The ' + shopName + ' crew\nSeattle, WA'}
-                />
+        <div className={cx(bz.split, bz.splitWide)}>
+            <form onSubmit={submit} className={cs.col}>
+                <FormSection id="em-sender" title="Sender" edge>
+                    <Field label="From name" htmlFor="em-from" hint="Defaults to the shop name when blank.">
+                        <input id="em-from" type="text" value={fromName} onChange={(e) => setFromName(e.target.value)} className={inp} placeholder={shopName} />
+                    </Field>
+                    <Field label="Support email (reply-to)" htmlFor="em-support">
+                        <input
+                            id="em-support"
+                            type="email"
+                            value={supportEmail}
+                            onChange={(e) => setSupportEmail(e.target.value)}
+                            className={inp}
+                            placeholder="hello@yourshop.com"
+                            autoCapitalize="none"
+                            autoCorrect="off"
+                        />
+                    </Field>
+                    <Field label="Email logo URL" htmlFor="em-logo" hint="64 px tall works best.">
+                        <input id="em-logo" type="text" value={logoUrl} onChange={(e) => setLogoUrl(e.target.value)} className={inp} placeholder="https://…" />
+                    </Field>
+                    <Field label="Email signature" htmlFor="em-sig">
+                        <textarea
+                            id="em-sig"
+                            value={signature}
+                            onChange={(e) => setSignature(e.target.value)}
+                            className={inp}
+                            rows={4}
+                            placeholder={'— The ' + shopName + ' crew'}
+                        />
+                    </Field>
+                </FormSection>
 
                 {err && (
-                    <div className="admin-login-error" style={{ padding: 8 }}>
+                    <Notice tone="bad" live>
                         {err}
-                    </div>
+                    </Notice>
                 )}
                 {ok && (
-                    <div
-                        style={{
-                            padding: 8,
-                            border: '1px solid var(--gold)',
-                            background: 'var(--gold-glow)',
-                            color: 'var(--gold)',
-                            fontFamily: 'var(--font-display)',
-                            fontSize: 11,
-                            letterSpacing: 'var(--track-wide)',
-                        }}
-                    >
-                        SAVED.
-                    </div>
+                    <Notice tone="ok" live>
+                        Saved.
+                    </Notice>
                 )}
-                <button
-                    type="submit"
-                    disabled={pending}
-                    className="admin-form-btn"
-                >
-                    {pending ? 'SAVING…' : 'SAVE CHANGES'}
-                </button>
-
-                <div
-                    style={{
-                        marginTop: 24,
-                        padding: 14,
-                        border: '1px solid var(--line-mid)',
-                        background: 'var(--bg-2)',
-                        fontFamily: 'var(--font-display)',
-                        fontSize: 11,
-                        letterSpacing: 'var(--track-wide)',
-                        color: 'var(--text-2)',
-                    }}
-                >
-                    CUSTOM-DOMAIN SHOP EMAILS (SENDING FROM YOUR OWN
-                    @YOURBRAND.COM) ARE A FUTURE FEATURE.
+                <div>
+                    <GlideButton type="submit" disabled={pending} aria-busy={pending}>
+                        {pending ? 'Saving…' : 'Save changes'}
+                    </GlideButton>
                 </div>
 
-                <div style={{ marginTop: 20 }}>
-                    <div
-                        style={{
-                            fontFamily: 'var(--font-display)',
-                            fontSize: 11,
-                            letterSpacing: 'var(--track-wider)',
-                            color: 'var(--text-2)',
-                            marginBottom: 8,
-                        }}
-                    >
-                        TEMPLATES PREVIEWED
+                <Notice icon={<Globe size={20} strokeWidth={2} aria-hidden="true" />}>
+                    Custom-domain shop emails (sending from your own @yourbrand.com) are a future feature.
+                </Notice>
+
+                <section className="g-card" aria-labelledby="em-tpl-h">
+                    <CardHead id="em-tpl-h" title="Templates previewed" />
+                    <div className={cs.cardBody}>
+                        <div className="g-chips">
+                            <span className="g-chip">
+                                <Mail size={14} strokeWidth={2} aria-hidden="true" />
+                                Appointment accepted
+                            </span>
+                            <span className="g-chip">
+                                <Mail size={14} strokeWidth={2} aria-hidden="true" />
+                                Appointment declined
+                            </span>
+                            <span className="g-chip">
+                                <Mail size={14} strokeWidth={2} aria-hidden="true" />
+                                Ticket status changed
+                            </span>
+                            <span className="g-chip">
+                                <Mail size={14} strokeWidth={2} aria-hidden="true" />
+                                Receipt
+                            </span>
+                        </div>
                     </div>
-                    <div
-                        style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}
-                    >
-                        <span className="admin-pill">APPOINTMENT_ACCEPTED</span>
-                        <span className="admin-pill">APPOINTMENT_DECLINED</span>
-                        <span className="admin-pill">
-                            TICKET_STATUS_CHANGED
-                        </span>
-                        <span className="admin-pill">RECEIPT</span>
-                    </div>
-                </div>
+                </section>
             </form>
 
-            {/* Right side: email preview mimicking shellHtml */}
-            <div
-                style={{
-                    border: '1px solid var(--line-mid)',
-                    background: 'var(--bg-2)',
-                    padding: 16,
-                }}
-            >
-                <div
-                    style={{
-                        fontFamily: 'var(--font-display)',
-                        fontSize: 11,
-                        letterSpacing: 'var(--track-wider)',
-                        color: 'var(--text-2)',
-                        marginBottom: 12,
-                    }}
-                >
-                    PREVIEW · APPOINTMENT_ACCEPTED
-                </div>
+            {/* Right side: email preview mimicking shellHtml. The message
+                keeps the email's own palette (it is what the customer
+                receives), only its frame is Glide. */}
+            <aside className={cx('g-card', cs.sticky)} aria-labelledby="em-prev-h">
+                <div className={cs.cardBody} style={{ paddingTop: 20, paddingBottom: 26 }}>
+                    <h2 id="em-prev-h" className={bz.prevH}>
+                        <Eye size={16} strokeWidth={2} aria-hidden="true" />
+                        Preview · Appointment accepted
+                    </h2>
+                    <div className={bz.mail}>
                 <div
                     style={{
                         background: '#000000',
@@ -283,8 +230,8 @@ export function EmailSettingsForm({
                     {supportEmail && (
                         <div
                             style={{
-                                color: '#666666',
-                                fontSize: 10,
+                                color: '#a0a0a0',
+                                fontSize: 12,
                                 marginTop: 16,
                             }}
                         >
@@ -296,7 +243,9 @@ export function EmailSettingsForm({
                         </div>
                     )}
                 </div>
-            </div>
+                    </div>
+                </div>
+            </aside>
         </div>
     );
 }

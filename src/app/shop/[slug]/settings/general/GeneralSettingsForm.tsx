@@ -1,6 +1,12 @@
 'use client';
 import { useState, useTransition } from 'react';
 import { updateShopGeneral } from './actions';
+import { MapPin } from 'lucide-react';
+import { GlideButton } from '@/components/glide/primitives';
+import { Field, FormSection } from '@/components/glide-console/parts';
+import cs from '@/components/glide-console/console.module.css';
+import { Notice, cx } from '@/components/glide-shopbiz/parts';
+import bz from '@/components/glide-shopbiz/biz.module.css';
 
 export function GeneralSettingsForm({
     shopId,
@@ -53,190 +59,87 @@ export function GeneralSettingsForm({
         });
     };
 
+    const inp = cx(cs.input, bz.in);
+    const off = precision === 'off';
+
     return (
-        <form onSubmit={submit} className="admin-form" style={{ maxWidth: 560 }}>
-            <div className="admin-form-label">SHOP NAME</div>
-            <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="admin-form-input"
-                placeholder="EMWRAPS"
-            />
-
-            <div className="admin-form-label">REGION</div>
-            <input
-                type="text"
-                value={region}
-                onChange={(e) => setRegion(e.target.value)}
-                className="admin-form-input"
-                placeholder="PNW"
-            />
-
-            <div className="admin-form-label">PRIMARY COLOR</div>
-            <div
-                style={{
-                    display: 'flex',
-                    gap: 8,
-                    alignItems: 'center',
-                    marginBottom: 12,
-                }}
-            >
-                <input
-                    type="text"
-                    value={primary}
-                    onChange={(e) => setPrimary(e.target.value)}
-                    className="admin-form-input"
-                    placeholder="#ffb733"
-                    style={{ flex: 1, marginBottom: 0 }}
-                />
-                <div
-                    style={{
-                        width: 36,
-                        height: 36,
-                        border: '1px solid var(--line-mid)',
-                        background: primary || 'transparent',
-                    }}
-                />
-            </div>
-
-            <div className="admin-form-label">SECONDARY COLOR</div>
-            <div
-                style={{
-                    display: 'flex',
-                    gap: 8,
-                    alignItems: 'center',
-                    marginBottom: 12,
-                }}
-            >
-                <input
-                    type="text"
-                    value={secondary}
-                    onChange={(e) => setSecondary(e.target.value)}
-                    className="admin-form-input"
-                    placeholder="#1a1a1a"
-                    style={{ flex: 1, marginBottom: 0 }}
-                />
-                <div
-                    style={{
-                        width: 36,
-                        height: 36,
-                        border: '1px solid var(--line-mid)',
-                        background: secondary || 'transparent',
-                    }}
-                />
-            </div>
-
-            <div
-                style={{
-                    marginTop: 18,
-                    marginBottom: 14,
-                    paddingTop: 14,
-                    borderTop: '1px solid var(--line)',
-                    fontFamily: 'var(--font-display)',
-                    fontSize: 11,
-                    letterSpacing: 'var(--track-wider)',
-                    color: 'var(--gold)',
-                }}
-            >
-                LOCATION · MAP
-            </div>
-            <p
-                style={{
-                    color: 'var(--text-2)',
-                    fontSize: 12,
-                    lineHeight: 1.5,
-                    margin: '0 0 14px',
-                }}
-            >
-                Choose how your shop appears on the Rollout map, then give us an
-                address. We look up the coordinates for you automatically when you
-                save — no need to find lat/lng yourself.
-            </p>
-
-            <PrecisionSelector value={precision} onChange={setPrecision} />
-
-            <div className="admin-form-label">STREET ADDRESS</div>
-            <input
-                type="text"
-                value={addressLine}
-                onChange={(e) => setAddressLine(e.target.value)}
-                className="admin-form-input"
-                placeholder="1900 Airport Way S #103"
-                disabled={precision === 'off'}
-            />
-
-            <div style={{ display: 'flex', gap: 8 }}>
-                <div style={{ flex: 2 }}>
-                    <div className="admin-form-label">CITY</div>
-                    <input
-                        type="text"
-                        value={city}
-                        onChange={(e) => setCity(e.target.value)}
-                        className="admin-form-input"
-                        placeholder="Seattle"
-                        disabled={precision === 'off'}
-                    />
+        <form onSubmit={submit} className={cs.col}>
+            <FormSection id="gen-shop" title="Shop" edge>
+                <div className={cs.grid2f}>
+                    <Field label="Shop name" htmlFor="gen-name">
+                        <input id="gen-name" type="text" value={name} onChange={(e) => setName(e.target.value)} className={inp} placeholder="EMWRAPS" />
+                    </Field>
+                    <Field label="Region" htmlFor="gen-region">
+                        <input id="gen-region" type="text" value={region} onChange={(e) => setRegion(e.target.value)} className={inp} placeholder="PNW" />
+                    </Field>
                 </div>
-                <div style={{ flex: 1 }}>
-                    <div className="admin-form-label">STATE</div>
-                    <input
-                        type="text"
-                        value={stateRegion}
-                        onChange={(e) => setStateRegion(e.target.value)}
-                        className="admin-form-input"
-                        placeholder="WA"
-                        disabled={precision === 'off'}
-                    />
+                <div className={cs.grid2f}>
+                    <Field label="Primary color" htmlFor="gen-primary">
+                        <div className={bz.swatchRow}>
+                            <input id="gen-primary" type="text" value={primary} onChange={(e) => setPrimary(e.target.value)} className={inp} placeholder="#1F5F94" />
+                            <span className={bz.swatch} aria-hidden="true">
+                                <i style={{ background: primary || 'transparent' }} />
+                            </span>
+                        </div>
+                    </Field>
+                    <Field label="Secondary color" htmlFor="gen-secondary">
+                        <div className={bz.swatchRow}>
+                            <input id="gen-secondary" type="text" value={secondary} onChange={(e) => setSecondary(e.target.value)} className={inp} placeholder="#1a1a1a" />
+                            <span className={bz.swatch} aria-hidden="true">
+                                <i style={{ background: secondary || 'transparent' }} />
+                            </span>
+                        </div>
+                    </Field>
                 </div>
-                <div style={{ flex: 1 }}>
-                    <div className="admin-form-label">ZIP</div>
-                    <input
-                        type="text"
-                        value={postal}
-                        onChange={(e) => setPostal(e.target.value)}
-                        className="admin-form-input"
-                        placeholder="98134"
-                        disabled={precision === 'off'}
-                    />
+            </FormSection>
+
+            <FormSection
+                id="gen-map"
+                title="Location and map"
+                sub="Choose how your shop appears on the Rollout map, then give us an address. We look up the coordinates for you automatically when you save — no need to find lat/lng yourself."
+            >
+                <PrecisionSelector value={precision} onChange={setPrecision} />
+
+                <Field label="Street address" htmlFor="gen-street">
+                    <input id="gen-street" type="text" value={addressLine} onChange={(e) => setAddressLine(e.target.value)} className={inp} placeholder="1900 Airport Way S #103" disabled={off} />
+                </Field>
+                <div className={cs.grid3f}>
+                    <Field label="City" htmlFor="gen-city">
+                        <input id="gen-city" type="text" value={city} onChange={(e) => setCity(e.target.value)} className={inp} placeholder="Seattle" disabled={off} />
+                    </Field>
+                    <Field label="State" htmlFor="gen-state">
+                        <input id="gen-state" type="text" value={stateRegion} onChange={(e) => setStateRegion(e.target.value)} className={inp} placeholder="WA" disabled={off} />
+                    </Field>
+                    <Field label="ZIP" htmlFor="gen-zip">
+                        <input id="gen-zip" type="text" value={postal} onChange={(e) => setPostal(e.target.value)} className={inp} placeholder="98134" disabled={off} />
+                    </Field>
                 </div>
-            </div>
-            <p style={{ color: 'var(--text-3)', fontSize: 11, lineHeight: 1.5, margin: '6px 0 4px' }}>
-                {precision === 'area'
-                    ? 'Area only: we pin the center of your CITY (if you leave city blank, we fall back to your region above) — your street address stays private.'
-                    : precision === 'off'
-                      ? 'Your shop is hidden from the public map and directory.'
-                      : 'Exact: we pin your street address and show it on your map popup.'}
-            </p>
+                <p className={cs.hint} aria-live="polite">
+                    <MapPin size={15} strokeWidth={2} aria-hidden="true" />
+                    {precision === 'area'
+                        ? 'Area only: we pin the center of your CITY (if you leave city blank, we fall back to your region above) — your street address stays private.'
+                        : precision === 'off'
+                          ? 'Your shop is hidden from the public map and directory.'
+                          : 'Exact: we pin your street address and show it on your map popup.'}
+                </p>
+            </FormSection>
 
             {err && (
-                <div className="admin-login-error" style={{ padding: 8 }}>
+                <Notice tone="bad" live>
                     {err}
-                </div>
+                </Notice>
             )}
             {ok && (
-                <div
-                    style={{
-                        padding: 8,
-                        border: '1px solid var(--gold)',
-                        background: 'var(--gold-glow)',
-                        color: 'var(--gold)',
-                        fontFamily: 'var(--font-display)',
-                        fontSize: 11,
-                        letterSpacing: 'var(--track-wide)',
-                    }}
-                >
-                    SAVED.
-                </div>
+                <Notice tone="ok" live>
+                    Saved.
+                </Notice>
             )}
 
-            <button
-                type="submit"
-                disabled={pending}
-                className="admin-form-btn"
-            >
-                {pending ? 'SAVING…' : 'SAVE CHANGES'}
-            </button>
+            <div>
+                <GlideButton type="submit" disabled={pending} aria-busy={pending}>
+                    {pending ? 'Saving…' : 'Save changes'}
+                </GlideButton>
+            </div>
         </form>
     );
 }
@@ -259,50 +162,23 @@ function PrecisionSelector({
     onChange: (v: 'exact' | 'area' | 'off') => void;
 }) {
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, margin: '0 0 6px' }}>
-            <div className="admin-form-label">MAP PRESENCE</div>
-            {PRECISIONS.map((p) => {
-                const on = value === p.value;
-                return (
-                    <label
-                        key={p.value}
-                        style={{
-                            display: 'flex',
-                            gap: 10,
-                            alignItems: 'flex-start',
-                            padding: '10px 12px',
-                            border: `1px solid ${on ? 'var(--gold)' : 'var(--line-mid)'}`,
-                            background: on ? 'var(--gold-glow)' : 'var(--bg-2)',
-                            cursor: 'pointer',
-                        }}
-                    >
-                        <input
-                            type="radio"
-                            name="location_precision"
-                            value={p.value}
-                            checked={on}
-                            onChange={() => onChange(p.value)}
-                            style={{ marginTop: 2 }}
-                        />
-                        <span style={{ minWidth: 0 }}>
-                            <span
-                                style={{
-                                    display: 'block',
-                                    fontFamily: 'var(--font-display)',
-                                    fontSize: 12,
-                                    letterSpacing: 'var(--track-wide)',
-                                    color: on ? 'var(--gold)' : 'var(--text)',
-                                }}
-                            >
-                                {p.label.toUpperCase()}
-                            </span>
-                            <span style={{ display: 'block', color: 'var(--text-2)', fontSize: 12, marginTop: 2 }}>
-                                {p.hint}
-                            </span>
-                        </span>
-                    </label>
-                );
-            })}
-        </div>
+        <fieldset className={bz.choices}>
+            <legend>Map presence</legend>
+            {PRECISIONS.map((p) => (
+                <label key={p.value} className={bz.choice}>
+                    <input
+                        type="radio"
+                        name="location_precision"
+                        value={p.value}
+                        checked={value === p.value}
+                        onChange={() => onChange(p.value)}
+                    />
+                    <span style={{ minWidth: 0 }}>
+                        <b>{p.label}</b>
+                        <small>{p.hint}</small>
+                    </span>
+                </label>
+            ))}
+        </fieldset>
     );
 }

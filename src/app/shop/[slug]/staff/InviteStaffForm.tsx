@@ -8,6 +8,11 @@
 import { useState, useTransition } from 'react';
 import { inviteStaffByEmail } from './actions';
 import { PendingButton } from '@/components/feedback';
+import { LogIn, UserPlus } from 'lucide-react';
+import { CardHead, Field } from '@/components/glide-console/parts';
+import cs from '@/components/glide-console/console.module.css';
+import { Notice, cx } from '@/components/glide-shopbiz/parts';
+import bz from '@/components/glide-shopbiz/biz.module.css';
 
 const ROLES = ['owner', 'admin', 'manager', 'installer', 'staff'] as const;
 
@@ -45,70 +50,65 @@ export function InviteStaffForm({
         });
     };
 
+    const inp = cx(cs.input, bz.in);
+
     return (
-        <form onSubmit={submit} className="admin-form" style={{ marginTop: 24 }}>
-            <div className="admin-form-label">ADD STAFF BY EMAIL</div>
-            <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="admin-form-input"
-                placeholder="name@email.com"
-                autoCapitalize="none"
-                autoCorrect="off"
-                spellCheck={false}
-            />
-            <select
-                value={role}
-                onChange={(e) => setRole(e.target.value as (typeof ROLES)[number])}
-                className="admin-form-input"
-            >
-                {ROLES.map((r) => (
-                    <option key={r} value={r}>
-                        {r.toUpperCase()}
-                    </option>
-                ))}
-            </select>
-            {err && (
-                <div className="admin-login-error" style={{ padding: 8 }}>
-                    {err}
+        <section className={cx('g-card', bz.narrow)} aria-labelledby="inv-h">
+            <CardHead id="inv-h" title="Add staff" sub="By email. Staff are added here; there is no self-signup." />
+            <form onSubmit={submit} className={cx(cs.cardBody, cs.form)} style={{ paddingBottom: 30 }}>
+                <div className={cs.grid2f}>
+                <Field label="Email" htmlFor="inv-email">
+                    <input
+                        id="inv-email"
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        className={inp}
+                        placeholder="name@email.com"
+                        autoCapitalize="none"
+                        autoCorrect="off"
+                        spellCheck={false}
+                    />
+                </Field>
+                <Field label="Role" htmlFor="inv-role">
+                    <select id="inv-role" value={role} onChange={(e) => setRole(e.target.value as (typeof ROLES)[number])} className={inp}>
+                        {ROLES.map((r) => (
+                            <option key={r} value={r}>
+                                {r.charAt(0).toUpperCase() + r.slice(1)}
+                            </option>
+                        ))}
+                    </select>
+                </Field>
                 </div>
-            )}
-            {ok && (
-                <div
-                    style={{
-                        padding: 8,
-                        fontSize: 11,
-                        color: 'var(--gold)',
-                        fontFamily: 'var(--font-display)',
-                        letterSpacing: 'var(--track-wide)',
-                        border: '1px solid var(--line-mid)',
-                        background: 'var(--bg-2)',
-                    }}
-                >
-                    {ok}
+                {err && (
+                    <Notice tone="bad" live>
+                        {err}
+                    </Notice>
+                )}
+                {ok && (
+                    <Notice tone="ok" live>
+                        {ok}
+                    </Notice>
+                )}
+                <div>
+                    <PendingButton
+                        type="submit"
+                        pending={pending}
+                        pendingLabel="Adding"
+                        disabled={!email.trim()}
+                        className="g-btn g-btn--sm"
+                    >
+                        <span>Add staff</span>
+                        <span className="g-btn-k" aria-hidden="true">
+                            <UserPlus size={18} strokeWidth={2} />
+                        </span>
+                    </PendingButton>
                 </div>
-            )}
-            <PendingButton
-                type="submit"
-                pending={pending}
-                pendingLabel="ADDING"
-                disabled={!email.trim()}
-                className="admin-form-btn"
-            >
-                + ADD STAFF
-            </PendingButton>
-            <p
-                style={{
-                    fontSize: 10,
-                    color: 'var(--text-3)',
-                    fontFamily: 'var(--font-display)',
-                    letterSpacing: 'var(--track-wide)',
-                    margin: '2px 0 0',
-                }}
-            >
-                THEY SIGN IN AT /SHOP/LOGIN WITH THIS EMAIL · NO SELF-SIGNUP
-            </p>
-        </form>
+                <p className={bz.fine}>
+                    <LogIn size={15} strokeWidth={2} aria-hidden="true" />
+                    They sign in at /shop/login with this email.
+                </p>
+            </form>
+        </section>
     );
 }
