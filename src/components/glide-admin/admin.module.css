@@ -792,7 +792,7 @@
 /* Launcher cards. */
 .launch {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 160px), 1fr));
   gap: 12px;
 }
 .launchCard {
@@ -845,7 +845,7 @@
 /* Stat strip (Glide quiet strip: one card, hairline columns). */
 .stats {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
   border-radius: 24px;
   background: var(--card);
   box-shadow: 0 0 0 1px var(--line), 0 14px 30px -22px rgba(var(--shadow), 0.6);
@@ -1054,7 +1054,7 @@
 /* Stat strip. */
 .shell :global(.admin-stat-grid) {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
   gap: 0;
   margin: 0;
   border-radius: 24px;
@@ -1851,4 +1851,25 @@
   align-items: center;
   gap: 4px;
   min-height: 44px;
+}
+
+/* Inline links outside tables: grow the hit area to 44px without moving the
+   line (padding out, margin back in). */
+.shell :global(a.text-link),
+.attBody b a {
+  display: inline-block;
+  padding-block: 13px;
+  margin-block: -13px;
+}
+.shell :global(.admin-table) :global(a.text-link) {
+  min-width: 44px;
+  padding-block: 0;
+  margin-block: 0;
+}
+.shell :global(.jump-input) {
+  min-height: 50px;
+  padding: 0;
+}
+.shell :global(.admin-stat-sub .sep) {
+  color: var(--ink-2);
 }
