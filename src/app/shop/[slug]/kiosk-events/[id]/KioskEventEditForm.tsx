@@ -61,8 +61,8 @@ export function KioskEventEditForm({
 
     return (
         <form className="admin-form" action={onSubmit}>
-            <SectionHeading>DETAILS</SectionHeading>
-            <label className="admin-form-label">TITLE *</label>
+            <SectionHeading>Details</SectionHeading>
+            <label className="admin-form-label">Title *</label>
             <input
                 name="title"
                 className="admin-form-input"
@@ -77,7 +77,7 @@ export function KioskEventEditForm({
                 {split.sub ? ` / ${split.sub.toUpperCase()}` : ''}
             </div>
 
-            <label className="admin-form-label">TAGLINE</label>
+            <label className="admin-form-label">Tagline</label>
             <input
                 name="tagline"
                 className="admin-form-input"
@@ -85,7 +85,7 @@ export function KioskEventEditForm({
                 disabled={!canManage || pending}
             />
 
-            <label className="admin-form-label">DESCRIPTION</label>
+            <label className="admin-form-label">Description</label>
             <textarea
                 name="description"
                 className="admin-form-input"
@@ -94,10 +94,10 @@ export function KioskEventEditForm({
                 disabled={!canManage || pending}
             />
 
-            <SectionHeading>DATES</SectionHeading>
+            <SectionHeading>Dates</SectionHeading>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <div>
-                    <label className="admin-form-label">STARTS *</label>
+                    <label className="admin-form-label">Starts *</label>
                     <input
                         type="date"
                         name="starts_at"
@@ -108,7 +108,7 @@ export function KioskEventEditForm({
                     />
                 </div>
                 <div>
-                    <label className="admin-form-label">ENDS *</label>
+                    <label className="admin-form-label">Ends *</label>
                     <input
                         type="date"
                         name="ends_at"
@@ -120,15 +120,15 @@ export function KioskEventEditForm({
                 </div>
             </div>
 
-            <SectionHeading>VENUE</SectionHeading>
-            <label className="admin-form-label">VENUE NAME</label>
+            <SectionHeading>Venue</SectionHeading>
+            <label className="admin-form-label">Venue name</label>
             <input
                 name="venue_name"
                 className="admin-form-input"
                 defaultValue={event.venue_name ?? ''}
                 disabled={!canManage || pending}
             />
-            <label className="admin-form-label">VENUE ADDRESS</label>
+            <label className="admin-form-label">Venue address</label>
             <input
                 name="venue_address"
                 className="admin-form-input"
@@ -136,7 +136,7 @@ export function KioskEventEditForm({
                 disabled={!canManage || pending}
             />
 
-            <SectionHeading>PARTNERS</SectionHeading>
+            <SectionHeading>Partners</SectionHeading>
             <TagListEditor
                 initial={initialPartners}
                 mode="plain"
@@ -145,7 +145,7 @@ export function KioskEventEditForm({
                 disabled={!canManage || pending}
             />
 
-            <SectionHeading>HIGHLIGHTS</SectionHeading>
+            <SectionHeading>Highlights</SectionHeading>
             <TagListEditor
                 initial={initialHighlights}
                 mode="label-object"
@@ -154,8 +154,8 @@ export function KioskEventEditForm({
                 disabled={!canManage || pending}
             />
 
-            <SectionHeading>LINK</SectionHeading>
-            <label className="admin-form-label">LINK URL (QR TARGET)</label>
+            <SectionHeading>Link</SectionHeading>
+            <label className="admin-form-label">Link URL (QR target)</label>
             <input
                 name="link_url"
                 className="admin-form-input"
@@ -167,7 +167,7 @@ export function KioskEventEditForm({
             {canManage && (
                 <div style={{ marginTop: 18, display: 'flex', gap: 8 }}>
                     <button type="submit" className="admin-form-btn" disabled={pending}>
-                        {savedFlash ? <>SAVED <Check /></> : 'SAVE CHANGES'}
+                        {savedFlash ? <>Saved <Check /></> : 'Save changes'}
                     </button>
                 </div>
             )}

@@ -3,6 +3,10 @@ import { requireShopMemberBySlug } from '@/lib/auth-guard';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { EventActions } from './EventActions';
 import { CoHostInboxActions } from './CoHostInboxActions';
+import { BadgeCheck, CircleAlert, Flag, Globe, Lock, Plus } from 'lucide-react';
+import { ConsoleHead } from '@/components/glide-console/parts';
+import { GlideButton } from '@/components/glide/primitives';
+import { Counts, EmptyRow, FilterTabs, Panel, StatusChip, cx, shopStyles as sh } from '@/components/glide-shop/parts';
 
 export const metadata = { title: 'Events' };
 
@@ -42,25 +46,11 @@ const FILTER_TABS = ['UPCOMING', 'PAST', 'CANCELLED', 'ALL'] as const;
 type FilterTab = (typeof FILTER_TABS)[number];
 
 const TYPE_LABEL: Record<string, string> = {
-    NIGHT_RUN: 'NIGHT RUN',
-    CAR_MEET: 'CAR MEET',
-    TRACK_DAY: 'TRACK DAY',
-    CRUISE: 'CRUISE',
-    SHOW: 'SHOW',
-};
-
-const TYPE_PILL: Record<string, string> = {
-    NIGHT_RUN: 'admin-pill neon',
-    CAR_MEET: 'admin-pill',
-    TRACK_DAY: 'admin-pill warn',
-    CRUISE: 'admin-pill',
-    SHOW: 'admin-pill gold',
-};
-
-const VIS_PILL: Record<string, string> = {
-    public: 'admin-pill neon',
-    followers: 'admin-pill',
-    private: 'admin-pill warn',
+    NIGHT_RUN: 'Night run',
+    CAR_MEET: 'Car meet',
+    TRACK_DAY: 'Track day',
+    CRUISE: 'Cruise',
+    SHOW: 'Show',
 };
 
 async function fetchShopPageProfileId(shopId: number): Promise<string | null> {
@@ -159,17 +149,16 @@ export default async function ShopEventsPage({
 
     if (!hostId) {
         return (
-            <>
-                <div className="admin-page-head">
-                    <div>
-                        <div className="admin-page-title">EVENTS</div>
-                        <div className="admin-page-sub">{shop.name.toUpperCase()}</div>
-                    </div>
+            <div className={sh.stack}>
+                <ConsoleHead title="Events" sub={shop.name} />
+                <div className={sh.note} role="note">
+                    <CircleAlert size={20} strokeWidth={2} aria-hidden="true" />
+                    <span className={sh.noteText}>
+                        No shop page profile found
+                        <small>Contact support to set up your shop page before hosting events.</small>
+                    </span>
                 </div>
-                <div className="admin-empty">
-                    NO SHOP PAGE PROFILE FOUND — CONTACT SUPPORT.
-                </div>
-            </>
+            </div>
         );
     }
 
@@ -177,70 +166,47 @@ export default async function ShopEventsPage({
         loadEvents(shop.shopId, hostId, filter),
         loadCoHostEvents(shop.shopId),
     ]);
+    const when = (iso: string) => new Date(iso).toISOString().slice(0, 16).replace('T', ' ');
 
     return (
-        <>
-            <div className="admin-page-head">
-                <div>
-                    <div className="admin-page-title">EVENTS</div>
-                    <div className="admin-page-sub">
-                        {shop.name.toUpperCase()} · {data.rows.length} SHOWN
-                    </div>
-                </div>
-                <Link
-                    href={`/shop/${slug}/events/new`}
-                    className="admin-action-btn"
-                    style={{ textDecoration: 'none' }}
-                >
-                    + HOST EVENT
-                </Link>
-            </div>
+        <div className={sh.stack}>
+            <ConsoleHead
+                title="Events"
+                sub={`${shop.name} · ${data.rows.length} shown`}
+                actions={
+                    <GlideButton href={`/shop/${slug}/events/new`} size="sm" icon={<Plus size={18} strokeWidth={2} />}>
+                        Host event
+                    </GlideButton>
+                }
+            />
 
-            <div className="admin-stat-grid">
-                <Stat label="UPCOMING" value={data.upcoming} accent={data.upcoming > 0 ? 'gold' : undefined} />
-                <Stat label="PAST" value={data.past} />
-                <Stat label="CANCELLED" value={data.cancelled} />
-                <Stat label="TOTAL RSVPS" value={data.totalRsvps} />
-            </div>
-
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', margin: '12px 0' }}>
-                {FILTER_TABS.map((t) => {
-                    const isActive = t === filter;
-                    return (
-                        <Link
-                            key={t}
-                            href={`/shop/${slug}/events?filter=${t.toLowerCase()}`}
-                            className={`admin-action-btn ${isActive ? '' : 'muted'}`}
-                            style={{ textDecoration: 'none' }}
-                        >
-                            {t}
-                        </Link>
-                    );
-                })}
-            </div>
+            <Counts
+                label="Event counts"
+                items={[
+                    { label: 'Upcoming', value: data.upcoming, dot: data.upcoming > 0 },
+                    { label: 'Past', value: data.past },
+                    { label: 'Cancelled', value: data.cancelled },
+                    { label: 'Total RSVPs', value: data.totalRsvps },
+                ]}
+            />
 
             {coHostEvents.length > 0 && (
-                <div style={{ marginBottom: 18 }}>
-                    <div className="admin-page-head" style={{ borderBottom: 'none', paddingBottom: 0 }}>
-                        <div>
-                            <div className="admin-page-title" style={{ fontSize: 14 }}>
-                                CO-HOSTING
-                            </div>
-                            <div className="admin-page-sub">
-                                EVENTS OTHER SHOPS INVITED {shop.name.toUpperCase()} TO
-                            </div>
-                        </div>
-                    </div>
-                    <div className="admin-table-wrap">
-                        <table className="admin-table">
+                <Panel
+                    id="cohosting"
+                    title="Co-hosting"
+                    sub={`Events other shops invited ${shop.name} to`}
+                    count={coHostEvents.length}
+                    flush
+                >
+                    <div className={sh.tblWrap}>
+                        <table className={sh.tbl}>
                             <thead>
                                 <tr>
-                                    <th>CODE</th>
-                                    <th>TITLE</th>
-                                    <th>HOST</th>
-                                    <th>STARTS</th>
-                                    <th>STATUS</th>
-                                    <th style={{ textAlign: 'right' }}>ACTIONS</th>
+                                    <th>Event</th>
+                                    <th>Host</th>
+                                    <th>Starts</th>
+                                    <th>Status</th>
+                                    <th className={sh.r}>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -248,156 +214,144 @@ export default async function ShopEventsPage({
                                     <tr key={e.id}>
                                         <td>
                                             {e.status === 'accepted' ? (
-                                                <Link
-                                                    href={`/shop/${slug}/events/${e.id}`}
-                                                    className="text-link"
-                                                >
-                                                    {e.code}
+                                                <Link href={`/shop/${slug}/events/${e.id}`} className="text-link" style={{ color: 'var(--ink)' }}>
+                                                    {e.title}
                                                 </Link>
                                             ) : (
-                                                e.code
+                                                <b style={{ fontWeight: 600 }}>{e.title}</b>
                                             )}
+                                            <small>
+                                                <span className={sh.code} style={{ fontSize: 11 }}>{e.code}</span>
+                                                {e.location_name ? ` · ${e.location_name}` : ''}
+                                            </small>
+                                        </td>
+                                        <td data-label="Host">{e.hostName}</td>
+                                        <td data-label="Starts" className={sh.when}>
+                                            {when(e.start_at)}
                                         </td>
                                         <td>
-                                            <div style={{ fontWeight: 700, color: 'var(--text)' }}>
-                                                {e.title}
-                                            </div>
-                                            {e.location_name && (
-                                                <div className="admin-handle">{e.location_name}</div>
-                                            )}
-                                        </td>
-                                        <td>{e.hostName}</td>
-                                        <td>
-                                            {new Date(e.start_at)
-                                                .toISOString()
-                                                .slice(0, 16)
-                                                .replace('T', ' ')}
-                                        </td>
-                                        <td>
-                                            <span
-                                                className={
-                                                    e.status === 'accepted'
-                                                        ? 'admin-pill neon'
-                                                        : 'admin-pill gold'
-                                                }
-                                            >
-                                                {e.status === 'invited'
-                                                    ? 'CO-HOST INVITE'
-                                                    : e.status.toUpperCase()}
-                                            </span>
-                                        </td>
-                                        <td style={{ textAlign: 'right' }}>
-                                            <CoHostInboxActions
-                                                eventId={e.id}
-                                                shopId={shop.shopId}
-                                                status={e.status}
+                                            <StatusChip
+                                                status={e.status === 'accepted' ? 'accepted' : 'invited'}
+                                                label={e.status === 'invited' ? 'Co-host invite' : sentence(e.status)}
                                             />
+                                        </td>
+                                        <td className={cx(sh.r, sh.mEnd)}>
+                                            <CoHostInboxActions eventId={e.id} shopId={shop.shopId} status={e.status} />
                                         </td>
                                     </tr>
                                 ))}
                             </tbody>
                         </table>
                     </div>
-                </div>
+                </Panel>
             )}
 
-            <div className="admin-table-wrap">
-                <table className="admin-table">
-                    <thead>
-                        <tr>
-                            <th>CODE</th>
-                            <th>TITLE</th>
-                            <th>TYPE</th>
-                            <th>STARTS</th>
-                            <th>RSVPS</th>
-                            <th>VISIBILITY</th>
-                            <th>FLAGS</th>
-                            <th style={{ textAlign: 'right' }}>ACTIONS</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {data.rows.length === 0 ? (
+            <section className="g-card" aria-label="Your events">
+                <div className={sh.panelH}>
+                    <div>
+                        <h2>Your events</h2>
+                    </div>
+                    <FilterTabs
+                        label="Event filter"
+                        items={FILTER_TABS.map((t) => ({
+                            href: `/shop/${slug}/events?filter=${t.toLowerCase()}`,
+                            label: sentence(t),
+                            active: t === filter,
+                        }))}
+                    />
+                </div>
+                <div className={sh.tblWrap}>
+                    <table className={sh.tbl}>
+                        <thead>
                             <tr>
-                                <td colSpan={8}>
-                                    <div className="admin-empty">
-                                        NO {filter} EVENTS.
-                                    </div>
-                                </td>
+                                <th>Event</th>
+                                <th>Starts</th>
+                                <th>Status</th>
+                                <th>RSVPs</th>
+                                <th>Visibility</th>
+                                <th className={sh.r}>Actions</th>
                             </tr>
-                        ) : (
-                            data.rows.map((e: any) => (
-                                <tr key={e.id}>
-                                    <td>
-                                        <Link
-                                            href={`/shop/${slug}/events/${e.id}`}
-                                            className="text-link"
-                                        >
-                                            {e.code}
-                                        </Link>
-                                    </td>
-                                    <td>
-                                        <div style={{ fontWeight: 700, color: 'var(--text)' }}>
-                                            {e.title}
-                                        </div>
-                                        {e.location_name && (
-                                            <div className="admin-handle">{e.location_name}</div>
-                                        )}
-                                    </td>
-                                    <td>
-                                        <span className={TYPE_PILL[e.type] ?? 'admin-pill'}>
-                                            {TYPE_LABEL[e.type] ?? e.type}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        {new Date(e.start_at).toISOString().slice(0, 16).replace('T', ' ')}
-                                    </td>
-                                    <td>
-                                        {e.attending_count}
-                                        {e.capacity ? ` / ${e.capacity}` : ''}
-                                    </td>
-                                    <td>
-                                        <span className={VIS_PILL[e.visibility] ?? 'admin-pill'}>
-                                            {String(e.visibility).toUpperCase()}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                                            {e.is_official && <span className="admin-pill gold">OFFICIAL</span>}
-                                            {e.cancelled_at && <span className="admin-pill warn">CANCELLED</span>}
-                                        </div>
-                                    </td>
-                                    <td style={{ textAlign: 'right' }}>
-                                        <EventActions
-                                            eventId={e.id}
-                                            shopId={shop.shopId}
-                                            slug={slug}
-                                            cancelled={!!e.cancelled_at}
-                                            callerRole={role}
-                                        />
-                                    </td>
-                                </tr>
-                            ))
-                        )}
-                    </tbody>
-                </table>
-            </div>
-        </>
+                        </thead>
+                        <tbody>
+                            {data.rows.length === 0 ? (
+                                <EmptyRow
+                                    colSpan={6}
+                                    icon={<Flag size={18} strokeWidth={2} />}
+                                    title={`No ${filter === 'ALL' ? '' : filter.toLowerCase() + ' '}events`}
+                                    body="Host a meet, cruise or run from your shop. It appears on your shop page and the map."
+                                />
+                            ) : (
+                                data.rows.map((e: any) => (
+                                    <tr key={e.id}>
+                                        <td>
+                                            <Link href={`/shop/${slug}/events/${e.id}`} className="text-link" style={{ color: 'var(--ink)' }}>
+                                                {e.title}
+                                            </Link>
+                                            <small>
+                                                <span className={sh.code} style={{ fontSize: 11 }}>{e.code}</span>
+                                                {' · '}
+                                                {TYPE_LABEL[e.type] ?? sentence(String(e.type ?? 'event'))}
+                                                {e.location_name ? ` · ${e.location_name}` : ''}
+                                            </small>
+                                        </td>
+                                        <td data-label="Starts" className={sh.when}>
+                                            {when(e.start_at)}
+                                        </td>
+                                        <td>
+                                            <span className="g-chips">
+                                                {e.cancelled_at ? (
+                                                    <StatusChip status="cancelled" />
+                                                ) : (
+                                                    <StatusChip status={new Date(e.start_at).getTime() > Date.now() ? 'upcoming' : 'past'} />
+                                                )}
+                                                {e.is_official ? (
+                                                    <span className="g-chip g-chip--tint">
+                                                        <BadgeCheck size={14} strokeWidth={2} aria-hidden="true" />
+                                                        Official
+                                                    </span>
+                                                ) : null}
+                                            </span>
+                                        </td>
+                                        <td data-label="RSVPs" className={sh.num}>
+                                            {e.attending_count}
+                                            {e.capacity ? (
+                                                <span className={sh.muted} style={{ fontFamily: 'var(--ui)', fontSize: 12.5 }}>
+                                                    {' '}
+                                                    of {e.capacity}
+                                                </span>
+                                            ) : null}
+                                        </td>
+                                        <td data-label="Visibility">
+                                            <span className="g-chip">
+                                                {e.visibility === 'private' ? (
+                                                    <Lock size={14} strokeWidth={2} aria-hidden="true" />
+                                                ) : (
+                                                    <Globe size={14} strokeWidth={2} aria-hidden="true" />
+                                                )}
+                                                {sentence(String(e.visibility))}
+                                            </span>
+                                        </td>
+                                        <td className={cx(sh.r, sh.mEnd)}>
+                                            <EventActions
+                                                eventId={e.id}
+                                                shopId={shop.shopId}
+                                                slug={slug}
+                                                cancelled={!!e.cancelled_at}
+                                                callerRole={role}
+                                            />
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
     );
 }
 
-function Stat({
-    label,
-    value,
-    accent,
-}: {
-    label: string;
-    value: number | string;
-    accent?: 'gold' | 'warn';
-}) {
-    return (
-        <div className="admin-stat">
-            <div className="admin-stat-lbl">{label}</div>
-            <div className={`admin-stat-num ${accent ?? ''}`}>{value}</div>
-        </div>
-    );
+function sentence(t: string): string {
+    const x = t.replace(/[_-]+/g, ' ').trim().toLowerCase();
+    return x.charAt(0).toUpperCase() + x.slice(1);
 }

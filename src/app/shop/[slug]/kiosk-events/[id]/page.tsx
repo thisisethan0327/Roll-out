@@ -1,11 +1,11 @@
-import Link from 'next/link';
+import { ConsoleHead } from '@/components/glide-console/parts';
 import { notFound } from 'next/navigation';
 import { requireShopMemberBySlug } from '@/lib/auth-guard';
 import { getSupabasePublicAdmin } from '@/lib/supabase/admin';
 import { KioskEventStatusActions } from '../KioskEventStatusActions';
 import { KioskEventEditForm } from './KioskEventEditForm';
 import { KioskEventImages } from './KioskEventImages';
-import { ArrowRight, Check, ChevronLeft } from '@/components/icons';
+import { Check } from '@/components/icons';
 
 export const metadata = { title: 'Kiosk Event' };
 
@@ -63,21 +63,11 @@ export default async function KioskEventDetailPage({
                     <Check /> DRAFT CREATED · ADD IMAGES BELOW, THEN PUBLISH TO PUT IT ON THE KIOSK
                 </div>
             ) : null}
-            <div className="admin-page-head">
-                <div>
-                    <div className="admin-page-title">{event.title}</div>
-                    <div className="admin-page-sub">
-                        KIOSK EVENT · {event.starts_at} <ArrowRight /> {event.ends_at}
-                    </div>
-                </div>
-                <Link
-                    href={`/shop/${slug}/kiosk-events`}
-                    className="admin-action-btn muted"
-                    style={{ textDecoration: 'none' }}
-                >
-                    <ChevronLeft /> ALL KIOSK EVENTS
-                </Link>
-            </div>
+            <ConsoleHead
+                back={{ href: `/shop/${slug}/kiosk-events`, label: 'All kiosk events' }}
+                title={event.title}
+                sub={`Kiosk event · ${event.starts_at} to ${event.ends_at}`}
+            />
 
             <div
                 style={{

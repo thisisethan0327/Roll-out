@@ -15,7 +15,9 @@ import { listEventAnnouncementsForConsole } from '@/lib/announcements-write';
 import { VerificationSection, type VerificationView } from './VerificationSection';
 import { DoorSection } from '@/components/DoorSection';
 import { shopDoorCheckInAction } from './door-actions';
-import { Check, ChevronLeft } from '@/components/icons';
+import { BadgeCheck, CircleCheck, Flag, Globe, Lock } from 'lucide-react';
+import { ConsoleHead } from '@/components/glide-console/parts';
+import { shopStyles as sh } from '@/components/glide-shop/parts';
 
 export const metadata = { title: 'Event Detail' };
 
@@ -25,14 +27,6 @@ const TYPE_LABEL: Record<string, string> = {
     TRACK_DAY: 'TRACK DAY',
     CRUISE: 'CRUISE',
     SHOW: 'SHOW',
-};
-
-const TYPE_PILL: Record<string, string> = {
-    NIGHT_RUN: 'admin-pill neon',
-    CAR_MEET: 'admin-pill',
-    TRACK_DAY: 'admin-pill warn',
-    CRUISE: 'admin-pill',
-    SHOW: 'admin-pill gold',
 };
 
 const RSVP_PILL: Record<string, string> = {
@@ -258,58 +252,60 @@ export default async function EventDetailPage({
     const justCreated = just_created === '1';
 
     return (
-        <>
+        <div className={sh.stack}>
             {justCreated ? (
-                <div
-                    style={{
-                        margin: '0 0 12px 0',
-                        padding: '12px 16px',
-                        background: 'var(--gold-dim)',
-                        border: '1px solid var(--gold)',
-                        color: 'var(--gold)',
-                        fontFamily: 'var(--font-display)',
-                        fontSize: 12,
-                        letterSpacing: 'var(--track-wider)',
-                    }}
-                >
-                    <Check /> EVENT CREATED · LIVE ON /MEETS AND /U/{slug.toUpperCase()}
+                <div className={sh.note} role="status">
+                    <CircleCheck size={20} strokeWidth={2} aria-hidden="true" />
+                    <span className={sh.noteText}>
+                        Event created
+                        <small>It is live on /meets and on /u/{slug}.</small>
+                    </span>
                 </div>
             ) : null}
-            <div className="admin-page-head">
-                <div>
-                    <div className="admin-page-title">{event.title}</div>
-                    <div className="admin-page-sub">
-                        {event.code} ·{' '}
+            <ConsoleHead
+                back={{ href: `/shop/${slug}/events`, label: 'All events' }}
+                title={event.title}
+                sub={
+                    <>
+                        <span className={sh.code} style={{ fontSize: 12.5 }}>{event.code}</span> ·{' '}
                         {formatEventTime(event.start_at, event.time_zone)}
-                    </div>
-                </div>
-                <Link
-                    href={`/shop/${slug}/events`}
-                    className="admin-action-btn muted"
-                    style={{ textDecoration: 'none' }}
-                >
-                    <ChevronLeft /> ALL EVENTS
-                </Link>
-            </div>
+                    </>
+                }
+            />
 
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', margin: '0 0 12px 0' }}>
-                <span className={TYPE_PILL[event.type] ?? 'admin-pill'}>
-                    {TYPE_LABEL[event.type] ?? event.type}
+            <div className="g-chips">
+                <span className="g-chip g-chip--lg">
+                    <Flag size={15} strokeWidth={2} aria-hidden="true" />
+                    {(() => {
+                        // Console chip in sentence case; TYPE_LABEL stays uppercase for the invite email.
+                        const t = String(TYPE_LABEL[event.type] ?? event.type ?? '').toLowerCase();
+                        return t.charAt(0).toUpperCase() + t.slice(1);
+                    })()}
                 </span>
-                <span className="admin-pill">
-                    {String(event.visibility).toUpperCase()}
+                <span className="g-chip g-chip--lg">
+                    {event.visibility === 'private' ? (
+                        <Lock size={15} strokeWidth={2} aria-hidden="true" />
+                    ) : (
+                        <Globe size={15} strokeWidth={2} aria-hidden="true" />
+                    )}
+                    {String(event.visibility).charAt(0).toUpperCase() + String(event.visibility).slice(1)}
                 </span>
-                {event.is_official && <span className="admin-pill gold">OFFICIAL</span>}
-                {event.verification_status === 'verified' && <span className="admin-pill neon">VERIFIED{event.coin_enabled ? ' · COIN' : ''}</span>}
-                {event.verification_status === 'requested' && <span className="admin-pill">VERIFICATION PENDING</span>}
-                {event.verification_status === 'revoked' && <span className="admin-pill warn">VERIFICATION REVOKED</span>}
-                {event.cancelled_at && <span className="admin-pill warn">CANCELLED</span>}
-                {!isHost && <span className="admin-pill gold">CO-HOST VIEW</span>}
+                {event.is_official && <span className="g-chip g-chip--lg g-chip--tint">Official</span>}
+                {event.verification_status === 'verified' && (
+                    <span className="g-chip g-chip--lg g-chip--tint">
+                        <BadgeCheck size={15} strokeWidth={2} aria-hidden="true" />
+                        Verified{event.coin_enabled ? ' · coin' : ''}
+                    </span>
+                )}
+                {event.verification_status === 'requested' && <span className="g-chip g-chip--lg">Verification pending</span>}
+                {event.verification_status === 'revoked' && <span className="g-chip g-chip--lg">Verification revoked</span>}
+                {event.cancelled_at && <span className="g-chip g-chip--lg">Cancelled</span>}
+                {!isHost && <span className="g-chip g-chip--lg g-chip--tint">Co-host view</span>}
             </div>
 
             <div className="admin-stat-grid">
                 <Stat
-                    label="RSVPS"
+                    label="RSVPs"
                     value={
                         event.capacity
                             ? `${event.attending_count} / ${event.capacity}`
@@ -318,11 +314,11 @@ export default async function EventDetailPage({
                     accent={event.attending_count > 0 ? 'gold' : undefined}
                 />
                 <Stat
-                    label="CREATED"
+                    label="Created"
                     value={new Date(event.created_at).toISOString().slice(0, 10)}
                 />
                 <Stat
-                    label="UPDATED"
+                    label="Updated"
                     value={
                         event.updated_at
                             ? new Date(event.updated_at).toISOString().slice(0, 10)
@@ -390,10 +386,10 @@ export default async function EventDetailPage({
             >
                 <div>
                     <div className="admin-page-title" style={{ fontSize: 14 }}>
-                        SENT INVITES
+                        Sent invites
                     </div>
                     <div className="admin-page-sub">
-                        {invites.length} TOTAL · {isHost ? 'ALL SHOPS' : 'YOUR SHOP'}
+                        {invites.length} TOTAL · {isHost ? 'All shops' : 'Your shop'}
                     </div>
                 </div>
             </div>
@@ -401,9 +397,9 @@ export default async function EventDetailPage({
                 <table className="admin-table">
                     <thead>
                         <tr>
-                            <th>EMAIL</th>
-                            <th>STYLE</th>
-                            <th>SENT</th>
+                            <th>Email</th>
+                            <th>Style</th>
+                            <th>Sent</th>
                             <th>RSVP</th>
                         </tr>
                     </thead>
@@ -411,7 +407,7 @@ export default async function EventDetailPage({
                         {invites.length === 0 ? (
                             <tr>
                                 <td colSpan={4}>
-                                    <div className="admin-empty">NO INVITES SENT YET.</div>
+                                    <div className="admin-empty">No invites sent yet.</div>
                                 </td>
                             </tr>
                         ) : (
@@ -446,7 +442,7 @@ export default async function EventDetailPage({
                                                 {String(iv.rsvp_status).toUpperCase()}
                                             </span>
                                         ) : iv.opened_at ? (
-                                            <span className="admin-pill">OPENED</span>
+                                            <span className="admin-pill">Opened</span>
                                         ) : (
                                             '—'
                                         )}
@@ -458,11 +454,11 @@ export default async function EventDetailPage({
                 </table>
             </div>
 
-            {/* RSVPS */}
+            {/* RSVPs */}
             <div className="admin-page-head" style={{ marginTop: 24, borderBottom: 'none', paddingBottom: 0 }}>
                 <div>
                     <div className="admin-page-title" style={{ fontSize: 14 }}>
-                        RSVPS
+                        RSVPs
                     </div>
                     <div className="admin-page-sub">
                         {rsvps.length} TOTAL · MOST RECENT FIRST
@@ -474,17 +470,17 @@ export default async function EventDetailPage({
                 <table className="admin-table">
                     <thead>
                         <tr>
-                            <th>HANDLE</th>
-                            <th>NAME</th>
-                            <th>STATUS</th>
-                            <th>RSVPED</th>
+                            <th>Handle</th>
+                            <th>Name</th>
+                            <th>Status</th>
+                            <th>RSVP’d</th>
                         </tr>
                     </thead>
                     <tbody>
                         {rsvps.length === 0 ? (
                             <tr>
                                 <td colSpan={4}>
-                                    <div className="admin-empty">NO RSVPS YET.</div>
+                                    <div className="admin-empty">No RSVPs yet.</div>
                                 </td>
                             </tr>
                         ) : (
@@ -514,22 +510,22 @@ export default async function EventDetailPage({
                     </tbody>
                 </table>
             </div>
-        </>
+        </div>
     );
 }
 
 function ReadOnlyEventCard({ event, hostName }: { event: any; hostName: string }) {
     const rows: { label: string; value: string }[] = [
-        { label: 'HOSTED BY', value: hostName },
+        { label: 'Hosted by', value: hostName },
         {
-            label: 'STARTS',
+            label: 'Starts',
             value: formatEventTime(event.start_at, event.time_zone),
         },
         {
-            label: 'LOCATION',
+            label: 'Location',
             value: [event.location_name, event.location_detail].filter(Boolean).join(' · ') || '—',
         },
-        { label: 'DESCRIPTION', value: event.description || '—' },
+        { label: 'Description', value: event.description || '—' },
     ];
     return (
         <div

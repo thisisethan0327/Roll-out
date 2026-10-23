@@ -9,9 +9,9 @@ import { CancelAndRefundAllButton } from '@/components/CancelAndRefundAllButton'
 import { Check } from '@/components/icons';
 
 const VISIBILITY: { value: string; label: string }[] = [
-    { value: 'public', label: 'PUBLIC' },
-    { value: 'followers', label: 'FOLLOWERS' },
-    { value: 'private', label: 'PRIVATE' },
+    { value: 'public', label: 'Public' },
+    { value: 'followers', label: 'Followers' },
+    { value: 'private', label: 'Private' },
 ];
 
 const MANAGER_ROLES = new Set(['owner', 'admin', 'manager']);
@@ -102,8 +102,8 @@ export function EventEditForm({
 
     return (
         <form className="admin-form" action={onSubmit} style={{ maxWidth: 720 }}>
-            <SectionHeading>DETAILS</SectionHeading>
-            <label className="admin-form-label">TITLE</label>
+            <SectionHeading>Details</SectionHeading>
+            <label className="admin-form-label">Title</label>
             <input
                 name="title"
                 className="admin-form-input"
@@ -113,7 +113,7 @@ export function EventEditForm({
                 disabled={!canManage || pending}
             />
 
-            <label className="admin-form-label">DESCRIPTION</label>
+            <label className="admin-form-label">Description</label>
             <textarea
                 name="description"
                 className="admin-form-input"
@@ -123,8 +123,8 @@ export function EventEditForm({
                 disabled={!canManage || pending}
             />
 
-            <SectionHeading>LOCATION</SectionHeading>
-            <label className="admin-form-label">LOCATION NAME *</label>
+            <SectionHeading>Location</SectionHeading>
+            <label className="admin-form-label">Location name *</label>
             <input
                 name="location_name"
                 className="admin-form-input"
@@ -134,7 +134,7 @@ export function EventEditForm({
                 minLength={2}
             />
 
-            <label className="admin-form-label">LOCATION DETAIL</label>
+            <label className="admin-form-label">Location detail</label>
             <input
                 name="location_detail"
                 className="admin-form-input"
@@ -142,7 +142,7 @@ export function EventEditForm({
                 disabled={!canManage || pending}
             />
 
-            <label className="admin-form-label">GENERAL AREA (SHOWN ON PRIVATE LISTINGS)</label>
+            <label className="admin-form-label">General area (shown on private listings)</label>
             <input
                 name="area_label"
                 className="admin-form-input"
@@ -157,7 +157,7 @@ export function EventEditForm({
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <div>
-                    <label className="admin-form-label">LAT</label>
+                    <label className="admin-form-label">Lat</label>
                     <input
                         type="number"
                         step="any"
@@ -168,7 +168,7 @@ export function EventEditForm({
                     />
                 </div>
                 <div>
-                    <label className="admin-form-label">LNG</label>
+                    <label className="admin-form-label">Lng</label>
                     <input
                         type="number"
                         step="any"
@@ -180,11 +180,11 @@ export function EventEditForm({
                 </div>
             </div>
 
-            <SectionHeading>WHEN & CAPACITY</SectionHeading>
-            <label className="admin-form-label">START AT</label>
+            <SectionHeading>When & capacity</SectionHeading>
+            <label className="admin-form-label">Start at</label>
             <EventStartAtField valueIso={event.start_at} disabled={!canManage || pending} />
 
-            <label className="admin-form-label">CAPACITY</label>
+            <label className="admin-form-label">Capacity</label>
             <input
                 type="number"
                 min={1}
@@ -194,14 +194,14 @@ export function EventEditForm({
                 disabled={!canManage || pending}
             />
 
-            <SectionHeading>RSVP MODE & TIERS</SectionHeading>
+            <SectionHeading>RSVP mode & tiers</SectionHeading>
             <TierRowsEditor
                 initialMode={event.rsvp_mode === 'tiered' || event.rsvp_mode === 'paid' ? 'tiered' : 'free'}
                 initialTiers={tiers}
                 disabled={!canManage || pending}
             />
 
-            <SectionHeading>VISIBILITY</SectionHeading>
+            <SectionHeading>Visibility</SectionHeading>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 {VISIBILITY.map((v) => (
                     <label
@@ -227,7 +227,7 @@ export function EventEditForm({
                 ))}
             </div>
 
-            <SectionHeading>COVER</SectionHeading>
+            <SectionHeading>Cover</SectionHeading>
             <EventCoverPicker
                 mode="edit"
                 initialType={event.type}
@@ -235,8 +235,8 @@ export function EventEditForm({
                 disabled={!canManage || pending}
             />
 
-            <SectionHeading>TAGS</SectionHeading>
-            <label className="admin-form-label">TAGS (COMMA-SEPARATED)</label>
+            <SectionHeading>Tags</SectionHeading>
+            <label className="admin-form-label">Tags (comma-separated)</label>
             <input
                 name="tags"
                 className="admin-form-input"
@@ -247,7 +247,7 @@ export function EventEditForm({
             <div style={{ marginTop: 18, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 {canManage && (
                     <button type="submit" className="admin-form-btn" disabled={pending}>
-                        {savedFlash ? <>SAVED <Check /></> : 'SAVE CHANGES'}
+                        {savedFlash ? <>Saved <Check /></> : 'Save changes'}
                     </button>
                 )}
                 {canManage && !event.cancelled_at && isPaidEvent && (
@@ -264,7 +264,7 @@ export function EventEditForm({
                         onClick={onCancel}
                         disabled={pending}
                     >
-                        CANCEL EVENT
+                        Cancel event
                     </button>
                 )}
                 {canManage && event.cancelled_at && (
@@ -274,7 +274,7 @@ export function EventEditForm({
                         onClick={onUncancel}
                         disabled={pending}
                     >
-                        UNCANCEL EVENT
+                        Uncancel event
                     </button>
                 )}
                 {canDelete && (
@@ -284,7 +284,7 @@ export function EventEditForm({
                         onClick={onDelete}
                         disabled={pending}
                     >
-                        DELETE
+                        Delete
                     </button>
                 )}
             </div>

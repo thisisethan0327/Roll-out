@@ -103,10 +103,10 @@ export function CoHostSection({
             <div className="admin-page-head" style={{ borderBottom: 'none', paddingBottom: 0 }}>
                 <div>
                     <div className="admin-page-title" style={{ fontSize: 14 }}>
-                        CO-HOSTS
+                        Co-hosts
                     </div>
                     <div className="admin-page-sub">
-                        {isHost ? 'INVITE OTHER SHOPS TO RIDE ALONG' : 'YOU WERE INVITED TO CO-HOST'}
+                        {isHost ? 'Invite other shops to ride along' : 'You were invited to co-host'}
                     </div>
                 </div>
             </div>
@@ -137,28 +137,28 @@ export function CoHostSection({
                     </span>
                     <span style={{ display: 'flex', gap: 6, marginLeft: 'auto' }}>
                         <button className="admin-action-btn" disabled={pending} onClick={() => doRespond(true)}>
-                            ACCEPT
+                            Accept
                         </button>
                         <button
                             className="admin-action-btn danger"
                             disabled={pending}
                             onClick={() => doRespond(false)}
                         >
-                            DECLINE
+                            Decline
                         </button>
                     </span>
                 </div>
             )}
             {!isHost && myStatus === 'accepted' && (
                 <div className="admin-pill neon" style={{ marginTop: 8 }}>
-                    YOU ARE CO-HOSTING THIS EVENT
+                    You are co-hosting this event
                 </div>
             )}
             {!isHost && myStatus === 'declined' && (
                 <div style={{ marginTop: 8, display: 'flex', gap: 8, alignItems: 'center' }}>
-                    <span className="admin-pill warn">DECLINED</span>
+                    <span className="admin-pill warn">Declined</span>
                     <button className="admin-action-btn muted" disabled={pending} onClick={() => doRespond(true)}>
-                        RECONSIDER — ACCEPT
+                        Reconsider — accept
                     </button>
                 </div>
             )}
@@ -182,7 +182,7 @@ export function CoHostSection({
                             boxSizing: 'border-box',
                         }}
                     />
-                    {searching && <div className="admin-page-sub" style={{ marginTop: 6 }}>SEARCHING…</div>}
+                    {searching && <div className="admin-page-sub" style={{ marginTop: 6 }}>Searching…</div>}
                     {candidates.length > 0 && (
                         <div
                             style={{
@@ -211,7 +211,7 @@ export function CoHostSection({
                                         disabled={pending}
                                         onClick={() => doInvite(c.id)}
                                     >
-                                        INVITE
+                                        Invite
                                     </button>
                                 </div>
                             ))}
@@ -225,16 +225,16 @@ export function CoHostSection({
                 <table className="admin-table">
                     <thead>
                         <tr>
-                            <th>SHOP</th>
-                            <th>STATUS</th>
-                            {isHost && <th style={{ textAlign: 'right' }}>ACTIONS</th>}
+                            <th>Shop</th>
+                            <th>Status</th>
+                            {isHost && <th style={{ textAlign: 'right' }}>Actions</th>}
                         </tr>
                     </thead>
                     <tbody>
                         {cohosts.length === 0 ? (
                             <tr>
                                 <td colSpan={isHost ? 3 : 2}>
-                                    <div className="admin-empty">NO CO-HOSTS YET.</div>
+                                    <div className="admin-empty">No co-hosts yet.</div>
                                 </td>
                             </tr>
                         ) : (
@@ -255,7 +255,7 @@ export function CoHostSection({
                                                 disabled={pending}
                                                 onClick={() => doRemove(c.shopId)}
                                             >
-                                                REMOVE
+                                                Remove
                                             </button>
                                         </td>
                                     )}

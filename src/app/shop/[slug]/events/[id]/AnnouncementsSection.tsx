@@ -20,8 +20,8 @@ export function AnnouncementsSection({ eventId, announcements }: { eventId: stri
         <div style={{ marginTop: 24 }}>
             <div className="admin-page-head" style={{ borderBottom: 'none', paddingBottom: 0 }}>
                 <div>
-                    <div className="admin-page-title" style={{ fontSize: 14 }}>ANNOUNCEMENTS</div>
-                    <div className="admin-page-sub">NOTICES ON THE EVENT PAGE · SHOWN FOR THE DATES YOU SET</div>
+                    <div className="admin-page-title" style={{ fontSize: 14 }}>Announcements</div>
+                    <div className="admin-page-sub">Notices on the event page · shown for the dates you set</div>
                 </div>
             </div>
             <AnnouncementManager announcements={announcements} actions={actions} fixedEventId={eventId} />

@@ -90,15 +90,15 @@ export function VerificationSection({ eventId, shopId, slug, view }: { eventId: 
     return (
         <>
             <Head
-                title="ROLLOUT VERIFICATION"
+                title="Rollout verification"
                 sub={
                     view.status === 'verified'
-                        ? `VERIFIED ${stamp(view.decidedAt)} · ${view.coinEnabled && view.coin ? `COIN ON · ${view.coin.issued} / ${view.coin.cap} MINTED` : 'COIN NOT ENABLED YET'}`
+                        ? `Verified ${stamp(view.decidedAt)} · ${view.coinEnabled && view.coin ? `coin on · ${view.coin.issued} / ${view.coin.cap} minted` : 'coin not enabled yet'}`
                         : view.status === 'requested'
-                          ? `REQUESTED ${stamp(view.requestedAt)} · AN ADMIN REVIEWS IT`
+                          ? `Requested ${stamp(view.requestedAt)} · an admin reviews it`
                           : view.status === 'revoked'
-                            ? `REVOKED ${stamp(view.decidedAt)} · YOU CAN REQUEST AGAIN`
-                            : 'VERIFIED EVENTS AWARD XP AT CHECK-IN AND CAN ISSUE A COIN'
+                            ? `Revoked ${stamp(view.decidedAt)} · you can request again`
+                            : 'Verified events award XP at check-in and can issue a coin'
                 }
             />
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', margin: '8px 0 12px' }}>
@@ -128,7 +128,7 @@ export function VerificationSection({ eventId, shopId, slug, view }: { eventId: 
                     ))}
                     <div>
                         <button type="submit" className="admin-action-btn" disabled={pending}>
-                            {pending ? 'SENDING…' : 'REQUEST VERIFICATION'}
+                            {pending ? 'Sending…' : 'Request verification'}
                         </button>
                     </div>
                 </form>
@@ -140,7 +140,7 @@ export function VerificationSection({ eventId, shopId, slug, view }: { eventId: 
                     {typeof view.attestations.artwork_url === 'string' ? (
                         <>
                             {' · '}
-                            <a className="text-link" href={view.attestations.artwork_url} target="_blank" rel="noreferrer">COIN ARTWORK</a>
+                            <a className="text-link" href={view.attestations.artwork_url} target="_blank" rel="noreferrer">Coin artwork</a>
                         </>
                     ) : null}
                 </div>
@@ -153,40 +153,40 @@ export function VerificationSection({ eventId, shopId, slug, view }: { eventId: 
                             {view.qrSvg ? <div style={{ width: '100%', height: '100%' }} dangerouslySetInnerHTML={{ __html: view.qrSvg }} /> : null}
                         </div>
                         <div>
-                            <div className="admin-page-sub">DOOR CODE · MEMBERS SCAN OR TYPE IT IN THE APP</div>
+                            <div className="admin-page-sub">Door code · members scan or type it in the app</div>
                             <div style={{ fontFamily: 'var(--font-display)', fontSize: 34, letterSpacing: '6px', margin: '6px 0 10px', wordBreak: 'break-all' }}>
-                                {view.checkinCode ?? '— NO CODE YET —'}
+                                {view.checkinCode ?? '— no code yet —'}
                             </div>
                             <button type="button" className="admin-action-btn muted" onClick={rotate} disabled={pending}>
-                                {pending ? 'WORKING…' : view.checkinCode ? 'ROTATE CODE' : 'CREATE CODE'}
+                                {pending ? 'Working…' : view.checkinCode ? 'Rotate code' : 'Create code'}
                             </button>
                             {view.coin?.artworkUrl ? (
-                                <a className="text-link" href={view.coin.artworkUrl} target="_blank" rel="noreferrer" style={{ marginLeft: 12 }}>COIN ARTWORK</a>
+                                <a className="text-link" href={view.coin.artworkUrl} target="_blank" rel="noreferrer" style={{ marginLeft: 12 }}>Coin artwork</a>
                             ) : null}
                         </div>
                     </div>
 
-                    <Head title="CHECKED IN" sub={`${view.checkins.length} AT THE DOOR · ${waiting.length} GOING, NOT YET IN`} />
+                    <Head title="Checked in" sub={`${view.checkins.length} at the door · ${waiting.length} going, not yet in`} />
                     <div className="admin-table-wrap">
                         <table className="admin-table">
                             <thead>
                                 <tr>
-                                    <th>HANDLE</th>
-                                    <th>NAME</th>
-                                    <th>HOW</th>
-                                    <th>COIN</th>
-                                    <th>TIME</th>
+                                    <th>Handle</th>
+                                    <th>Name</th>
+                                    <th>How</th>
+                                    <th>Coin</th>
+                                    <th>Time</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {view.checkins.length === 0 ? (
-                                    <tr><td colSpan={5}><div className="admin-empty">NOBODY HAS CHECKED IN YET.</div></td></tr>
+                                    <tr><td colSpan={5}><div className="admin-empty">Nobody has checked in yet.</div></td></tr>
                                 ) : (
                                     view.checkins.map((c) => (
                                         <tr key={c.profileId}>
                                             <td>{c.handle ? <span className="text-link">@{c.handle}</span> : '—'}</td>
                                             <td>{c.displayName ?? '—'}</td>
-                                            <td><span className="admin-pill">{c.method.replace('_', ' ').toUpperCase()}{c.arrivedAt ? ' · ARRIVED' : ''}</span></td>
+                                            <td><span className="admin-pill">{c.method.replace('_', ' ').charAt(0).toUpperCase() + c.method.replace('_', ' ').slice(1)}{c.arrivedAt ? ' · arrived' : ''}</span></td>
                                             <td>{c.serial ? <span className="admin-pill gold">#{c.serial}</span> : '—'}</td>
                                             <td>{stamp(c.at)}</td>
                                         </tr>
@@ -198,14 +198,14 @@ export function VerificationSection({ eventId, shopId, slug, view }: { eventId: 
 
                     {waiting.length > 0 && (
                         <>
-                            <Head title="AT THE DOOR" sub="GOING BUT NOT CHECKED IN · CHECK THEM IN BY HAND IF THEIR PHONE FAILS" />
+                            <Head title="At the door" sub="Going but not checked in · check them in by hand if their phone fails" />
                             <div className="admin-table-wrap">
                                 <table className="admin-table">
                                     <thead>
                                         <tr>
-                                            <th>HANDLE</th>
-                                            <th>NAME</th>
-                                            <th style={{ textAlign: 'right' }}>ACTION</th>
+                                            <th>Handle</th>
+                                            <th>Name</th>
+                                            <th style={{ textAlign: 'right' }}>Action</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -215,7 +215,7 @@ export function VerificationSection({ eventId, shopId, slug, view }: { eventId: 
                                                 <td>{g.displayName ?? '—'}</td>
                                                 <td style={{ textAlign: 'right' }}>
                                                     <button type="button" className="admin-action-btn" disabled={pending} onClick={() => checkIn(g.profileId, g.handle)}>
-                                                        CHECK IN
+                                                        Check in
                                                     </button>
                                                 </td>
                                             </tr>
