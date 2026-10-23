@@ -155,7 +155,7 @@ export function EventEditForm({
                 Shown instead of the venue when the event is private or followers-only. Leave blank to show &ldquo;Location shared with invitees&rdquo;.
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 12 }}>
                 <div>
                     <label className="admin-form-label">Lat</label>
                     <input
@@ -163,6 +163,7 @@ export function EventEditForm({
                         step="any"
                         name="lat"
                         className="admin-form-input"
+                        style={{ width: '100%' }}
                         defaultValue={event.lat ?? ''}
                         disabled={!canManage || pending}
                     />
@@ -174,6 +175,7 @@ export function EventEditForm({
                         step="any"
                         name="lng"
                         className="admin-form-input"
+                        style={{ width: '100%' }}
                         defaultValue={event.lng ?? ''}
                         disabled={!canManage || pending}
                     />

@@ -163,7 +163,7 @@ export function TierRowsEditor({
                                 ) : null}
                             </div>
 
-                            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 12 }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr)', gap: 12 }}>
                                 <div>
                                     <label className="admin-form-label">Name *</label>
                                     <input
@@ -210,7 +210,7 @@ export function TierRowsEditor({
                                 disabled={disabled}
                             />
 
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, alignItems: 'end' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 12, alignItems: 'end' }}>
                                 <div>
                                     <label className="admin-form-label">Package</label>
                                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -253,7 +253,7 @@ export function TierRowsEditor({
                                 ) : null}
                             </div>
 
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 12, alignItems: 'end' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: 12, alignItems: 'end' }}>
                                 <div>
                                     <label className="admin-form-label">Medusa product ID (optional)</label>
                                     <input

@@ -181,7 +181,7 @@ export function CustomerPicker({
                 disabled={disabled}
                 onChange={(e) => onChange({ ...value, name: e.target.value })}
             />
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 8 }}>
                 <input
                     className="admin-form-input"
                     type="email"

@@ -167,7 +167,7 @@ export function VehiclePicker({
                 </div>
             )}
 
-            <div style={{ display: 'grid', gridTemplateColumns: '90px 1fr 1fr', gap: 8 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '90px minmax(0, 1fr) minmax(0, 1fr)', gap: 8 }}>
                 <input
                     className="admin-form-input"
                     placeholder="Year"
@@ -190,7 +190,7 @@ export function VehiclePicker({
                     onChange={(e) => field('model', e.target.value)}
                 />
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 8 }}>
                 <input
                     className="admin-form-input"
                     placeholder="Trim"

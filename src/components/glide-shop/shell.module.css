@@ -828,6 +828,10 @@
 }
 
 /* Tables: Glide's quiet table in a card. */
+.shell :global(.admin-two-col) {
+  /* The legacy 380px minimum ran past a phone's content column. */
+  grid-template-columns: repeat(auto-fit, minmax(min(380px, 100%), 1fr));
+}
 .shell :global(.admin-table-wrap) {
   border: 0;
   border-radius: 24px;
