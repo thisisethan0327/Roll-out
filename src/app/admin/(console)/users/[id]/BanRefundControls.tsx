@@ -14,6 +14,10 @@ import {
     runPendingBanRefunds,
     type RefundActionResult,
 } from './refund-actions';
+import { Undo2 } from 'lucide-react';
+import { adminStyles as a, sentence } from '@/components/glide-admin/parts';
+
+const ic = { size: 15, strokeWidth: 2, 'aria-hidden': true } as const;
 
 export type LedgerRow = {
     id: string;
@@ -87,7 +91,7 @@ export function BanRefundControls({
     };
 
     return (
-        <div style={{ display: 'grid', gap: 10 }}>
+        <div className={a.stack}>
             {banned && banId && runnableCount > 0 && (
                 <div>
                     <button
@@ -99,23 +103,32 @@ export function BanRefundControls({
                             }
                         }}
                     >
-                        {pending ? 'RUNNING…' : `RUN PENDING REFUNDS (${runnableCount})`}
+                        <Undo2 {...ic} className={a.dangerIc} />
+                        {pending ? 'Running…' : `Run pending refunds (${runnableCount})`}
                     </button>
                 </div>
             )}
-            {msg && <div style={{ fontSize: 12 }}>{msg}</div>}
-            {err && <div style={{ color: 'var(--warn)', fontSize: 12 }}>{err}</div>}
+            {msg && (
+                <div className={a.note} role="status">
+                    {msg}
+                </div>
+            )}
+            {err && (
+                <div className="admin-login-error" role="alert">
+                    {err}
+                </div>
+            )}
             <div className="admin-table-wrap">
                 <table className="admin-table">
                     <thead>
                         <tr>
-                            <th>EVENT</th>
-                            <th>KIND</th>
-                            <th>AMOUNT</th>
-                            <th>STATUS</th>
-                            <th>TRIES</th>
-                            <th>DETAIL</th>
-                            <th style={{ textAlign: 'right' }}>ACTIONS</th>
+                            <th>Event</th>
+                            <th>Kind</th>
+                            <th>Amount</th>
+                            <th>Status</th>
+                            <th>Tries</th>
+                            <th>Detail</th>
+                            <th style={{ textAlign: 'right' }}>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -133,20 +146,20 @@ export function BanRefundControls({
                                             '—'
                                         )}
                                         <div className="admin-handle">
-                                            {r.orderId ? `ORDER …${r.orderId.slice(-6)} · ` : ''}
+                                            {r.orderId ? `Order …${r.orderId.slice(-6)} · ` : ''}
                                             {stamp(r.createdAt)}
                                         </div>
                                     </td>
-                                    <td>{r.kind === 'order' ? 'ORDER' : 'SEAT'}</td>
-                                    <td>{r.amountCents != null ? `$${(r.amountCents / 100).toFixed(2)}` : '—'}</td>
+                                    <td>{r.kind === 'order' ? 'Order' : 'Seat'}</td>
+                                    <td className={a.num}>{r.amountCents != null ? `$${(r.amountCents / 100).toFixed(2)}` : '—'}</td>
                                     <td>
-                                        <span className={PILL[r.status] ?? 'admin-pill'}>{r.status.toUpperCase()}</span>
+                                        <span className={PILL[r.status] ?? 'admin-pill'}>{sentence(r.status)}</span>
                                     </td>
                                     <td>{r.attempts}</td>
                                     <td style={{ maxWidth: 320, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
-                                        {r.error ? <div style={{ color: 'var(--warn)' }}>{r.error}</div> : null}
+                                        {r.error ? <div style={{ fontWeight: 600 }}>{r.error}</div> : null}
                                         {r.note ? <div>{r.note}</div> : null}
-                                        {r.requestedAt ? <div className="admin-handle">REQUESTED {stamp(r.requestedAt)}</div> : null}
+                                        {r.requestedAt ? <div className="admin-handle">Requested {stamp(r.requestedAt)}</div> : null}
                                     </td>
                                     <td style={{ textAlign: 'right' }}>
                                         <div style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
@@ -156,7 +169,7 @@ export function BanRefundControls({
                                                     disabled={pending}
                                                     onClick={() => run(() => runBanRefundRow(r.id))}
                                                 >
-                                                    RETRY
+                                                    Retry
                                                 </button>
                                             )}
                                             {(r.status === 'requested' || r.status === 'skipped') && banned && (
@@ -168,7 +181,7 @@ export function BanRefundControls({
                                                         run(() => runBanRefundRow(r.id))
                                                     }
                                                 >
-                                                    REFUND
+                                                    <Undo2 {...ic} className={a.dangerIc} /> Refund
                                                 </button>
                                             )}
                                             {r.status === 'withheld' && banned && (
@@ -180,7 +193,7 @@ export function BanRefundControls({
                                                         run(() => releaseBanRefundRow(r.id))
                                                     }
                                                 >
-                                                    RELEASE
+                                                    <Undo2 {...ic} className={a.dangerIc} /> Release
                                                 </button>
                                             )}
                                             {['requested', 'pending', 'withheld', 'failed', 'skipped'].includes(r.status) && (
@@ -189,7 +202,7 @@ export function BanRefundControls({
                                                     disabled={pending}
                                                     onClick={() => decline(r)}
                                                 >
-                                                    DECLINE
+                                                    Decline
                                                 </button>
                                             )}
                                         </div>

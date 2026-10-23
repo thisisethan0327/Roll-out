@@ -1,5 +1,6 @@
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { ShopRow } from './ShopRow';
+import { AdminHead } from '@/components/glide-admin/parts';
 
 export const metadata = { title: 'Shops' };
 
@@ -45,33 +46,25 @@ export default async function ShopsPage() {
     const shops = await listShops();
     return (
         <>
-            <div className="admin-page-head">
-                <div>
-                    <div className="admin-page-title">SHOPS</div>
-                    <div className="admin-page-sub">
-                        {shops.length} TOTAL · MANAGE PAGE PROFILES + STAFF
-                    </div>
-                </div>
-            </div>
-
+            <AdminHead title="Shops" sub={`${shops.length} total. Manage page profiles and staff.`} />
             <div className="admin-table-wrap">
                 <table className="admin-table">
                     <thead>
                         <tr>
                             <th>ID</th>
-                            <th>SLUG</th>
-                            <th>NAME</th>
-                            <th>PAGE PROFILE</th>
-                            <th>STAFF</th>
-                            <th>VERIFIED</th>
-                            <th style={{ textAlign: 'right' }}>ACTIONS</th>
+                            <th>Slug</th>
+                            <th>Name</th>
+                            <th>Page profile</th>
+                            <th>Staff</th>
+                            <th>Verified</th>
+                            <th style={{ textAlign: 'right' }}>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         {shops.length === 0 ? (
                             <tr>
                                 <td colSpan={7}>
-                                    <div className="admin-empty">NO SHOPS YET</div>
+                                    <div className="admin-empty">No shops yet.</div>
                                 </td>
                             </tr>
                         ) : (

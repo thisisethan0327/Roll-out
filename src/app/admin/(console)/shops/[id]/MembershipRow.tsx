@@ -1,6 +1,8 @@
 'use client';
 import { useTransition } from 'react';
 import { removeMembership, setMembershipRole } from '../actions';
+import { UserMinus } from 'lucide-react';
+import { adminStyles as a, sentence } from '@/components/glide-admin/parts';
 
 const ROLES = ['owner', 'admin', 'manager', 'installer', 'staff'] as const;
 
@@ -43,32 +45,25 @@ export function MembershipRow({ m, shopId }: { m: any; shopId: number }) {
                     defaultValue={m.role}
                     onChange={onChangeRole}
                     disabled={pending}
-                    style={{
-                        background: 'var(--bg-2)',
-                        color: 'var(--text)',
-                        border: '1px solid var(--line-mid)',
-                        padding: '4px 8px',
-                        fontFamily: 'var(--font-display)',
-                        fontWeight: 700,
-                        fontSize: 10,
-                        letterSpacing: 'var(--track-wider)',
-                    }}
+                    className="admin-form-input"
+                    aria-label={`Role for @${p?.handle ?? 'member'}`}
+                    style={{ width: 'auto', minWidth: 150, minHeight: 44 }}
                 >
                     {ROLES.map((r) => (
                         <option key={r} value={r}>
-                            {r.toUpperCase()}
+                            {sentence(r)}
                         </option>
                     ))}
                 </select>
             </td>
-            <td>{new Date(m.created_at).toISOString().slice(0, 10)}</td>
+            <td className={a.time}>{new Date(m.created_at).toISOString().slice(0, 10)}</td>
             <td style={{ textAlign: 'right' }}>
                 <button
                     className="admin-action-btn danger"
                     disabled={pending}
                     onClick={onRemove}
                 >
-                    REMOVE
+                    <UserMinus size={15} strokeWidth={2} aria-hidden="true" className={a.dangerIc} /> Remove
                 </button>
             </td>
         </tr>

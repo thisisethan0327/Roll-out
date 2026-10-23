@@ -1,6 +1,8 @@
 'use client';
 import { useState, useTransition } from 'react';
 import { actionReportWithTakedown, setReportStatus, type ReportStatus } from './actions';
+import { Trash2 } from 'lucide-react';
+import { adminStyles as a } from '@/components/glide-admin/parts';
 
 export function ReportActions({
     reportId,
@@ -42,44 +44,46 @@ export function ReportActions({
 
     if (!open) {
         return (
-            <div style={{ display: 'grid', gap: 6, justifyItems: 'end' }}>
+            <div className={a.actRow}>
                 <button className="admin-action-btn muted" disabled={pending} onClick={() => setTo('pending')}>
-                    {pending ? '…' : 'REOPEN'}
+                    {pending ? 'Reopening…' : 'Reopen'}
                 </button>
-                {err && <div style={{ color: 'var(--warn)', fontSize: 12 }}>{err}</div>}
+                {err && <div className="admin-login-error" role="alert">{err}</div>}
             </div>
         );
     }
 
     return (
-        <div style={{ display: 'grid', gap: 8 }}>
+        <div className={a.stack} style={{ gap: 10 }}>
             <input
                 className="admin-form-input"
                 placeholder="Note (optional)"
+                aria-label="Moderation note (optional)"
                 maxLength={500}
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
                 disabled={pending}
             />
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            <div className={a.actRow}>
                 {status === 'pending' && (
                     <button className="admin-action-btn muted" disabled={pending} onClick={() => setTo('reviewing')}>
-                        MARK REVIEWING
+                        Mark reviewing
                     </button>
                 )}
                 <button className="admin-action-btn muted" disabled={pending} onClick={() => setTo('dismissed')}>
-                    DISMISS
+                    Dismiss
                 </button>
                 <button className="admin-action-btn" disabled={pending} onClick={() => setTo('actioned')}>
-                    ACTIONED
+                    Actioned
                 </button>
                 {canTakedown && (
                     <button className="admin-action-btn danger" disabled={pending} onClick={removeAndAction}>
-                        ACTIONED + REMOVE {targetType.toUpperCase()}
+                        <Trash2 size={15} strokeWidth={2} aria-hidden="true" className={a.dangerIc} /> Actioned and remove{' '}
+                        {targetType}
                     </button>
                 )}
             </div>
-            {err && <div style={{ color: 'var(--warn)', fontSize: 12 }}>{err}</div>}
+            {err && <div className="admin-login-error" role="alert">{err}</div>}
         </div>
     );
 }

@@ -1,7 +1,8 @@
 import Link from 'next/link';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { EventActions } from './EventActions';
-import { ChevronRight } from '@/components/icons';
+import { ChevronRight } from 'lucide-react';
+import { AdminHead, adminStyles as a } from '@/components/glide-admin/parts';
 
 export const metadata = { title: 'Events' };
 
@@ -27,50 +28,38 @@ export default async function EventsPage() {
     const items = await loadEvents();
     return (
         <>
-            <div className="admin-page-head">
-                <div>
-                    <div className="admin-page-title">EVENTS</div>
-                    <div className="admin-page-sub">
-                        ALL EVENTS · {items.length} SHOWN (LAST 200)
-                    </div>
-                </div>
-            </div>
-
+            <AdminHead title="Events" sub={`All events, newest first. ${items.length} shown (last 200).`} />
             <div className="admin-table-wrap">
                 <table className="admin-table">
                     <thead>
                         <tr>
-                            <th>CODE</th>
-                            <th>TITLE</th>
-                            <th>HOST</th>
-                            <th>SHOP</th>
-                            <th>WHEN</th>
-                            <th>RSVPS</th>
-                            <th>FLAGS</th>
-                            <th style={{ textAlign: 'right' }}>ACTIONS</th>
+                            <th>Code</th>
+                            <th>Title</th>
+                            <th>Host</th>
+                            <th>Shop</th>
+                            <th>When</th>
+                            <th>RSVPs</th>
+                            <th>Flags</th>
+                            <th style={{ textAlign: 'right' }}>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         {items.length === 0 ? (
                             <tr>
                                 <td colSpan={8}>
-                                    <div className="admin-empty">NO EVENTS</div>
+                                    <div className="admin-empty">No events yet.</div>
                                 </td>
                             </tr>
                         ) : (
                             items.map((e: any) => (
                                 <tr key={e.id}>
                                     <td>
-                                        <Link href={`/admin/events/${e.id}`} className="text-link">
+                                        <Link href={`/admin/events/${e.id}`} className={`text-link ${a.num}`}>
                                             {e.code}
                                         </Link>
                                     </td>
                                     <td>
-                                        <Link
-                                            href={`/admin/events/${e.id}`}
-                                            className="text-link"
-                                            style={{ fontWeight: 700 }}
-                                        >
+                                        <Link href={`/admin/events/${e.id}`} className="text-link">
                                             {e.title}
                                         </Link>
                                         <div className="admin-handle">{e.location_name}</div>
@@ -83,7 +72,7 @@ export default async function EventsPage() {
                                                 </a>
                                                 {e.host.kind === 'shop_page' && (
                                                     <span className="admin-pill gold" style={{ marginLeft: 6 }}>
-                                                        SHOP
+                                                        Shop
                                                     </span>
                                                 )}
                                             </>
@@ -96,25 +85,25 @@ export default async function EventsPage() {
                                             </a>
                                         )}
                                     </td>
-                                    <td>
+                                    <td className={a.time}>
                                         {new Date(e.start_at).toISOString().slice(0, 16).replace('T', ' ')}
                                     </td>
-                                    <td>
+                                    <td className={a.num}>
                                         {e.attending_count}
                                         {e.capacity ? ` / ${e.capacity}` : ''}
                                     </td>
                                     <td>
-                                        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                                            {e.visibility === 'private' && <span className="admin-pill warn">PRIVATE</span>}
-                                            {e.visibility === 'followers' && <span className="admin-pill">FOLLOWERS</span>}
-                                            {e.is_official && <span className="admin-pill gold">OFFICIAL</span>}
-                                            {e.cancelled_at && <span className="admin-pill warn">CANCELLED</span>}
+                                        <div className={a.chipRow}>
+                                            {e.visibility === 'private' && <span className="admin-pill warn">Private</span>}
+                                            {e.visibility === 'followers' && <span className="admin-pill">Followers</span>}
+                                            {e.is_official && <span className="admin-pill gold">Official</span>}
+                                            {e.cancelled_at && <span className="admin-pill warn">Cancelled</span>}
                                         </div>
                                     </td>
                                     <td style={{ textAlign: 'right' }}>
                                         <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
                                             <Link href={`/admin/events/${e.id}`} className="admin-action-btn">
-                                                OPEN <ChevronRight />
+                                                Open <ChevronRight size={15} strokeWidth={2} aria-hidden="true" />
                                             </Link>
                                             {!e.cancelled_at && (
                                                 <EventActions

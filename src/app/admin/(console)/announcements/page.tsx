@@ -1,6 +1,7 @@
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { ANNOUNCEMENT_COLUMNS, rowToAnnouncement, sortAnnouncements, type Announcement } from '@/lib/announcements-core';
 import { AdminAnnouncements } from './AdminAnnouncements';
+import { AdminHead } from '@/components/glide-admin/parts';
 
 export const metadata = { title: 'Announcements' };
 
@@ -43,14 +44,9 @@ export default async function AnnouncementsPage() {
     const ordered = [...list.filter((x) => x.scope === 'site'), ...sortAnnouncements(list.filter((x) => x.scope === 'event'))];
     return (
         <>
-            <div className="admin-page-head">
-                <div>
-                    <div className="admin-page-title">ANNOUNCEMENTS</div>
-                    <div className="admin-page-sub">SITE-WIDE AND EVENT NOTICES · NO DEPLOY NEEDED</div>
-                </div>
-            </div>
+            <AdminHead title="Announcements" sub="Site-wide and event notices. No deploy needed." />
             {!ready ? (
-                <div className="admin-empty">ANNOUNCEMENTS TABLE NOT AVAILABLE YET — APPLY MIGRATION 090</div>
+                <div className="admin-empty">The announcements table is not available yet. Apply migration 090.</div>
             ) : (
                 <AdminAnnouncements announcements={ordered} eventOptions={eventOptions} eventTitles={eventTitles} />
             )}

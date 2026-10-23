@@ -14,7 +14,10 @@ import Link from 'next/link';
 import { requirePlatformAdmin } from '@/lib/auth-guard';
 import { AUDIT_PAGE_SIZE, loadAuditPage } from '@/lib/admin-audit';
 import { AdminAuditTable } from '@/components/AdminAuditTable';
-import { ChevronLeft, ChevronRight } from '@/components/icons';
+import { ChevronLeft, ChevronRight, Filter } from 'lucide-react';
+import { AdminHead } from '@/components/glide-admin/parts';
+
+const ic = { size: 15, strokeWidth: 2, 'aria-hidden': true } as const;
 
 export const metadata = { title: 'Activity Log' };
 export const dynamic = 'force-dynamic';
@@ -48,27 +51,23 @@ export default async function AdminAuditPage({ searchParams }: { searchParams: P
 
     return (
         <>
-            <div className="admin-page-head">
-                <div>
-                    <div className="admin-page-title">ACTIVITY LOG</div>
-                    <div className="admin-page-sub">
-                        {result.missing
-                            ? 'NOT SET UP YET'
-                            : `ROLLOUT ADMIN ACTIONS · NEWEST FIRST · ${result.rows.length} SHOWN${pageNum > 0 ? ` · PAGE ${pageNum + 1}` : ''}`}
-                        {' · VISIBLE TO ROLLOUT ADMINS ONLY'}
-                    </div>
-                </div>
-            </div>
-
+            <AdminHead
+                title="Activity log"
+                sub={
+                    result.missing
+                        ? 'Not set up yet. Visible to Rollout admins only.'
+                        : `Rollout admin actions, newest first. ${result.rows.length} shown${pageNum > 0 ? `, page ${pageNum + 1}` : ''}. Visible to Rollout admins only.`
+                }
+            />
             {result.missing ? (
                 <div className="admin-empty">
-                    NO ACTIVITY YET · THE LOG STARTS RECORDING ONCE MIGRATION 092 IS APPLIED
+                    No activity yet. The log starts recording once migration 092 is applied.
                 </div>
             ) : (
                 <>
-                    <form className="admin-search" action="/admin/audit" style={{ flexWrap: 'wrap' }}>
+                    <form className="admin-search" action="/admin/audit" aria-label="Filter the activity log">
                         <select name="action" defaultValue={action} className="admin-form-input" aria-label="Action">
-                            <option value="">ALL ACTIONS</option>
+                            <option value="">All actions</option>
                             {action && !result.actions.includes(action) && <option value={action}>{action}</option>}
                             {result.actions.map((a) => (
                                 <option key={a} value={a}>
@@ -77,7 +76,7 @@ export default async function AdminAuditPage({ searchParams }: { searchParams: P
                             ))}
                         </select>
                         <select name="type" defaultValue={type} className="admin-form-input" aria-label="Subject type">
-                            <option value="">ALL SUBJECTS</option>
+                            <option value="">All subjects</option>
                             {type && !result.subjectTypes.includes(type) && <option value={type}>{type}</option>}
                             {result.subjectTypes.map((t) => (
                                 <option key={t} value={t}>
@@ -89,41 +88,41 @@ export default async function AdminAuditPage({ searchParams }: { searchParams: P
                             name="actor"
                             defaultValue={actor}
                             className="admin-search-input"
-                            placeholder="ADMIN @HANDLE"
+                            placeholder="Admin @handle"
                             aria-label="Admin handle"
                         />
                         <button type="submit" className="admin-action-btn">
-                            FILTER <ChevronRight />
+                            <Filter {...ic} /> Filter
                         </button>
                         {filtered && (
-                            <Link href="/admin/audit" className="admin-action-btn muted" style={{ textDecoration: 'none' }}>
-                                CLEAR
+                            <Link href="/admin/audit" className="admin-action-btn muted">
+                                Clear
                             </Link>
                         )}
                     </form>
 
                     {result.actorNotFound ? (
-                        <div className="admin-empty">NO MEMBER WITH THE HANDLE @{actor.replace(/^@/, '').toUpperCase()}</div>
+                        <div className="admin-empty">No member has the handle @{actor.replace(/^@/, '')}.</div>
                     ) : (
                         <AdminAuditTable
                             result={result}
-                            emptyText={filtered ? 'NO MATCHING ACTIVITY' : 'NO ACTIVITY YET'}
+                            emptyText={filtered ? 'No activity matches these filters.' : 'No activity yet.'}
                         />
                     )}
 
                     {(pageNum > 0 || result.hasMore) && (
-                        <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+                        <nav className="admin-search" aria-label="Pages">
                             {pageNum > 0 && (
-                                <Link href={qs(pageNum - 1)} className="admin-action-btn muted" style={{ textDecoration: 'none' }}>
-                                    <ChevronLeft /> NEWER
+                                <Link href={qs(pageNum - 1)} className="admin-action-btn muted">
+                                    <ChevronLeft {...ic} /> Newer
                                 </Link>
                             )}
                             {result.hasMore && (
-                                <Link href={qs(pageNum + 1)} className="admin-action-btn" style={{ textDecoration: 'none' }}>
-                                    OLDER <ChevronRight /> ({AUDIT_PAGE_SIZE} PER PAGE)
+                                <Link href={qs(pageNum + 1)} className="admin-action-btn">
+                                    Older ({AUDIT_PAGE_SIZE} per page) <ChevronRight {...ic} />
                                 </Link>
                             )}
-                        </div>
+                        </nav>
                     )}
                 </>
             )}

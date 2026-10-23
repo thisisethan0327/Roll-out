@@ -3,6 +3,8 @@ import { useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { forceCancelEvent } from '../moderation-actions';
 import { CancelAndRefundAllButton } from '@/components/CancelAndRefundAllButton';
+import { CalendarX } from 'lucide-react';
+import { adminStyles as a } from '@/components/glide-admin/parts';
 
 export function EventActions({
     eventId,
@@ -41,7 +43,7 @@ export function EventActions({
 
     return (
         <button className="admin-action-btn danger" disabled={pending} onClick={onCancel}>
-            CANCEL
+            <CalendarX size={15} strokeWidth={2} aria-hidden="true" className={a.dangerIc} /> Cancel event
         </button>
     );
 }

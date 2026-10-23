@@ -1,6 +1,8 @@
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { requirePlatformAdmin } from '@/lib/auth-guard';
 import { RevokeButton } from './RevokeButton';
+import { TriangleAlert } from 'lucide-react';
+import { AdminHead, SectionHead, adminStyles as st } from '@/components/glide-admin/parts';
 
 export const metadata = { title: 'Permissions' };
 
@@ -53,41 +55,31 @@ export default async function PermissionsPage() {
 
     return (
         <>
-            <div className="admin-page-head">
-                <div>
-                    <div className="admin-page-title">PERMISSIONS</div>
-                    <div className="admin-page-sub">
-                        {failed
-                            ? 'COULD NOT READ GRANTS — THE COUNTS BELOW ARE NOT TRUSTWORTHY'
-                            : 'PLATFORM-WIDE ROLE GRANTS · ADD VIA THE USERS TABLE'}
-                    </div>
+            <AdminHead title="Permissions" sub="Platform-wide role grants. Add them from the Users table." />
+            {failed && (
+                <div className="admin-login-error" role="alert">
+                    <TriangleAlert size={18} strokeWidth={2} aria-hidden="true" />
+                    Could not read the grants. The counts below are not trustworthy.
                 </div>
-            </div>
+            )}
 
-            <div className="admin-page-head" style={{ marginTop: 0, paddingBottom: 0, borderBottom: 'none' }}>
-                <div>
-                    <div className="admin-page-title" style={{ fontSize: 14 }}>
-                        PLATFORM ADMINS
-                    </div>
-                    <div className="admin-page-sub">{platformAdmins.length} GRANTED · GOD MODE</div>
-                </div>
-            </div>
-            <div className="admin-table-wrap" style={{ marginBottom: 32 }}>
+            <SectionHead title="Platform admins" sub={`${platformAdmins.length} granted. God mode.`} />
+            <div className="admin-table-wrap">
                 <table className="admin-table">
                     <thead>
                         <tr>
-                            <th>HANDLE</th>
-                            <th>NAME</th>
-                            <th>GRANTED</th>
-                            <th>NOTES</th>
-                            <th style={{ textAlign: 'right' }}>ACTIONS</th>
+                            <th>Handle</th>
+                            <th>Name</th>
+                            <th>Granted</th>
+                            <th>Notes</th>
+                            <th style={{ textAlign: 'right' }}>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         {platformAdmins.length === 0 ? (
                             <tr>
                                 <td colSpan={5}>
-                                    <div className="admin-empty">NONE</div>
+                                    <div className="admin-empty">No platform admins.</div>
                                 </td>
                             </tr>
                         ) : (
@@ -99,7 +91,7 @@ export default async function PermissionsPage() {
                                         </a>
                                     </td>
                                     <td>{a.profiles.display_name}</td>
-                                    <td>{new Date(a.granted_at).toISOString().slice(0, 10)}</td>
+                                    <td className={st.time}>{new Date(a.granted_at).toISOString().slice(0, 10)}</td>
                                     <td className="admin-handle">{a.notes ?? '—'}</td>
                                     <td style={{ textAlign: 'right' }}>
                                         <RevokeButton
@@ -116,32 +108,26 @@ export default async function PermissionsPage() {
                 </table>
             </div>
 
-            <div className="admin-page-head" style={{ marginTop: 0, paddingBottom: 0, borderBottom: 'none' }}>
-                <div>
-                    <div className="admin-page-title" style={{ fontSize: 14 }}>
-                        MEET COORDINATORS
-                    </div>
-                    <div className="admin-page-sub">
-                        {meetCoordinators.length} INVITED · CAN HOST COMMUNITY MEETS
-                    </div>
-                </div>
-            </div>
+            <SectionHead
+                title="Meet coordinators"
+                sub={`${meetCoordinators.length} invited. They can host community meets.`}
+            />
             <div className="admin-table-wrap">
                 <table className="admin-table">
                     <thead>
                         <tr>
-                            <th>HANDLE</th>
-                            <th>NAME</th>
-                            <th>GRANTED</th>
-                            <th>NOTES</th>
-                            <th style={{ textAlign: 'right' }}>ACTIONS</th>
+                            <th>Handle</th>
+                            <th>Name</th>
+                            <th>Granted</th>
+                            <th>Notes</th>
+                            <th style={{ textAlign: 'right' }}>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         {meetCoordinators.length === 0 ? (
                             <tr>
                                 <td colSpan={5}>
-                                    <div className="admin-empty">NONE</div>
+                                    <div className="admin-empty">No meet coordinators.</div>
                                 </td>
                             </tr>
                         ) : (
@@ -153,7 +139,7 @@ export default async function PermissionsPage() {
                                         </a>
                                     </td>
                                     <td>{c.profiles.display_name}</td>
-                                    <td>{new Date(c.granted_at).toISOString().slice(0, 10)}</td>
+                                    <td className={st.time}>{new Date(c.granted_at).toISOString().slice(0, 10)}</td>
                                     <td className="admin-handle">{c.notes ?? '—'}</td>
                                     <td style={{ textAlign: 'right' }}>
                                         <RevokeButton

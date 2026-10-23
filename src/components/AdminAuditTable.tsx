@@ -8,7 +8,8 @@
  */
 import Link from 'next/link';
 import { auditSubjectHref, type AuditResult, type AuditRow } from '@/lib/admin-audit';
-import { ChevronRight } from '@/components/icons';
+import { ChevronRight } from 'lucide-react';
+import { adminStyles as a } from '@/components/glide-admin/parts';
 
 function stamp(iso: string): string {
     return new Date(iso).toISOString().slice(0, 16).replace('T', ' ');
@@ -32,7 +33,7 @@ function shortId(id: string): string {
 
 export function AdminAuditTable({
     result,
-    emptyText = 'NO ACTIVITY YET',
+    emptyText = 'No activity yet.',
     showSubject = true,
     showActor = true,
 }: {
@@ -42,7 +43,7 @@ export function AdminAuditTable({
     showActor?: boolean;
 }) {
     if (result.error) {
-        return <div className="admin-empty">COULD NOT LOAD THE ACTIVITY LOG</div>;
+        return <div className="admin-empty">Could not load the activity log.</div>;
     }
     if (result.rows.length === 0) {
         return <div className="admin-empty">{emptyText}</div>;
@@ -52,11 +53,11 @@ export function AdminAuditTable({
             <table className="admin-table">
                 <thead>
                     <tr>
-                        <th>WHEN (UTC)</th>
-                        {showActor && <th>ADMIN</th>}
-                        <th>ACTION</th>
-                        {showSubject && <th>SUBJECT</th>}
-                        <th>DETAILS</th>
+                        <th>When (UTC)</th>
+                        {showActor && <th>Admin</th>}
+                        <th>Action</th>
+                        {showSubject && <th>Subject</th>}
+                        <th>Details</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -73,7 +74,7 @@ function Row({ r, showActor, showSubject }: { r: AuditRow; showActor: boolean; s
     const href = auditSubjectHref(r);
     return (
         <tr>
-            <td style={{ whiteSpace: 'nowrap' }}>{stamp(r.createdAt)}</td>
+            <td className={a.time}>{stamp(r.createdAt)}</td>
             {showActor && (
                 <td>
                     {r.actor ? (
@@ -81,7 +82,7 @@ function Row({ r, showActor, showSubject }: { r: AuditRow; showActor: boolean; s
                             @{r.actor.handle}
                         </Link>
                     ) : (
-                        <span className="admin-handle">{r.actorProfileId ? shortId(r.actorProfileId) : 'SYSTEM'}</span>
+                        <span className="admin-handle">{r.actorProfileId ? shortId(r.actorProfileId) : 'System'}</span>
                     )}
                 </td>
             )}
@@ -93,14 +94,14 @@ function Row({ r, showActor, showSubject }: { r: AuditRow; showActor: boolean; s
                     <div className="admin-handle">{r.subjectType}</div>
                     {href ? (
                         <Link href={href} className="text-link">
-                            {shortId(r.subjectId)} <ChevronRight />
+                            {shortId(r.subjectId)} <ChevronRight size={14} strokeWidth={2} aria-hidden="true" />
                         </Link>
                     ) : (
                         <span>{shortId(r.subjectId)}</span>
                     )}
                 </td>
             )}
-            <td style={{ fontSize: 12, color: 'var(--text-2)', wordBreak: 'break-word' }}>{summarize(r.meta) || '—'}</td>
+            <td className={a.small} style={{ wordBreak: 'break-word' }}>{summarize(r.meta) || '—'}</td>
         </tr>
     );
 }

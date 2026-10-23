@@ -1,18 +1,18 @@
 /** Generic platform-admin console skeleton, shown inside the persistent
- *  AdminSidebar shell while a console section's data resolves. */
-import { Skeleton, SkeletonHeading, SkeletonRows } from '@/components/feedback';
+ *  Glide admin shell while a console section's data resolves. */
+import { Skeleton, SkeletonRows } from '@/components/feedback';
+import { adminStyles as a } from '@/components/glide-admin/parts';
 
 export default function AdminConsoleLoading() {
     return (
-        <div className="admin-content" style={{ padding: 24 }}>
-            <SkeletonHeading label="LOADING" />
-            <div className="admin-page-head" style={{ marginBottom: 20 }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    <Skeleton width={200} height={22} />
-                    <Skeleton width={260} height={12} />
+        <div className={a.stack} role="status" aria-label="Loading">
+            <div className={a.head}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    <Skeleton width={240} height={34} radius={10} />
+                    <Skeleton width={320} height={14} radius={7} />
                 </div>
             </div>
-            <div style={{ border: '1px solid var(--line)', background: 'var(--bg-1)', padding: 16 }}>
+            <div className={`${a.card} ${a.cardPad}`}>
                 <SkeletonRows rows={6} cols={4} />
             </div>
         </div>

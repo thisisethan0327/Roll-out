@@ -2,6 +2,8 @@
 import { useState, useTransition } from 'react';
 import { setMembershipRole } from '../actions';
 import { getSupabaseBrowser } from '@/lib/supabase/browser';
+import { UserPlus } from 'lucide-react';
+import { adminStyles as a, sentence } from '@/components/glide-admin/parts';
 
 const ROLES = ['owner', 'admin', 'manager', 'installer', 'staff'] as const;
 
@@ -38,33 +40,46 @@ export function AddMembershipForm({ shopId }: { shopId: number }) {
     };
 
     return (
-        <form onSubmit={submit} className="admin-form" style={{ marginTop: 24 }}>
-            <div className="admin-form-label">ADD STAFF</div>
-            <input
-                type="text"
-                value={handle}
-                onChange={(e) => setHandle(e.target.value)}
-                className="admin-form-input"
-                placeholder="@handle"
-                autoCapitalize="none"
-                autoCorrect="off"
-            />
-            <select
-                value={role}
-                onChange={(e) => setRole(e.target.value as (typeof ROLES)[number])}
-                className="admin-form-input"
-            >
-                {ROLES.map((r) => (
-                    <option key={r} value={r}>
-                        {r.toUpperCase()}
-                    </option>
-                ))}
-            </select>
+        <form onSubmit={submit} className="admin-form" aria-labelledby={`add-staff-${shopId}`}>
+            <h2 className={a.formTitle} id={`add-staff-${shopId}`}>
+                Add staff
+            </h2>
+            <div className={a.fieldRow}>
+                <label className={a.field}>
+                    <span className="admin-form-label">Member handle</span>
+                    <input
+                        type="text"
+                        value={handle}
+                        onChange={(e) => setHandle(e.target.value)}
+                        className="admin-form-input"
+                        placeholder="@handle"
+                        autoCapitalize="none"
+                        autoCorrect="off"
+                    />
+                </label>
+                <label className={a.field}>
+                    <span className="admin-form-label">Role</span>
+                    <select
+                        value={role}
+                        onChange={(e) => setRole(e.target.value as (typeof ROLES)[number])}
+                        className="admin-form-input"
+                    >
+                        {ROLES.map((r) => (
+                            <option key={r} value={r}>
+                                {sentence(r)}
+                            </option>
+                        ))}
+                    </select>
+                </label>
+            </div>
             {err && (
-                <div className="admin-login-error" style={{ padding: 8 }}>{err}</div>
+                <div className="admin-login-error" role="alert">
+                    {err}
+                </div>
             )}
-            <button type="submit" disabled={pending || !handle.trim()} className="admin-form-btn">
-                {pending ? 'ADDING…' : '+ ADD'}
+            <button type="submit" disabled={pending || !handle.trim()} className="admin-action-btn">
+                <UserPlus size={16} strokeWidth={2} aria-hidden="true" />
+                {pending ? 'Adding…' : 'Add to staff'}
             </button>
         </form>
     );

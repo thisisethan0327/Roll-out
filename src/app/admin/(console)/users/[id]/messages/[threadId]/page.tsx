@@ -7,7 +7,7 @@ import { notFound } from 'next/navigation';
 import { requirePlatformAdmin } from '@/lib/auth-guard';
 import { UUID_RE } from '@/lib/admin-user-facts';
 import { ThreadGate } from '../ReasonGate';
-import { ChevronLeft } from '@/components/icons';
+import { AdminHead } from '@/components/glide-admin/parts';
 
 export const metadata = { title: 'Thread' };
 export const dynamic = 'force-dynamic';
@@ -19,19 +19,11 @@ export default async function AdminUserThreadPage({ params }: { params: Promise<
 
     return (
         <>
-            <div className="admin-page-head">
-                <div>
-                    <div className="admin-page-title">THREAD</div>
-                    <div className="admin-page-sub">PRIVATE DM · REASON REQUIRED · EVERY VIEW IS LOGGED</div>
-                </div>
-                <Link
-                    href={`/admin/users/${id}/messages`}
-                    className="admin-action-btn muted"
-                    style={{ textDecoration: 'none' }}
-                >
-                    <ChevronLeft /> ALL THREADS
-                </Link>
-            </div>
+            <AdminHead
+                back={{ href: `/admin/users/${id}/messages`, label: 'All threads' }}
+                title="Thread"
+                sub="Private DM. A reason is required and every view is logged."
+            />
             <ThreadGate profileId={id} threadId={threadId} />
         </>
     );

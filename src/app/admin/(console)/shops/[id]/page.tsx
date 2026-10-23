@@ -2,7 +2,8 @@ import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { MembershipRow } from './MembershipRow';
 import { AddMembershipForm } from './AddMembershipForm';
 import { ShopProfileForm } from './ShopProfileForm';
-import { Check, ChevronLeft } from '@/components/icons';
+import { Check } from 'lucide-react';
+import { AdminHead, SectionHead, Stat } from '@/components/glide-admin/parts';
 
 export const metadata = { title: 'Shop · Detail' };
 
@@ -36,82 +37,67 @@ export default async function ShopDetailPage({
     const { shop, page, memberships } = await loadShop(shopId);
     if (!shop) {
         return (
-            <div className="admin-empty">SHOP #{id} NOT FOUND</div>
+            <>
+                <AdminHead title="Shop not found" back={{ href: '/admin/shops', label: 'All shops' }} />
+                <div className="admin-empty">No shop has the id #{id}.</div>
+            </>
         );
     }
 
     return (
         <>
-            <div className="admin-page-head">
-                <div>
-                    <div className="admin-page-title">
-                        {(shop as any).name.toUpperCase()}
-                    </div>
-                    <div className="admin-page-sub">
-                        #{(shop as any).id} · {(shop as any).slug.toUpperCase()}
-                        {(shop as any).region && ` · ${(shop as any).region.toUpperCase()}`}
-                    </div>
-                </div>
-                <a href="/admin/shops" className="admin-action-btn muted">
-                    <ChevronLeft /> ALL SHOPS
-                </a>
-            </div>
+            <AdminHead
+                back={{ href: '/admin/shops', label: 'All shops' }}
+                title={(shop as any).name}
+                sub={
+                    <>
+                        #{(shop as any).id} · {(shop as any).slug}
+                        {(shop as any).region && ` · ${(shop as any).region}`}
+                    </>
+                }
+            />
 
             {page ? (
                 <div className="admin-stat-grid">
-                    <div className="admin-stat">
-                        <div className="admin-stat-lbl">PAGE HANDLE</div>
-                        <div className="admin-stat-num" style={{ fontSize: 16 }}>
-                            @{(page as any).handle}
-                        </div>
-                    </div>
-                    <div className="admin-stat">
-                        <div className="admin-stat-lbl">DISPLAY NAME</div>
-                        <div className="admin-stat-num" style={{ fontSize: 16 }}>
-                            {(page as any).display_name}
-                        </div>
-                    </div>
-                    <div className="admin-stat">
-                        <div className="admin-stat-lbl">VERIFIED</div>
-                        <div
-                            className={`admin-stat-num ${(page as any).is_verified ? 'gold' : ''}`}
-                            style={{ fontSize: 16 }}
-                        >
-                            {(page as any).is_verified ? <><Check /> YES</> : 'NO'}
-                        </div>
-                    </div>
+                    <Stat label="Page handle" value={<span style={{ fontFamily: 'var(--ui)', fontWeight: 600, fontSize: 17 }}>@{(page as any).handle}</span>} />
+                    <Stat label="Display name" value={<span style={{ fontFamily: 'var(--ui)', fontWeight: 600, fontSize: 17 }}>{(page as any).display_name}</span>} />
+                    <Stat
+                        label="Verified"
+                        value={
+                            (page as any).is_verified ? (
+                                <span className="admin-pill gold">
+                                    <Check size={15} strokeWidth={2} aria-hidden="true" /> Verified
+                                </span>
+                            ) : (
+                                <span className="admin-pill">Not verified</span>
+                            )
+                        }
+                    />
                 </div>
             ) : (
-                <div className="admin-empty">
-                    NO SHOP_PAGE PROFILE FOR THIS SHOP — POSTS AND EVENTS AS SHOP WILL FAIL.
+                <div className="admin-login-error">
+                    No shop_page profile for this shop. Posts and events as the shop will fail.
                 </div>
             )}
 
-            <div className="admin-page-head" style={{ marginTop: 28, borderBottom: 'none', paddingBottom: 0 }}>
-                <div>
-                    <div className="admin-page-title" style={{ fontSize: 14 }}>STAFF</div>
-                    <div className="admin-page-sub">
-                        {memberships.length} MEMBERS
-                    </div>
-                </div>
-            </div>
+            <SectionHead title="Staff" sub={`${memberships.length} members.`} />
 
             <div className="admin-table-wrap">
                 <table className="admin-table">
                     <thead>
                         <tr>
-                            <th>HANDLE</th>
-                            <th>NAME</th>
-                            <th>ROLE</th>
-                            <th>JOINED</th>
-                            <th style={{ textAlign: 'right' }}>ACTIONS</th>
+                            <th>Handle</th>
+                            <th>Name</th>
+                            <th>Role</th>
+                            <th>Joined</th>
+                            <th style={{ textAlign: 'right' }}>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         {memberships.length === 0 ? (
                             <tr>
                                 <td colSpan={5}>
-                                    <div className="admin-empty">NO STAFF YET</div>
+                                    <div className="admin-empty">No staff yet.</div>
                                 </td>
                             </tr>
                         ) : (
@@ -122,7 +108,6 @@ export default async function ShopDetailPage({
                     </tbody>
                 </table>
             </div>
-
             <AddMembershipForm shopId={shopId} />
 
             <ShopProfileForm
