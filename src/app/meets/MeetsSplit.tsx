@@ -1,26 +1,25 @@
 'use client';
-import { UpdatePill } from '@/components/AnnouncementBar';
 /**
- * Desktop split view for /meets (≥1024px): the upcoming-meets list on the left,
- * the live map pinned on the right. Both are driven by the same server-loaded,
+ * Split view for /meets (≥1024px): the upcoming-meets list on the left, the
+ * live map pinned on the right. Both are driven by the same server-loaded,
  * type-filtered data, and they cross-highlight:
  *
- *   - Hovering / focusing a card sets `activeId` → the matching pin grows.
- *   - Clicking a pin fires `onSelectEvent` → the card scrolls into view and
- *     flashes its highlight.
+ *   - Hovering / focusing a row sets `activeId` → the matching pin becomes the
+ *     navy roundel with the tricolore rings.
+ *   - Clicking a pin fires `onSelectEvent` → the row scrolls into view and
+ *     takes the highlight.
  *
- * Mounted only at ≥1024px (via matchMedia) so the map's Leaflet instance never
- * initialises inside a hidden, zero-size container on mobile — where the classic
- * list + LIST/MAP toggle is used instead. The parent also hides this block below
- * 1024px in CSS as a belt-and-braces guard.
+ * The map mounts only at ≥1024px (via matchMedia) so its Leaflet instance never
+ * initialises inside a hidden, zero-size container; below that the list is the
+ * whole page and the map lives at /meets/map.
+ *
+ * Glide (web phase 2): rows are components/glide-discover MeetRow; the map is
+ * MeetsMap in Glide mode.
  */
-import Link from 'next/link';
-import { formatEventTime } from '@/lib/event-time';
 import { useEffect, useRef, useState } from 'react';
-import { resolveCover, coverFocus } from '@/lib/event-covers';
 import { MeetsMap, type MapEvent, type MapShop } from './map/MeetsMap';
 import { teaserAreaLabel, teaserShortBadge, type LockedMeet, type TeaserVisibility } from '@/lib/event-teaser-format';
-import { ChevronRight, CircleDashed, CircleDot, Dot, Lock } from '@/components/icons';
+import { LockedMeetRow, MeetRow } from '@/components/glide-discover/ui';
 
 export type SplitMeet = {
     id: string;
@@ -44,24 +43,13 @@ function isLocked(m: SplitMeet | LockedMeet): m is LockedMeet {
     return (m as LockedMeet).locked === true;
 }
 
-function formatDate(iso: string | null, tz?: string | null): string {
-    if (!iso) return 'TBA';
-    try {
-        return (
-            formatEventTime(iso, tz)
-        );
-    } catch {
-        return 'TBA';
-    }
-}
-
 export function MeetsSplit({
     meets,
     events,
     shops,
     updateIds = [],
 }: {
-    /** Event ids with a live announcement: get an UPDATE pill. */
+    /** Event ids with a live announcement: get an Update pill. */
     updateIds?: string[];
     /** Public meets, merged by date with locked private / followers-only teasers. */
     meets: Array<SplitMeet | LockedMeet>;
@@ -72,7 +60,7 @@ export function MeetsSplit({
     // Gate the Leaflet map to the desktop breakpoint so it never boots inside a
     // hidden 0×0 container. Starts false (matches SSR) → set on mount.
     const [isDesktop, setIsDesktop] = useState(false);
-    const listRef = useRef<HTMLDivElement>(null);
+    const listRef = useRef<HTMLUListElement>(null);
 
     useEffect(() => {
         const mq = window.matchMedia('(min-width: 1024px)');
@@ -82,135 +70,48 @@ export function MeetsSplit({
         return () => mq.removeEventListener('change', update);
     }, []);
 
-    // Pins with a plottable location — a card only cross-highlights if its event
+    // Pins with a plottable location — a row only cross-highlights if its event
     // is actually on the map.
     const plottable = new Set(events.map((e) => e.id));
 
-    // Pin click → bring the matching card into view + flash it. The map is
-    // sticky and the page scrolls, so a window-level scroll is what we want here.
+    // Pin click → bring the matching row into view and highlight it.
     const handleSelect = (id: string) => {
         setActiveId(id);
-        const card = listRef.current?.querySelector<HTMLElement>(`[data-meet="${CSS.escape(id)}"]`);
-        card?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        const row = listRef.current?.querySelector<HTMLElement>(`[data-meet="${CSS.escape(id)}"]`);
+        row?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     };
 
-    return (
-        <div className="meets-split">
-            <div className="meets-split-list" ref={listRef}>
-                {meets.map((m) => isLocked(m) ? (
-                    <Link
-                        key={m.id}
-                        href={`/event/${m.id}`}
-                        data-meet={m.id}
-                        className={`meets-split-card${activeId === m.id ? ' is-active' : ''}`}
-                        onMouseEnter={() => plottable.has(m.id) && setActiveId(m.id)}
-                        onMouseLeave={() => setActiveId((cur) => (cur === m.id ? null : cur))}
-                        onFocus={() => plottable.has(m.id) && setActiveId(m.id)}
-                        onBlur={() => setActiveId((cur) => (cur === m.id ? null : cur))}
-                    >
-                        {/* Locked teaser: no photo, no venue, no attendee count. */}
-                        <div
-                            className="meets-split-thumb"
-                            aria-hidden="true"
-                            style={{ background: 'var(--bg-2)', display: 'grid', placeItems: 'center', fontSize: 26 }}
-                        >
-                            <Lock />
-                        </div>
-                        <div className="meets-split-body">
-                            <div className="mono-row" style={{ fontSize: 10 }}>
-                                <span className="accent"><Lock /> {teaserShortBadge(m.visibility).toUpperCase()}</span>
-                                {plottable.has(m.id) ? (
-                                    <>
-                                        <span className="sep" />
-                                        <span className="meets-split-pin" aria-label="Approximate area on the map"><CircleDashed /> AREA</span>
-                                    </>
-                                ) : null}
-                            </div>
-                            <h3 className="meets-split-title">{(m.title ?? 'Private event').toUpperCase()}</h3>
-                            <div className="text-dim" style={{ fontSize: 12.5 }}>
-                                {formatDate(m.start_at, m.time_zone)} · {teaserAreaLabel(m.general_area)}
-                            </div>
-                            <div className="mono-row" style={{ fontSize: 10, marginTop: 'auto', paddingTop: 8 }}>
-                                {m.viewer_can_view ? <span className="accent">YOU&apos;RE INVITED <ChevronRight /></span> : <span>INVITE ONLY</span>}
-                                {m.host_handle ? (
-                                    <>
-                                        <span className="sep" />
-                                        <span>@{m.host_handle}</span>
-                                    </>
-                                ) : null}
-                            </div>
-                        </div>
-                    </Link>
-                ) : (
-                    <Link
-                        key={m.id}
-                        href={`/event/${m.id}`}
-                        data-meet={m.id}
-                        className={`meets-split-card${activeId === m.id ? ' is-active' : ''}`}
-                        onMouseEnter={() => plottable.has(m.id) && setActiveId(m.id)}
-                        onMouseLeave={() => setActiveId((cur) => (cur === m.id ? null : cur))}
-                        onFocus={() => plottable.has(m.id) && setActiveId(m.id)}
-                        onBlur={() => setActiveId((cur) => (cur === m.id ? null : cur))}
-                    >
-                        <div
-                            className="meets-split-thumb"
-                            style={{ backgroundImage: `url(${resolveCover(m.hero_image_url, m.type, m.id, '4x5')})`, backgroundPosition: coverFocus(m.hero_image_url) }}
-                        />
-                        <div className="meets-split-body">
-                            <div className="mono-row" style={{ fontSize: 10 }}>
-                                <span className="accent">{m.code ?? m.type ?? 'MEET'}</span>
-                                {m.is_official ? (
-                                    <>
-                                        <span className="sep" />
-                                        <span className="accent">OFFICIAL</span>
-                                    </>
-                                ) : null}
-                                {m.privacy ? (
-                                    <>
-                                        <span className="sep" />
-                                        <span className="accent"><Lock /> PRIVATE</span>
-                                    </>
-                                ) : null}
-                                {m.sector_code ? (
-                                    <>
-                                        <span className="sep" />
-                                        <span>{m.sector_code}</span>
-                                    </>
-                                ) : null}
-                                {plottable.has(m.id) ? (
-                                    <>
-                                        <span className="sep" />
-                                        <span className="meets-split-pin" aria-label="On the map"><CircleDot /> MAP</span>
-                                    </>
-                                ) : null}
-                            </div>
-                            <h3 className="meets-split-title">{(m.title ?? 'Untitled meet').toUpperCase()}{updateIds.includes(m.id) ? <> <UpdatePill /></> : null}</h3>
-                            <div className="text-dim" style={{ fontSize: 12.5 }}>
-                                {formatDate(m.start_at, m.time_zone)} · {m.location_name ?? 'TBA'}
-                            </div>
-                            <div className="mono-row" style={{ fontSize: 10, marginTop: 'auto', paddingTop: 8 }}>
-                                <span><span className="accent"><Dot /></span> {m.attending_count ?? 0} GOING</span>
-                                {m.spots_left != null ? (
-                                    <>
-                                        <span className="sep" />
-                                        <span>{m.spots_left} SPOTS</span>
-                                    </>
-                                ) : null}
-                                {m.host_handle ? (
-                                    <>
-                                        <span className="sep" />
-                                        <span>@{m.host_handle}</span>
-                                    </>
-                                ) : null}
-                            </div>
-                        </div>
-                    </Link>
-                ))}
-            </div>
+    const hover = (id: string) => ({
+        'data-meet': id,
+        onMouseEnter: () => plottable.has(id) && setActiveId(id),
+        onMouseLeave: () => setActiveId((cur) => (cur === id ? null : cur)),
+        onFocus: () => plottable.has(id) && setActiveId(id),
+        onBlur: () => setActiveId((cur) => (cur === id ? null : cur)),
+    });
 
-            <div className="meets-split-map">
+    return (
+        <div className="gd-split">
+            <ul className="gd-meets" ref={listRef}>
+                {meets.map((m) => (
+                    <li key={m.id}>
+                        {isLocked(m) ? (
+                            <LockedMeetRow
+                                m={m}
+                                badge={teaserShortBadge(m.visibility)}
+                                area={teaserAreaLabel(m.general_area)}
+                                active={activeId === m.id}
+                                linkProps={hover(m.id)}
+                            />
+                        ) : (
+                            <MeetRow m={m} active={activeId === m.id} hasUpdate={updateIds.includes(m.id)} linkProps={hover(m.id)} />
+                        )}
+                    </li>
+                ))}
+            </ul>
+
+            <div className="gd-split-map" aria-label="Map of these meets and shops" role="region">
                 {isDesktop ? (
-                    <MeetsMap events={events} shops={shops} fill activeId={activeId} onSelectEvent={handleSelect} />
+                    <MeetsMap events={events} shops={shops} fill glide activeId={activeId} onSelectEvent={handleSelect} />
                 ) : null}
             </div>
         </div>

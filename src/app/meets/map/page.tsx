@@ -3,23 +3,14 @@
  *
  * Server component: loads the plottable data (public upcoming events with
  * coordinates, and map-visible shops) via the service-role client, then hands
- * it to the client <MeetsMap> which renders Leaflet + CARTO dark tiles (no API
- * key). Two pin styles: events (gold) and shops (outline), each with a popover
- * that deep-links to the event / shop profile.
+ * it to the client <MapExplorer>: Glide (board G1, Map) — the map fills a
+ * rounded frame with date-roundel pins for meets and store roundels for shops,
+ * the title, List / Map toggle and type chips float over it, and the meets
+ * ride along the bottom as a card rail.
  */
 import type { Metadata } from 'next';
-import Link from 'next/link';
-import { MeetsMap } from './MeetsMap';
+import { MapExplorer } from './MapExplorer';
 import { loadMapData, isValidType, type EventType } from '../mapData';
-import { ChevronLeft } from '@/components/icons';
-
-const TYPE_LABEL: Record<EventType, string> = {
-    NIGHT_RUN: 'Night Run',
-    CAR_MEET: 'Car Meet',
-    TRACK_DAY: 'Track Day',
-    CRUISE: 'Cruise',
-    SHOW: 'Show',
-};
 
 // Read at request time: the loader uses the runtime-only service-role key.
 export const dynamic = 'force-dynamic';
@@ -31,6 +22,15 @@ export const metadata: Metadata = {
         'Map of upcoming car meets, night runs, track days, and shops on Rollout — find what is happening near you.',
 };
 
+const TYPE_PLURAL: Record<EventType, string> = {
+    NIGHT_RUN: 'Night runs',
+    CAR_MEET: 'Car meets',
+    TRACK_DAY: 'Track days',
+    CRUISE: 'Cruises',
+    SHOW: 'Shows',
+};
+const TYPES: EventType[] = ['CAR_MEET', 'CRUISE', 'SHOW', 'TRACK_DAY', 'NIGHT_RUN'];
+
 export default async function MeetsMapPage({
     searchParams,
 }: {
@@ -40,77 +40,29 @@ export default async function MeetsMapPage({
     const type = isValidType(raw) ? raw : null;
     const { events, shops } = await loadMapData(type);
     const listHref = type ? `/meets?type=${type}` : '/meets';
+    const mapHref = type ? `/meets/map?type=${type}` : '/meets/map';
+    const chips = [
+        { href: '/meets/map', label: 'All', current: !type },
+        ...TYPES.map((t) => ({ href: `/meets/map?type=${t}`, label: TYPE_PLURAL[t], current: type === t })),
+    ];
 
     return (
-        <>
-            {/* HEADER + VIEW TOGGLE */}
-            <section style={{ background: 'var(--bg-1)', borderBottom: '1px solid var(--line)' }}>
-                <div
-                    className="container"
-                    style={{ paddingTop: 18, paddingBottom: 18, display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center', justifyContent: 'space-between' }}
-                >
-                    <div>
-                        <div className="eyebrow eyebrow-gold mb-4">／ MEETS MAP</div>
-                        <h1 style={{ fontSize: 'clamp(22px, 3vw, 34px)', letterSpacing: 1, margin: 0 }}>
-                            {type ? `${TYPE_LABEL[type].toUpperCase()} · MAP` : "WHAT'S NEARBY"}
-                        </h1>
-                    </div>
-                    <div style={{ display: 'flex', gap: 8 }}>
-                        <Link
-                            href={listHref}
-                            style={{
-                                padding: '8px 14px',
-                                border: '1px solid var(--gold)',
-                                background: 'transparent',
-                                color: 'var(--gold)',
-                                fontFamily: 'var(--font-display)',
-                                fontSize: 11,
-                                letterSpacing: 'var(--track-wider)',
-                                textDecoration: 'none',
-                            }}
-                        >
-                            <ChevronLeft /> LIST
-                        </Link>
-                        <span
-                            style={{
-                                padding: '8px 14px',
-                                border: '1px solid var(--gold)',
-                                background: 'var(--gold)',
-                                color: 'var(--bg-0, #000)',
-                                fontFamily: 'var(--font-display)',
-                                fontSize: 11,
-                                letterSpacing: 'var(--track-wider)',
-                            }}
-                        >
-                            MAP
-                        </span>
-                    </div>
-                </div>
-            </section>
-
-            <MeetsMap events={events} shops={shops} />
-
-            {/* LEGEND / COUNTS */}
-            <section style={{ background: 'var(--bg-1)', borderTop: '1px solid var(--line)' }}>
-                <div
-                    className="container"
-                    style={{ paddingTop: 14, paddingBottom: 14, display: 'flex', gap: 20, flexWrap: 'wrap', alignItems: 'center' }}
-                >
-                    <span className="mono-row" style={{ fontSize: 11 }}>
-                        <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: '50%', background: 'var(--gold)', marginRight: 6 }} />
-                        {events.length} UPCOMING {events.length === 1 ? 'MEET' : 'MEETS'}
-                    </span>
-                    <span className="mono-row" style={{ fontSize: 11 }}>
-                        <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: 2, border: '2px solid var(--text)', marginRight: 6 }} />
-                        {shops.length} {shops.length === 1 ? 'SHOP' : 'SHOPS'}
-                    </span>
-                    {events.length === 0 ? (
-                        <span className="text-dim" style={{ fontSize: 12 }}>
-                            No upcoming meets with a pinned location{type ? ' in this category' : ''} yet — shops still shown.
-                        </span>
-                    ) : null}
-                </div>
-            </section>
-        </>
+        <div className="glide glide-page gd-page">
+            <div className="g-wrap">
+                <MapExplorer
+                    events={events}
+                    shops={shops}
+                    title={type ? `${TYPE_PLURAL[type]} map` : 'Meets map'}
+                    listHref={listHref}
+                    mapHref={mapHref}
+                    chips={chips}
+                />
+                {events.length === 0 ? (
+                    <p className="gd-legend" style={{ fontSize: 14, color: 'var(--ink-2)' }}>
+                        No upcoming {type ? TYPE_PLURAL[type].toLowerCase() : 'meets'} with a pinned location yet. Shops are still on the map.
+                    </p>
+                ) : null}
+            </div>
+        </div>
     );
 }
