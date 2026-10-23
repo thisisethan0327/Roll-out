@@ -1,13 +1,22 @@
 'use client';
 /**
- * Consumer-portal top nav. Client component so it can highlight the active
- * section (usePathname) and drive sign-out via a transition.
+ * My Rollout header, in Glide (board: G3 web host console header).
+ *
+ *   left    rollout wordmark (→ /) and the My Rollout badge
+ *   centre  floating pill nav over the /me sections, the current one a navy
+ *           roundel; below 1240px it moves to its own scrolling row
+ *   right   the member (avatar roundel, name, @handle) and Sign out
+ *
+ * Client component so it can mark the active section (usePathname) and drive
+ * sign-out via a transition. Same links and the same sign-out as before.
  */
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTransition } from 'react';
+import { LogOut, UserRound } from 'lucide-react';
 import { signOutAction } from './actions';
 import { LinkPending } from '@/components/feedback';
+import s from '@/components/glide-console/console.module.css';
 
 const BASE_LINKS: { href: string; label: string }[] = [
     { href: '/me', label: 'Overview' },
@@ -23,12 +32,23 @@ function isActive(pathname: string, href: string): boolean {
     return pathname === href || pathname.startsWith(href + '/');
 }
 
+function initials(name: string): string {
+    const parts = name.replace(/^@+/, '').trim().split(/\s+/).filter(Boolean);
+    const a = parts[0]?.[0] ?? '?';
+    const b = parts.length > 1 ? parts[parts.length - 1][0] : '';
+    return (a + b).toUpperCase();
+}
+
 export function MeNav({
     displayName,
+    handle,
+    avatarUrl,
     isHost = false,
     ticketsEnabled = false,
 }: {
     displayName: string;
+    handle?: string | null;
+    avatarUrl?: string | null;
     isHost?: boolean;
     /** Multi-ticket packages (feature-gated) — adds the /me/event-tickets
      *  link. False (the default) keeps this nav exactly as it is today. */
@@ -37,115 +57,55 @@ export function MeNav({
     const pathname = usePathname() || '';
     const [pending, start] = useTransition();
     let LINKS = BASE_LINKS;
-    if (ticketsEnabled) LINKS = [...LINKS, { href: '/me/event-tickets', label: 'Event Tickets' }];
+    if (ticketsEnabled) LINKS = [...LINKS, { href: '/me/event-tickets', label: 'Event tickets' }];
     if (isHost) LINKS = [...LINKS, { href: '/me/events', label: 'Events' }];
 
     return (
-        <header
-            style={{
-                position: 'sticky',
-                top: 0,
-                zIndex: 50,
-                backdropFilter: 'blur(12px)',
-                WebkitBackdropFilter: 'blur(12px)',
-                // The token exists for this; hardcoding the dark value here kept
-                // the bar black in light mode while its links went near-black
-                // (1.95:1 / 1.39:1, measured at run R12). Same fix as SiteHeader.
-                background: 'var(--header-bg)',
-                borderBottom: '1px solid var(--line)',
-            }}
-        >
-            <div
-                className="container"
-                style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    minHeight: 64,
-                    gap: 16,
-                    flexWrap: 'wrap',
-                    paddingTop: 8,
-                    paddingBottom: 8,
-                }}
-            >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
-                    <Link
-                        href="/"
-                        style={{ textDecoration: 'none', display: 'flex', flexDirection: 'column' }}
-                    >
-                        <span
-                            className="font-display"
-                            style={{ fontWeight: 700, letterSpacing: 4, color: 'var(--text)', fontSize: 16 }}
-                        >
-                            ROLLOUT
-                        </span>
-                        <span
-                            style={{
-                                fontSize: 8,
-                                letterSpacing: 2,
-                                color: 'var(--gold)',
-                                fontFamily: 'var(--font-display)',
-                            }}
-                        >
-                            MY ROLLOUT
-                        </span>
+        <header className={`glide ${s.bar}`}>
+            <div className={`g-wrap ${s.barIn}`}>
+                <div className={s.brand}>
+                    <Link href="/" className={s.wm} aria-label="Rollout home">
+                        rollout
                     </Link>
-                    <nav
-                        style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 4,
-                            fontFamily: 'var(--font-display)',
-                            fontSize: 11,
-                            letterSpacing: 'var(--track-wider)',
-                            flexWrap: 'wrap',
-                        }}
-                    >
-                        {LINKS.map((l) => {
-                            const active = isActive(pathname, l.href);
-                            return (
-                                <Link
-                                    key={l.href}
-                                    href={l.href}
-                                    style={{
-                                        textDecoration: 'none',
-                                        textTransform: 'uppercase',
-                                        padding: '6px 10px',
-                                        color: active ? 'var(--bg-0)' : 'var(--text-2)',
-                                        background: active ? 'var(--gold)' : 'transparent',
-                                        border: '1px solid ' + (active ? 'var(--gold)' : 'transparent'),
-                                        display: 'inline-flex',
-                                        alignItems: 'center',
-                                        gap: 6,
-                                    }}
-                                >
-                                    {l.label}
-                                    <LinkPending />
-                                </Link>
-                            );
-                        })}
-                    </nav>
+                    <span className={s.badge}>
+                        <UserRound size={16} strokeWidth={2} aria-hidden="true" />
+                        My Rollout
+                    </span>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <span
-                        className="text-dim"
-                        style={{
-                            fontFamily: 'var(--font-display)',
-                            fontSize: 10,
-                            letterSpacing: 'var(--track-wider)',
-                            textTransform: 'uppercase',
-                        }}
-                    >
-                        {displayName}
+
+                <nav className={`g-fp ${s.nav}`} aria-label="My Rollout">
+                    {LINKS.map((l) => (
+                        <Link key={l.href} href={l.href} aria-current={isActive(pathname, l.href) ? 'page' : undefined}>
+                            {l.label}
+                            <LinkPending />
+                        </Link>
+                    ))}
+                </nav>
+
+                <div className={s.right}>
+                    <span className={s.who}>
+                        <span
+                            className={s.av}
+                            style={avatarUrl ? { backgroundImage: `url(${avatarUrl})` } : undefined}
+                            role="img"
+                            aria-label={displayName}
+                        >
+                            {avatarUrl ? null : initials(displayName)}
+                        </span>
+                        <span className={s.whoText}>
+                            {displayName}
+                            {handle ? <small>@{handle}</small> : null}
+                        </span>
                     </span>
                     <button
                         type="button"
                         disabled={pending}
                         onClick={() => start(() => void signOutAction())}
-                        className="admin-action-btn muted"
-                        style={{ cursor: 'pointer' }}
+                        className={`g-sec g-sec--ink ${s.signOut}`}
+                        aria-label={pending ? 'Signing out' : 'Sign out'}
                     >
-                        {pending ? 'SIGNING OUT…' : 'SIGN OUT'}
+                        <LogOut size={17} strokeWidth={2} aria-hidden="true" />
+                        <span className={s.signOutLabel}>{pending ? 'Signing out…' : 'Sign out'}</span>
                     </button>
                 </div>
             </div>

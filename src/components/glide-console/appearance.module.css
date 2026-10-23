@@ -1,0 +1,303 @@
+/* Appearance as drawn on board G7 (Settings → Appearance). */
+.wrap {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 28px 32px;
+  align-items: start;
+}
+.h {
+  margin: 0;
+  font-family: var(--disp);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  font-size: 17px;
+  color: var(--title);
+}
+.sub {
+  margin: 3px 0 12px;
+  font-size: 13.5px;
+  line-height: 1.4;
+  color: var(--ink-2);
+}
+.seg button {
+  min-height: 44px;
+  font-size: 14px;
+}
+.hint {
+  margin: 10px 4px 0;
+  font-size: 13.5px;
+  line-height: 1.4;
+  color: var(--ink-2);
+}
+.hint b {
+  font-weight: 600;
+  color: var(--ink);
+}
+.cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 220px));
+  gap: 12px;
+}
+.card {
+  display: block;
+  width: 100%;
+  padding: 8px;
+  border: 0;
+  border-radius: 26px;
+  background: var(--card);
+  box-shadow: 0 0 0 1px var(--line-strong), 0 10px 22px -18px rgba(var(--shadow), 0.5);
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+  transition: box-shadow 0.15s ease-out, background 0.15s ease-out;
+}
+.card:hover {
+  box-shadow: 0 0 0 1.5px var(--link), 0 10px 22px -18px rgba(var(--shadow), 0.5);
+}
+.card[aria-checked='true'] {
+  background: var(--tint);
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+.lbl {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 4px 4px 8px;
+}
+.t {
+  flex: 1;
+  min-width: 0;
+}
+.t b {
+  display: block;
+  font-size: 15.5px;
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--ink);
+}
+.t small {
+  display: block;
+  margin-top: 1px;
+  font-size: 12.5px;
+  color: var(--ink-2);
+}
+.card[aria-checked='true'] .t b,
+.card[aria-checked='true'] .t small {
+  color: var(--on-tint);
+}
+.rd {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  flex: none;
+  display: grid;
+  place-items: center;
+  box-shadow: inset 0 0 0 2px var(--ink-2);
+  color: var(--on-accent);
+}
+.rd svg {
+  opacity: 0;
+}
+.card[aria-checked='true'] .rd {
+  background: var(--accent);
+  box-shadow: none;
+}
+.card[aria-checked='true'] .rd svg {
+  opacity: 1;
+}
+
+/* The mini screen: each card draws with its own palette's values. */
+.mock {
+  --m-accent: #4ba3d9;
+  --m-on-accent: #061224;
+  --m-knob: #0b2545;
+  --m-knob-ink: #ffffff;
+  --m-s1: #4ba3d9;
+  --m-s2: #2f6fc4;
+  --m-s3: #d7263d;
+  --m-nav-on: #2f6fc4;
+  --m-icon: #8cc8ee;
+  --m-tint: #12324f;
+  position: relative;
+  display: block;
+  height: 252px;
+  border-radius: 19px;
+  overflow: hidden;
+  background: var(--m-surface);
+  box-shadow: 0 0 0 1px var(--line-strong);
+}
+.mock[data-pal='midnight'] {
+  --m-surface: #08111f;
+  --m-card: #111d33;
+  --m-ink: #eef2f7;
+  --m-ink-2: #a3aec0;
+  --m-line: #1e2c45;
+  --m-line-strong: #2c3d5c;
+}
+.mock[data-pal='graphite'] {
+  --m-surface: #161718;
+  --m-card: #222222;
+  --m-ink: #f2f2f2;
+  --m-ink-2: #9a9a9a;
+  --m-line: #2a2b2c;
+  --m-line-strong: #404142;
+}
+.mock i {
+  position: absolute;
+  display: block;
+}
+.mH1 {
+  left: 12px;
+  top: 18px;
+  width: 80px;
+  height: 9px;
+  border-radius: 5px;
+  background: var(--m-ink);
+}
+.mH2 {
+  left: 12px;
+  top: 33px;
+  width: 104px;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--m-ink-2);
+}
+.mCard {
+  left: 8px;
+  right: 8px;
+  top: 52px;
+  height: 80px;
+  border-radius: 14px;
+  background: var(--m-card);
+  overflow: hidden;
+}
+.mCard::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 5px;
+  background: linear-gradient(var(--m-s1) 0 2px, var(--m-s2) 2px 3.5px, var(--m-s3) 3.5px 5px);
+}
+.mRn {
+  left: 10px;
+  top: 12px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--m-nav-on);
+  box-shadow: 0 0 0 1.5px var(--m-card), 0 0 0 3px var(--m-s1), 0 0 0 4px var(--m-card), 0 0 0 5px var(--m-s3);
+}
+.mL1 {
+  left: 50px;
+  top: 15px;
+  width: 70px;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--m-ink);
+}
+.mL2 {
+  left: 50px;
+  top: 27px;
+  width: 52px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--m-ink-2);
+}
+.mC1 {
+  left: 50px;
+  top: 46px;
+  width: 34px;
+  height: 13px;
+  border-radius: 7px;
+  background: var(--m-tint);
+}
+.mC2 {
+  left: 88px;
+  top: 46px;
+  width: 28px;
+  height: 13px;
+  border-radius: 7px;
+  box-shadow: inset 0 0 0 1px var(--m-line-strong);
+}
+.mRows {
+  left: 8px;
+  right: 8px;
+  top: 142px;
+  height: 60px;
+  border-radius: 12px;
+  background: var(--m-card);
+}
+.mRows::after {
+  content: '';
+  position: absolute;
+  left: 28px;
+  right: 0;
+  top: 30px;
+  height: 1px;
+  background: var(--m-line);
+}
+.mIc {
+  left: 10px;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1.6px var(--m-icon);
+}
+.mRl {
+  left: 28px;
+  width: 58px;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--m-ink);
+}
+.mRv {
+  right: 10px;
+  width: 16px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--m-ink-2);
+}
+.mPill {
+  left: 8px;
+  right: 8px;
+  top: 212px;
+  height: 30px;
+  border-radius: 15px;
+  background: var(--m-accent);
+}
+.mPl {
+  left: 14px;
+  top: 12.5px;
+  width: 56px;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--m-on-accent);
+}
+.mock .mKb {
+  right: 4px;
+  top: 4px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--m-knob);
+  color: var(--m-knob-ink);
+  display: grid;
+  place-items: center;
+}
+
+@media (max-width: 900px) {
+  .wrap {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .card {
+    transition: none;
+  }
+}
