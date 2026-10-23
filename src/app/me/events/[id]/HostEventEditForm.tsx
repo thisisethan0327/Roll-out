@@ -54,8 +54,8 @@ export function HostEventEditForm({
     event: any;
     isPaidEvent: boolean;
     actions?: HostEventFormActions;
-    /** Glide markup for the /me host console. The admin event page keeps the
-     *  legacy markup (no prop). Same fields, names, state and actions. */
+    /** Glide markup, used by the /me host console and the admin event page.
+     *  Same fields, names, state and actions as the legacy markup. */
     glide?: boolean;
 }) {
     const router = useRouter();

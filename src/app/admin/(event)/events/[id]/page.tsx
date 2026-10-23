@@ -437,6 +437,7 @@ export default async function AdminEventDetailPage({ params }: { params: Promise
                             <HostEventEditForm
                                 event={event}
                                 isPaidEvent={isPaidEvent}
+                                glide
                                 actions={{
                                     update: adminUpdateHostEvent,
                                     cancel: adminCancelHostEvent,
