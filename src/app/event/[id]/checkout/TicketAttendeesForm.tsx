@@ -16,7 +16,8 @@ import { useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { reserveEventTicketsAction } from '../actions';
 import { SWEATER_SIZES, type SweaterSize } from '@/lib/event-tickets-shared';
-import { ChevronRight } from '@/components/icons';
+import { ArrowRight, Lock, LoaderCircle } from 'lucide-react';
+import { ErrorLine } from '@/components/glide-tickets/parts';
 
 type SeatDraft = { name: string; email: string; size: SweaterSize | '' };
 
@@ -28,6 +29,7 @@ export function TicketAttendeesForm({
     quantity,
     priceCents,
     currency,
+    tierName = null,
     signedInName,
     signedInEmail,
     sizeAvailability = null,
@@ -37,6 +39,8 @@ export function TicketAttendeesForm({
     quantity: number;
     priceCents: number;
     currency: string;
+    /** The tier's name, shown above the total. */
+    tierName?: string | null;
     signedInName: string;
     signedInEmail: string;
     /** Remaining sweaters per size (086 tier_size_availability); null = unlimited. */
@@ -99,114 +103,107 @@ export function TicketAttendeesForm({
     }
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 18, maxWidth: 640 }}>
-            <div>
-                <div className="eyebrow eyebrow-gold mb-4">／ WHO&apos;S GOING</div>
-                <p className="text-dim" style={{ fontSize: 13, margin: 0 }}>
-                    Every rider gets their own ticket. Add their name, email, and sweater size — we&apos;ll email them once payment goes through.
+        <div className="gt-cols">
+            <div className="gt-stack">
+                <p className="gt-fine" style={{ fontSize: 15, padding: '0 4px' }}>
+                    Every rider gets their own ticket. Add their name, email and sweater size; we&apos;ll email them once
+                    payment goes through.
                 </p>
-            </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                 {seats.map((seat, i) => (
-                    <div
-                        key={i}
-                        style={{
-                            border: '1px solid var(--line)',
-                            background: 'var(--bg-1)',
-                            padding: 16,
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: 10,
-                        }}
-                    >
-                        <div
-                            className="font-display"
-                            style={{ fontSize: 10, letterSpacing: 'var(--track-wider)', color: 'var(--gold)' }}
-                        >
-                            {i === 0 ? 'SEAT 1 · YOU (BUYER)' : `SEAT ${i + 1}`}
+                    <section key={i} className="g-card gt-step is-active" aria-labelledby={`seat-${i}`}>
+                        <div className="gt-step-h">
+                            <span className="gt-seat-n" aria-hidden="true">
+                                {i + 1}
+                            </span>
+                            <h2 id={`seat-${i}`}>{i === 0 ? 'Seat 1 · You (buyer)' : `Seat ${i + 1}`}</h2>
                         </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10 }}>
-                            <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                                <span className="text-dim" style={{ fontSize: 10, letterSpacing: 'var(--track-wider)' }}>NAME</span>
-                                <input
-                                    type="text"
-                                    value={seat.name}
-                                    readOnly={i === 0}
-                                    disabled={pending}
-                                    onChange={(e) => updateSeat(i, { name: e.target.value })}
-                                    placeholder="Full name"
-                                    style={inputStyle(i === 0)}
-                                />
-                            </label>
-                            <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                                <span className="text-dim" style={{ fontSize: 10, letterSpacing: 'var(--track-wider)' }}>EMAIL</span>
-                                <input
-                                    type="email"
-                                    value={seat.email}
-                                    readOnly={i === 0}
-                                    disabled={pending}
-                                    onChange={(e) => updateSeat(i, { email: e.target.value })}
-                                    placeholder="name@example.com"
-                                    style={inputStyle(i === 0)}
-                                />
-                            </label>
-                            <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                                <span className="text-dim" style={{ fontSize: 10, letterSpacing: 'var(--track-wider)' }}>SWEATER SIZE</span>
-                                <select
-                                    value={seat.size}
-                                    disabled={pending}
-                                    onChange={(e) => updateSeat(i, { size: e.target.value as SweaterSize })}
-                                    style={inputStyle(false)}
-                                >
-                                    <option value="">Select…</option>
-                                    {SWEATER_SIZES.map((sz) => {
-                                        // Sizes already picked on OTHER seats in this order count too.
-                                        const left = sizeAvailability ? (sizeAvailability[sz] ?? 0) : null;
-                                        const takenHere = seats.filter((o, j) => j !== i && o.size === sz).length;
-                                        const out = left != null && left - takenHere <= 0;
-                                        return (
-                                            <option key={sz} value={sz} disabled={out && seat.size !== sz}>
-                                                {out ? `${sz} — sold out` : sz}
-                                            </option>
-                                        );
-                                    })}
-                                </select>
-                            </label>
+                        <div className="gt-step-body">
+                            <div className="gt-fields">
+                                <div className="gt-fsp">
+                                    <label className="gt-fld">
+                                        <span>Name</span>
+                                        <input
+                                            type="text"
+                                            value={seat.name}
+                                            readOnly={i === 0}
+                                            disabled={pending}
+                                            onChange={(e) => updateSeat(i, { name: e.target.value })}
+                                            placeholder="Full name"
+                                            autoComplete={i === 0 ? 'name' : 'off'}
+                                        />
+                                    </label>
+                                    <label className="gt-fld">
+                                        <span>Email</span>
+                                        <input
+                                            type="email"
+                                            value={seat.email}
+                                            readOnly={i === 0}
+                                            disabled={pending}
+                                            onChange={(e) => updateSeat(i, { email: e.target.value })}
+                                            placeholder="name@example.com"
+                                            autoComplete={i === 0 ? 'email' : 'off'}
+                                        />
+                                    </label>
+                                </div>
+                                <label className="gt-fld">
+                                    <span>Sweater size</span>
+                                    <select
+                                        value={seat.size}
+                                        disabled={pending}
+                                        onChange={(e) => updateSeat(i, { size: e.target.value as SweaterSize })}
+                                    >
+                                        <option value="">Select…</option>
+                                        {SWEATER_SIZES.map((sz) => {
+                                            // Sizes already picked on OTHER seats in this order count too.
+                                            const left = sizeAvailability ? (sizeAvailability[sz] ?? 0) : null;
+                                            const takenHere = seats.filter((o, j) => j !== i && o.size === sz).length;
+                                            const out = left != null && left - takenHere <= 0;
+                                            return (
+                                                <option key={sz} value={sz} disabled={out && seat.size !== sz}>
+                                                    {out ? `${sz} — sold out` : sz}
+                                                </option>
+                                            );
+                                        })}
+                                    </select>
+                                </label>
+                            </div>
                         </div>
-                    </div>
+                    </section>
                 ))}
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', borderTop: '1px solid var(--line-mid)', paddingTop: 12 }}>
-                <span className="font-display" style={{ fontSize: 11, letterSpacing: 'var(--track-wider)', color: 'var(--text-2)' }}>TOTAL</span>
-                <span style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: 15, color: 'var(--gold)' }}>{priceLabel}</span>
-            </div>
-
-            {err ? (
-                <p style={{ color: 'var(--warn, #ff6b6b)', fontSize: 12, margin: 0 }}>{err}</p>
-            ) : null}
-
-            <button
-                type="button"
-                onClick={submit}
-                disabled={pending}
-                className="btn btn-lg"
-                style={{ alignSelf: 'flex-start', cursor: pending ? 'wait' : 'pointer', opacity: pending ? 0.7 : 1 }}
-            >
-                {pending ? 'RESERVING…' : <>RESERVE {quantity} + CONTINUE <ChevronRight /></>}
-            </button>
+            <aside className="g-card gt-sumcard gt-side" aria-labelledby="att-total">
+                <h2 className="g-card-h" id="att-total">
+                    Your tickets
+                </h2>
+                {tierName ? <p className="gt-card-sub">{tierName}</p> : null}
+                <ul className="gt-sum">
+                    <li className="is-all">
+                        <span>Total</span>
+                        <span className="g-w">{priceLabel}</span>
+                    </li>
+                </ul>
+                <div style={{ padding: '14px 16px 0', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    {err ? <ErrorLine>{err}</ErrorLine> : null}
+                    <button
+                        type="button"
+                        onClick={submit}
+                        disabled={pending}
+                        className="g-btn g-btn--block"
+                        aria-busy={pending || undefined}
+                    >
+                        <span>{pending ? 'Reserving…' : `Reserve ${quantity} + continue`}</span>
+                        <span className="g-btn-k" aria-hidden="true">
+                            {pending ? <LoaderCircle size={20} strokeWidth={2} className="g-spin" /> : <ArrowRight size={20} strokeWidth={2} />}
+                        </span>
+                    </button>
+                    <p className="gt-lockline">
+                        <Lock size={15} strokeWidth={1.75} aria-hidden="true" />
+                        Your spots are held while you pay.
+                    </p>
+                </div>
+            </aside>
         </div>
     );
-}
-
-function inputStyle(readOnly: boolean): React.CSSProperties {
-    return {
-        padding: '10px 12px',
-        border: '1px solid var(--line-mid)',
-        background: readOnly ? 'var(--bg-2)' : 'var(--bg-0, #000)',
-        color: readOnly ? 'var(--text-2)' : 'var(--text)',
-        fontSize: 13,
-        fontFamily: 'inherit',
-    };
 }

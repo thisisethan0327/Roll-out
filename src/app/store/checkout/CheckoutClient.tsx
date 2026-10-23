@@ -13,8 +13,8 @@ import {
 } from '@/lib/medusa-cart';
 import { formatMoney } from '@/lib/medusa-types';
 import type { Cart, ShippingOption, AddressInput } from '@/lib/medusa-types';
-import { Dots, SweepBar } from '../_ui';
-import { ArrowRight, Check } from '@/components/icons';
+import { ArrowRight, Check, Lock, LoaderCircle, Package, Pencil, Store, UserRound } from 'lucide-react';
+import { ErrorLine } from '@/components/glide-tickets/parts';
 
 type ShippingGroup = { key: string; title: string; note?: string; options: ShippingOption[] };
 
@@ -39,7 +39,9 @@ function useCardColors() {
             return { theme: 'dark', text: '#f0f0f0', dim: '#8a8a9a', bad: '#ff6b6b' };
         }
         const root = document.documentElement;
-        const cs = getComputedStyle(root);
+        // Read from <body>: on a Glide page the palette (and the legacy names
+        // bridged onto it) resolve there, not on <html>.
+        const cs = getComputedStyle(document.body ?? root);
         const v = (name: string, fallback: string) => cs.getPropertyValue(name).trim() || fallback;
         const stamped = root.getAttribute('data-theme');
         const theme =
@@ -50,8 +52,8 @@ function useCardColors() {
                   : 'dark';
         return {
             theme,
-            text: v('--text', '#f0f0f0'),
-            dim: v('--text-3', '#8a8a9a'),
+            text: v('--ink', '') || v('--text', '#f0f0f0'),
+            dim: v('--ink-2', '') || v('--text-3', '#8a8a9a'),
             bad: v('--warn', '#ff6b6b'),
         };
     };
@@ -63,7 +65,7 @@ function useCardColors() {
         const mq = window.matchMedia?.('(prefers-color-scheme: light)');
         mq?.addEventListener?.('change', apply);
         const obs = new MutationObserver(apply);
-        obs.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+        obs.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'data-dark'] });
         return () => {
             mq?.removeEventListener?.('change', apply);
             obs.disconnect();
@@ -371,120 +373,127 @@ function CheckoutInner({
         }
     };
 
+    const shippingSummary =
+        shippingGroups
+            .map((g) => shippingOptions.find((o) => o.id === selectedShipping[g.key])?.name)
+            .filter(Boolean)
+            .join(' · ') || 'Selected';
+    const soldBy = cart.isMultiVendor
+        ? cart.vendors.map((v) => v.name).filter(Boolean).join(' · ')
+        : cart.vendor.name || null;
+
     return (
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.3fr) minmax(0, 1fr)', gap: 36, alignItems: 'start' }} className="pdp-grid">
+        <div className="gt-cols">
             {/* LEFT: steps */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
+            <div className="gt-steps">
                 {signedInEmail ? (
-                    <div className="mono-row" style={{ fontSize: 11 }}>
-                        <span className="accent">SIGNED IN AS</span>
-                        <span className="sep" />
-                        <span style={{ color: 'var(--text)' }}>{signedInEmail}</span>
-                    </div>
+                    <p className="gt-signed">
+                        <UserRound size={18} strokeWidth={1.75} aria-hidden="true" />
+                        <span>
+                            Signed in as <b>{signedInEmail}</b>
+                        </span>
+                    </p>
                 ) : null}
                 {/* STEP 1 — contact + address */}
-                <StepBlock n={1} title="CONTACT & SHIPPING" active={step === 'address'} done={step !== 'address'} onEdit={() => { setShippingSet(false); setStep('address'); }}>
+                <StepBlock n={1} title="Contact & shipping" active={step === 'address'} done={step !== 'address'} onEdit={() => { setShippingSet(false); setStep('address'); }}>
                     {step === 'address' ? (
-                        <form onSubmit={submitAddress} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                            <Field label="Email" value={form.email} onChange={set('email')} type="email" required />
-                            <Row2>
-                                <Field label="First name" value={form.firstName} onChange={set('firstName')} required />
-                                <Field label="Last name" value={form.lastName} onChange={set('lastName')} required />
-                            </Row2>
-                            <Field label="Address" value={form.address1} onChange={set('address1')} required />
-                            <Field label="Apt / suite (optional)" value={form.address2 ?? ''} onChange={set('address2')} />
-                            <Row2>
-                                <Field label="City" value={form.city} onChange={set('city')} required />
-                                <Field label="State" value={form.province} onChange={set('province')} required />
-                            </Row2>
-                            <Row2>
-                                <Field label="ZIP" value={form.postalCode} onChange={set('postalCode')} required />
-                                <Field label="Phone (optional)" value={form.phone ?? ''} onChange={set('phone')} />
-                            </Row2>
-                            <button type="submit" className="btn btn-lg" disabled={pending} style={{ marginTop: 6 }}>
-                                {pending ? <>SAVING<Dots /></> : <>CONTINUE TO SHIPPING <ArrowRight /></>}
+                        <form onSubmit={submitAddress} className="gt-step-body">
+                            <div className="gt-fields">
+                                <Field label="Email" value={form.email} onChange={set('email')} type="email" autoComplete="email" required />
+                            </div>
+                            <div className="gt-fields">
+                                <Row2>
+                                    <Field label="First name" value={form.firstName} onChange={set('firstName')} autoComplete="given-name" required />
+                                    <Field label="Last name" value={form.lastName} onChange={set('lastName')} autoComplete="family-name" required />
+                                </Row2>
+                                <Field label="Address" value={form.address1} onChange={set('address1')} autoComplete="address-line1" required />
+                                <Field label="Apt / suite (optional)" value={form.address2 ?? ''} onChange={set('address2')} autoComplete="address-line2" />
+                                <Row2>
+                                    <Field label="City" value={form.city} onChange={set('city')} autoComplete="address-level2" required />
+                                    <Field label="State" value={form.province} onChange={set('province')} autoComplete="address-level1" required />
+                                </Row2>
+                                <Row2>
+                                    <Field label="ZIP" value={form.postalCode} onChange={set('postalCode')} autoComplete="postal-code" required />
+                                    <Field label="Phone (optional)" value={form.phone ?? ''} onChange={set('phone')} type="tel" autoComplete="tel" />
+                                </Row2>
+                            </div>
+                            <button type="submit" className="g-btn g-btn--block" disabled={pending} aria-busy={pending || undefined}>
+                                <span>{pending ? 'Saving…' : 'Continue to shipping'}</span>
+                                <span className="g-btn-k" aria-hidden="true">
+                                    {pending ? <LoaderCircle size={20} strokeWidth={2} className="g-spin" /> : <ArrowRight size={20} strokeWidth={2} />}
+                                </span>
                             </button>
                         </form>
                     ) : (
-                        <div className="text-dim" style={{ fontSize: 13 }}>
+                        <p className="gt-step-sum">
                             {form.email} · {form.address1}, {form.city} {form.province} {form.postalCode}
-                        </div>
+                        </p>
                     )}
                 </StepBlock>
 
                 {/* STEP 2 — shipping */}
-                <StepBlock n={2} title="SHIPPING METHOD" active={step === 'shipping'} done={step === 'payment'} onEdit={step === 'payment' ? () => { setShippingSet(false); setStep('shipping'); } : undefined}>
+                <StepBlock n={2} title="Shipping method" active={step === 'shipping'} done={step === 'payment'} onEdit={step === 'payment' ? () => { setShippingSet(false); setStep('shipping'); } : undefined}>
                     {step === 'shipping' ? (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        <div className="gt-step-body">
                             {shippingOptions.length === 0 ? (
-                                <p className="text-dim" style={{ fontSize: 13 }}>No shipping options available for this address.</p>
+                                <ErrorLine>No shipping options available for this address.</ErrorLine>
                             ) : (
                                 <>
                                     {shippingGroups.length > 1 && (
-                                        <p className="text-dim" style={{ fontSize: 13 }}>
+                                        <p className="gt-fine">
                                             Your order ships as {shippingGroups.length} shipments. Pick a method for each.
                                         </p>
                                     )}
                                     {shippingGroups.map((g) => (
-                                        <div key={g.key} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                                            <div>
-                                                <div style={{ color: 'var(--text)', fontSize: 12, letterSpacing: '0.12em', textTransform: 'uppercase' }}>{g.title}</div>
-                                                {g.note && <div className="text-dim" style={{ fontSize: 12, marginTop: 2 }}>{g.note}</div>}
-                                            </div>
+                                        <fieldset key={g.key} className="gt-shipgrp" style={{ border: 0, margin: 0, padding: 0, minWidth: 0 }}>
+                                            <legend style={{ padding: 0 }}>
+                                                <h3>{g.title}</h3>
+                                            </legend>
+                                            {g.note && <p>{g.note}</p>}
                                             {g.options.map((o) => {
                                                 const on = selectedShipping[g.key] === o.id;
                                                 return (
-                                                    <label
-                                                        key={o.id}
-                                                        style={{
-                                                            display: 'flex',
-                                                            alignItems: 'center',
-                                                            justifyContent: 'space-between',
-                                                            padding: '12px 14px',
-                                                            border: `1px solid ${on ? 'var(--gold)' : 'var(--line)'}`,
-                                                            background: on ? 'var(--gold-dim)' : 'transparent',
-                                                            cursor: o.unavailable ? 'not-allowed' : 'pointer',
-                                                            opacity: o.unavailable ? 0.5 : 1,
-                                                        }}
-                                                    >
-                                                        <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                                            <input
-                                                                type="radio"
-                                                                name={`shipping-${g.key}`}
-                                                                checked={on}
-                                                                disabled={!!o.unavailable}
-                                                                onChange={() => setSelectedShipping((p) => ({ ...p, [g.key]: o.id }))}
-                                                            />
-                                                            <span style={{ color: 'var(--text)', fontSize: 14 }}>{o.name}</span>
+                                                    <label key={o.id} className="gt-tk">
+                                                        <input
+                                                            type="radio"
+                                                            name={`shipping-${g.key}`}
+                                                            checked={on}
+                                                            disabled={!!o.unavailable}
+                                                            onChange={() => setSelectedShipping((p) => ({ ...p, [g.key]: o.id }))}
+                                                        />
+                                                        <span className="gt-tk-t">
+                                                            <b>{o.name}</b>
+                                                            {o.unavailable ? <small>Not available for this address</small> : null}
                                                         </span>
-                                                        <span className="accent">{o.unavailable ? '—' : formatMoney(o.amount, currency)}</span>
+                                                        <span className="gt-tk-pr g-w">{o.unavailable ? '—' : formatMoney(o.amount, currency)}</span>
+                                                        <span className="gt-tk-rd" aria-hidden="true">
+                                                            <Check size={14} strokeWidth={3} />
+                                                        </span>
                                                     </label>
                                                 );
                                             })}
-                                        </div>
+                                        </fieldset>
                                     ))}
                                 </>
                             )}
-                            <button type="button" className="btn btn-lg" disabled={pending || !allShippingChosen} onClick={submitShipping} style={{ marginTop: 6 }}>
-                                {pending ? <>SAVING<Dots /></> : <>CONTINUE TO PAYMENT <ArrowRight /></>}
+                            <button type="button" className="g-btn g-btn--block" disabled={pending || !allShippingChosen} onClick={submitShipping} aria-busy={pending || undefined}>
+                                <span>{pending ? 'Saving…' : 'Continue to payment'}</span>
+                                <span className="g-btn-k" aria-hidden="true">
+                                    {pending ? <LoaderCircle size={20} strokeWidth={2} className="g-spin" /> : <ArrowRight size={20} strokeWidth={2} />}
+                                </span>
                             </button>
                         </div>
                     ) : step === 'payment' ? (
-                        <div className="text-dim" style={{ fontSize: 13 }}>
-                            {shippingGroups
-                                .map((g) => shippingOptions.find((o) => o.id === selectedShipping[g.key])?.name)
-                                .filter(Boolean)
-                                .join(' · ') || 'Selected'}
-                        </div>
+                        <p className="gt-step-sum">{shippingSummary}</p>
                     ) : (
-                        <div className="text-dim" style={{ fontSize: 13 }}>Enter your address first.</div>
+                        <p className="gt-step-sum">Enter your address first.</p>
                     )}
                 </StepBlock>
 
                 {/* STEP 3 — payment */}
-                <StepBlock n={3} title="PAYMENT" active={step === 'payment'} done={false}>
+                <StepBlock n={3} title="Payment" active={step === 'payment'} done={false}>
                     {step === 'payment' ? (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                        <div className="gt-step-body">
                             <ExpressPay
                                 stripePromise={stripePromise}
                                 amountMinor={Math.round(cart.total * 100)}
@@ -514,98 +523,118 @@ function CheckoutInner({
                                     }
                                 }}
                             />
-                            <div style={{ padding: '14px 14px', border: '1px solid var(--line)', background: 'var(--bg-2)' }}>
-                                {stripe ? (
-                                    <CardElement
-                                        // Remounts on a theme change: Stripe reads `style` once,
-                                        // when the element is created, so a changed value alone
-                                        // would not reach the iframe.
-                                        key={cardColors.theme}
-                                        options={{
-                                            style: {
-                                                base: {
-                                                    color: cardColors.text,
-                                                    fontFamily: 'monospace',
-                                                    fontSize: '15px',
-                                                    '::placeholder': { color: cardColors.dim },
+                            <div className="gt-fields">
+                                <div className="gt-fld gt-fld--card">
+                                    <span>Card</span>
+                                    {stripe ? (
+                                        <CardElement
+                                            // Remounts on a theme change: Stripe reads `style` once,
+                                            // when the element is created, so a changed value alone
+                                            // would not reach the iframe.
+                                            key={`${cardColors.theme}-${cardColors.text}`}
+                                            options={{
+                                                style: {
+                                                    base: {
+                                                        color: cardColors.text,
+                                                        fontFamily: 'system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif',
+                                                        fontSize: '16px',
+                                                        '::placeholder': { color: cardColors.dim },
+                                                    },
+                                                    invalid: { color: cardColors.text, iconColor: cardColors.bad },
                                                 },
-                                                invalid: { color: cardColors.bad },
-                                            },
-                                        }}
-                                    />
-                                ) : (
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                                        <span className="text-dim font-display" style={{ fontSize: 11, letterSpacing: 'var(--track-wider)' }}>
-                                            LOADING SECURE PAYMENT…
+                                            }}
+                                        />
+                                    ) : (
+                                        <span className="gt-busy" style={{ minHeight: 28 }}>
+                                            <LoaderCircle size={16} strokeWidth={2} className="g-spin" aria-hidden="true" />
+                                            Loading secure payment…
                                         </span>
-                                        <SweepBar />
-                                    </div>
-                                )}
+                                    )}
+                                </div>
                             </div>
                             {(process.env.NEXT_PUBLIC_STRIPE_KEY ?? "").startsWith("pk_test_") ? (
-                                <p className="text-muted" style={{ fontSize: 11, margin: 0 }}>
-                                    TEST MODE — use 4242 4242 4242 4242, any future date + CVC.
-                                </p>
+                                <p className="gt-fine">Test mode: use 4242 4242 4242 4242, any future date and CVC.</p>
                             ) : null}
                             {agreement ? (
-                                <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 12, color: 'var(--text-2)', cursor: 'pointer' }}>
+                                <label className="gt-check">
                                     <input
                                         type="checkbox"
                                         checked={agreed}
                                         onChange={(e) => setAgreed(e.target.checked)}
-                                        style={{ marginTop: 2 }}
                                         required
                                     />
+                                    <span className="gt-box" aria-hidden="true">
+                                        <Check size={15} strokeWidth={3} />
+                                    </span>
                                     <span>{agreement.label}</span>
                                 </label>
                             ) : null}
-                            <button type="button" className="btn btn-lg" onClick={placeOrder} disabled={placing || !stripe || !agreed} style={{ width: '100%' }}>
-                                {placing ? <>PLACING ORDER<Dots /></> : `PLACE ORDER · ${formatMoney(cart.total, currency)}`}
+                            <button
+                                type="button"
+                                className="g-btn g-btn--block"
+                                onClick={placeOrder}
+                                disabled={placing || !stripe || !agreed}
+                                aria-busy={placing || undefined}
+                            >
+                                <span>{placing ? 'Placing order…' : 'Place order'}</span>
+                                {!placing ? <span className="gt-btn-v">{formatMoney(cart.total, currency)}</span> : null}
+                                <span className="g-btn-k" aria-hidden="true">
+                                    {placing ? <LoaderCircle size={20} strokeWidth={2} className="g-spin" /> : <Lock size={18} strokeWidth={2} />}
+                                </span>
                             </button>
+                            <p className="gt-lockline">
+                                <Lock size={15} strokeWidth={1.75} aria-hidden="true" />
+                                Payments by Stripe. Your card goes to Stripe, not to Rollout.
+                            </p>
                         </div>
                     ) : (
-                        <div className="text-dim" style={{ fontSize: 13 }}>Complete the steps above.</div>
+                        <p className="gt-step-sum">Complete the steps above.</p>
                     )}
                 </StepBlock>
 
-                {error ? <p style={{ color: 'var(--danger, #ff6b6b)', fontSize: 13, margin: 0 }}>{error}</p> : null}
+                {error ? <ErrorLine>{error}</ErrorLine> : null}
             </div>
 
             {/* RIGHT: order summary */}
-            <aside style={{ border: '1px solid var(--line)', background: 'var(--bg-2)', padding: 20, position: 'sticky', top: 84 }}>
-                <div className="eyebrow eyebrow-gold mb-4">／ ORDER</div>
-                {cart.isMultiVendor ? (
-                    <div className="mono-row" style={{ fontSize: 11, marginBottom: 14 }}>
-                        <span className="accent">SOLD BY</span>
-                        <span className="sep" />
-                        <span style={{ color: 'var(--text)' }}>
-                            {cart.vendors.map((v) => v.name).filter(Boolean).join(' · ')}
+            <aside className="g-card gt-sumcard gt-side" aria-labelledby="co-order">
+                <h2 className="g-card-h" id="co-order">
+                    Order
+                </h2>
+                {soldBy ? (
+                    <div className="gt-sold g-chips">
+                        <span className="g-chip">
+                            <Store size={14} strokeWidth={2} aria-hidden="true" />
+                            Sold by {soldBy}
                         </span>
                     </div>
-                ) : cart.vendor.name ? (
-                    <div className="mono-row" style={{ fontSize: 11, marginBottom: 14 }}>
-                        <span className="accent">SOLD BY</span>
-                        <span className="sep" />
-                        <span style={{ color: 'var(--text)' }}>{cart.vendor.name}</span>
-                    </div>
                 ) : null}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
+                <ul className="gt-lines">
                     {cart.items.map((it) => (
-                        <div key={it.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: 13 }}>
-                            <span className="text-dim" style={{ minWidth: 0 }}>
-                                {it.productTitle}
-                                {it.variantTitle && it.variantTitle !== 'Default' ? ` · ${it.variantTitle}` : ''} × {it.quantity}
+                        <li key={it.id} className="gt-line">
+                            <span className="gt-thumb" aria-hidden="true">
+                                {it.thumbnail ? (
+                                    // eslint-disable-next-line @next/next/no-img-element
+                                    <img src={it.thumbnail} alt="" />
+                                ) : (
+                                    <Package size={20} strokeWidth={1.5} />
+                                )}
                             </span>
-                            <span style={{ color: 'var(--text)', whiteSpace: 'nowrap' }}>{formatMoney(it.total, currency)}</span>
-                        </div>
+                            <span className="gt-line-t">
+                                <b>{it.productTitle}</b>
+                                <small>
+                                    {it.variantTitle && it.variantTitle !== 'Default' ? `${it.variantTitle} · ` : ''}Qty {it.quantity}
+                                </small>
+                            </span>
+                            <span className="gt-line-v g-w">{formatMoney(it.total, currency)}</span>
+                        </li>
                     ))}
-                </div>
-                <div style={{ borderTop: '1px solid var(--line)', paddingTop: 14, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                </ul>
+                <ul className="gt-sum">
                     <SumRow label="Subtotal" value={formatMoney(cart.subtotal, currency)} />
                     <SumRow label="Shipping" value={shippingSet ? formatMoney(cart.shippingTotal, currency) : '—'} />
                     {shippingSet && cart.taxTotal ? <SumRow label="Tax" value={formatMoney(cart.taxTotal, currency)} /> : null}
-                    <SumRow label="Total" value={shippingSet ? formatMoney(cart.total, currency) : 'TBD'} strong />
-                </div>
+                    <SumRow label="Total" value={shippingSet ? formatMoney(cart.total, currency) : 'After shipping'} strong plain={!shippingSet} />
+                </ul>
             </aside>
         </div>
     );
@@ -627,21 +656,25 @@ function StepBlock({
     children: React.ReactNode;
 }) {
     return (
-        <div style={{ border: `1px solid ${active ? 'var(--gold)' : 'var(--line)'}`, padding: 20, opacity: active || done ? 1 : 0.6 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: active ? 16 : 0 }}>
-                <div className="mono-row" style={{ fontSize: 12 }}>
-                    <span className="accent">{done ? <Check /> : n}</span>
-                    <span className="sep" />
-                    <span style={{ color: 'var(--text)', letterSpacing: 1 }}>{title}</span>
-                </div>
+        <section
+            className={`g-card gt-step${active ? ' is-active' : ''}${done ? ' is-done' : ''}${!active && !done ? ' is-idle' : ''}`}
+            aria-label={`Step ${n} of 3: ${title}`}
+            aria-current={active ? 'step' : undefined}
+        >
+            <div className="gt-step-h">
+                <span className="gt-step-n" aria-hidden="true">
+                    {done ? <Check size={18} strokeWidth={2.6} /> : n}
+                </span>
+                <h2>{title}</h2>
                 {done && onEdit ? (
-                    <button type="button" onClick={onEdit} className="font-display" style={{ background: 'none', border: 'none', color: 'var(--gold)', fontSize: 10, letterSpacing: 1, cursor: 'pointer' }}>
-                        EDIT
+                    <button type="button" onClick={onEdit} className="g-link">
+                        <Pencil size={15} strokeWidth={2} aria-hidden="true" />
+                        Edit
                     </button>
                 ) : null}
             </div>
             {children}
-        </div>
+        </section>
     );
 }
 
@@ -650,35 +683,23 @@ function Field({
     ...props
 }: { label: string } & React.InputHTMLAttributes<HTMLInputElement>) {
     return (
-        <label style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-            <span className="eyebrow">{label}</span>
-            <input
-                {...props}
-                style={{
-                    width: '100%',
-                    boxSizing: 'border-box',
-                    background: 'var(--bg-1)',
-                    border: '1px solid var(--line)',
-                    color: 'var(--text)',
-                    padding: '11px 12px',
-                    fontSize: 15,
-                    fontFamily: 'inherit',
-                }}
-            />
+        <label className="gt-fld">
+            <span>{label}</span>
+            <input {...props} />
         </label>
     );
 }
 
 function Row2({ children }: { children: React.ReactNode }) {
-    return <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 12 }}>{children}</div>;
+    return <div className="gt-fsp">{children}</div>;
 }
 
-function SumRow({ label, value, strong }: { label: string; value: string; strong?: boolean }) {
+function SumRow({ label, value, strong, plain }: { label: string; value: string; strong?: boolean; plain?: boolean }) {
     return (
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: strong ? 16 : 13 }}>
-            <span className="text-dim">{label}</span>
-            <span style={{ color: 'var(--text)', fontWeight: strong ? 700 : 400 }}>{value}</span>
-        </div>
+        <li className={strong ? 'is-all' : undefined}>
+            <span>{label}</span>
+            <span className={plain ? 'gt-plain' : 'g-w'}>{value}</span>
+        </li>
     );
 }
 
@@ -775,14 +796,7 @@ function ExpressPayInner(props: ExpressPayProps) {
                     await props.onAuthorized();
                 }}
             />
-            <div
-                className="text-dim"
-                style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 11, letterSpacing: 'var(--track-wider)' }}
-            >
-                <span style={{ flex: 1, height: 1, background: 'var(--line)' }} />
-                OR PAY WITH CARD
-                <span style={{ flex: 1, height: 1, background: 'var(--line)' }} />
-            </div>
+            <div className="gt-or">Or pay with card</div>
         </div>
     );
 }
