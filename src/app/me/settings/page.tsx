@@ -9,6 +9,7 @@ import { ProfileForm } from './ProfileForm';
 import { ImageSlot } from './ImageSlot';
 import { AddressBook } from './AddressBook';
 import { AccountPanel } from './AccountPanel';
+import { Appearance } from '@/components/glide/Appearance';
 
 export const dynamic = 'force-dynamic';
 export const metadata: Metadata = { title: 'Settings · My Rollout', robots: { index: false } };
@@ -48,6 +49,18 @@ export default async function SettingsPage() {
             <Panel title="SHIPPING ADDRESSES">
                 <div style={{ fontSize: 12, color: 'var(--text-2)', marginBottom: 12 }}>Used when you shop on Rollout. Your default prefills checkout.</div>
                 <AddressBook initial={addresses} connected={connected} />
+            </Panel>
+
+            {/* Device-only: the choice lives in cookies on this browser. Saving it
+                on the profile needs a migration (open decision). The control is
+                Glide, so it carries its own .glide scope inside the old panel. */}
+            <Panel title="APPEARANCE">
+                <div className="glide" style={{ maxWidth: 440 }}>
+                    <Appearance idPrefix="settings-appearance" />
+                    <p className="g-appear-note" style={{ marginTop: 12 }}>
+                        Saved on this device.
+                    </p>
+                </div>
             </Panel>
 
             <Panel title="ACCOUNT">

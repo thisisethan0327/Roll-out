@@ -1,43 +1,30 @@
 import Link from 'next/link';
+import { Appearance } from './glide/Appearance';
+import { Tricolore } from './glide/primitives';
 
+/**
+ * Public site footer, in Glide. Same links as before; the Appearance control
+ * sits here too, so a signed-out visitor can pick a theme (signed-in members
+ * also have it on /me/settings).
+ */
 export function SiteFooter() {
     const year = new Date().getFullYear();
     return (
-        <footer
-            style={{
-                borderTop: '1px solid var(--line)',
-                background: 'var(--bg-1)',
-                padding: '48px 0 32px',
-                marginTop: 80,
-            }}
-        >
-            <div className="container">
-                <div
-                    style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-                        gap: 40,
-                        paddingBottom: 36,
-                        borderBottom: '1px solid var(--line)',
-                    }}
-                >
-                    <div>
-                        <div className="font-display" style={{ fontWeight: 700, letterSpacing: 4, fontSize: 18 }}>
-                            ROLLOUT
-                        </div>
-                        <div className="text-jp" style={{ fontSize: 9, letterSpacing: 2, marginTop: 2 }}>
-                            ／ ロールアウト
-                        </div>
-                        <p className="text-muted" style={{ fontSize: 12, marginTop: 16, lineHeight: 1.6 }}>
-                            A private network for the cars you build.
-                            <br />Shops · Meets · Builds.
-                        </p>
+        <footer className="glide g-foot">
+            <Tricolore thin />
+            <div className="g-wrap g-foot-in">
+                <div className="g-foot-top">
+                    <div className="g-foot-brand">
+                        <Link href="/" className="g-wm" aria-label="Rollout home">
+                            rollout
+                        </Link>
+                        <p>Meets, runs and the shops you trust. A private network for the cars you build.</p>
                     </div>
 
                     <FooterColumn title="Product">
                         <Link href="/meets">Meets</Link>
                         <Link href="/shops">Shops</Link>
-                        <Link href="/#features">Features</Link>
+                        <Link href="/store">Store</Link>
                         <Link href="/signup">Create your account</Link>
                         <Link href="/sign-in-on-phone">Sign-in help</Link>
                     </FooterColumn>
@@ -55,12 +42,17 @@ export function SiteFooter() {
                         <Link href="/terms">Terms of Service</Link>
                         <Link href="/privacy">Privacy Policy</Link>
                         <Link href="/guidelines">Community Guidelines</Link>
-                        <Link href="/policies/refunds">Refund & Cancellation Policy</Link>
+                        <Link href="/policies/refunds">Refund &amp; Cancellation Policy</Link>
                     </FooterColumn>
+
+                    <section className="g-foot-appearance" aria-labelledby="foot-appearance">
+                        <h2 id="foot-appearance">Appearance</h2>
+                        <Appearance compact idPrefix="foot-appearance" />
+                    </section>
                 </div>
 
-                <div className="mono-row" style={{ marginTop: 24, justifyContent: 'space-between', display: 'flex', width: '100%', fontSize: 10 }}>
-                    <span>ROLLOUT · UNITY USA LLC</span>
+                <div className="g-foot-legal">
+                    <span>Rollout · UNITY USA LLC</span>
                     <span>© {year} UNITY USA LLC</span>
                 </div>
             </div>
@@ -68,17 +60,15 @@ export function SiteFooter() {
     );
 }
 
-function FooterColumn({ title, children }: { title: string; children: React.ReactNode }) {
+function FooterColumn({ title, children }: { title: string; children: React.ReactNode[] }) {
     return (
-        <div>
-            <div className="eyebrow" style={{ marginBottom: 16 }}>{title}</div>
-            {/* footer-links gives every anchor a 44px target (see globals.css).
-                The visual rhythm comes from the target height now, so no gap. */}
-            <div className="footer-links" style={{ display: 'flex', flexDirection: 'column' }}>
-                {Array.isArray(children) ? children.map((c, i) => (
-                    <div key={i} style={{ fontSize: 13 }}>{c}</div>
-                )) : <div style={{ fontSize: 13 }}>{children}</div>}
-            </div>
-        </div>
+        <nav aria-label={title}>
+            <h2>{title}</h2>
+            <ul>
+                {children.map((c, i) => (
+                    <li key={i}>{c}</li>
+                ))}
+            </ul>
+        </nav>
     );
 }
