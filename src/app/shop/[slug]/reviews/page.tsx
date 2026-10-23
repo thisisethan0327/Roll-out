@@ -2,7 +2,11 @@ import { requireShopMemberBySlug } from '@/lib/auth-guard';
 import { formatDateOnly } from '@/lib/event-time';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { ReviewReply } from './ReviewReply';
-import { Stars } from '@/components/icons';
+import { BadgeCheck, MessageSquareText, Star } from 'lucide-react';
+import { BizPage } from '@/components/glide-shopbiz/BizPage';
+import { CardEmpty, CountStrip } from '@/components/glide-shopbiz/parts';
+import bz from '@/components/glide-shopbiz/biz.module.css';
+import { ConsoleHead } from '@/components/glide-console/parts';
 
 export const metadata = { title: 'Reviews' };
 
@@ -33,7 +37,14 @@ async function loadReviews(shopId: number): Promise<ReviewRecord[]> {
 }
 
 function stars(rating: number) {
-    return <Stars rating={rating} />;
+    const n = Math.max(0, Math.min(5, Math.round(Number(rating))));
+    return (
+        <span className={bz.stars} role="img" aria-label={`${n} out of 5 stars`}>
+            {[0, 1, 2, 3, 4].map((i) => (
+                <Star key={i} size={18} strokeWidth={2} aria-hidden="true" fill={i < n ? 'currentColor' : 'none'} className={i < n ? undefined : bz.off} />
+            ))}
+        </span>
+    );
 }
 
 function reviewDate(iso: string | null): string {
@@ -61,65 +72,53 @@ export default async function ShopReviewsPage({
     const replied = reviews.filter((r) => r.owner_reply).length;
 
     return (
-        <>
-            <div className="admin-page-head">
-                <div>
-                    <div className="admin-page-title">REVIEWS</div>
-                    <div className="admin-page-sub">{shop.name.toUpperCase()} · RATINGS</div>
-                </div>
-            </div>
+        <BizPage slug={slug}>
+            <ConsoleHead title="Reviews" sub={`${shop.name} · Ratings`} />
 
-            <div className="admin-stat-grid">
-                <div className="admin-stat">
-                    <div className="admin-stat-lbl">TOTAL</div>
-                    <div className="admin-stat-num">{total}</div>
-                </div>
-                <div className="admin-stat">
-                    <div className="admin-stat-lbl">AVG RATING</div>
-                    <div className="admin-stat-num gold">{total ? avg.toFixed(1) : '—'}</div>
-                </div>
-                <div className="admin-stat">
-                    <div className="admin-stat-lbl">VERIFIED</div>
-                    <div className="admin-stat-num">{verified}</div>
-                </div>
-                <div className="admin-stat">
-                    <div className="admin-stat-lbl">REPLIED</div>
-                    <div className="admin-stat-num">{replied}</div>
-                </div>
-            </div>
+            <CountStrip
+                label="Review totals"
+                items={[
+                    { label: 'Total', value: total },
+                    { label: 'Avg rating', value: total ? avg.toFixed(1) : '—' },
+                    { label: 'Verified', value: verified },
+                    { label: 'Replied', value: replied },
+                ]}
+            />
 
             {reviews.length === 0 ? (
-                <div className="admin-empty" style={{ marginTop: 16 }}>
-                    No reviews yet.
-                </div>
+                <section className="g-card">
+                    <CardEmpty
+                        icon={<MessageSquareText size={22} strokeWidth={1.75} />}
+                        title="No reviews yet"
+                        body="When customers review the shop, their ratings show up here and you can reply in public."
+                    />
+                </section>
             ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 16 }}>
+                <ul className={bz.reviews}>
                     {reviews.map((rev) => (
-                        <div
-                            key={rev.id}
-                            style={{ padding: '18px 20px', background: 'var(--bg-2)', border: '1px solid var(--line)' }}
-                        >
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-                                <span className="accent" style={{ fontSize: 16, letterSpacing: 2 }}>{stars(rev.rating)}</span>
-                                <span className="admin-handle">{reviewDate(rev.created_at)}</span>
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
-                                <span style={{ color: 'var(--text)', fontFamily: 'var(--font-display)', fontSize: 12 }}>
+                        <li key={rev.id}>
+                            <article className={`g-card ${bz.rev}`} aria-label={`Review by ${rev.reviewer_name || 'someone'}`}>
+                                <div className={bz.revTop}>
+                                    {stars(rev.rating)}
+                                    <span className={bz.date}>{reviewDate(rev.created_at)}</span>
+                                </div>
+                                <p className={bz.revWho}>
                                     {rev.reviewer_name || 'Someone'}
-                                </span>
-                                {rev.reviewer_handle ? <span className="admin-handle">@{rev.reviewer_handle}</span> : null}
-                                {rev.verified_purchase ? <span className="admin-pill neon">VERIFIED</span> : null}
-                            </div>
-                            {rev.body ? (
-                                <p style={{ color: 'var(--text-2)', fontSize: 14, lineHeight: 1.55, marginTop: 12, marginBottom: 0 }}>
-                                    {rev.body}
+                                    {rev.reviewer_handle ? <span>@{rev.reviewer_handle}</span> : null}
+                                    {rev.verified_purchase ? (
+                                        <span className="g-chip g-chip--tint">
+                                            <BadgeCheck size={14} strokeWidth={2} aria-hidden="true" />
+                                            Verified
+                                        </span>
+                                    ) : null}
                                 </p>
-                            ) : null}
-                            <ReviewReply id={rev.id} shopId={rev.shop_id} ownerReply={rev.owner_reply} />
-                        </div>
+                                {rev.body ? <p className={bz.revBody}>{rev.body}</p> : null}
+                                <ReviewReply id={rev.id} shopId={rev.shop_id} ownerReply={rev.owner_reply} />
+                            </article>
+                        </li>
                     ))}
-                </div>
+                </ul>
             )}
-        </>
+        </BizPage>
     );
 }

@@ -2,7 +2,12 @@ import { requireShopMemberBySlug } from '@/lib/auth-guard';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { ServiceRow, type ServiceRowData } from './ServiceRow';
 import { AddServiceForm } from './AddServiceForm';
-import { ChevronRight } from '@/components/icons';
+import { Search, SearchX, Wrench } from 'lucide-react';
+import { BizPage } from '@/components/glide-shopbiz/BizPage';
+import { CardEmpty, CountStrip, cx } from '@/components/glide-shopbiz/parts';
+import bz from '@/components/glide-shopbiz/biz.module.css';
+import { CardHead, ConsoleHead } from '@/components/glide-console/parts';
+import cs from '@/components/glide-console/console.module.css';
 
 export const metadata = { title: 'Services' };
 
@@ -76,105 +81,92 @@ export default async function ShopServicesPage({
     const canDelete = OWNER_ROLES.has(role);
 
     return (
-        <>
-            <div className="admin-page-head">
-                <div>
-                    <div className="admin-page-title">SERVICES</div>
-                    <div className="admin-page-sub">
-                        {shop.name.toUpperCase()} · CATALOG
-                    </div>
-                </div>
-                <AddServiceForm shopId={shop.shopId} />
-            </div>
+        <BizPage slug={slug}>
+            <ConsoleHead title="Services" sub={`${shop.name} · Catalog`} actions={<AddServiceForm shopId={shop.shopId} />} />
 
-            <div className="admin-stat-grid">
-                <div className="admin-stat">
-                    <div className="admin-stat-lbl">TOTAL SERVICES</div>
-                    <div className="admin-stat-num">{totalServices}</div>
-                </div>
-                <div className="admin-stat">
-                    <div className="admin-stat-lbl">ACTIVE</div>
-                    <div className="admin-stat-num gold">{activeCount}</div>
-                </div>
-                <div className="admin-stat">
-                    <div className="admin-stat-lbl">CATEGORIES</div>
-                    <div className="admin-stat-num">{categories.length}</div>
-                </div>
-                <div className="admin-stat">
-                    <div className="admin-stat-lbl">AVG PRICE</div>
-                    <div className="admin-stat-num">{formatPrice(avgPrice)}</div>
-                </div>
-            </div>
+            <CountStrip
+                label="Service totals"
+                items={[
+                    { label: 'Total services', value: totalServices },
+                    { label: 'Active', value: activeCount },
+                    { label: 'Categories', value: categories.length },
+                    { label: 'Avg price', value: formatPrice(avgPrice) },
+                ]}
+            />
 
-            <form
-                className="admin-search"
-                action={`/shop/${slug}/services`}
-                style={{ marginTop: 12 }}
-            >
-                <input
-                    name="q"
-                    defaultValue={q ?? ''}
-                    className="admin-search-input"
-                    placeholder="SEARCH NAME OR DESCRIPTION"
-                />
-                <button type="submit" className="admin-action-btn">
-                    SEARCH <ChevronRight />
-                </button>
+            <form className={bz.search} action={`/shop/${slug}/services`} role="search">
+                <Search size={18} strokeWidth={2} aria-hidden="true" />
+                <input name="q" defaultValue={q ?? ''} placeholder="Search name or description" aria-label="Search services" />
+                <button type="submit">Search</button>
             </form>
 
             {groupKeys.length === 0 ? (
-                <div className="admin-empty">
+                <section className="g-card">
                     {q ? (
-                        <>NO MATCHES FOR &ldquo;{q}&rdquo;.</>
+                        <CardEmpty
+                            icon={<SearchX size={22} strokeWidth={1.75} />}
+                            title={`No matches for “${q}”`}
+                            body="Try a shorter word, or clear the search to see every service."
+                            action={
+                                <a href={`/shop/${slug}/services`} className={bz.act}>
+                                    Clear search
+                                </a>
+                            }
+                        />
                     ) : (
-                        <>
-                            NO SERVICES YET — ADD YOUR FIRST.
-                        </>
+                        <CardEmpty
+                            icon={<Wrench size={22} strokeWidth={1.75} />}
+                            title="No services yet"
+                            body="Add your first service: what you do, a base price or quote-on-request, and how long it takes."
+                        />
                     )}
-                </div>
+                </section>
             ) : (
                 groupKeys.map((cat) => (
-                    <div key={cat} style={{ marginTop: 20 }}>
-                        <div
-                            className="admin-page-head"
-                            style={{ borderBottom: 'none', paddingBottom: 0, marginBottom: 8 }}
-                        >
-                            <div>
-                                <div className="admin-page-title" style={{ fontSize: 14 }}>
-                                    {cat.toUpperCase()}
-                                </div>
-                                <div className="admin-page-sub">
-                                    {grouped[cat].length} ITEM
-                                    {grouped[cat].length === 1 ? '' : 'S'}
-                                </div>
-                            </div>
-                        </div>
-                        <div className="admin-table-wrap">
-                            <table className="admin-table">
+                    <section key={cat} className="g-card" aria-labelledby={`svc-${cat}`}>
+                        <CardHead
+                            id={`svc-${cat}`}
+                            title={cat}
+                            sub={`${grouped[cat].length} item${grouped[cat].length === 1 ? '' : 's'}`}
+                        />
+                        <div className={cx(cs.tblWrap)} style={{ marginTop: 10 }}>
+                            <table className={cx(cs.tbl, bz.svcTbl)}>
+                                <colgroup>
+                                    <col style={{ width: '24%' }} />
+                                    <col className={bz.svcDesc} />
+                                    <col style={{ width: 130 }} />
+                                    <col style={{ width: 110 }} />
+                                    <col style={{ width: 140 }} />
+                                    <col style={{ width: 230 }} />
+                                </colgroup>
                                 <thead>
                                     <tr>
-                                        <th>NAME</th>
-                                        <th>DESCRIPTION</th>
-                                        <th>PRICE</th>
-                                        <th>DURATION</th>
-                                        <th>STATUS</th>
-                                        <th style={{ textAlign: 'right' }}>ACTIONS</th>
+                                        <th scope="col">Name</th>
+                                        <th scope="col" className={cs.mHide}>
+                                            Description
+                                        </th>
+                                        <th scope="col" style={{ textAlign: 'right' }}>
+                                            Price
+                                        </th>
+                                        <th scope="col" className={cs.mHide}>
+                                            Duration
+                                        </th>
+                                        <th scope="col">Status</th>
+                                        <th scope="col">
+                                            <span className="g-sr">Actions</span>
+                                        </th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {grouped[cat].map((it) => (
-                                        <ServiceRow
-                                            key={it.id}
-                                            service={it}
-                                            canDelete={canDelete}
-                                        />
+                                        <ServiceRow key={it.id} service={it} canDelete={canDelete} />
                                     ))}
                                 </tbody>
                             </table>
                         </div>
-                    </div>
+                    </section>
                 ))
             )}
-        </>
+        </BizPage>
     );
 }

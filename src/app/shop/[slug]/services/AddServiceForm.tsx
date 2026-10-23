@@ -1,11 +1,23 @@
 'use client';
-import { useState, useTransition } from 'react';
+/**
+ * "Add service": the button and its dialog. Glide: the primary pill opens a
+ * card dialog over the scrim; it closes by ×, Cancel, the scrim or Escape.
+ * Same addService action and the same form fields as before.
+ */
+import { useEffect, useRef, useState, useTransition } from 'react';
+import { Plus, X } from 'lucide-react';
 import { addService } from './actions';
-import { ChevronRight } from '@/components/icons';
+import { GlideButton } from '@/components/glide/primitives';
+import { CardHead } from '@/components/glide-console/parts';
+import cs from '@/components/glide-console/console.module.css';
+import { ServiceFields } from '@/components/glide-shopbiz/ServiceFields';
+import { cx } from '@/components/glide-shopbiz/parts';
+import bz from '@/components/glide-shopbiz/biz.module.css';
 
 export function AddServiceForm({ shopId }: { shopId: number }) {
     const [open, setOpen] = useState(false);
     const [pending, start] = useTransition();
+    const dialogRef = useRef<HTMLDivElement>(null);
 
     const onSubmit = (formData: FormData) => {
         start(async () => {
@@ -18,185 +30,51 @@ export function AddServiceForm({ shopId }: { shopId: number }) {
         });
     };
 
+    // Focus the first field on open; Escape closes.
+    useEffect(() => {
+        if (!open) return;
+        dialogRef.current?.querySelector<HTMLInputElement>('input[name="name"]')?.focus();
+        const onKey = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') setOpen(false);
+        };
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+    }, [open]);
+
     if (!open) {
         return (
-            <button
-                className="admin-action-btn"
-                onClick={() => setOpen(true)}
-            >
-                + ADD SERVICE
-            </button>
+            <GlideButton size="sm" onClick={() => setOpen(true)} icon={<Plus size={18} strokeWidth={2} />}>
+                Add service
+            </GlideButton>
         );
     }
 
     return (
         <div
-            style={{
-                position: 'fixed',
-                inset: 0,
-                background: 'rgba(0, 0, 0, 0.6)',
-                zIndex: 100,
-                display: 'flex',
-                alignItems: 'flex-start',
-                justifyContent: 'center',
-                padding: 24,
-                overflow: 'auto',
-            }}
+            className={bz.dlgRoot}
             onClick={(e) => {
                 if (e.target === e.currentTarget) setOpen(false);
             }}
         >
-            <div
-                style={{
-                    background: 'var(--bg-1)',
-                    border: '1px solid var(--gold)',
-                    padding: 20,
-                    width: '100%',
-                    maxWidth: 720,
-                    marginTop: 40,
-                }}
-            >
-                <div
-                    style={{
-                        fontFamily: 'var(--font-display)',
-                        fontSize: 14,
-                        letterSpacing: 'var(--track-wide)',
-                        color: 'var(--gold)',
-                        marginBottom: 14,
-                    }}
-                >
-                    ADD NEW SERVICE
-                </div>
-
-                <form action={onSubmit} className="admin-form" style={{ marginTop: 0 }}>
-                    <div
-                        style={{
-                            display: 'grid',
-                            gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-                            gap: 10,
-                        }}
-                    >
-                        <div>
-                            <div className="admin-form-label">NAME *</div>
-                            <input
-                                name="name"
-                                required
-                                placeholder="e.g. Full Vehicle Wrap"
-                                className="admin-form-input"
-                            />
-                        </div>
-                        <div>
-                            <div className="admin-form-label">CATEGORY</div>
-                            <input
-                                name="category"
-                                defaultValue="OTHER"
-                                placeholder="WRAP | PPF | TINT | CERAMIC | PARTS | OTHER"
-                                className="admin-form-input"
-                            />
-                        </div>
-                        <div>
-                            <div className="admin-form-label">SUBCATEGORY</div>
-                            <input
-                                name="subcategory"
-                                placeholder="e.g. Color change"
-                                className="admin-form-input"
-                            />
-                        </div>
-                        <div>
-                            <div className="admin-form-label">BASE PRICE ($)</div>
-                            <input
-                                type="number"
-                                step="0.01"
-                                name="base_price"
-                                placeholder="leave blank for ASK FOR QUOTE"
-                                className="admin-form-input"
-                            />
-                        </div>
-                        <div>
-                            <div className="admin-form-label">DURATION (HOURS)</div>
-                            <input
-                                type="number"
-                                step="0.5"
-                                name="duration_hours"
-                                className="admin-form-input"
-                            />
-                        </div>
-                        <div>
-                            <div className="admin-form-label">SORT ORDER</div>
-                            <input
-                                type="number"
-                                name="sort_order"
-                                defaultValue="0"
-                                className="admin-form-input"
-                            />
-                        </div>
-                    </div>
-
-                    <div style={{ marginTop: 10 }}>
-                        <div className="admin-form-label">DESCRIPTION</div>
-                        <textarea
-                            name="description"
-                            rows={2}
-                            className="admin-form-input"
-                            style={{ width: '100%' }}
-                        />
-                    </div>
-
-                    <div style={{ marginTop: 10 }}>
-                        <div className="admin-form-label">INTERNAL NOTES</div>
-                        <textarea
-                            name="notes"
-                            rows={2}
-                            placeholder="Not shown to customer"
-                            className="admin-form-input"
-                            style={{ width: '100%' }}
-                        />
-                    </div>
-
-                    <label
-                        style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 8,
-                            marginTop: 10,
-                            fontFamily: 'var(--font-display)',
-                            fontSize: 11,
-                            letterSpacing: 'var(--track-wide)',
-                            color: 'var(--text-2)',
-                        }}
-                    >
-                        <input
-                            type="checkbox"
-                            name="active"
-                            defaultChecked
-                        />
-                        ACTIVE
-                    </label>
-
-                    <div
-                        style={{
-                            display: 'flex',
-                            gap: 6,
-                            justifyContent: 'flex-end',
-                            marginTop: 14,
-                            flexWrap: 'wrap',
-                        }}
-                    >
-                        <button
-                            type="button"
-                            className="admin-action-btn muted"
-                            disabled={pending}
-                            onClick={() => setOpen(false)}
-                        >
-                            CANCEL
+            <div ref={dialogRef} className={bz.dlg} role="dialog" aria-modal="true" aria-labelledby="add-svc-h">
+                <CardHead
+                    id="add-svc-h"
+                    title="Add a service"
+                    action={
+                        <button type="button" className="g-cb g-cb--fill" aria-label="Close" onClick={() => setOpen(false)}>
+                            <X size={20} strokeWidth={2} aria-hidden="true" />
                         </button>
-                        <button
-                            type="submit"
-                            className="admin-action-btn"
-                            disabled={pending}
-                        >
-                            {pending ? 'SAVING…' : <>CREATE <ChevronRight /></>}
+                    }
+                />
+                <form action={onSubmit} className={cs.cardBody}>
+                    <ServiceFields idp="add-svc" isNew />
+                    <div className={cx(cs.actRow)} style={{ marginTop: 18, justifyContent: 'flex-end' }}>
+                        <button type="button" className={cx(bz.act, bz.actInk)} disabled={pending} onClick={() => setOpen(false)}>
+                            Cancel
                         </button>
+                        <GlideButton type="submit" size="sm" disabled={pending} aria-busy={pending}>
+                            {pending ? 'Saving…' : 'Create service'}
+                        </GlideButton>
                     </div>
                 </form>
             </div>
