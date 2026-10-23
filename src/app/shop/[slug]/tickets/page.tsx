@@ -8,7 +8,10 @@
 import Link from 'next/link';
 import { requireShopMemberBySlug } from '@/lib/auth-guard';
 import { getSupabasePublicAdmin } from '@/lib/supabase/admin';
-import { ChevronRight } from '@/components/icons';
+import { Plus, Wrench } from 'lucide-react';
+import { ConsoleHead } from '@/components/glide-console/parts';
+import { GlideButton } from '@/components/glide/primitives';
+import { Counts, EmptyRow, FilterTabs, SearchBar, StatusChip, cx, fmtDay, fmtWhen, shopStyles as sh } from '@/components/glide-shop/parts';
 
 export const metadata = { title: 'Tickets' };
 
@@ -23,22 +26,14 @@ type StatusKey =
     | 'cancelled';
 
 const STATUS_FILTERS: { key: StatusKey; label: string }[] = [
-    { key: 'all', label: 'ALL' },
-    { key: 'quote', label: 'QUOTE' },
-    { key: 'estimate', label: 'ESTIMATE' },
-    { key: 'pending', label: 'PENDING' },
-    { key: 'in-progress', label: 'IN PROGRESS' },
-    { key: 'completed', label: 'COMPLETED' },
-    { key: 'cancelled', label: 'CANCELLED' },
+    { key: 'all', label: 'All' },
+    { key: 'quote', label: 'Quote' },
+    { key: 'estimate', label: 'Estimate' },
+    { key: 'pending', label: 'Pending' },
+    { key: 'in-progress', label: 'In progress' },
+    { key: 'completed', label: 'Completed' },
+    { key: 'cancelled', label: 'Cancelled' },
 ];
-
-function statusPillVariant(status: string | null): '' | 'gold' | 'neon' | 'warn' {
-    const s = (status ?? '').toLowerCase();
-    if (s === 'quote' || s === 'estimate' || s === 'pending') return 'gold';
-    if (s === 'in-progress' || s === 'completed') return 'neon';
-    if (s === 'cancelled' || s === 'declined') return 'warn';
-    return '';
-}
 
 async function loadStats(shopId: number) {
     const pub = getSupabasePublicAdmin();
@@ -126,172 +121,109 @@ export default async function TicketsListPage({
         loadTickets(shop.shopId, status, q),
     ]);
 
+    const filterHref = (key: StatusKey) => {
+        const params = new URLSearchParams();
+        if (key !== 'all') params.set('status', key);
+        if (q) params.set('q', q);
+        return `/shop/${slug}/tickets${params.toString() ? `?${params.toString()}` : ''}`;
+    };
+
     return (
-        <>
-            <div className="admin-page-head">
-                <div>
-                    <div className="admin-page-title">TICKETS</div>
-                    <div className="admin-page-sub">
-                        {shop.name.toUpperCase()} · {tickets.length} SHOWN
-                    </div>
-                </div>
-                <Link
-                    href={`/shop/${slug}/tickets/new`}
-                    className="admin-action-btn"
-                    style={{ textDecoration: 'none' }}
-                >
-                    + NEW TICKET
-                </Link>
-            </div>
+        <div className={sh.stack}>
+            <ConsoleHead
+                title="Tickets"
+                sub={`${shop.name} · ${tickets.length} shown`}
+                actions={
+                    <GlideButton href={`/shop/${slug}/tickets/new`} size="sm" icon={<Plus size={18} strokeWidth={2} />}>
+                        New ticket
+                    </GlideButton>
+                }
+            />
 
-            <div className="admin-stat-grid">
-                <Stat label="TOTAL TICKETS" value={stats.total} />
-                <Stat label="ACTIVE" value={stats.active} accent={stats.active > 0 ? 'gold' : undefined} />
-                <Stat label="NEW / 7D" value={stats.thisWeek} />
-                <Stat label="COMPLETED THIS MONTH" value={stats.completedThisMonth} />
-            </div>
+            <Counts
+                label="Ticket counts"
+                items={[
+                    { label: 'Total tickets', value: stats.total },
+                    { label: 'Active', value: stats.active, dot: stats.active > 0 },
+                    { label: 'New, last 7 days', value: stats.thisWeek },
+                    { label: 'Completed this month', value: stats.completedThisMonth },
+                ]}
+            />
 
-            <div
-                style={{
-                    display: 'flex',
-                    gap: 6,
-                    flexWrap: 'wrap',
-                    margin: '16px 0 12px',
-                }}
-            >
-                {STATUS_FILTERS.map((f) => {
-                    const params = new URLSearchParams();
-                    if (f.key !== 'all') params.set('status', f.key);
-                    if (q) params.set('q', q);
-                    const href = `/shop/${slug}/tickets${params.toString() ? `?${params.toString()}` : ''}`;
-                    const active = status === f.key;
-                    return (
-                        <Link
-                            key={f.key}
-                            href={href}
-                            className={`admin-pill ${active ? 'gold' : ''}`}
-                            style={{ textDecoration: 'none', cursor: 'pointer' }}
-                        >
-                            {f.label}
-                        </Link>
-                    );
-                })}
-            </div>
-
-            <form className="admin-search" action={`/shop/${slug}/tickets`}>
-                {status !== 'all' && <input type="hidden" name="status" value={status} />}
-                <input
-                    name="q"
-                    defaultValue={q}
-                    className="admin-search-input"
-                    placeholder="SEARCH TICKET ID, CUSTOMER, OR VEHICLE"
+            <div className={sh.toolbar}>
+                <FilterTabs
+                    label="Ticket status"
+                    items={STATUS_FILTERS.map((f) => ({ href: filterHref(f.key), label: f.label, active: status === f.key }))}
                 />
-                <button type="submit" className="admin-action-btn">
-                    SEARCH <ChevronRight />
-                </button>
-                {q && (
-                    <Link
-                        href={`/shop/${slug}/tickets${status !== 'all' ? `?status=${status}` : ''}`}
-                        className="admin-action-btn muted"
-                        style={{ textDecoration: 'none' }}
-                    >
-                        CLEAR
-                    </Link>
-                )}
-            </form>
-
-            <div className="admin-table-wrap">
-                <table className="admin-table">
-                    <thead>
-                        <tr>
-                            <th>TICKET ID</th>
-                            <th>CUSTOMER</th>
-                            <th>VEHICLE</th>
-                            <th>STATUS</th>
-                            <th style={{ textAlign: 'right' }}>TOTAL</th>
-                            <th>SERVICE DAY</th>
-                            <th>CREATED</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {tickets.length === 0 ? (
-                            <tr>
-                                <td colSpan={7}>
-                                    <div className="admin-empty">NO TICKETS YET</div>
-                                </td>
-                            </tr>
-                        ) : (
-                            tickets.map((t: any) => {
-                                const vehicle = [t.car_year, t.car_make, t.car_model]
-                                    .filter(Boolean)
-                                    .join(' ');
-                                return (
-                                    <tr key={t.id}>
-                                        <td>
-                                            <Link
-                                                href={`/shop/${slug}/tickets/${t.id}`}
-                                                className="text-link"
-                                                style={{ fontFamily: 'var(--font-mono, monospace)' }}
-                                            >
-                                                {t.ticket_id ?? '—'}
-                                            </Link>
-                                        </td>
-                                        <td>
-                                            {t.customer_name ?? '—'}
-                                            {t.email && (
-                                                <div className="admin-handle">{t.email}</div>
-                                            )}
-                                        </td>
-                                        <td>{vehicle || '—'}</td>
-                                        <td>
-                                            <span
-                                                className={`admin-pill ${statusPillVariant(t.status)}`}
-                                            >
-                                                {(t.status ?? '—').toString().toUpperCase()}
-                                            </span>
-                                        </td>
-                                        <td
-                                            style={{
-                                                textAlign: 'right',
-                                                fontFamily: 'var(--font-mono, monospace)',
-                                            }}
-                                        >
-                                            {t.total_price != null
-                                                ? `$${Number(t.total_price).toFixed(2)}`
-                                                : '—'}
-                                        </td>
-                                        <td style={{ fontFamily: 'var(--font-mono, monospace)' }}>
-                                            {t.service_day ?? '—'}
-                                        </td>
-                                        <td style={{ fontFamily: 'var(--font-mono, monospace)' }}>
-                                            {new Date(t.created_at)
-                                                .toISOString()
-                                                .slice(0, 10)}
-                                        </td>
-                                    </tr>
-                                );
-                            })
-                        )}
-                    </tbody>
-                </table>
+                <SearchBar
+                    action={`/shop/${slug}/tickets`}
+                    defaultValue={q}
+                    label="Search tickets"
+                    placeholder="Search ticket ID, customer or vehicle"
+                    hidden={{ status: status !== 'all' ? status : undefined }}
+                    clearHref={q ? `/shop/${slug}/tickets${status !== 'all' ? `?status=${status}` : ''}` : null}
+                />
             </div>
-        </>
-    );
-}
 
-function Stat({
-    label,
-    value,
-    accent,
-}: {
-    label: string;
-    value: number | string;
-    accent?: 'gold' | 'warn';
-}) {
-    return (
-        <div className="admin-stat">
-            <div className="admin-stat-lbl">{label}</div>
-            <div className={`admin-stat-num ${accent ?? ''}`}>{value}</div>
+            <section className="g-card" aria-label="Tickets">
+                <div className={sh.tblWrap}>
+                    <table className={cx(sh.tbl, sh.rowLink)}>
+                        <thead>
+                            <tr>
+                                <th>Ticket</th>
+                                <th>Customer</th>
+                                <th>Vehicle</th>
+                                <th>Status</th>
+                                <th className={sh.r}>Total</th>
+                                <th>Service day</th>
+                                <th>Created</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {tickets.length === 0 ? (
+                                <EmptyRow
+                                    colSpan={7}
+                                    icon={<Wrench size={18} strokeWidth={2} />}
+                                    title={q || status !== 'all' ? 'No tickets match' : 'No tickets yet'}
+                                    body={
+                                        q || status !== 'all'
+                                            ? 'Try another status or clear the search.'
+                                            : 'Open a ticket for each job: customer, vehicle, services and the day it is in.'
+                                    }
+                                />
+                            ) : (
+                                tickets.map((t: any) => {
+                                    const vehicle = [t.car_year, t.car_make, t.car_model].filter(Boolean).join(' ');
+                                    return (
+                                        <tr key={t.id}>
+                                            <td>
+                                                <Link href={`/shop/${slug}/tickets/${t.id}`} className={cx(sh.stretch, sh.code)}>
+                                                    {t.ticket_id ?? '—'}
+                                                </Link>
+                                            </td>
+                                            <td>
+                                                {t.customer_name ?? '—'}
+                                                {t.email && <small>{t.email}</small>}
+                                            </td>
+                                            <td data-label="Vehicle">{vehicle || '—'}</td>
+                                            <td>
+                                                <StatusChip status={t.status} />
+                                            </td>
+                                            <td className={cx(sh.r, sh.num)} data-label="Total">
+                                                {t.total_price != null ? `$${Number(t.total_price).toFixed(2)}` : '—'}
+                                            </td>
+                                            <td className={sh.when} data-label="Service day">
+                                                {t.service_day ? fmtDay(t.service_day) : '—'}
+                                            </td>
+                                            <td className={cx(sh.when, sh.mHide)}>{fmtWhen(t.created_at, false)}</td>
+                                        </tr>
+                                    );
+                                })
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </section>
         </div>
     );
 }

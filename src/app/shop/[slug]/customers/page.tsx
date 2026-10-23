@@ -1,7 +1,10 @@
 import Link from 'next/link';
 import { requireShopMemberBySlug } from '@/lib/auth-guard';
 import { getSupabaseAdmin, getSupabasePublicAdmin } from '@/lib/supabase/admin';
-import { ChevronRight } from '@/components/icons';
+import { ChevronRight, UserPlus, Users } from 'lucide-react';
+import { ConsoleHead } from '@/components/glide-console/parts';
+import { GlideButton } from '@/components/glide/primitives';
+import { Counts, EmptyRow, FilterTabs, Panel, SearchBar, cx, fmtWhen, initials, shopStyles as sh } from '@/components/glide-shop/parts';
 
 export const metadata = { title: 'Customers' };
 
@@ -160,11 +163,6 @@ async function loadCustomers(shopId: number, q: string | undefined, source: Sour
     return { rollout, legacy };
 }
 
-function fmtDate(iso?: string | null) {
-    if (!iso) return '—';
-    return new Date(iso).toISOString().slice(0, 10);
-}
-
 function fmtName(c: any) {
     if (c.name && String(c.name).trim()) return c.name;
     const fn = c.first_name ?? '';
@@ -199,133 +197,116 @@ export default async function ShopCustomersPage({
     const showRollout = src === 'all' || src === 'rollout';
     const showLegacy = src === 'all' || src === 'legacy';
 
+    const sourceHref = (value: Source) => {
+        const params = new URLSearchParams();
+        if (value !== 'all') params.set('source', value);
+        if (q) params.set('q', q);
+        const qs = params.toString();
+        return `/shop/${slug}/customers${qs ? `?${qs}` : ''}`;
+    };
+
     return (
-        <>
-            <div className="admin-page-head">
-                <div>
-                    <div className="admin-page-title">CUSTOMERS</div>
-                    <div className="admin-page-sub">
-                        {shop.name.toUpperCase()} · UNIFIED CONTACT BOOK
-                    </div>
-                </div>
-                <Link
-                    href={`/shop/${slug}/customers/new`}
-                    className="admin-action-btn"
-                    style={{ textDecoration: 'none' }}
-                >
-                    + NEW CUSTOMER
-                </Link>
-            </div>
+        <div className={sh.stack}>
+            <ConsoleHead
+                title="Customers"
+                sub={`${shop.name} · one contact book for Rollout members and walk-in customers`}
+                actions={
+                    <GlideButton href={`/shop/${slug}/customers/new`} size="sm" icon={<UserPlus size={18} strokeWidth={2} />}>
+                        New customer
+                    </GlideButton>
+                }
+            />
 
-            <div className="admin-stat-grid">
-                <Stat label="TOTAL" value={total} />
-                <Stat label="ROLLOUT" value={rollout.totalDistinct} />
-                <Stat label="LEGACY" value={legacy.totalDistinct} />
-                <Stat
-                    label="NEW · 7D"
-                    value={newThisWeek}
-                    accent={newThisWeek > 0 ? 'gold' : undefined}
+            <Counts
+                label="Customer counts"
+                items={[
+                    { label: 'Total', value: total },
+                    { label: 'Rollout members', value: rollout.totalDistinct },
+                    { label: 'Legacy customers', value: legacy.totalDistinct },
+                    { label: 'New, last 7 days', value: newThisWeek, dot: newThisWeek > 0 },
+                ]}
+            />
+
+            <div className={sh.toolbar}>
+                <FilterTabs
+                    label="Customer source"
+                    items={[
+                        { href: sourceHref('all'), label: 'All', active: src === 'all' },
+                        { href: sourceHref('rollout'), label: 'Rollout', active: src === 'rollout' },
+                        { href: sourceHref('legacy'), label: 'Legacy', active: src === 'legacy' },
+                    ]}
                 />
-            </div>
-
-            <form
-                className="admin-search"
-                action={`/shop/${slug}/customers`}
-                style={{ marginTop: 16 }}
-            >
-                <input
-                    name="q"
+                <SearchBar
+                    action={`/shop/${slug}/customers`}
                     defaultValue={q ?? ''}
-                    className="admin-search-input"
-                    placeholder="SEARCH NAME · EMAIL · PHONE · HANDLE"
-                />
-                {/* preserve the active source pill on submit */}
-                <input type="hidden" name="source" value={src} />
-                <button type="submit" className="admin-action-btn">
-                    SEARCH <ChevronRight />
-                </button>
-            </form>
-
-            <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
-                <SourcePill slug={slug} q={q} value="all" active={src} label="ALL" />
-                <SourcePill
-                    slug={slug}
-                    q={q}
-                    value="rollout"
-                    active={src}
-                    label="ROLLOUT"
-                />
-                <SourcePill
-                    slug={slug}
-                    q={q}
-                    value="legacy"
-                    active={src}
-                    label="LEGACY"
+                    label="Search customers"
+                    placeholder="Search name, email, phone or handle"
+                    hidden={{ source: src }}
+                    clearHref={q ? `/shop/${slug}/customers${src !== 'all' ? `?source=${src}` : ''}` : null}
                 />
             </div>
 
             {showRollout && (
-                <>
-                    <div
-                        className="admin-page-head"
-                        style={{ marginTop: 28, borderBottom: 'none', paddingBottom: 0 }}
-                    >
-                        <div>
-                            <div className="admin-page-title" style={{ fontSize: 14 }}>
-                                ROLLOUT MEMBERS
-                            </div>
-                            <div className="admin-page-sub">
-                                {rolloutVisible.length} SHOWN · {rollout.totalDistinct} TOTAL
-                            </div>
-                        </div>
-                    </div>
-                    <div className="admin-table-wrap">
-                        <table className="admin-table">
+                <Panel
+                    id="rollout-members"
+                    title="Rollout members"
+                    sub={`${rolloutVisible.length} shown · ${rollout.totalDistinct} total`}
+                    flush
+                    action={
+                        rolloutHasMore ? (
+                            <Link
+                                href={`/shop/${slug}/customers?source=rollout${q ? `&q=${encodeURIComponent(q)}` : ''}`}
+                                className="g-link"
+                                style={{ paddingRight: 8 }}
+                            >
+                                View more
+                                <ChevronRight size={16} strokeWidth={2} aria-hidden="true" />
+                            </Link>
+                        ) : null
+                    }
+                >
+                    <div className={sh.tblWrap}>
+                        <table className={cx(sh.tbl, sh.rowLink)}>
                             <thead>
                                 <tr>
-                                    <th>HANDLE</th>
-                                    <th>NAME</th>
-                                    <th>LOCATION</th>
-                                    <th>JOINED</th>
-                                    <th style={{ textAlign: 'right' }}>APPTS</th>
+                                    <th>Member</th>
+                                    <th>Location</th>
+                                    <th>Joined</th>
+                                    <th className={sh.r}>Appointments</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {rolloutVisible.length === 0 ? (
-                                    <tr>
-                                        <td colSpan={5}>
-                                            <div className="admin-empty">
-                                                NO ROLLOUT MEMBERS MATCH
-                                            </div>
-                                        </td>
-                                    </tr>
+                                    <EmptyRow
+                                        colSpan={4}
+                                        icon={<Users size={18} strokeWidth={2} />}
+                                        title="No Rollout members match"
+                                        body="Members appear here once they request an appointment at your shop."
+                                    />
                                 ) : (
                                     rolloutVisible.map((p: any) => (
                                         <tr key={p.id}>
                                             <td>
-                                                <Link
-                                                    href={`/shop/${slug}/customers/r-${p.id}`}
-                                                    style={{
-                                                        color: 'var(--gold)',
-                                                        textDecoration: 'none',
-                                                    }}
-                                                >
-                                                    @{p.handle ?? '—'}
-                                                </Link>
-                                            </td>
-                                            <td>
-                                                {p.display_name ?? '—'}
-                                            </td>
-                                            <td>
-                                                <span className="admin-handle">
-                                                    {p.location ?? '—'}
+                                                <span className={sh.cell}>
+                                                    <span className={sh.av} aria-hidden="true">
+                                                        {initials(p.display_name ?? p.handle)}
+                                                    </span>
+                                                    <span style={{ minWidth: 0 }}>
+                                                        <Link href={`/shop/${slug}/customers/r-${p.id}`} className={sh.stretch}>
+                                                            {p.display_name ?? '—'}
+                                                        </Link>
+                                                        <small>@{p.handle ?? '—'}</small>
+                                                    </span>
                                                 </span>
                                             </td>
-                                            <td>{fmtDate(p.created_at)}</td>
-                                            <td style={{ textAlign: 'right' }}>
-                                                <span className="admin-pill">
-                                                    {p.appt_count}
-                                                </span>
+                                            <td data-label="Location" className={sh.muted}>
+                                                {p.location ?? '—'}
+                                            </td>
+                                            <td data-label="Joined" className={sh.when}>
+                                                {fmtWhen(p.created_at, false)}
+                                            </td>
+                                            <td className={cx(sh.r, sh.num)} data-label="Appointments">
+                                                {p.appt_count}
                                             </td>
                                         </tr>
                                     ))
@@ -333,85 +314,74 @@ export default async function ShopCustomersPage({
                             </tbody>
                         </table>
                     </div>
-                    {rolloutHasMore && (
-                        <div style={{ marginTop: 8, textAlign: 'right' }}>
-                            <Link
-                                href={`/shop/${slug}/customers?source=rollout${q ? `&q=${encodeURIComponent(q)}` : ''}`}
-                                className="admin-action-btn muted"
-                                style={{ textDecoration: 'none' }}
-                            >
-                                VIEW MORE <ChevronRight />
-                            </Link>
-                        </div>
-                    )}
-                </>
+                </Panel>
             )}
 
             {showLegacy && (
-                <>
-                    <div
-                        className="admin-page-head"
-                        style={{ marginTop: 28, borderBottom: 'none', paddingBottom: 0 }}
-                    >
-                        <div>
-                            <div className="admin-page-title" style={{ fontSize: 14 }}>
-                                LEGACY CUSTOMERS · EMWRAPS
-                            </div>
-                            <div className="admin-page-sub">
-                                {legacyVisible.length} SHOWN · {legacy.totalDistinct} TOTAL
-                            </div>
-                        </div>
-                    </div>
-                    <div className="admin-table-wrap">
-                        <table className="admin-table">
+                <Panel
+                    id="legacy-customers"
+                    title="Legacy customers"
+                    sub={`EMWRAPS records · ${legacyVisible.length} shown · ${legacy.totalDistinct} total`}
+                    flush
+                    action={
+                        legacyHasMore ? (
+                            <Link
+                                href={`/shop/${slug}/customers?source=legacy${q ? `&q=${encodeURIComponent(q)}` : ''}`}
+                                className="g-link"
+                                style={{ paddingRight: 8 }}
+                            >
+                                View more
+                                <ChevronRight size={16} strokeWidth={2} aria-hidden="true" />
+                            </Link>
+                        ) : null
+                    }
+                >
+                    <div className={sh.tblWrap}>
+                        <table className={cx(sh.tbl, sh.rowLink)}>
                             <thead>
                                 <tr>
-                                    <th>NAME</th>
-                                    <th>EMAIL</th>
-                                    <th>PHONE</th>
-                                    <th>JOINED</th>
-                                    <th style={{ textAlign: 'right' }}>TICKETS</th>
+                                    <th>Name</th>
+                                    <th>Email</th>
+                                    <th>Phone</th>
+                                    <th>Joined</th>
+                                    <th className={sh.r}>Tickets</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {legacyVisible.length === 0 ? (
-                                    <tr>
-                                        <td colSpan={5}>
-                                            <div className="admin-empty">
-                                                NO LEGACY CUSTOMERS MATCH
-                                            </div>
-                                        </td>
-                                    </tr>
+                                    <EmptyRow
+                                        colSpan={5}
+                                        icon={<Users size={18} strokeWidth={2} />}
+                                        title="No legacy customers match"
+                                        body="Customers from tickets at this shop appear here."
+                                    />
                                 ) : (
                                     legacyVisible.map((c: any) => (
                                         <tr key={c.id}>
                                             <td>
-                                                <Link
-                                                    href={`/shop/${slug}/customers/l-${c.id}`}
-                                                    style={{
-                                                        color: 'var(--gold)',
-                                                        textDecoration: 'none',
-                                                    }}
-                                                >
-                                                    {fmtName(c)}
-                                                </Link>
-                                                {c.company ? (
-                                                    <div className="admin-handle">
-                                                        {c.company}
-                                                    </div>
-                                                ) : null}
-                                            </td>
-                                            <td>
-                                                <span className="admin-handle">
-                                                    {c.email ?? '—'}
+                                                <span className={sh.cell}>
+                                                    <span className={sh.av} aria-hidden="true">
+                                                        {initials(fmtName(c))}
+                                                    </span>
+                                                    <span style={{ minWidth: 0 }}>
+                                                        <Link href={`/shop/${slug}/customers/l-${c.id}`} className={sh.stretch}>
+                                                            {fmtName(c)}
+                                                        </Link>
+                                                        {c.company ? <small>{c.company}</small> : null}
+                                                    </span>
                                                 </span>
                                             </td>
-                                            <td>{c.phone ?? '—'}</td>
-                                            <td>{fmtDate(c.created_at)}</td>
-                                            <td style={{ textAlign: 'right' }}>
-                                                <span className="admin-pill">
-                                                    {c.ticket_count}
-                                                </span>
+                                            <td data-label="Email" className={sh.muted}>
+                                                {c.email ?? '—'}
+                                            </td>
+                                            <td data-label="Phone" className={sh.when}>
+                                                {c.phone ?? '—'}
+                                            </td>
+                                            <td data-label="Joined" className={cx(sh.when, sh.mHide)}>
+                                                {fmtWhen(c.created_at, false)}
+                                            </td>
+                                            <td className={cx(sh.r, sh.num)} data-label="Tickets">
+                                                {c.ticket_count}
                                             </td>
                                         </tr>
                                     ))
@@ -419,70 +389,8 @@ export default async function ShopCustomersPage({
                             </tbody>
                         </table>
                     </div>
-                    {legacyHasMore && (
-                        <div style={{ marginTop: 8, textAlign: 'right' }}>
-                            <Link
-                                href={`/shop/${slug}/customers?source=legacy${q ? `&q=${encodeURIComponent(q)}` : ''}`}
-                                className="admin-action-btn muted"
-                                style={{ textDecoration: 'none' }}
-                            >
-                                VIEW MORE <ChevronRight />
-                            </Link>
-                        </div>
-                    )}
-                </>
+                </Panel>
             )}
-        </>
-    );
-}
-
-function Stat({
-    label,
-    value,
-    accent,
-}: {
-    label: string;
-    value: number | string;
-    accent?: 'gold' | 'warn';
-}) {
-    return (
-        <div className="admin-stat">
-            <div className="admin-stat-lbl">{label}</div>
-            <div className={`admin-stat-num ${accent ?? ''}`}>{value}</div>
         </div>
-    );
-}
-
-function SourcePill({
-    slug,
-    q,
-    value,
-    active,
-    label,
-}: {
-    slug: string;
-    q: string | undefined;
-    value: Source;
-    active: Source;
-    label: string;
-}) {
-    const isActive = value === active;
-    const params = new URLSearchParams();
-    if (value !== 'all') params.set('source', value);
-    if (q) params.set('q', q);
-    const qs = params.toString();
-    const href = `/shop/${slug}/customers${qs ? `?${qs}` : ''}`;
-    return (
-        <Link
-            href={href}
-            className={`admin-pill ${isActive ? 'gold' : ''}`}
-            style={{
-                textDecoration: 'none',
-                cursor: 'pointer',
-                opacity: isActive ? 1 : 0.6,
-            }}
-        >
-            {label}
-        </Link>
     );
 }

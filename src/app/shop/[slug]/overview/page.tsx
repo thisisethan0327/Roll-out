@@ -10,7 +10,9 @@ import { getShopVendorBySlug } from '@/lib/store-shops';
 import { countPaidUnfulfilledOrders } from '@/lib/medusa-admin';
 import { fetchCatalogByHandles } from '@/lib/medusa';
 import { DismissButton } from './DismissButton';
-import { Check, ChevronRight } from '@/components/icons';
+import { Bell, CalendarClock, ChevronRight, CircleCheck, CirclePause, Inbox, Package, ShieldCheck } from 'lucide-react';
+import { ConsoleHead } from '@/components/glide-console/parts';
+import { Counts, EmptyRow, Panel, cx, fmtWhen, initials, shopStyles as sh } from '@/components/glide-shop/parts';
 
 // Orders count is derived live from Medusa on every load — never cache the page.
 export const dynamic = 'force-dynamic';
@@ -183,12 +185,12 @@ function timeAgo(iso: string): string {
 }
 
 const SERVICE_LABEL: Record<string, string> = {
-    WRAP: 'VINYL WRAP',
+    WRAP: 'Vinyl wrap',
     PPF: 'PPF',
-    TINT: 'WINDOW TINT',
-    CERAMIC: 'CERAMIC',
-    PARTS: 'PARTS / INSTALL',
-    OTHER: 'OTHER',
+    TINT: 'Window tint',
+    CERAMIC: 'Ceramic',
+    PARTS: 'Parts / install',
+    OTHER: 'Other',
 };
 
 export default async function ShopOverviewPage({
@@ -227,214 +229,197 @@ export default async function ShopOverviewPage({
         (attn.catalogPaused ? 1 : 0) +
         (showApptRow ? 1 : 0);
 
+    const vehicleOf = (a: any) =>
+        a.vehicle ? `${a.vehicle.year ?? ''} ${a.vehicle.make ?? ''} ${a.vehicle.model ?? ''}`.trim() || '—' : '—';
+
     return (
-        <>
-            <div className="admin-page-head">
-                <div>
-                    <div className="admin-page-title">OVERVIEW</div>
-                    <div className="admin-page-sub">
-                        {shop.name.toUpperCase()} · DAILY PULSE
+        <div className={sh.stack}>
+            <ConsoleHead
+                title="Overview"
+                sub={`${shop.name} · what's happening at the shop`}
+                actions={
+                    <Link href={`/shop/${slug}/inbox`} className={cx('g-sec', sh.sec)}>
+                        <Inbox size={18} strokeWidth={2} aria-hidden="true" />
+                        Open inbox
+                    </Link>
+                }
+            />
+
+            {/* NEEDS ATTENTION: derived live signals + stored shop_owner alerts */}
+            <Panel id="attention" title="Needs attention" sub="What's waiting on this shop" count={attentionCount}>
+                {attn.unfulfilledOrders > 0 && (
+                    <Link href={`/shop/${slug}/orders`} className={sh.note}>
+                        <Package size={20} strokeWidth={2} aria-hidden="true" />
+                        <span className={sh.noteText}>
+                            {attn.unfulfilledOrders} paid order{attn.unfulfilledOrders === 1 ? '' : 's'} awaiting
+                            fulfillment
+                            <small>Pack and ship</small>
+                        </span>
+                        <ChevronRight size={18} strokeWidth={2} aria-hidden="true" />
+                    </Link>
+                )}
+
+                {attn.catalogPaused && (
+                    <Link href={`/shop/${slug}/products`} className={sh.note}>
+                        <CirclePause size={20} strokeWidth={2} aria-hidden="true" />
+                        <span className={sh.noteText}>
+                            Catalog paused
+                            <small>Products are hidden from the store</small>
+                        </span>
+                        <ChevronRight size={18} strokeWidth={2} aria-hidden="true" />
+                    </Link>
+                )}
+
+                {showApptRow && (
+                    <Link href={`/shop/${slug}/inbox`} className={sh.note}>
+                        <CalendarClock size={20} strokeWidth={2} aria-hidden="true" />
+                        <span className={sh.noteText}>
+                            {s.pending} pending appointment request{s.pending === 1 ? '' : 's'}
+                            <small>Review them in the inbox</small>
+                        </span>
+                        <ChevronRight size={18} strokeWidth={2} aria-hidden="true" />
+                    </Link>
+                )}
+
+                {attentionCount === 0 ? (
+                    <div className={sh.note} style={{ boxShadow: 'none', background: 'var(--surface)' }}>
+                        <CircleCheck size={20} strokeWidth={2} aria-hidden="true" />
+                        <span className={sh.noteText}>All clear. Nothing needs attention.</span>
                     </div>
-                </div>
-                <Link href={`/shop/${slug}/inbox`} className="admin-action-btn" style={{ textDecoration: 'none' }}>
-                    OPEN INBOX <ChevronRight />
-                </Link>
-            </div>
+                ) : null}
 
-            {/* ── NEEDS ATTENTION — derived live signals + stored shop_owner alerts ── */}
-            <div className="admin-page-head" style={{ borderBottom: 'none', paddingBottom: 0, marginBottom: 12 }}>
-                <div>
-                    <div className="admin-page-title" style={{ fontSize: 14 }}>
-                        NEEDS ATTENTION
-                        {attentionCount > 0 && (
-                            <span className="admin-pill warn" style={{ marginLeft: 10, verticalAlign: 'middle' }}>
-                                {attentionCount}
-                            </span>
-                        )}
+                {attn.stored.map((item) => (
+                    <div key={item.id} className={sh.note}>
+                        <Bell size={20} strokeWidth={2} aria-hidden="true" />
+                        <span className={sh.noteText}>
+                            {item.href ? (
+                                <Link href={item.href} className="text-link" style={{ color: 'var(--ink)' }}>
+                                    {item.title}
+                                </Link>
+                            ) : (
+                                item.title
+                            )}
+                            {item.body ? <small>{item.body}</small> : null}
+                            <small>
+                                {sentenceCase(item.kind.replace(/_/g, ' '))} · {timeAgo(item.created_at)}
+                            </small>
+                        </span>
+                        <span className={sh.noteActs}>
+                            {item.href && (
+                                <Link href={item.href} className={cx('g-sec', sh.secSm)}>
+                                    Open
+                                </Link>
+                            )}
+                            <DismissButton slug={slug} id={item.id} />
+                        </span>
                     </div>
-                    <div className="admin-page-sub">WHAT&apos;S WAITING ON THIS SHOP</div>
-                </div>
-            </div>
+                ))}
+            </Panel>
 
-            {attn.unfulfilledOrders > 0 && (
-                <Link href={`/shop/${slug}/orders`} className="admin-attention-derived">
-                    <span className="admin-pill gold">{attn.unfulfilledOrders}</span>
-                    <span>
-                        paid order{attn.unfulfilledOrders === 1 ? '' : 's'} awaiting fulfillment —
-                        pack &amp; ship <ChevronRight />
-                    </span>
-                </Link>
-            )}
+            <Counts
+                label="Shop counts"
+                items={[
+                    { label: 'Pending requests', value: s.pending, dot: s.pending > 0 },
+                    { label: 'Accepted', value: s.accepted },
+                    { label: 'Declined or cancelled', value: s.declined },
+                    { label: 'Staff', value: s.staff },
+                    { label: 'Posts, last 7 days', value: s.postsThisWeek },
+                    { label: 'Followers', value: s.followers },
+                ]}
+            />
 
-            {attn.catalogPaused && (
-                <Link href={`/shop/${slug}/products`} className="admin-attention-derived">
-                    <span className="admin-pill warn">PAUSED</span>
-                    <span>CATALOG PAUSED — products hidden from the store <ChevronRight /></span>
-                </Link>
-            )}
-
-            {showApptRow && (
-                <Link href={`/shop/${slug}/inbox`} className="admin-attention-derived">
-                    <span className="admin-pill gold">{s.pending}</span>
-                    <span>
-                        pending appointment request{s.pending === 1 ? '' : 's'} — review now <ChevronRight />
-                    </span>
-                </Link>
-            )}
-
-            {attentionCount === 0 ? (
-                <div className="admin-empty" style={{ marginBottom: 28 }}>
-                    ALL CLEAR — NOTHING NEEDS ATTENTION
-                </div>
-            ) : attn.stored.length === 0 ? (
-                <div style={{ marginBottom: 28 }} />
-            ) : (
-                <div className="admin-attention-list">
-                    {attn.stored.map((item) => (
-                        <div key={item.id} className="admin-attention-item">
-                            <div className="admin-attention-body">
-                                <div className="admin-attention-title">
-                                    {item.href ? (
-                                        <Link href={item.href} className="text-link">
-                                            {item.title}
-                                        </Link>
-                                    ) : (
-                                        item.title
-                                    )}
-                                </div>
-                                {item.body && (
-                                    <div className="admin-attention-desc">{item.body}</div>
-                                )}
-                                <div className="admin-attention-meta">
-                                    {item.kind.toUpperCase().replace(/_/g, ' ')} · {timeAgo(item.created_at)}
-                                </div>
-                            </div>
-                            <div className="admin-attention-actions">
-                                {item.href && (
-                                    <Link href={item.href} className="admin-action-btn">
-                                        OPEN <ChevronRight />
-                                    </Link>
-                                )}
-                                <DismissButton slug={slug} id={item.id} />
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            )}
-
-            <div className="admin-stat-grid">
-                <Stat label="PENDING REQUESTS" value={s.pending} accent={s.pending > 0 ? 'gold' : undefined} />
-                <Stat label="ACCEPTED" value={s.accepted} />
-                <Stat label="DECLINED / CANCELLED" value={s.declined} />
-                <Stat label="STAFF" value={s.staff} />
-                <Stat label="POSTS / 7D" value={s.postsThisWeek} />
-                <Stat label="FOLLOWERS" value={s.followers} />
-            </div>
-
-            <div className="admin-page-head" style={{ marginTop: 12, borderBottom: 'none', paddingBottom: 0 }}>
-                <div>
-                    <div className="admin-page-title" style={{ fontSize: 14 }}>
-                        PRIORITY QUEUE
-                    </div>
-                    <div className="admin-page-sub">5 MOST RECENT PENDING REQUESTS</div>
-                </div>
-            </div>
-
-            <div className="admin-table-wrap">
-                <table className="admin-table">
-                    <thead>
-                        <tr>
-                            <th>WHEN</th>
-                            <th>CUSTOMER</th>
-                            <th>SERVICE</th>
-                            <th>VEHICLE</th>
-                            <th>PREFERRED</th>
-                            <th style={{ textAlign: 'right' }}>ACTION</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {s.recentPending.length === 0 ? (
+            <Panel
+                id="queue"
+                title="Priority queue"
+                sub="The 5 most recent pending requests"
+                flush
+                action={
+                    <Link href={`/shop/${slug}/inbox`} className="g-link" style={{ paddingRight: 8 }}>
+                        Inbox
+                        <ChevronRight size={16} strokeWidth={2} aria-hidden="true" />
+                    </Link>
+                }
+            >
+                <div className={sh.tblWrap}>
+                    <table className={cx(sh.tbl, sh.rowLink)}>
+                        <thead>
                             <tr>
-                                <td colSpan={6}>
-                                    <div className="admin-empty">
-                                        NO PENDING REQUESTS — EVERYTHING&apos;S CAUGHT UP.
-                                    </div>
-                                </td>
+                                <th>Customer</th>
+                                <th>Service</th>
+                                <th>Vehicle</th>
+                                <th>Preferred</th>
+                                <th>Received</th>
+                                <th className={sh.r}>
+                                    <span className="g-sr">Review</span>
+                                </th>
                             </tr>
-                        ) : (
-                            s.recentPending.map((a: any) => (
-                                <tr key={a.id}>
-                                    <td>
-                                        {new Date(a.created_at).toISOString().slice(0, 16).replace('T', ' ')}
-                                    </td>
-                                    <td>
-                                        @{a.requester?.handle ?? '?'}
-                                        <div className="admin-handle">{a.requester?.display_name}</div>
-                                    </td>
-                                    <td>
-                                        <span className="admin-pill">
-                                            {SERVICE_LABEL[a.service_type] ?? a.service_type}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        {a.vehicle
-                                            ? `${a.vehicle.year ?? ''} ${a.vehicle.make ?? ''} ${a.vehicle.model ?? ''}`.trim()
-                                            : '—'}
-                                    </td>
-                                    <td>{a.preferred_at ?? '—'}</td>
-                                    <td style={{ textAlign: 'right' }}>
-                                        <Link
-                                            href={`/shop/${slug}/inbox`}
-                                            className="admin-action-btn"
-                                            style={{ textDecoration: 'none' }}
-                                        >
-                                            REVIEW <ChevronRight />
-                                        </Link>
-                                    </td>
-                                </tr>
-                            ))
-                        )}
-                    </tbody>
-                </table>
-            </div>
+                        </thead>
+                        <tbody>
+                            {s.recentPending.length === 0 ? (
+                                <EmptyRow
+                                    colSpan={6}
+                                    icon={<CircleCheck size={18} strokeWidth={2} />}
+                                    title="No pending requests"
+                                    body="Everything is caught up. New booking requests land here first."
+                                />
+                            ) : (
+                                s.recentPending.map((a: any) => (
+                                    <tr key={a.id}>
+                                        <td>
+                                            <span className={sh.cell}>
+                                                <span className={sh.av} aria-hidden="true">
+                                                    {initials(a.requester?.display_name ?? a.requester?.handle)}
+                                                </span>
+                                                <span style={{ minWidth: 0 }}>
+                                                    <Link href={`/shop/${slug}/inbox`} className={sh.stretch}>
+                                                        @{a.requester?.handle ?? '?'}
+                                                    </Link>
+                                                    <small>{a.requester?.display_name}</small>
+                                                </span>
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span className="g-chip">{SERVICE_LABEL[a.service_type] ?? a.service_type}</span>
+                                        </td>
+                                        <td data-label="Vehicle">{vehicleOf(a)}</td>
+                                        <td data-label="Preferred" className={sh.when}>
+                                            {a.preferred_at ? fmtWhen(a.preferred_at) : '—'}
+                                        </td>
+                                        <td data-label="Received" className={cx(sh.when, sh.mHide)}>
+                                            {fmtWhen(a.created_at)}
+                                        </td>
+                                        <td className={cx(sh.r, sh.mHide)}>
+                                            <ChevronRight size={18} strokeWidth={2} aria-hidden="true" style={{ color: 'var(--ink-2)' }} />
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </Panel>
 
             {!s.shopPage?.is_verified && (
-                <div
-                    style={{
-                        marginTop: 20,
-                        padding: 14,
-                        border: '1px solid var(--gold)',
-                        background: 'var(--gold-glow)',
-                        fontFamily: 'var(--font-display)',
-                        fontSize: 11,
-                        letterSpacing: 'var(--track-wide)',
-                        color: 'var(--text-2)',
-                    }}
-                >
-                    <strong style={{ color: 'var(--gold)' }}>VERIFICATION PENDING</strong> — your shop_page profile
-                    isn&apos;t marked verified yet. Customers booking through Rollout will see a yellow note instead of
-                    the <Check /> badge. Reach out to{' '}
-                    <a href="mailto:team@rollout.club" style={{ color: 'var(--gold)' }}>team@rollout.club</a> when
-                    you&apos;re ready.
+                <div className={sh.note} role="note">
+                    <ShieldCheck size={20} strokeWidth={2} aria-hidden="true" />
+                    <span className={sh.noteText}>
+                        Verification pending
+                        <small>
+                            Your shop page isn&apos;t marked verified yet. Customers booking through Rollout see a note
+                            instead of the verified badge. Reach out to{' '}
+                            <a href="mailto:team@rollout.club" className="text-link">
+                                team@rollout.club
+                            </a>{' '}
+                            when you&apos;re ready.
+                        </small>
+                    </span>
                 </div>
             )}
-        </>
+        </div>
     );
 }
 
-function Stat({
-    label,
-    value,
-    accent,
-}: {
-    label: string;
-    value: number | string;
-    accent?: 'gold' | 'warn';
-}) {
-    return (
-        <div className="admin-stat">
-            <div className="admin-stat-lbl">{label}</div>
-            <div className={`admin-stat-num ${accent ?? ''}`}>{value}</div>
-        </div>
-    );
+function sentenceCase(t: string): string {
+    const x = t.trim().toLowerCase();
+    return x.charAt(0).toUpperCase() + x.slice(1);
 }
