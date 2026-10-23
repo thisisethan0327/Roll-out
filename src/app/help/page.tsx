@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
-import { ArrowLeft } from '@/components/icons';
+import { CalendarDays, Mail, Plus } from 'lucide-react';
+import { Card, Chip } from '@/components/glide/primitives';
+import '@/components/glide-auth/auth.css';
 
 export const metadata: Metadata = {
     alternates: { canonical: '/help' },
@@ -61,50 +62,49 @@ const FAQ_LD = {
 
 export default function HelpPage() {
     return (
-        <div className="legal">
+        <div className="glide glide-page ga-read">
             <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(FAQ_LD) }} />
-            <div className="container container-narrow">
-                <div className="eyebrow eyebrow-gold mb-4">／ HELP CENTER</div>
-                <h1>FAQ</h1>
-                <div className="meta">COMMON QUESTIONS · UPDATED 2026-09-10</div>
+            <div className="g-wrap">
+                <div className="ga-read-grid is-single">
+                    <Card as="article" className="ga-doc">
+                        <header className="ga-doc-h">
+                            <h1>Help center</h1>
+                            <p className="ga-doc-meta">
+                                <Chip icon={<CalendarDays size={14} strokeWidth={2} aria-hidden="true" />}>
+                                    Updated · <span className="g-w">2026-09-10</span>
+                                </Chip>
+                                <span>Common questions</span>
+                            </p>
+                        </header>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                    {FAQS.map((item, i) => (
-                        <details
-                            key={i}
-                            style={{
-                                background: 'var(--bg-2)',
-                                border: '1px solid var(--line)',
-                                padding: '18px 22px',
-                            }}
-                        >
-                            <summary
-                                style={{
-                                    cursor: 'pointer',
-                                    fontFamily: 'var(--font-display)',
-                                    fontSize: 14,
-                                    fontWeight: 500,
-                                    color: 'var(--text)',
-                                    letterSpacing: 0.5,
-                                    listStyle: 'none',
-                                }}
-                            >
-                                {item.q}
-                            </summary>
-                            <p style={{ marginTop: 12, color: 'var(--text-2)', lineHeight: 1.65 }}>{item.a}</p>
-                        </details>
-                    ))}
-                </div>
+                        <div className="ga-faq">
+                            {FAQS.map((item, i) => (
+                                <details key={i}>
+                                    <summary>
+                                        <span>{item.q}</span>
+                                        <Plus size={20} strokeWidth={2} aria-hidden="true" />
+                                    </summary>
+                                    <p>{item.a}</p>
+                                </details>
+                            ))}
+                        </div>
+                    </Card>
 
-                <h2 style={{ marginTop: 56 }}>Still need help?</h2>
-                <p>
-                    Email <a href="mailto:support@rollout.club">support@rollout.club</a>. We respond within 24 hours.
-                </p>
-
-                <div style={{ marginTop: 48 }}>
-                    <Link href="/" className="mono-row">
-                        <span className="accent"><ArrowLeft /></span> BACK TO ROLLOUT.CLUB
-                    </Link>
+                    <Card edge className="ga-cta">
+                        <div>
+                            <h2>Still need help?</h2>
+                            <p>
+                                Email <a className="ga-a" href="mailto:support@rollout.club">support@rollout.club</a>. We respond within 24
+                                hours.
+                            </p>
+                        </div>
+                        <div className="ga-cta-act">
+                            <a className="g-sec" href="mailto:support@rollout.club">
+                                <Mail size={18} strokeWidth={1.75} aria-hidden="true" />
+                                Email support
+                            </a>
+                        </div>
+                    </Card>
                 </div>
             </div>
         </div>

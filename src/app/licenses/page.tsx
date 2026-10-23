@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
-import { ArrowLeft, ArrowRight } from '@/components/icons';
+import { ArrowRight, Mail } from 'lucide-react';
+import { Card, Chip } from '@/components/glide/primitives';
+import '@/components/glide-auth/auth.css';
 
 export const metadata: Metadata = {
     alternates: { canonical: '/licenses' },
@@ -28,65 +29,48 @@ const LIBS: Array<{ name: string; license: string; usage: string }> = [
 
 export default function LicensesPage() {
     return (
-        <div className="legal">
-            <div className="container container-narrow">
-                <div className="eyebrow eyebrow-gold mb-4">／ ATTRIBUTION</div>
-                <h1>OPEN-SOURCE LICENSES</h1>
-                <div className="meta">LIBRARIES THAT MAKE ROLLOUT POSSIBLE</div>
+        <div className="glide glide-page ga-read">
+            <div className="g-wrap">
+                <div className="ga-read-grid is-single">
+                    <Card as="article" className="ga-doc">
+                        <header className="ga-doc-h">
+                            <h1>Open-source licenses</h1>
+                            <p className="ga-doc-meta">
+                                <span>Libraries that make Rollout possible</span>
+                            </p>
+                        </header>
 
-                <p>
-                    Rollout stands on the shoulders of an enormous open-source community. Below is a
-                    non-exhaustive list of the most-load-bearing libraries we use. A complete machine-readable
-                    license file ships with the mobile app via{' '}
-                    <code style={{ color: 'var(--gold)', fontFamily: 'var(--font-display)' }}>expo-licenses</code>{' '}
-                    — open Settings <ArrowRight /> Open-Source Licenses inside the app to see every dependency.
-                </p>
+                        <p className="ga-doc-lede">
+                            Rollout stands on the shoulders of an enormous open-source community. Below is a
+                            non-exhaustive list of the most-load-bearing libraries we use. A complete machine-readable
+                            license file ships with the mobile app via <code>expo-licenses</code> — open Settings{' '}
+                            <ArrowRight size={15} strokeWidth={2} aria-label="then" style={{ verticalAlign: '-2px' }} /> Open-Source Licenses
+                            inside the app to see every dependency.
+                        </p>
 
-                <div style={{ marginTop: 32, border: '1px solid var(--line)', background: 'var(--bg-2)' }}>
-                    <div
-                        style={{
-                            display: 'grid',
-                            gridTemplateColumns: '1.5fr 1fr 2fr',
-                            padding: '12px 16px',
-                            borderBottom: '1px solid var(--line)',
-                            fontFamily: 'var(--font-display)',
-                            fontSize: 10,
-                            letterSpacing: 'var(--track-wider)',
-                            color: 'var(--text-3)',
-                            textTransform: 'uppercase',
-                        }}
-                    >
-                        <span>LIBRARY</span>
-                        <span>LICENSE</span>
-                        <span>USED FOR</span>
-                    </div>
-                    {LIBS.map((lib, i) => (
-                        <div
-                            key={i}
-                            style={{
-                                display: 'grid',
-                                gridTemplateColumns: '1.5fr 1fr 2fr',
-                                padding: '12px 16px',
-                                borderBottom: i === LIBS.length - 1 ? 'none' : '1px solid var(--line)',
-                                fontSize: 13,
-                            }}
-                        >
-                            <span style={{ color: 'var(--text)' }}>{lib.name}</span>
-                            <span style={{ color: 'var(--gold)', fontFamily: 'var(--font-display)', fontSize: 11 }}>{lib.license}</span>
-                            <span className="text-dim">{lib.usage}</span>
-                        </div>
-                    ))}
-                </div>
+                        <ul className="ga-lic" aria-label="Libraries">
+                            <li className="is-head" aria-hidden="true">
+                                <span>Library</span>
+                                <span>License</span>
+                                <span>Used for</span>
+                            </li>
+                            {LIBS.map((lib) => (
+                                <li key={lib.name}>
+                                    <b>{lib.name}</b>
+                                    <Chip>{lib.license}</Chip>
+                                    <span>{lib.usage}</span>
+                                </li>
+                            ))}
+                        </ul>
 
-                <p style={{ marginTop: 32 }}>
-                    Questions about attribution or license terms? Email{' '}
-                    <a href="mailto:legal@rollout.club">legal@rollout.club</a>.
-                </p>
-
-                <div style={{ marginTop: 48 }}>
-                    <Link href="/" className="mono-row">
-                        <span className="accent"><ArrowLeft /></span> BACK TO ROLLOUT.CLUB
-                    </Link>
+                        <footer className="ga-doc-foot">
+                            <span>Questions about attribution or license terms?</span>
+                            <a href="mailto:legal@rollout.club">
+                                <Mail size={16} strokeWidth={2} aria-hidden="true" />
+                                legal@rollout.club
+                            </a>
+                        </footer>
+                    </Card>
                 </div>
             </div>
         </div>
