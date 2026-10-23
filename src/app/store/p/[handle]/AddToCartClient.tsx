@@ -5,8 +5,8 @@ import { useRouter } from 'next/navigation';
 import { addToCart } from '@/lib/medusa-cart';
 import { formatMoney } from '@/lib/medusa-types';
 import type { MedusaVariant } from '@/lib/medusa-types';
-import { Dots } from '../../_ui';
-import { ArrowRight, Check } from '@/components/icons';
+import { ArrowRight, ArrowUpRight, Check, CircleCheck, Clock, Info, LoaderCircle, Plus } from 'lucide-react';
+import { ErrorLine } from '@/components/glide-tickets/parts';
 
 type Props = {
     paused: boolean;
@@ -84,45 +84,34 @@ export function AddToCartClient({
     // on sale, so they matter only once the product is live.
     if (paused) {
         return (
-            <button
-                type="button"
-                className="btn btn-lg"
-                disabled
-                /* a real disabled surface, not the gold pill at 55% opacity (2.2:1 in light) */
-                style={{ cursor: 'not-allowed', width: '100%', background: 'var(--bg-2)', color: 'var(--text-2)', border: '1px solid var(--line-mid)' }}
-            >
-                COMING SOON
-            </button>
+            <div className="gt-buyctl">
+                <button type="button" className="g-btn g-btn--block gt-btn-off" disabled>
+                    <span>Coming soon</span>
+                    <span className="g-btn-k" aria-hidden="true">
+                        <Clock size={20} strokeWidth={2} />
+                    </span>
+                </button>
+            </div>
         );
     }
 
     // Not paused, but not for this visitor: a dealer buys this normally.
     if (dealerLocked) {
         return (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <div
-                    style={{
-                        border: '1px solid var(--line)',
-                        background: 'var(--bg-2)',
-                        padding: '12px 14px',
-                        fontSize: 13,
-                        lineHeight: 1.5,
-                    }}
-                >
-                    Sold through UNITY dealers.{' '}
-                    {dealerSignedIn
-                        ? 'Your account is not a dealer account yet.'
-                        : 'Sign in to your dealer account,'}{' '}
-                    <a
-                        href="https://unityusa.co/us/dealers"
-                        target="_blank"
-                        rel="noreferrer"
-                        style={{ textDecoration: 'underline', color: 'var(--text)' }}
-                    >
-                        apply on unityusa.co
-                    </a>
-                    .
-                </div>
+            <div className="gt-buyctl">
+                <p className="gt-note-box">
+                    <Info size={18} strokeWidth={2} aria-hidden="true" />
+                    <span>
+                        Sold through UNITY dealers.{' '}
+                        {dealerSignedIn
+                            ? 'Your account is not a dealer account yet.'
+                            : 'Sign in to your dealer account,'}{' '}
+                        <a href="https://unityusa.co/us/dealers" target="_blank" rel="noreferrer">
+                            apply on unityusa.co
+                        </a>
+                        .
+                    </span>
+                </p>
             </div>
         );
     }
@@ -130,19 +119,14 @@ export function AddToCartClient({
     // Not paused: the customer can buy this today, just not here.
     if (needsConfigurator) {
         return (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <a
-                    href={configuratorUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="btn btn-lg"
-                    style={{ width: '100%', textAlign: 'center' }}
-                >
-                    CONFIGURE ON UNITYUSA.CO
+            <div className="gt-buyctl">
+                <a href={configuratorUrl} target="_blank" rel="noreferrer" className="g-btn g-btn--block">
+                    <span>Configure on unityusa.co</span>
+                    <span className="g-btn-k" aria-hidden="true">
+                        <ArrowUpRight size={20} strokeWidth={2} />
+                    </span>
                 </a>
-                <span className="text-dim" style={{ fontSize: 12, lineHeight: 1.5 }}>
-                    This kit is cut to your vehicle, so it is configured on unityusa.co.
-                </span>
+                <p className="gt-fine">This kit is cut to your vehicle, so it is configured on unityusa.co.</p>
             </div>
         );
     }
@@ -172,30 +156,24 @@ export function AddToCartClient({
     const priceText = selectedVariant
         ? formatMoney(selectedVariant.price, selectedVariant.currency ?? currency)
         : null;
+    const disabled = pending || soldOut || (!selectedVariant && variants.length > 1);
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+        <div className="gt-buyctl">
             {realOptions.map((o) => (
-                <div key={o.title}>
-                    <div className="eyebrow mb-4">{o.title}</div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                <div key={o.title} className="gt-opts">
+                    <h3 id={`opt-${o.title}`}>{o.title}</h3>
+                    <div className="gt-opts-row" role="radiogroup" aria-labelledby={`opt-${o.title}`}>
                         {o.values.map((val) => {
                             const active = selection[o.title] === val;
                             return (
                                 <button
                                     key={val}
                                     type="button"
+                                    role="radio"
+                                    aria-checked={active}
                                     onClick={() => setSelection((s) => ({ ...s, [o.title]: val }))}
-                                    className="font-display"
-                                    style={{
-                                        fontSize: 12,
-                                        letterSpacing: 1,
-                                        padding: '9px 16px',
-                                        border: `1px solid ${active ? 'var(--gold)' : 'var(--line)'}`,
-                                        background: active ? 'var(--gold-dim)' : 'transparent',
-                                        color: active ? 'var(--gold)' : 'var(--text-2)',
-                                        cursor: 'pointer',
-                                    }}
+                                    className="gt-opt"
                                 >
                                     {val}
                                 </button>
@@ -207,37 +185,42 @@ export function AddToCartClient({
 
             <button
                 type="button"
-                className="btn btn-lg"
+                className={`g-btn g-btn--block${justAdded ? ' gt-btn-done' : ''}${soldOut ? ' gt-btn-off' : ''}`}
                 onClick={onAdd}
-                disabled={pending || soldOut || (!selectedVariant && variants.length > 1)}
-                style={{ width: '100%' }}
+                disabled={disabled}
+                aria-busy={pending || undefined}
             >
-                {pending ? (
-                    <>ADDING<Dots /></>
-                ) : justAdded ? (
-                    <>ADDED <Check /></>
-                ) : soldOut ? (
-                    'COMING SOON'
-                ) : priceText ? (
-                    `ADD TO CART · ${priceText}`
-                ) : (
-                    'ADD TO CART'
-                )}
+                <span>{pending ? 'Adding…' : justAdded ? 'In cart' : soldOut ? 'Coming soon' : 'Add to cart'}</span>
+                {!pending && !justAdded && !soldOut && priceText ? <span className="gt-btn-v">{priceText}</span> : null}
+                <span className="g-btn-k" aria-hidden="true">
+                    {pending ? (
+                        <LoaderCircle size={20} strokeWidth={2} className="g-spin" />
+                    ) : justAdded ? (
+                        <Check size={20} strokeWidth={2.4} />
+                    ) : soldOut ? (
+                        <Clock size={20} strokeWidth={2} />
+                    ) : (
+                        <Plus size={20} strokeWidth={2.2} />
+                    )}
+                </span>
             </button>
 
-            {added ? (
-                <div className="mono-row" style={{ fontSize: 12 }}>
-                    <span className="accent"><Check /> ADDED</span>
-                    <span className="sep" />
-                    <a href="/store/cart" style={{ color: 'var(--gold)', textDecoration: 'none' }}>
-                        VIEW CART <ArrowRight />
-                    </a>
-                </div>
-            ) : null}
+            <div aria-live="polite">
+                {added ? (
+                    <p className="gt-added">
+                        <span>
+                            <CircleCheck size={18} strokeWidth={2} aria-hidden="true" />
+                            Added to your cart
+                        </span>
+                        <a href="/store/cart" className="g-link">
+                            View cart
+                            <ArrowRight size={16} strokeWidth={2} aria-hidden="true" />
+                        </a>
+                    </p>
+                ) : null}
+            </div>
 
-            {error ? (
-                <p style={{ color: 'var(--danger, #ff6b6b)', fontSize: 13, margin: 0 }}>{error}</p>
-            ) : null}
+            {error ? <ErrorLine>{error}</ErrorLine> : null}
         </div>
     );
 }

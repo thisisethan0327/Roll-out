@@ -1,14 +1,22 @@
 'use client';
 
+/**
+ * The bag: quantity / remove mutations and the checkout hand-off.
+ *
+ * Glide (board G5 "Cart"): one card of lines (photo · name · seller ·
+ * Michroma price · stepper · remove), and a summary card with the subtotal and
+ * the check-out pill. The mutations are the same server actions as before.
+ */
 import { useState, useTransition } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
+import { LoaderCircle, Lock, Package, ShoppingBag, Store, Trash2 } from 'lucide-react';
 import { updateLineItem, removeLineItem } from '@/lib/medusa-cart';
 import { formatMoney } from '@/lib/medusa-types';
 import type { Cart } from '@/lib/medusa-types';
-import { Dots } from '../_ui';
-import { ArrowRight } from '@/components/icons';
+import { GlideButton, SecButton } from '@/components/glide/primitives';
+import { EmptyState, ErrorLine, Stepper } from '@/components/glide-tickets/parts';
 
 export function CartClient({ initialCart }: { initialCart: Cart | null }) {
     const router = useRouter();
@@ -33,168 +41,108 @@ export function CartClient({ initialCart }: { initialCart: Cart | null }) {
 
     if (!cart || cart.items.length === 0) {
         return (
-            <div className="admin-empty" style={{ textAlign: 'center' }}>
-                <p style={{ marginBottom: 18 }}>Your bag is empty.</p>
-                <Link href="/store" className="btn">
-                    BROWSE THE STORE
-                </Link>
-            </div>
+            <EmptyState
+                icon={<ShoppingBag size={28} strokeWidth={1.5} />}
+                title="Your cart is empty"
+                action={<GlideButton href="/store">Browse the store</GlideButton>}
+            >
+                Gear from the brands on Rollout lands here.
+            </EmptyState>
         );
     }
 
+    const soldBy = cart.isMultiVendor
+        ? cart.vendors.map((v) => v.name).filter(Boolean).join(' · ')
+        : cart.vendor.name || null;
+
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-            {cart.isMultiVendor ? (
-                <div className="mono-row" style={{ fontSize: 12 }}>
-                    <span className="accent">SOLD BY</span>
-                    <span className="sep" />
-                    <span style={{ color: 'var(--text)' }}>
-                        {cart.vendors.map((v) => v.name).filter(Boolean).join(' · ')}
-                    </span>
-                </div>
-            ) : cart.vendor.name ? (
-                <div className="mono-row" style={{ fontSize: 12 }}>
-                    <span className="accent">SOLD BY</span>
-                    <span className="sep" />
-                    <span style={{ color: 'var(--text)' }}>{cart.vendor.name}</span>
-                </div>
-            ) : null}
-
-            <style>{`
-                .cart-line{display:flex;flex-wrap:wrap;align-items:center;gap:16px;padding:14px;background:var(--bg-2);border:1px solid var(--line)}
-                .cart-line-media{position:relative;width:72px;height:72px;flex-shrink:0;overflow:hidden;background:var(--bg-3);border:1px solid var(--line)}
-                .cart-line-info{flex:1 1 150px;min-width:0}
-                .cart-line-actions{display:flex;align-items:center;gap:16px}
-                .cart-line-total{min-width:70px;text-align:right;color:var(--text)}
-                /* Phones: image + title stay on the top row, controls wrap to a full-width row below */
-                @media (max-width:560px){
-                    .cart-line-actions{width:100%;justify-content:space-between;gap:12px}
-                    .cart-line-total{margin-left:auto}
-                }
-            `}</style>
-            <div
-                style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: 12,
-                    opacity: pending ? 0.6 : 1,
-                    transition: 'opacity 120ms ease',
-                }}
-                aria-busy={pending}
-            >
-                {cart.items.map((it) => (
-                    <div key={it.id} className="cart-line">
-                        <div className="cart-line-media">
-                            {it.thumbnail ? (
-                                <Image
-                                    src={it.thumbnail}
-                                    alt={it.productTitle}
-                                    fill
-                                    loading="lazy"
-                                    sizes="72px"
-                                    style={{ objectFit: 'cover' }}
-                                />
-                            ) : null}
-                        </div>
-                        <div className="cart-line-info">
-                            <div style={{ color: 'var(--text)', fontSize: 15, marginBottom: 4 }}>
-                                {it.productHandle ? (
-                                    <Link href={`/store/p/${it.productHandle}`} style={{ color: 'var(--text)', textDecoration: 'none' }}>
-                                        {it.productTitle}
-                                    </Link>
+        <div className="gt-cols">
+            <section className="g-card gt-cart" aria-label="Items in your cart" aria-busy={pending}>
+                <ul style={{ margin: 0, padding: 0, opacity: pending ? 0.6 : 1, transition: 'opacity 120ms ease-out' }}>
+                    {cart.items.map((it) => (
+                        <li key={it.id} className="gt-ki">
+                            <span className="gt-ki-im">
+                                {it.thumbnail ? (
+                                    <Image src={it.thumbnail} alt="" fill loading="lazy" sizes="72px" />
                                 ) : (
-                                    it.productTitle
+                                    <span className="gt-pc-ph" aria-hidden="true">
+                                        <Package size={26} strokeWidth={1.5} />
+                                    </span>
                                 )}
-                            </div>
-                            {it.variantTitle && it.variantTitle !== 'Default' ? (
-                                <div className="text-dim" style={{ fontSize: 12 }}>{it.variantTitle}</div>
-                            ) : null}
-                            <div className="accent" style={{ fontSize: 13, marginTop: 4 }}>
-                                {formatMoney(it.unitPrice, currency)}
-                            </div>
-                        </div>
-
-                        <div className="cart-line-actions">
-                            {/* qty */}
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                <button
-                                    type="button"
-                                    className="btn-ghost"
-                                    style={{ padding: '4px 10px' }}
-                                    disabled={pending}
-                                    onClick={() => mutate(() => updateLineItem(it.id, it.quantity - 1))}
-                                    aria-label="Decrease quantity"
-                                >
-                                    −
-                                </button>
-                                <span style={{ minWidth: 20, textAlign: 'center', color: 'var(--text)' }}>
-                                    {it.quantity}
+                            </span>
+                            <span className="gt-ki-t">
+                                <b>
+                                    {it.productHandle ? (
+                                        <Link href={`/store/p/${it.productHandle}`}>{it.productTitle}</Link>
+                                    ) : (
+                                        it.productTitle
+                                    )}
+                                </b>
+                                {it.variantTitle && it.variantTitle !== 'Default' ? <small>{it.variantTitle}</small> : null}
+                                <span className="gt-ki-r">
+                                    <span className="g-w" aria-label={`${formatMoney(it.unitPrice, currency)} each`}>
+                                        {formatMoney(it.unitPrice, currency)}
+                                    </span>
+                                    <span className="gt-ki-acts">
+                                        <Stepper
+                                            value={it.quantity}
+                                            min={0}
+                                            max={Number.MAX_SAFE_INTEGER}
+                                            label={`of ${it.productTitle}`}
+                                            disabled={pending}
+                                            onChange={(n) => mutate(() => updateLineItem(it.id, n))}
+                                        />
+                                        <button
+                                            type="button"
+                                            className="gt-ki-x"
+                                            onClick={() => mutate(() => removeLineItem(it.id))}
+                                            disabled={pending}
+                                            aria-label={`Remove ${it.productTitle}`}
+                                        >
+                                            <Trash2 size={19} strokeWidth={1.75} aria-hidden="true" />
+                                        </button>
+                                    </span>
                                 </span>
-                                <button
-                                    type="button"
-                                    className="btn-ghost"
-                                    style={{ padding: '4px 10px' }}
-                                    disabled={pending}
-                                    onClick={() => mutate(() => updateLineItem(it.id, it.quantity + 1))}
-                                    aria-label="Increase quantity"
-                                >
-                                    +
-                                </button>
-                            </div>
-
-                            <div className="cart-line-total">
-                                {formatMoney(it.total, currency)}
-                            </div>
-                            <button
-                                type="button"
-                                onClick={() => mutate(() => removeLineItem(it.id))}
-                                disabled={pending}
-                                aria-label="Remove item"
-                                style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', fontSize: 18 }}
-                            >
-                                ×
-                            </button>
-                        </div>
-                    </div>
-                ))}
-            </div>
+                            </span>
+                        </li>
+                    ))}
+                </ul>
+            </section>
 
             {/* summary */}
-            <div style={{ borderTop: '1px solid var(--line)', paddingTop: 18, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <Row label="Subtotal" value={formatMoney(cart.subtotal, currency)} />
-                {/* shipping + tax aren't chosen until checkout */}
-                <Row label="Total" value="TBD" strong />
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', minHeight: 16 }}>
-                    <p className="text-dim" style={{ fontSize: 12, margin: '2px 0 0' }}>
-                        Shipping + tax calculated at checkout.
-                    </p>
-                    {pending ? (
-                        <span className="font-display" style={{ fontSize: 10, letterSpacing: 'var(--track-wider)', color: 'var(--gold)', display: 'inline-flex', alignItems: 'center' }}>
-                            UPDATING<Dots />
+            <aside className="g-card gt-cart-side gt-side" aria-label="Summary">
+                {soldBy ? (
+                    <div className="g-chips">
+                        <span className="g-chip">
+                            <Store size={14} strokeWidth={2} aria-hidden="true" />
+                            Sold by {soldBy}
                         </span>
-                    ) : null}
+                    </div>
+                ) : null}
+                <div className="gt-cart-tot" style={{ paddingTop: 0 }}>
+                    <span>
+                        <b>Subtotal</b>
+                        {/* shipping + tax aren't chosen until checkout */}
+                        <small>Shipping and tax at checkout</small>
+                    </span>
+                    <span className="g-w">{formatMoney(cart.subtotal, currency)}</span>
                 </div>
-            </div>
-
-            {error ? <p style={{ color: 'var(--danger, #ff6b6b)', fontSize: 13, margin: 0 }}>{error}</p> : null}
-
-            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                <Link href="/store" className="btn-ghost" style={{ padding: '12px 22px' }}>
-                    CONTINUE SHOPPING
-                </Link>
-                <Link href="/store/checkout" className="btn btn-lg" style={{ flex: 1, minWidth: 200, textAlign: 'center' }}>
-                    CHECKOUT <ArrowRight />
-                </Link>
-            </div>
-        </div>
-    );
-}
-
-function Row({ label, value, strong }: { label: string; value: string; strong?: boolean }) {
-    return (
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: strong ? 17 : 14 }}>
-            <span className="text-dim">{label}</span>
-            <span style={{ color: 'var(--text)', fontWeight: strong ? 700 : 400 }}>{value}</span>
+                {pending ? (
+                    <span className="gt-busy" role="status">
+                        <LoaderCircle size={16} strokeWidth={2} className="g-spin" aria-hidden="true" />
+                        Updating
+                    </span>
+                ) : null}
+                {error ? <ErrorLine>{error}</ErrorLine> : null}
+                <GlideButton href="/store/checkout" block>
+                    Check out
+                </GlideButton>
+                <p className="gt-lockline">
+                    <Lock size={15} strokeWidth={1.75} aria-hidden="true" />
+                    Secure checkout. Payments by Stripe.
+                </p>
+                <SecButton href="/store">Continue shopping</SecButton>
+            </aside>
         </div>
     );
 }

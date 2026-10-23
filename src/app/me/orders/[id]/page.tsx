@@ -25,8 +25,10 @@ import { getSellingShops } from '@/lib/store-shops';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { refundPolicyShortLine, REFUND_POLICY_PATH } from '@/lib/refund-policy';
 import { ticketsForOrder, sizeLabel } from '@/lib/event-tickets';
-import { fmtDate, fmtDay, StatusPill, EmptyRow } from '../../ui';
-import { ArrowUpRight, ChevronLeft, ChevronRight } from '@/components/icons';
+import { fmtDate, fmtDay, statusVariant } from '../../ui';
+import { ArrowUpRight, Check, Circle, CreditCard, Package, Unplug, Users } from 'lucide-react';
+import { Card } from '@/components/glide/primitives';
+import { EmptyState, PageHead, StatusChip, statusLabel, toneFromVariant } from '@/components/glide-tickets/parts';
 
 export const dynamic = 'force-dynamic';
 
@@ -55,19 +57,6 @@ function formatAddress(a: MedusaAddress): string[] {
     );
 }
 
-const SECTION: React.CSSProperties = {
-    border: '1px solid var(--line)',
-    background: 'var(--bg-1)',
-    padding: 16,
-};
-const SECTION_TITLE: React.CSSProperties = {
-    fontFamily: 'var(--font-display)',
-    fontSize: 10,
-    letterSpacing: 'var(--track-widest)',
-    color: 'var(--text-3)',
-    marginBottom: 12,
-};
-
 export default async function OrderDetailPage({
     params,
 }: {
@@ -80,15 +69,11 @@ export default async function OrderDetailPage({
     // Store account not linked / exchange failed → not a 404, show guidance.
     if (!result.exchanged) {
         return (
-            <div>
-                <BackLink />
-                <div className="admin-page-head">
-                    <div>
-                        <div className="admin-page-title">ORDER</div>
-                        <div className="admin-page-sub text-dim">{result.note}</div>
-                    </div>
-                </div>
-                <EmptyRow text="ORDER UNAVAILABLE" />
+            <div className="glide glide-page gt-page--me">
+                <PageHead back={BACK} title="Order" />
+                <EmptyState icon={<Unplug size={28} strokeWidth={1.5} />} title="Order unavailable">
+                    {result.note}
+                </EmptyState>
             </div>
         );
     }
@@ -161,301 +146,250 @@ export default async function OrderDetailPage({
     ];
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-            <div>
-                <BackLink />
-                <div className="admin-page-head" style={{ marginTop: 8 }}>
-                    <div>
-                        <div
-                            className="admin-page-title"
-                            style={{ fontFamily: 'var(--font-mono, monospace)' }}
-                        >
-                            #{o.display_id ?? o.id.slice(-8)}
-                        </div>
-                        <div className="admin-page-sub text-dim">
+        <div className="glide glide-page gt-page--me">
+            <PageHead
+                back={BACK}
+                title={`#${o.display_id ?? o.id.slice(-8)}`}
+                code
+                meta={
+                    <>
+                        <span>
                             {fmtDate(o.created_at)}
                             {vendorShop ? ' · ' : o.vendor ? ` · ${o.vendor}` : ''}
                             {vendorShop && (
-                                <Link href={`/u/${vendorShop.handle}`} className="text-link" style={{ color: 'var(--gold)', textDecoration: 'none' }}>
+                                <Link href={`/u/${vendorShop.handle}`} style={{ color: 'var(--link)', fontWeight: 600 }}>
                                     {vendorShop.name}
                                 </Link>
                             )}
-                        </div>
-                    </div>
-                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                        {o.payment_status && <StatusPill status={o.payment_status} />}
-                        {o.fulfillment_status && <StatusPill status={o.fulfillment_status} />}
-                    </div>
-                </div>
-            </div>
+                        </span>
+                        {o.payment_status && <Status status={o.payment_status} />}
+                        {o.fulfillment_status && <Status status={o.fulfillment_status} />}
+                    </>
+                }
+            />
 
-            {refundPolicyLine ? (
-                <section style={SECTION}>
-                    <div style={SECTION_TITLE}>REFUND & CANCELLATION POLICY</div>
-                    <p className="text-dim" style={{ fontSize: 13, margin: 0, lineHeight: 1.6 }}>
-                        {refundPolicyLine}{' '}
-                        <Link href={REFUND_POLICY_PATH} className="text-link" style={{ color: 'var(--gold)', textDecoration: 'none' }}>
-                            Full policy <ChevronRight />
-                        </Link>
-                    </p>
-                </section>
-            ) : null}
-
-            {/* ATTENDEES — multi-ticket packages (feature-gated) */}
-            {attendees.length > 0 ? (
-                <section style={SECTION}>
-                    <div style={SECTION_TITLE}>ATTENDEES ({attendees.length})</div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                        {[...attendees].sort((a, b) => a.seat - b.seat).map((t) => (
-                            <div
-                                key={t.ticketId}
-                                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, borderTop: '1px solid var(--line)', paddingTop: 8 }}
-                            >
-                                <div>
-                                    <div style={{ fontSize: 13, color: 'var(--text)' }}>
-                                        SEAT {t.seat} · {t.attendeeName || '—'}
-                                    </div>
-                                    <div className="text-dim" style={{ fontSize: 11, marginTop: 2 }}>
-                                        Sweater {sizeLabel(t.sweaterSize)}
-                                    </div>
-                                </div>
-                                <StatusPill status={t.status} />
+            <div className="gt-cols">
+                <div className="gt-stack">
+                    {/* STATUS */}
+                    <Card as="section" className="gt-card" aria-labelledby="ord-status" style={{ paddingBottom: 10 }}>
+                        <h2 className="g-card-h" id="ord-status">
+                            Status
+                        </h2>
+                        <div className="gt-paystate">
+                            <div>
+                                <b>{pay.label}</b>
+                                {pay.detail && <small>{pay.detail}</small>}
                             </div>
-                        ))}
-                    </div>
-                </section>
-            ) : null}
-
-            {/* STATUS */}
-            <section style={SECTION}>
-                <div style={SECTION_TITLE}>STATUS</div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
-                    <div>
-                        <div style={{ color: 'var(--gold)', fontFamily: 'var(--font-display)', fontSize: 13, letterSpacing: 1 }}>
-                            {pay.label.toUpperCase()}
-                        </div>
-                        {pay.detail && (
-                            <div className="text-dim" style={{ fontSize: 12, marginTop: 4 }}>{pay.detail}</div>
-                        )}
-                    </div>
-                    <div>
-                        <div style={{ color: 'var(--text)', fontFamily: 'var(--font-display)', fontSize: 13, letterSpacing: 1 }}>
-                            {ful.label.toUpperCase()}
-                        </div>
-                        {ful.detail && (
-                            <div className="text-dim" style={{ fontSize: 12, marginTop: 4 }}>{ful.detail}</div>
-                        )}
-                    </div>
-                </div>
-
-                {/* Timeline */}
-                <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 0 }}>
-                    {timeline.map((step, i) => (
-                        <div key={step.label} style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', alignSelf: 'stretch' }}>
-                                <span
-                                    style={{
-                                        width: 10,
-                                        height: 10,
-                                        borderRadius: '50%',
-                                        marginTop: 3,
-                                        background: step.done ? 'var(--gold)' : 'transparent',
-                                        border: '1px solid ' + (step.done ? 'var(--gold)' : 'var(--line-mid)'),
-                                        flexShrink: 0,
-                                    }}
-                                />
-                                {i < timeline.length - 1 && (
-                                    <span style={{ width: 1, flex: 1, minHeight: 20, background: 'var(--line)' }} />
-                                )}
-                            </div>
-                            <div style={{ paddingBottom: 12 }}>
-                                <div
-                                    style={{
-                                        fontFamily: 'var(--font-display)',
-                                        fontSize: 11,
-                                        letterSpacing: 'var(--track-wider)',
-                                        color: step.done ? 'var(--text)' : 'var(--text-3)',
-                                    }}
-                                >
-                                    {step.label}
-                                </div>
-                                <div className="text-dim" style={{ fontSize: 11, marginTop: 2 }}>
-                                    {step.at ? fmtDate(step.at) : step.done ? '—' : 'Pending'}
-                                </div>
+                            <div>
+                                <b>{ful.label}</b>
+                                {ful.detail && <small>{ful.detail}</small>}
                             </div>
                         </div>
-                    ))}
-                </div>
-            </section>
 
-            {/* ITEMS */}
-            <section style={SECTION}>
-                <div style={SECTION_TITLE}>ITEMS ({o.items.length})</div>
-                {o.items.length === 0 ? (
-                    <EmptyRow text="NO ITEMS" />
-                ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                        {o.items.map((it) => (
-                            <div
-                                key={it.id}
-                                style={{ display: 'flex', alignItems: 'center', gap: 10, borderTop: '1px solid var(--line)', paddingTop: 8 }}
-                            >
-                                {it.thumbnail ? (
-                                    // eslint-disable-next-line @next/next/no-img-element
-                                    <img src={it.thumbnail} alt="" style={{ width: 44, height: 44, objectFit: 'cover', border: '1px solid var(--line)' }} />
-                                ) : (
-                                    <div style={{ width: 44, height: 44, background: 'var(--bg-2)', border: '1px solid var(--line)' }} />
-                                )}
-                                <div style={{ flex: 1, minWidth: 0 }}>
-                                    <div style={{ fontSize: 13, color: 'var(--text)' }}>{it.title ?? 'Item'}</div>
-                                    <div className="text-dim" style={{ fontSize: 11 }}>Qty {it.quantity ?? 1}</div>
-                                </div>
-                                <div className="text-dim" style={{ fontSize: 12, fontFamily: 'var(--font-mono, monospace)' }}>
-                                    {formatMoney(it.unit_price, cur)}
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                )}
-
-                {/* Totals */}
-                <div style={{ marginTop: 14, borderTop: '1px solid var(--line-mid)', paddingTop: 12, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    <TotalRow label="SUBTOTAL" value={formatMoney(o.subtotal, cur)} />
-                    {o.discount_total ? <TotalRow label="DISCOUNT" value={`- ${formatMoney(o.discount_total, cur)}`} /> : null}
-                    <TotalRow label="SHIPPING" value={formatMoney(o.shipping_total, cur)} />
-                    {o.tax_total ? <TotalRow label="TAX" value={formatMoney(o.tax_total, cur)} /> : null}
-                    <TotalRow label="TOTAL" value={formatMoney(o.total, cur)} strong />
-                </div>
-            </section>
-
-            {/* SHIPPING + PAYMENT */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 18 }}>
-                <section style={SECTION}>
-                    <div style={SECTION_TITLE}>SHIPPING</div>
-                    {o.shipping_address ? (
-                        <div style={{ fontSize: 13, color: 'var(--text)', lineHeight: 1.6 }}>
-                            {formatAddress(o.shipping_address).map((line, i) => (
-                                <div key={i}>{line}</div>
-                            ))}
-                        </div>
-                    ) : (
-                        <div className="text-dim" style={{ fontSize: 12 }}>No shipping address on file.</div>
-                    )}
-                    {o.shipping_methods.length > 0 && (
-                        <div style={{ marginTop: 12, borderTop: '1px solid var(--line)', paddingTop: 10 }}>
-                            {o.shipping_methods.map((m) => (
-                                <div key={m.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
-                                    <span className="text-dim">{m.name ?? 'Shipping'}</span>
-                                    <span style={{ fontFamily: 'var(--font-mono, monospace)', color: 'var(--text)' }}>
-                                        {formatMoney(m.amount, cur)}
+                        {/* Timeline */}
+                        <ol className="gt-tl" style={{ marginTop: 14 }}>
+                            {timeline.map((step) => (
+                                <li key={step.label} className={step.done ? 'is-done' : undefined}>
+                                    <span className="gt-tl-dot" aria-hidden="true">
+                                        {step.done ? <Check size={16} strokeWidth={2.6} /> : <Circle size={10} strokeWidth={3} />}
                                     </span>
-                                </div>
+                                    <span className="gt-tl-t">
+                                        <b>
+                                            {statusLabel(step.label)}
+                                            <span className="g-sr">{step.done ? ', done' : ', not yet'}</span>
+                                        </b>
+                                        <small>{step.at ? fmtDate(step.at) : step.done ? '—' : 'Pending'}</small>
+                                    </span>
+                                </li>
                             ))}
-                        </div>
-                    )}
-                    {trackingLinks.length > 0 && (
-                        <div style={{ marginTop: 12, borderTop: '1px solid var(--line)', paddingTop: 10 }}>
-                            <div style={{ ...SECTION_TITLE, marginBottom: 8 }}>TRACKING</div>
-                            {trackingLinks.map((t, i) => (
-                                <div key={i} style={{ fontSize: 12, fontFamily: 'var(--font-mono, monospace)', marginTop: i ? 4 : 0 }}>
-                                    {t.url ? (
-                                        <a
-                                            href={t.url}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="text-link"
-                                            style={{ color: 'var(--gold)', textDecoration: 'none' }}
-                                        >
-                                            {t.number ?? 'Track shipment'} <ArrowUpRight />
-                                        </a>
-                                    ) : (
-                                        <span style={{ color: 'var(--text)' }}>{t.number}</span>
-                                    )}
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </section>
+                        </ol>
+                    </Card>
 
-                <section style={SECTION}>
-                    <div style={SECTION_TITLE}>PAYMENT</div>
-                    {o.payments.length === 0 ? (
-                        <div className="text-dim" style={{ fontSize: 12 }}>
-                            {pay.detail || 'No payment details available for this order.'}
-                        </div>
-                    ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                            {o.payments.map((p) => (
-                                <div key={p.id} style={{ fontSize: 12 }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                        <span className="text-dim">{providerLabel(p.provider_id)}</span>
-                                        <span style={{ fontFamily: 'var(--font-mono, monospace)', color: 'var(--text)' }}>
-                                            {formatMoney(p.amount, p.currency_code)}
+                    {/* ITEMS */}
+                    <Card as="section" className="gt-card" aria-labelledby="ord-items" style={{ paddingBottom: 18 }}>
+                        <h2 className="g-card-h" id="ord-items">
+                            Items <span className="g-w" style={{ fontSize: 14 }}>{o.items.length}</span>
+                        </h2>
+                        {o.items.length === 0 ? (
+                            <p className="gt-card-sub">No items.</p>
+                        ) : (
+                            <ul className="gt-lines">
+                                {o.items.map((it) => (
+                                    <li key={it.id} className="gt-line">
+                                        <span className="gt-thumb" aria-hidden="true">
+                                            {it.thumbnail ? (
+                                                // eslint-disable-next-line @next/next/no-img-element
+                                                <img src={it.thumbnail} alt="" />
+                                            ) : (
+                                            <Package size={20} strokeWidth={1.5} />
+                                        )}
                                         </span>
-                                    </div>
-                                    {p.cardBrand && p.cardLast4 && (
-                                        <div className="text-dim" style={{ fontSize: 11, marginTop: 2 }}>
-                                            {p.cardBrand.toUpperCase()} ···· {p.cardLast4}
-                                        </div>
-                                    )}
-                                    <div className="text-dim" style={{ fontSize: 11, marginTop: 2 }}>
-                                        {p.captured_at
-                                            ? `Charged ${fmtDay(p.captured_at)}`
-                                            : p.canceled_at
-                                                ? `Canceled ${fmtDay(p.canceled_at)}`
-                                                : 'Authorized — charged when the order ships'}
-                                    </div>
+                                        <span className="gt-line-t">
+                                            <b>{it.title ?? 'Item'}</b>
+                                            <small>Qty {it.quantity ?? 1}</small>
+                                        </span>
+                                        <span className="gt-line-v g-w">{formatMoney(it.unit_price, cur)}</span>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+
+                        {/* Totals */}
+                        <ul className="gt-sum" style={{ borderTop: '1px solid var(--line)', paddingTop: 8 }}>
+                            <TotalRow label="Subtotal" value={formatMoney(o.subtotal, cur)} />
+                            {o.discount_total ? <TotalRow label="Discount" value={`- ${formatMoney(o.discount_total, cur)}`} /> : null}
+                            <TotalRow label="Shipping" value={formatMoney(o.shipping_total, cur)} />
+                            {o.tax_total ? <TotalRow label="Tax" value={formatMoney(o.tax_total, cur)} /> : null}
+                            <TotalRow label="Total" value={formatMoney(o.total, cur)} strong />
+                        </ul>
+                    </Card>
+
+                    {/* ATTENDEES — multi-ticket packages (feature-gated) */}
+                    {attendees.length > 0 ? (
+                        <section className="gt-seats" aria-labelledby="ord-att">
+                            <div className="gt-seats-h">
+                                <span className="g-ic" aria-hidden="true">
+                                    <Users size={20} strokeWidth={1.75} />
+                                </span>
+                                <b id="ord-att">
+                                    Attendees <span className="g-w" style={{ fontSize: 13 }}>{attendees.length}</span>
+                                </b>
+                            </div>
+                            {[...attendees].sort((a, b) => a.seat - b.seat).map((t) => (
+                                <div key={t.ticketId} className="gt-seat">
+                                    <span className="gt-seat-n" aria-hidden="true">
+                                        {t.seat}
+                                    </span>
+                                    <span className="gt-seat-t">
+                                        <b>
+                                            <span className="g-sr">Seat {t.seat}: </span>
+                                            {t.attendeeName || '—'}
+                                        </b>
+                                        <small>Sweater {sizeLabel(t.sweaterSize)}</small>
+                                    </span>
+                                    <Status status={t.status} />
                                 </div>
                             ))}
-                        </div>
-                    )}
-                </section>
+                        </section>
+                    ) : null}
+                </div>
+
+                <aside className="gt-stack">
+                    {refundPolicyLine ? (
+                        <Card as="section" className="gt-card" aria-labelledby="ord-policy" style={{ paddingBottom: 20 }}>
+                            <h2 className="g-card-h" id="ord-policy">
+                                Refunds &amp; cancellation
+                            </h2>
+                            <p className="gt-card-sub" style={{ marginTop: 10 }}>
+                                {refundPolicyLine}{' '}
+                                <Link href={REFUND_POLICY_PATH} style={{ color: 'var(--link)', fontWeight: 600 }}>
+                                    Full policy
+                                </Link>
+                            </p>
+                        </Card>
+                    ) : null}
+
+                    {/* SHIPPING */}
+                    <Card as="section" className="gt-card" aria-labelledby="ord-ship" style={{ paddingBottom: 6 }}>
+                        <h2 className="g-card-h" id="ord-ship">
+                            Shipping
+                        </h2>
+                        {o.shipping_address ? (
+                            <address className="gt-addr">
+                                {formatAddress(o.shipping_address).map((line, i) => (
+                                    <span key={i} style={{ display: 'block' }}>
+                                        {line}
+                                    </span>
+                                ))}
+                            </address>
+                        ) : (
+                            <p className="gt-card-sub" style={{ marginTop: 10 }}>
+                                No shipping address on file.
+                            </p>
+                        )}
+                        {o.shipping_methods.length > 0 || trackingLinks.length > 0 ? (
+                            <ul className="gt-kv">
+                                {o.shipping_methods.map((m) => (
+                                    <li key={m.id}>
+                                        <span>{m.name ?? 'Shipping'}</span>
+                                        <b className="g-w">{formatMoney(m.amount, cur)}</b>
+                                    </li>
+                                ))}
+                                {trackingLinks.map((t, i) => (
+                                    <li key={`trk-${i}`}>
+                                        <span>Tracking</span>
+                                        {t.url ? (
+                                            <a href={t.url} target="_blank" rel="noopener noreferrer">
+                                                {t.number ?? 'Track shipment'}
+                                                <ArrowUpRight size={15} strokeWidth={2} aria-hidden="true" />
+                                            </a>
+                                        ) : (
+                                            <b className="g-w">{t.number}</b>
+                                        )}
+                                    </li>
+                                ))}
+                            </ul>
+                        ) : (
+                            <div style={{ height: 16 }} />
+                        )}
+                    </Card>
+
+                    {/* PAYMENT */}
+                    <Card as="section" className="gt-card" aria-labelledby="ord-pay" style={{ paddingBottom: 6 }}>
+                        <h2 className="g-card-h" id="ord-pay">
+                            Payment
+                        </h2>
+                        {o.payments.length === 0 ? (
+                            <p className="gt-card-sub" style={{ marginTop: 10, paddingBottom: 16 }}>
+                                {pay.detail || 'No payment details available for this order.'}
+                            </p>
+                        ) : (
+                            <ul className="gt-lines">
+                                {o.payments.map((p) => (
+                                    <li key={p.id} className="gt-line" style={{ paddingLeft: 16 }}>
+                                        <span className="g-ic g-ic--sm" aria-hidden="true">
+                                            <CreditCard size={18} strokeWidth={1.75} />
+                                        </span>
+                                        <span className="gt-line-t">
+                                            <b>{providerLabel(p.provider_id)}</b>
+                                            {p.cardBrand && p.cardLast4 && (
+                                                <small>
+                                                    {p.cardBrand.toUpperCase()} ···· {p.cardLast4}
+                                                </small>
+                                            )}
+                                            <small>
+                                                {p.captured_at
+                                                    ? `Charged ${fmtDay(p.captured_at)}`
+                                                    : p.canceled_at
+                                                        ? `Canceled ${fmtDay(p.canceled_at)}`
+                                                        : 'Authorized — charged when the order ships'}
+                                            </small>
+                                        </span>
+                                        <span className="gt-line-v g-w">{formatMoney(p.amount, p.currency_code)}</span>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                    </Card>
+                </aside>
             </div>
         </div>
     );
 }
 
-function BackLink() {
-    return (
-        <Link
-            href="/me/orders"
-            className="text-link"
-            style={{
-                fontFamily: 'var(--font-display)',
-                fontSize: 10,
-                letterSpacing: 'var(--track-wider)',
-                textDecoration: 'none',
-                color: 'var(--text-2)',
-            }}
-        >
-            <ChevronLeft /> ALL ORDERS
-        </Link>
-    );
+const BACK = { href: '/me/orders', label: 'All orders' };
+
+function Status({ status }: { status: string | null | undefined }) {
+    if (!status) return null;
+    return <StatusChip label={statusLabel(status)} tone={toneFromVariant(statusVariant(status))} />;
 }
 
 function TotalRow({ label, value, strong }: { label: string; value: string; strong?: boolean }) {
     return (
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-            <span
-                style={{
-                    fontFamily: 'var(--font-display)',
-                    fontSize: strong ? 11 : 10,
-                    letterSpacing: 'var(--track-wider)',
-                    color: strong ? 'var(--text)' : 'var(--text-3)',
-                }}
-            >
-                {label}
-            </span>
-            <span
-                style={{
-                    fontFamily: 'var(--font-mono, monospace)',
-                    fontSize: strong ? 16 : 13,
-                    color: strong ? 'var(--gold)' : 'var(--text-2)',
-                }}
-            >
-                {value}
-            </span>
-        </div>
+        <li className={strong ? 'is-all' : undefined}>
+            <span>{label}</span>
+            <span className="g-w">{value}</span>
+        </li>
     );
 }
 

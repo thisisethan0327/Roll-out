@@ -21,6 +21,9 @@ import { AddToCartClient } from './AddToCartClient';
 import { configuratorUrl } from '@/lib/medusa';
 import { getDealerStatus } from '@/lib/medusa-customer';
 import { ProductGallery } from './ProductGallery';
+import { ChevronRight, Clock, Store } from 'lucide-react';
+import { Chip } from '@/components/glide/primitives';
+import '@/components/glide-tickets/tickets.css';
 
 export const dynamic = 'force-dynamic';
 
@@ -150,47 +153,23 @@ export default async function ProductDetailPage({
             : null;
 
     return (
-        <section className="section" style={{ padding: '40px 0 72px' }}>
-            <div className="container">
+        <div className="glide glide-page">
+            <div className="g-wrap gt-page">
                 {/* breadcrumb + cart */}
-                <div
-                    style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        gap: 12,
-                        marginBottom: 28,
-                        flexWrap: 'wrap',
-                    }}
-                >
-                    <div className="mono-row" style={{ fontSize: 11 }}>
-                        <Link href="/store" style={{ color: 'var(--text-2)', textDecoration: 'none' }}>
-                            STORE
-                        </Link>
+                <div className="gt-crumbs">
+                    <nav aria-label="Breadcrumb">
+                        <Link href="/store">Store</Link>
                         {vendor ? (
                             <>
-                                <span className="sep" />
-                                <Link
-                                    href={`/store?shop=${vendor.slug}`}
-                                    style={{ color: 'var(--gold)', textDecoration: 'none' }}
-                                >
-                                    {vendor.name.toUpperCase()}
-                                </Link>
+                                <ChevronRight size={16} strokeWidth={2} aria-hidden="true" />
+                                <Link href={`/store?shop=${vendor.slug}`}>{vendor.name}</Link>
                             </>
                         ) : null}
-                    </div>
+                    </nav>
                     <CartLink />
                 </div>
 
-                <div
-                    style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'minmax(0, 1.1fr) minmax(0, 1fr)',
-                        gap: 40,
-                        alignItems: 'start',
-                    }}
-                    className="pdp-grid"
-                >
+                <div className="gt-pdp">
                     {/* GALLERY */}
                     <ProductGallery
                         images={product.images}
@@ -199,30 +178,29 @@ export default async function ProductDetailPage({
                     />
 
                     {/* INFO + BUY */}
-                    <div>
-                        <div className="eyebrow eyebrow-gold mb-4">
-                            {vendor ? `／ ${vendor.name}` : '／ PRODUCT'}
-                        </div>
-                        <h1 style={{ fontSize: 'clamp(24px, 3vw, 36px)', letterSpacing: 0.5, margin: '0 0 12px' }}>
-                            {product.title}
-                        </h1>
-                        <div className="mono-row" style={{ fontSize: 15, marginBottom: 20 }}>
-                            <span className="accent" style={{ fontSize: 20 }}>
-                                {hidePrice ? 'Dealer pricing' : formatMoney(product.price, product.currency)}
-                            </span>
+                    <section className="g-card gt-buy gt-side" aria-labelledby="pdp-title">
+                        <div className="g-chips">
+                            {vendor ? (
+                                <Chip large href={`/u/${vendor.handle}`} icon={<Store size={15} strokeWidth={2} aria-hidden="true" />}>
+                                    {vendor.name} store
+                                </Chip>
+                            ) : null}
                             {product.paused ? (
-                                <>
-                                    <span className="sep" />
-                                    <span className="text-dim">COMING SOON</span>
-                                </>
+                                <Chip large icon={<Clock size={15} strokeWidth={2} aria-hidden="true" />}>
+                                    Coming soon
+                                </Chip>
                             ) : null}
                         </div>
+                        <h1 id="pdp-title">{product.title}</h1>
+                        <div className="gt-price">
+                            {hidePrice ? (
+                                <small>Dealer pricing</small>
+                            ) : (
+                                <span className="g-w">{formatMoney(product.price, product.currency)}</span>
+                            )}
+                        </div>
 
-                        {product.description ? (
-                            <p style={{ color: 'var(--text-2)', fontSize: 15, lineHeight: 1.6, marginBottom: 28 }}>
-                                {product.description}
-                            </p>
-                        ) : null}
+                        {product.description ? <p className="gt-desc">{product.description}</p> : null}
 
                         <AddToCartClient
                             paused={product.paused}
@@ -238,16 +216,12 @@ export default async function ProductDetailPage({
                         />
 
                         {vendor ? (
-                            <p className="text-dim" style={{ fontSize: 12, marginTop: 22 }}>
-                                Sold and shipped by{' '}
-                                <Link href={`/u/${vendor.handle}`} style={{ color: 'var(--gold)' }}>
-                                    {vendor.name}
-                                </Link>
-                                .
+                            <p className="gt-sold-by">
+                                Sold and shipped by <Link href={`/u/${vendor.handle}`}>{vendor.name}</Link>.
                                 {official?.productUrl && official.label ? (
                                     <>
                                         {' '}Official product page on{' '}
-                                        <a href={official.productUrl} target="_blank" rel="noopener" style={{ color: 'var(--gold)' }}>
+                                        <a href={official.productUrl} target="_blank" rel="noopener">
                                             {official.label}
                                         </a>
                                         .
@@ -255,7 +229,7 @@ export default async function ProductDetailPage({
                                 ) : official?.siteUrl && official.label ? (
                                     <>
                                         {' '}More from {vendor.name} at{' '}
-                                        <a href={official.siteUrl} target="_blank" rel="noopener" style={{ color: 'var(--gold)' }}>
+                                        <a href={official.siteUrl} target="_blank" rel="noopener">
                                             {official.label}
                                         </a>
                                         .
@@ -263,11 +237,11 @@ export default async function ProductDetailPage({
                                 ) : null}
                             </p>
                         ) : null}
-                    </div>
+                    </section>
                 </div>
             </div>
             {/* Structured data last, as on /event and /u (scroll-to-top). */}
             {productLd ? <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdHtml(productLd) }} /> : null}
-        </section>
+        </div>
     );
 }

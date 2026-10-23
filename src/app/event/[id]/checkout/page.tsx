@@ -8,10 +8,15 @@
  * On success the client lands back here with ?done=<orderId> and the
  * confirmation polls the RSVP until the order.placed subscriber flips the held
  * spot to confirmed ("You're in — No. NNN").
+ *
+ * Glide (board G2 "Checkout" and "You're in"): page head with the way back to
+ * the event, the hold as a notice, the shared checkout, and the confirmation
+ * roundel. Every check, redirect and server action is unchanged.
  */
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
+import { ChevronRight, Clock, CreditCard } from 'lucide-react';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { viewerCanViewEvent } from '@/lib/event-viewer';
 import { getConsumerProfile } from '@/lib/consumer';
@@ -32,7 +37,8 @@ import { formatClock } from '@/lib/event-time';
 import { refundPolicyShortLine, REFUND_POLICY_PATH } from '@/lib/refund-policy';
 import { multiTicketsEnabled, MAX_TICKETS_PER_ORDER, myTicketsForEvent } from '@/lib/event-tickets';
 import { isDeadTicketStatus } from '@/lib/event-tickets-shared';
-import { ChevronRight } from '@/components/icons';
+import { GlideButton } from '@/components/glide/primitives';
+import { PageHead } from '@/components/glide-tickets/parts';
 
 export const dynamic = 'force-dynamic';
 
@@ -42,6 +48,19 @@ export const metadata: Metadata = {
 };
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** The event title and the refund line, as the page head's sub-line. */
+function HeadSub({ title, policyLine }: { title: string | null; policyLine: string }) {
+    return (
+        <>
+            {title ?? 'Event package'}. {policyLine}{' '}
+            <Link href={REFUND_POLICY_PATH}>
+                Full refund &amp; cancellation policy
+                <ChevronRight size={14} strokeWidth={2} aria-hidden="true" style={{ verticalAlign: '-2px' }} />
+            </Link>
+        </>
+    );
+}
 
 export default async function EventCheckoutPage({
     params,
@@ -76,6 +95,9 @@ export default async function EventCheckoutPage({
         redirect(`/login?next=${encodeURIComponent(`/event/${id}/checkout${qs ? `?${qs}` : ""}`)}&error=rsvp`);
     }
 
+    const eventTitle: string | null = (ev as any).title ?? null;
+    const back = { href: `/event/${id}`, label: 'Back to the event' };
+
     // ── Post-payment confirmation state ─────────────────────────────────────
     if (done) {
         const snap = await getRsvpSnapshot(id);
@@ -87,24 +109,22 @@ export default async function EventCheckoutPage({
             .sort((a, b) => a.seat - b.seat)
             .map((t) => ({ seat: t.seat, name: t.attendeeName, size: t.sweaterSize }));
         return (
-            <section className="section" style={{ padding: '72px 0' }}>
-                <div className="container container-narrow" style={{ textAlign: 'center' }}>
-                    <div className="eyebrow eyebrow-gold mb-4" style={{ justifyContent: 'center' }}>
-                        ／ SPOT SECURED
-                    </div>
-                    <ConfirmPoll
-                        eventId={id}
-                        initialState={snap.state}
-                        initialSpotNo={snap.spotNo}
-                        seats={orderSeats.length > 1 ? orderSeats : []}
-                    />
-                    <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap', marginTop: 32 }}>
-                        <Link href={`/event/${id}`} className="btn btn-lg">
-                            BACK TO EVENT
-                        </Link>
-                    </div>
+            <div className="glide glide-page">
+                <div className="g-wrap">
+                    <section className="gt-done gt-narrow">
+                        <ConfirmPoll
+                            eventId={id}
+                            initialState={snap.state}
+                            initialSpotNo={snap.spotNo}
+                            seats={orderSeats.length > 1 ? orderSeats : []}
+                            eventTitle={eventTitle}
+                        />
+                        <div className="gt-done-acts">
+                            <GlideButton href={`/event/${id}`}>Back to the event</GlideButton>
+                        </div>
+                    </section>
                 </div>
-            </section>
+            </div>
         );
     }
 
@@ -157,30 +177,22 @@ export default async function EventCheckoutPage({
                 (ev as any).reservation_policy,
             );
             return (
-                <section className="section" style={{ padding: '40px 0 72px' }}>
-                    <div className="container">
-                        <div className="eyebrow eyebrow-gold mb-4">／ EVENT CHECKOUT</div>
-                        <h1 style={{ letterSpacing: 1, margin: '0 0 10px' }}>
-                            {((ev as any).title ?? 'EVENT PACKAGE').toUpperCase()}
-                        </h1>
-                        <p className="text-muted" style={{ fontSize: 12, margin: '0 0 28px', lineHeight: 1.6 }}>
-                            {policyLine}{' '}
-                            <Link href={REFUND_POLICY_PATH} className="text-link">
-                                Full refund & cancellation policy <ChevronRight />
-                            </Link>
-                        </p>
+                <div className="glide glide-page">
+                    <div className="g-wrap gt-page">
+                        <PageHead back={back} title="Who's going" sub={<HeadSub title={eventTitle} policyLine={policyLine} />} />
                         <TicketAttendeesForm
                             eventId={id}
                             tierId={tierParam}
                             quantity={wantN}
                             priceCents={Number((tier as any).price_cents ?? 0)}
                             currency={(tier as any).currency ?? 'usd'}
+                            tierName={(tier as any).name ?? null}
                             signedInName={me.displayName || ''}
                             signedInEmail={me.email || ''}
                             sizeAvailability={sizeAvailability}
                         />
                     </div>
-                </section>
+                </div>
             );
         }
         redirect(`/event/${id}`);
@@ -193,16 +205,15 @@ export default async function EventCheckoutPage({
     // store lane (never silently fall back to test mode).
     if (!STRIPE_PUBLISHABLE_KEY) {
         return (
-            <section className="section" style={{ padding: '40px 0 72px' }}>
-                <div className="container">
-                    <div className="eyebrow eyebrow-gold mb-4">／ EVENT CHECKOUT</div>
-                    <h1 style={{ letterSpacing: 1, margin: '0 0 28px' }}>CHECKOUT</h1>
-                    <p>
-                        Checkout is temporarily unavailable — payments are not
-                        configured. Your spot is still held; please try again shortly.
+            <div className="glide glide-page">
+                <div className="g-wrap gt-page">
+                    <PageHead back={back} title="Checkout" />
+                    <p className="g-note" role="status">
+                        <CreditCard size={20} strokeWidth={2} aria-hidden="true" />
+                        Checkout is temporarily unavailable: payments are not configured. Your spot is still held; please try again shortly.
                     </p>
                 </div>
-            </section>
+            </div>
         );
     }
 
@@ -218,22 +229,15 @@ export default async function EventCheckoutPage({
     );
 
     return (
-        <section className="section" style={{ padding: '40px 0 72px' }}>
-            <div className="container">
-                <div className="eyebrow eyebrow-gold mb-4">／ EVENT CHECKOUT</div>
-                <h1 style={{ letterSpacing: 1, margin: '0 0 10px' }}>
-                    {((ev as any).title ?? 'EVENT PACKAGE').toUpperCase()}
-                </h1>
-                <p className="text-dim" style={{ fontSize: 13, margin: '0 0 12px' }}>
-                    Your spot is held while you pay — complete payment before the hold
-                    expires{holdUntil ? <> at <strong style={{ color: 'var(--text)' }}>{holdUntil}</strong></> : null} to
-                    lock it in.
-                </p>
-                <p className="text-muted" style={{ fontSize: 12, margin: '0 0 28px', lineHeight: 1.6 }}>
-                    {policyLine}{' '}
-                    <Link href={REFUND_POLICY_PATH} className="text-link">
-                        Full refund & cancellation policy <ChevronRight />
-                    </Link>
+        <div className="glide glide-page">
+            <div className="g-wrap gt-page">
+                <PageHead back={back} title="Checkout" sub={<HeadSub title={eventTitle} policyLine={policyLine} />} />
+                <p className="g-note" role="status" style={{ marginBottom: 20 }}>
+                    <Clock size={20} strokeWidth={2} aria-hidden="true" />
+                    <span>
+                        Your spot is held while you pay. Complete payment before the hold
+                        expires{holdUntil ? <> at <span className="g-w">{holdUntil}</span></> : null} to lock it in.
+                    </span>
                 </p>
                 <CheckoutClient
                     initialCart={confirmedCart.cart}
@@ -251,15 +255,15 @@ export default async function EventCheckoutPage({
                         label: (
                             <>
                                 I agree to the{' '}
-                                <Link href={REFUND_POLICY_PATH} target="_blank" className="text-link" style={{ color: 'inherit', textDecoration: 'underline' }}>
-                                    refund & cancellation policy
-                                </Link>{' '}
-                                — no refunds within 72 hours of the start, tickets are non-transferable.
+                                <Link href={REFUND_POLICY_PATH} target="_blank">
+                                    refund &amp; cancellation policy
+                                </Link>
+                                : no refunds within 72 hours of the start, tickets are non-transferable.
                             </>
                         ),
                     }}
                 />
             </div>
-        </section>
+        </div>
     );
 }

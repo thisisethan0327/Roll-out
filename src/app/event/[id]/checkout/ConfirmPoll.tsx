@@ -7,11 +7,13 @@
  * subscriber. So this polls the member's RSVP briefly until the flip lands and
  * then shows the numbered spot. If the flip hasn't landed after the polling
  * window, the spot is still theirs — we say so instead of spinning forever.
+ *
+ * Glide (board G2 "You're in"): the check roundel with tricolore rings, the
+ * spot number in Michroma, and the seats as a list.
  */
 import { useEffect, useRef, useState } from 'react';
 import { getRsvpSnapshot, type RsvpState } from '../actions';
-import { SweepBar } from '../../../store/_ui';
-import { Check } from '@/components/icons';
+import { OkRoundel } from '@/components/glide-tickets/parts';
 
 const POLL_MS = 2000;
 const MAX_POLLS = 15; // ~30s window — the subscriber usually lands in seconds.
@@ -21,12 +23,15 @@ export function ConfirmPoll({
     initialState,
     initialSpotNo,
     seats = [],
+    eventTitle = null,
 }: {
     eventId: string;
     initialState: RsvpState;
     initialSpotNo: number | null;
     /** Multi-ticket order: the buyer's seats (2+). Empty = single-ticket copy. */
     seats?: { seat: number; name: string; size: string | null }[];
+    /** The event's title, for the line under the heading. */
+    eventTitle?: string | null;
 }) {
     const [state, setState] = useState<RsvpState>(initialState);
     const [spotNo, setSpotNo] = useState<number | null>(initialSpotNo);
@@ -55,39 +60,30 @@ export function ConfirmPoll({
     if (state === 'confirmed' && seats.length > 1) {
         return (
             <>
-                <div style={{ fontSize: 44, color: 'var(--gold)', marginBottom: 12 }}><Check /></div>
-                <h1 style={{ letterSpacing: 1, margin: '0 0 14px' }}>
-                    YOU&apos;RE IN — {seats.length} TICKETS
+                <OkRoundel />
+                <h1>
+                    You&apos;re in · <span className="g-w">{seats.length}</span> tickets
                 </h1>
-                <p style={{ color: 'var(--text-2)', fontSize: 16, lineHeight: 1.6, maxWidth: 460, margin: '0 auto 18px' }}>
-                    Payment received — every seat is locked in. Each attendee gets their ticket by email now
-                    that payment has gone through.
+                <p>
+                    {eventTitle ? `${eventTitle}. ` : ''}Payment received, every seat is locked in. Each attendee gets their
+                    ticket by email now that payment has gone through.
                 </p>
-                <ul
-                    style={{
-                        listStyle: 'none',
-                        margin: '0 auto',
-                        padding: 0,
-                        maxWidth: 420,
-                        textAlign: 'left',
-                        borderTop: '1px solid var(--line)',
-                    }}
-                >
+                <div className="gt-seats" style={{ marginTop: 24, textAlign: 'left' }}>
                     {seats.map((s) => (
-                        <li
-                            key={s.seat}
-                            style={{ display: 'flex', gap: 12, padding: '10px 0', borderBottom: '1px solid var(--line)', fontSize: 14 }}
-                        >
-                            <span className="font-display" style={{ color: 'var(--gold)', fontSize: 11, letterSpacing: 'var(--track-wider)', minWidth: 56 }}>
-                                SEAT {s.seat}
+                        <div key={s.seat} className="gt-seat">
+                            <span className="gt-seat-n" aria-hidden="true">
+                                {s.seat}
                             </span>
-                            <span style={{ color: 'var(--text)' }}>
-                                {s.name || '—'}
-                                {s.size ? <span style={{ color: 'var(--text-2)' }}> · {s.size.toUpperCase()}</span> : null}
+                            <span className="gt-seat-t">
+                                <b>
+                                    <span className="g-sr">Seat {s.seat}: </span>
+                                    {s.name || '—'}
+                                </b>
+                                {s.size ? <small>Sweater {s.size.toUpperCase()}</small> : null}
                             </span>
-                        </li>
+                        </div>
                     ))}
-                </ul>
+                </div>
             </>
         );
     }
@@ -95,35 +91,34 @@ export function ConfirmPoll({
     if (state === 'confirmed') {
         return (
             <>
-                <div style={{ fontSize: 44, color: 'var(--gold)', marginBottom: 12 }}><Check /></div>
-                <h1 style={{ letterSpacing: 1, margin: '0 0 14px' }}>
-                    YOU&apos;RE IN{spotNo != null ? ` — NO. ${String(spotNo).padStart(3, '0')}` : ''}
+                <OkRoundel />
+                <h1>
+                    You&apos;re in
+                    {spotNo != null ? (
+                        <>
+                            {' '}· No. <span className="g-w">{String(spotNo).padStart(3, '0')}</span>
+                        </>
+                    ) : null}
                 </h1>
-                <p style={{ color: 'var(--text-2)', fontSize: 16, lineHeight: 1.6, maxWidth: 460, margin: '0 auto 8px' }}>
-                    Payment received — your spot is locked in. See you there.
-                </p>
+                <p>{eventTitle ? `${eventTitle}. ` : ''}Payment received, your spot is locked in. See you there.</p>
             </>
         );
     }
 
     return (
         <>
-            <h1 style={{ letterSpacing: 1, margin: '0 0 18px' }}>PAYMENT RECEIVED</h1>
+            <OkRoundel waiting />
+            <h1>Payment received</h1>
             {timedOut ? (
-                <p style={{ color: 'var(--text-2)', fontSize: 15, lineHeight: 1.6, maxWidth: 460, margin: '0 auto 8px' }}>
-                    Your spot is being finalized — it&apos;s yours, the confirmation just
-                    hasn&apos;t landed yet. Refresh in a minute or check the event page.
+                <p>
+                    Your spot is being finalized. It&apos;s yours; the confirmation just hasn&apos;t landed yet. Refresh in a
+                    minute or check the event page.
                 </p>
             ) : (
-                <div style={{ maxWidth: 300, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 12 }}>
-                    <span
-                        className="text-dim font-display"
-                        style={{ fontSize: 11, letterSpacing: 'var(--track-wider)' }}
-                    >
-                        FINALIZING YOUR SPOT…
-                    </span>
-                    <SweepBar />
-                </div>
+                <>
+                    <p role="status">Finalizing your spot…</p>
+                    <span className="gt-progress" aria-hidden="true" />
+                </>
             )}
         </>
     );

@@ -1,38 +1,33 @@
-/** Streaming skeleton for /store — hero band + one shop block of product cards. */
-import { SkeletonStyle, Skel } from '../_skeleton';
+/** Streaming skeleton for /store — title, shop chips and one shelf of cards. */
+import { Skel } from '@/components/glide-tickets/parts';
 
 export default function StoreLoading() {
     return (
-        <>
-            <SkeletonStyle />
-            <section className="hero-band">
-                <div className="container" style={{ paddingTop: 56, paddingBottom: 40 }}>
-                    <Skel w={70} h={11} style={{ marginBottom: 16 }} />
-                    <Skel w="min(360px, 70%)" h={48} style={{ marginBottom: 14 }} />
-                    <Skel w="min(520px, 90%)" h={16} />
-                    <div style={{ display: 'flex', gap: 10, marginTop: 24, flexWrap: 'wrap' }}>
-                        {Array.from({ length: 3 }).map((_, i) => (
-                            <Skel key={i} w={110} h={32} />
-                        ))}
+        <div className="glide glide-page">
+            <div className="g-wrap gt-page" aria-busy="true">
+                <div className="gt-head">
+                    <div className="gt-head-t">
+                        <Skel w="min(240px, 60%)" h={42} />
+                        <Skel w="min(520px, 90%)" h={16} style={{ marginTop: 14 }} />
                     </div>
+                    <Skel w={112} h={48} r={24} />
                 </div>
-            </section>
-            <section className="section" style={{ padding: '40px 0 64px' }}>
-                <div className="container">
-                    <Skel w={220} h={24} style={{ marginBottom: 24 }} />
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 16 }}>
-                        {Array.from({ length: 8 }).map((_, i) => (
-                            <div key={i} style={{ border: '1px solid var(--line)', overflow: 'hidden' }}>
-                                <Skel h={undefined} style={{ aspectRatio: '1 / 1', border: 'none' }} />
-                                <div style={{ padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 8 }}>
-                                    <Skel w="80%" h={15} />
-                                    <Skel w={60} h={12} />
-                                </div>
-                            </div>
-                        ))}
-                    </div>
+                <div className="gt-fchips">
+                    {Array.from({ length: 4 }).map((_, i) => (
+                        <Skel key={i} w={110} h={44} r={22} />
+                    ))}
                 </div>
-            </section>
-        </>
+                <Skel w={220} h={24} style={{ marginBottom: 14 }} />
+                <ul className="gt-grid">
+                    {Array.from({ length: 8 }).map((_, i) => (
+                        <li key={i} className="gt-pc">
+                            <Skel h={undefined} r={19} style={{ aspectRatio: '1 / 1' }} />
+                            <Skel w="75%" h={15} style={{ margin: '14px 10px 0' }} />
+                            <Skel w={64} h={13} style={{ margin: '8px 10px 0' }} />
+                        </li>
+                    ))}
+                </ul>
+            </div>
+        </div>
     );
 }

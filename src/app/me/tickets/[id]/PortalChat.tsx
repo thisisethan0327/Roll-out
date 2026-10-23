@@ -13,7 +13,8 @@ import { useEffect, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { getSupabaseBrowser, isSupabaseConfigured } from '@/lib/supabase/browser';
 import { sendCustomerMessage } from './actions';
-import { PendingButton } from '@/components/feedback';
+import { LoaderCircle, SendHorizontal } from 'lucide-react';
+import { ErrorLine } from '@/components/glide-tickets/parts';
 
 type Message = {
     id: string;
@@ -89,47 +90,17 @@ export function PortalChat({
 
     return (
         <div>
-            <div
-                ref={scrollRef}
-                style={{
-                    maxHeight: 360,
-                    overflowY: 'auto',
-                    border: '1px solid var(--line)',
-                    background: 'var(--bg-2)',
-                    padding: 10,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: 8,
-                }}
-            >
+            <div ref={scrollRef} className="gt-chat" role="log" aria-label="Messages with the shop">
                 {messages.length === 0 ? (
-                    <div className="admin-empty">NO MESSAGES YET — SAY HELLO</div>
+                    <p className="gt-chat-empty">No messages yet. Say hello.</p>
                 ) : (
                     messages.map((m) => {
                         const mine = m.sender_type === 'customer';
                         const atts = Array.isArray(m.attachments) ? m.attachments : [];
                         return (
-                            <div
-                                key={m.id}
-                                style={{
-                                    alignSelf: mine ? 'flex-end' : 'flex-start',
-                                    maxWidth: '82%',
-                                    border: '1px solid var(--line)',
-                                    background: mine ? 'rgba(232,168,69,0.10)' : 'var(--bg-1)',
-                                    borderLeft: mine ? '2px solid var(--gold)' : '1px solid var(--line)',
-                                    padding: '6px 10px',
-                                }}
-                            >
-                                <div
-                                    style={{
-                                        fontFamily: 'var(--font-display)',
-                                        fontSize: 9,
-                                        letterSpacing: 'var(--track-wider)',
-                                        color: 'var(--text-3)',
-                                        marginBottom: 3,
-                                    }}
-                                >
-                                    {(m.sender_name ?? (mine ? 'YOU' : 'SHOP')).toUpperCase()}
+                            <div key={m.id} className={`gt-msg${mine ? ' is-mine' : ''}`}>
+                                <small>
+                                    {m.sender_name ?? (mine ? 'You' : 'Shop')}
                                     {m.created_at
                                         ? ` · ${new Date(m.created_at).toLocaleString(undefined, {
                                               month: 'short',
@@ -138,28 +109,13 @@ export function PortalChat({
                                               minute: '2-digit',
                                           })}`
                                         : ''}
-                                </div>
-                                {m.message && (
-                                    <div
-                                        style={{
-                                            fontSize: 13,
-                                            color: 'var(--text)',
-                                            whiteSpace: 'pre-wrap',
-                                            wordBreak: 'break-word',
-                                        }}
-                                    >
-                                        {m.message}
-                                    </div>
-                                )}
+                                </small>
+                                {m.message && <p>{m.message}</p>}
                                 {atts.map((a: any, i: number) =>
                                     a?.url ? (
-                                        // eslint-disable-next-line @next/next/no-img-element
                                         <a key={i} href={a.url} target="_blank" rel="noreferrer">
-                                            <img
-                                                src={a.url}
-                                                alt="attachment"
-                                                style={{ maxWidth: 160, marginTop: 6, borderRadius: 4 }}
-                                            />
+                                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                                            <img src={a.url} alt="attachment" />
                                         </a>
                                     ) : null,
                                 )}
@@ -170,39 +126,45 @@ export function PortalChat({
             </div>
 
             {err && (
-                <div className="admin-login-error" style={{ marginTop: 8 }}>
-                    {err}
+                <div style={{ margin: '10px 16px 0' }}>
+                    <ErrorLine>{err}</ErrorLine>
                 </div>
             )}
 
-            <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <textarea
-                    className="admin-form-input"
-                    rows={2}
-                    placeholder="Message the shop…"
-                    value={text}
-                    onChange={(e) => setText(e.target.value)}
-                    onKeyDown={(e) => {
-                        if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-                            e.preventDefault();
-                            send();
-                        }
-                    }}
-                    style={{ width: '100%', resize: 'vertical' }}
-                />
-                <div>
-                    <PendingButton
-                        type="button"
-                        className="admin-action-btn"
-                        pending={pending}
-                        pendingLabel="SENDING"
-                        disabled={!text.trim()}
-                        onClick={send}
-                    >
-                        SEND
-                    </PendingButton>
+            <div className="gt-compose">
+                <div className="gt-fields">
+                    <label className="gt-fld">
+                        <span>Message the shop</span>
+                        <textarea
+                            rows={2}
+                            placeholder="Write a message…"
+                            value={text}
+                            onChange={(e) => setText(e.target.value)}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                                    e.preventDefault();
+                                    send();
+                                }
+                            }}
+                        />
+                    </label>
                 </div>
+                <button
+                    type="button"
+                    className="gt-send"
+                    disabled={pending || !text.trim()}
+                    onClick={send}
+                    aria-label={pending ? 'Sending' : 'Send'}
+                    aria-busy={pending || undefined}
+                >
+                    {pending ? (
+                        <LoaderCircle size={22} strokeWidth={2} className="g-spin" aria-hidden="true" />
+                    ) : (
+                        <SendHorizontal size={22} strokeWidth={2} aria-hidden="true" />
+                    )}
+                </button>
             </div>
+            <p className="gt-hint">Ctrl or Cmd + Enter sends.</p>
         </div>
     );
 }

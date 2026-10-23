@@ -1,19 +1,26 @@
-/** Skeleton for a single /me/tickets/[id] detail while it and its chat load. */
-import { Skeleton, SkeletonText, SkeletonCard } from '@/components/feedback';
+/** Skeleton for /me/tickets/[id] while the RLS-scoped ticket detail loads. */
+import { Skel } from '@/components/glide-tickets/parts';
 
-export default function MyTicketDetailLoading() {
+export default function TicketDetailLoading() {
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-            <div className="admin-page-head">
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    <Skeleton width={160} height={22} />
-                    <Skeleton width={240} height={12} />
+        <div className="glide glide-page gt-page--me" aria-busy="true">
+            <div className="gt-head">
+                <div className="gt-head-t">
+                    <Skel w={110} h={14} />
+                    <Skel w={180} h={30} style={{ marginTop: 12 }} />
+                    <Skel w={260} h={14} style={{ marginTop: 12 }} />
                 </div>
             </div>
-            <section style={{ border: '1px solid var(--line)', background: 'var(--bg-1)', padding: 16 }}>
-                <SkeletonText lines={4} />
-            </section>
-            <SkeletonCard lines={3} />
+            <div className="gt-cols">
+                <div className="gt-stack">
+                    <Skel h={320} r={28} />
+                    <Skel h={260} r={28} />
+                </div>
+                <div className="gt-stack">
+                    <Skel h={200} r={28} />
+                    <Skel h={160} r={28} />
+                </div>
+            </div>
         </div>
     );
 }

@@ -65,7 +65,7 @@ import { LockedEvent } from './LockedEvent';
 import { ROLLOUT_ORIGIN } from '@/lib/tenant-hosts';
 import { absoluteUrl, jsonLdHtml, postalAddressFromText } from '@/lib/structured-data';
 import { isSeedEvent } from '@/lib/seed-content';
-import { AnnouncementBar } from '@/components/AnnouncementBar';
+import { GlideAnnouncements } from '@/components/glide-tickets/GlideAnnouncements';
 import { getEventAnnouncements, getSiteAnnouncements } from '@/lib/announcements';
 import { sortAnnouncements } from '@/lib/announcements-core';
 import { eventDateParts, eventTypeLabel, placeName } from '@/lib/glide-format';
@@ -773,7 +773,7 @@ export default async function PublicEventPage({
                 ) : null}
 
                 {/* ANNOUNCEMENTS — above the cover so a postponement is the first thing read */}
-                <AnnouncementBar announcements={notices} variant="card" />
+                <GlideAnnouncements announcements={notices} />
 
                 <div className="g-ev">
                     <div className="g-ev-main">
@@ -1052,9 +1052,8 @@ export default async function PublicEventPage({
                             </div>
                             <div className="g-panel-body">
                                 {rsvpOpen && isTiered && tiers.length > 0 ? (
-                                    // The tier picker keeps its own (pre-Glide) markup for now;
-                                    // the legacy bridge in glide.css gives it the palette.
-                                    <div className="g-panel-legacy">
+                                    // Tier picker (radio cards + slide) and the buyer's seats.
+                                    <div className="gt-panel-tiers">
                                         <TiersSection
                                             eventId={ev.id}
                                             tiers={tiers}

@@ -1,40 +1,28 @@
-/** Streaming skeleton for the PDP — breadcrumb + gallery + info/buy column. */
-import { SkeletonStyle, Skel } from '../../_skeleton';
+/** Streaming skeleton for the PDP — breadcrumb, gallery card and the buy card. */
+import { Skel } from '@/components/glide-tickets/parts';
 
 export default function ProductLoading() {
     return (
-        <section className="section" style={{ padding: '40px 0 72px' }}>
-            <SkeletonStyle />
-            <div className="container">
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginBottom: 28, flexWrap: 'wrap' }}>
-                    <Skel w={160} h={11} />
-                    <Skel w={70} h={11} />
+        <div className="glide glide-page">
+            <div className="g-wrap gt-page" aria-busy="true">
+                <div className="gt-crumbs">
+                    <Skel w={160} h={16} />
+                    <Skel w={112} h={48} r={24} />
                 </div>
-                <div
-                    className="pdp-grid"
-                    style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.1fr) minmax(0, 1fr)', gap: 40, alignItems: 'start' }}
-                >
-                    {/* gallery */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                        <Skel style={{ aspectRatio: '1 / 1' }} />
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(72px, 1fr))', gap: 8 }}>
-                            {Array.from({ length: 4 }).map((_, i) => (
-                                <Skel key={i} style={{ aspectRatio: '1 / 1' }} />
-                            ))}
-                        </div>
+                <div className="gt-pdp">
+                    <div className="g-card gt-gal">
+                        <Skel h={undefined} r={22} style={{ aspectRatio: '1 / 1' }} />
                     </div>
-                    {/* info */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                        <Skel w={90} h={11} />
-                        <Skel w="70%" h={34} />
-                        <Skel w={120} h={20} />
-                        <Skel w="100%" h={14} />
-                        <Skel w="92%" h={14} />
-                        <Skel w="80%" h={14} style={{ marginBottom: 12 }} />
-                        <Skel w="100%" h={52} />
+                    <div className="g-card gt-buy" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                        <Skel w={140} h={32} r={16} />
+                        <Skel w="75%" h={38} />
+                        <Skel w={110} h={22} />
+                        <Skel h={14} />
+                        <Skel w="80%" h={14} />
+                        <Skel h={56} r={28} style={{ marginTop: 8 }} />
                     </div>
                 </div>
             </div>
-        </section>
+        </div>
     );
 }

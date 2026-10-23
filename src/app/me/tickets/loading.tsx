@@ -1,22 +1,17 @@
 /** Skeleton for /me/tickets while the identity-scoped ticket loader resolves. */
-import { Skeleton, SkeletonCard } from '@/components/feedback';
+import { PageHead, Skel } from '@/components/glide-tickets/parts';
 
 export default function MyTicketsLoading() {
     return (
-        <div>
-            <div className="admin-page-head">
-                <div>
-                    <div className="admin-page-title">TICKETS</div>
-                    <div className="admin-page-sub text-dim">
-                        <Skeleton width={220} height={12} />
-                    </div>
-                </div>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div className="glide glide-page gt-page--me" aria-busy="true">
+            <PageHead title="Tickets" sub={<Skel w={220} h={14} />} />
+            <ul className="gt-list">
                 {Array.from({ length: 4 }).map((_, i) => (
-                    <SkeletonCard key={i} lines={1} />
+                    <li key={i}>
+                        <Skel h={84} r={24} />
+                    </li>
                 ))}
-            </div>
+            </ul>
         </div>
     );
 }

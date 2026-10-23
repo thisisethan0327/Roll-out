@@ -1,49 +1,43 @@
-/** Streaming skeleton for /store/checkout — two-column steps + order summary. */
-import { SkeletonStyle, Skel } from '../_skeleton';
+/** Streaming skeleton for /store/checkout — the three steps and the order card. */
+import { Skel } from '@/components/glide-tickets/parts';
 
 export default function CheckoutLoading() {
     return (
-        <section className="section" style={{ padding: '40px 0 72px' }}>
-            <SkeletonStyle />
-            <div className="container">
-                <Skel w={80} h={11} style={{ marginBottom: 16 }} />
-                <Skel w={200} h={30} style={{ marginBottom: 28 }} />
-                <div
-                    className="pdp-grid"
-                    style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.3fr) minmax(0, 1fr)', gap: 36, alignItems: 'start' }}
-                >
-                    {/* steps */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
+        <div className="glide glide-page">
+            <div className="g-wrap gt-page" aria-busy="true">
+                <div className="gt-head">
+                    <div className="gt-head-t">
+                        <Skel w={80} h={14} />
+                        <Skel w={260} h={42} style={{ marginTop: 12 }} />
+                    </div>
+                </div>
+                <div className="gt-cols">
+                    <div className="gt-steps">
                         {Array.from({ length: 3 }).map((_, i) => (
-                            <div key={i} style={{ border: '1px solid var(--line)', padding: 20, display: 'flex', flexDirection: 'column', gap: 14 }}>
-                                <Skel w={200} h={14} />
+                            <div key={i} className="g-card gt-step">
+                                <div className="gt-step-h">
+                                    <Skel w={36} h={36} r={18} />
+                                    <Skel w={200} h={18} />
+                                </div>
                                 {i === 0 ? (
-                                    <>
-                                        <Skel w="100%" h={44} />
-                                        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)', gap: 12 }}>
-                                            <Skel h={44} />
-                                            <Skel h={44} />
-                                        </div>
-                                        <Skel w="100%" h={44} />
-                                        <Skel w="100%" h={48} style={{ marginTop: 6 }} />
-                                    </>
+                                    <div className="gt-step-body">
+                                        <Skel h={60} r={20} />
+                                        <Skel h={180} r={20} />
+                                        <Skel h={56} r={28} />
+                                    </div>
                                 ) : null}
                             </div>
                         ))}
                     </div>
-                    {/* summary */}
-                    <aside style={{ border: '1px solid var(--line)', background: 'var(--bg-2)', padding: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
-                        <Skel w={70} h={11} />
-                        <Skel w="100%" h={14} />
-                        <Skel w="100%" h={14} />
-                        <div style={{ borderTop: '1px solid var(--line)', marginTop: 6, paddingTop: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
-                            <Skel w="100%" h={13} />
-                            <Skel w="100%" h={13} />
-                            <Skel w="100%" h={18} />
-                        </div>
-                    </aside>
+                    <div className="g-card gt-cart-side">
+                        <Skel w={90} h={20} />
+                        <Skel h={48} />
+                        <Skel h={14} />
+                        <Skel h={14} />
+                        <Skel h={20} />
+                    </div>
                 </div>
             </div>
-        </section>
+        </div>
     );
 }
