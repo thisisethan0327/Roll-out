@@ -41,12 +41,17 @@ export async function AdminShell({
         getPendingAppealsCount(),
     ]);
     // Glide (web phase 3, admin lane): the platform-admin console renders in the
-    // Glide shell. The shop console's admin path (layoutClass 'shop-layout') is
-    // owned by the shop lanes and keeps its legacy chrome, unchanged.
-    if (layoutClass === 'admin-layout') {
+    // Glide shell. So does the shop console's admin path (layoutClass
+    // 'shop-layout', an admin acting as a shop): the shop pages inside it are
+    // Glide, and the legacy chrome around them read as a second product (and
+    // its dark sub-column hid the light-mode shop nav). The legacy branch below
+    // stays as the fallback for any other caller.
+    if (layoutClass === 'admin-layout' || layoutClass === 'shop-layout') {
         return (
             <div
-                className={`glide glide-page ${s.shell}${subnav ? ` ${s.hasSub}` : ''}`}
+                className={`glide glide-page ${s.shell}${subnav ? ` ${s.hasSub}` : ''}${
+                    layoutClass === 'shop-layout' ? ` ${s.shopSub}` : ''
+                }`}
             >
                 {prelude}
                 <AdminNav

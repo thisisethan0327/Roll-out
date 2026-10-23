@@ -278,7 +278,7 @@ export function ShopSidebar({
     if (sub) {
         // Inside the admin shell: just the shop card and the links, in a Glide scope.
         return (
-            <div className={`glide ${s.side}`} style={{ position: 'static', height: 'auto' }}>
+            <div className={`glide ${s.side} ${s.sideSub}`} style={{ position: 'static', height: 'auto' }}>
                 <div className={s.shopCard}>
                     <p className={s.shopSub}>Acting as @{slug}</p>
                     <h2 className={s.shopName}>{shopName}</h2>

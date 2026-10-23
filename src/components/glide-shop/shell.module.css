@@ -366,6 +366,53 @@
   }
 }
 
+/* The shop nav as the admin shell's sub-column (ShopSidebar variant 'sub'):
+   the admin shell's card is the frame, so no padding of its own. Where the
+   admin shell folds its sub-column into a row (≤ 1180px), the shop nav
+   becomes a scrolling row of links too, and it stays visible on phones,
+   where the console's own .side is replaced by the phone bar. */
+.sideSub {
+  padding: 0;
+  overflow: visible;
+}
+.sideSub .shopCard {
+  margin-top: 0;
+}
+@media (max-width: 1180px) {
+  .sideSub {
+    flex-direction: row;
+    align-items: center;
+    gap: 4px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .sideSub::-webkit-scrollbar {
+    display: none;
+  }
+  .sideSub .shopCard,
+  .sideSub .groupLabel {
+    display: none;
+  }
+  .sideSub nav,
+  .sideSub .group {
+    display: contents;
+  }
+  .sideSub .link {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+  .sideSub .foot {
+    flex: 0 0 auto;
+    margin: 0;
+    padding: 0 0 0 4px;
+  }
+}
+@media (max-width: 900px) {
+  .side.sideSub {
+    display: flex;
+  }
+}
+
 /* A platform admin acting in a shop: the pages inside the admin shell. */
 .acting {
   background: var(--surface);

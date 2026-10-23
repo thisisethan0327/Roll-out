@@ -381,6 +381,37 @@
   }
 }
 
+/* An admin acting as a shop: the shop's nav is a long list, so it keeps its
+   own column down to 1181px instead of folding into a row at 1560px. */
+@media (min-width: 1181px) and (max-width: 1560px) {
+  .shell.hasSub.shopSub {
+    grid-template-columns: 272px 248px minmax(0, 1fr);
+    grid-template-rows: none;
+  }
+  .shell.hasSub.shopSub > .side {
+    grid-row: 1;
+  }
+  .shell.hasSub.shopSub > .subnav {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .shell.hasSub.shopSub > .main {
+    grid-column: 3;
+    grid-row: 1;
+  }
+  .shopSub .subnavIn {
+    position: sticky;
+    flex-direction: column;
+    align-items: stretch;
+    max-height: calc(100dvh - 32px);
+    margin: 16px 0 16px 12px;
+    padding: 16px 10px 10px;
+    border-radius: 28px;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+}
+
 @media (max-width: 900px) {
   .shell,
   .shell.hasSub {
@@ -1871,4 +1902,23 @@
 }
 .shell :global(.admin-stat-sub .sep) {
   color: var(--ink-2);
+}
+
+/* Printing from inside the admin shell (an admin acting as a shop prints an
+   invoice or a work order): only the page content prints. */
+@media print {
+  .side,
+  .topbar,
+  .subnav,
+  .header {
+    display: none !important;
+  }
+  .shell,
+  .shell.hasSub {
+    display: block;
+    background: #fff;
+  }
+  .main {
+    padding: 0;
+  }
 }
