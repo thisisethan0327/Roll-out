@@ -109,8 +109,8 @@
   --on-done: #f2f2f2;
   --tint: #333334;
   --on-tint: var(--tenant-accent);
-  --nav-on: #3a3a3b;
-  --on-nav-on: #ffffff;
+  --nav-on: var(--tenant-accent);
+  --on-nav-on: #0e0e0e;
   --seg: #2d2d2d;
   --seg-ink: #b5b5b5;
   --seg-on: var(--tenant-accent);
@@ -1208,4 +1208,17 @@
   .page td.tdActs .acts {
     justify-content: flex-start;
   }
+}
+/* The Add service dialog mounts inside the page head's actions; keep the
+   head's paragraph style off its hints. */
+.page .dlg p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.4;
+  max-width: none;
+}
+/* No divider above the money actions when they are the only step. */
+.money:first-child {
+  padding-top: 0;
+  border-top: 0;
 }
