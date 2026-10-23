@@ -110,16 +110,16 @@ export function TicketMaterials({
     return (
         <div>
             {materials.length === 0 ? (
-                <div className="admin-empty">NO MATERIALS RECORDED</div>
+                <div className="admin-empty">No materials recorded</div>
             ) : (
                 <div className="admin-table-wrap">
                     <table className="admin-table">
                         <thead>
                             <tr>
-                                <th>MATERIAL</th>
-                                <th>SERIAL</th>
-                                <th>QTY</th>
-                                <th>AREA</th>
+                                <th>Material</th>
+                                <th>Serial</th>
+                                <th>Qty</th>
+                                <th>Area</th>
                                 {canManage && <th></th>}
                             </tr>
                         </thead>
@@ -143,7 +143,7 @@ export function TicketMaterials({
                                                 onClick={() => remove(m.id)}
                                                 aria-label={armedDelete === m.id ? 'Confirm remove material' : 'Remove material'}
                                             >
-                                                {armedDelete === m.id ? 'SURE?' : <X />}
+                                                {armedDelete === m.id ? 'Sure?' : <X />}
                                             </button>
                                         </td>
                                     )}
@@ -157,7 +157,7 @@ export function TicketMaterials({
             {canManage && !panelOpen && (
                 <div style={{ marginTop: 12 }}>
                     <button type="button" className="admin-action-btn" onClick={openPanel}>
-                        + ADD MATERIAL
+                        + Add material
                     </button>
                 </div>
             )}
@@ -175,10 +175,10 @@ export function TicketMaterials({
                     }}
                 >
                     {loadingOpts && products == null ? (
-                        <div className="admin-empty">LOADING STOCK…</div>
+                        <div className="admin-empty">Loading stock…</div>
                     ) : (products ?? []).length === 0 ? (
                         <div className="admin-empty">
-                            NO SHOP PRODUCTS WITH STOCK — ADD PRODUCTS IN THE PRODUCTS SECTION.
+                            No shop products with stock — add products in the products section.
                         </div>
                     ) : (
                         <>
@@ -244,14 +244,14 @@ export function TicketMaterials({
                                     disabled={pending || !serialId}
                                     onClick={add}
                                 >
-                                    {pending ? 'ADDING…' : '+ ADD MATERIAL'}
+                                    {pending ? 'Adding…' : '+ Add material'}
                                 </button>
                                 <button
                                     type="button"
                                     className="admin-action-btn muted"
                                     onClick={() => setPanelOpen(false)}
                                 >
-                                    CANCEL
+                                    Cancel
                                 </button>
                             </div>
                         </>

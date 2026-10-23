@@ -35,9 +35,9 @@ type Checkin = {
 };
 
 const TYPE_LABEL: Record<string, string> = {
-    'check-in': 'CHECK-IN',
-    progress: 'PROGRESS',
-    'check-out': 'CHECK-OUT',
+    'check-in': 'Check-in',
+    progress: 'Progress',
+    'check-out': 'Check-out',
 };
 
 async function uploadToBucket(path: string, token: string, blob: Blob) {
@@ -100,7 +100,7 @@ export function TicketCheckins({
         start(async () => {
             try {
                 for (let i = 0; i < list.length; i++) {
-                    setBusy(`UPLOADING PHOTO ${i + 1}/${list.length}…`);
+                    setBusy(`Uploading photo ${i + 1}/${list.length}…`);
                     const blob = await compressImageFile(list[i], {
                         maxDim: 2000,
                         quality: 0.82,
@@ -159,7 +159,7 @@ export function TicketCheckins({
                         color: 'var(--text-3)',
                     }}
                 >
-                    INSPECTIONS ({checkins.length})
+                    Inspections ({checkins.length})
                 </div>
                 <button
                     type="button"
@@ -167,7 +167,7 @@ export function TicketCheckins({
                     disabled={pending}
                     onClick={() => setShowForm((v) => !v)}
                 >
-                    {showForm ? 'CANCEL' : '+ NEW CHECK-IN'}
+                    {showForm ? 'Cancel' : '+ New check-in'}
                 </button>
             </div>
 
@@ -227,14 +227,14 @@ export function TicketCheckins({
                             disabled={pending}
                             onClick={submitNew}
                         >
-                            {pending ? 'SAVING…' : 'SAVE CHECK-IN'}
+                            {pending ? 'Saving…' : 'Save check-in'}
                         </button>
                     </div>
                 </div>
             )}
 
             {checkins.length === 0 ? (
-                <div className="admin-empty">NO INSPECTIONS RECORDED YET</div>
+                <div className="admin-empty">No inspections recorded yet</div>
             ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                     {checkins.map((c) => {
@@ -258,7 +258,7 @@ export function TicketCheckins({
                                 >
                                     <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                                         <span className="admin-pill gold">
-                                            {TYPE_LABEL[c.type ?? ''] ?? (c.type ?? '—').toUpperCase()}
+                                            {TYPE_LABEL[c.type ?? ''] ?? (c.type ?? '—')}
                                         </span>
                                         <span className="admin-handle">
                                             {c.created_at
@@ -278,7 +278,7 @@ export function TicketCheckins({
                                             onClick={() => remove(c.id)}
                                             aria-label={armedDelete === c.id ? 'Confirm delete inspection' : 'Delete inspection'}
                                         >
-                                            {armedDelete === c.id ? 'SURE?' : <X />}
+                                            {armedDelete === c.id ? 'Sure?' : <X />}
                                         </button>
                                     )}
                                 </div>
@@ -289,9 +289,9 @@ export function TicketCheckins({
                                 )}
                                 {(c.odometer || c.fuel_level) && (
                                     <div className="admin-handle" style={{ marginBottom: 6 }}>
-                                        {c.odometer ? `ODO ${c.odometer}` : ''}
+                                        {c.odometer ? `Odometer ${c.odometer}` : ''}
                                         {c.odometer && c.fuel_level ? ' · ' : ''}
-                                        {c.fuel_level ? `FUEL ${c.fuel_level}` : ''}
+                                        {c.fuel_level ? `Fuel ${c.fuel_level}` : ''}
                                     </div>
                                 )}
                                 {media.length > 0 && (
@@ -324,7 +324,7 @@ export function TicketCheckins({
                                         disabled={pending}
                                         onClick={() => photoInputs.current[c.id]?.click()}
                                     >
-                                        + ADD PHOTOS
+                                        + Add photos
                                     </button>
                                     {busy && (
                                         <span

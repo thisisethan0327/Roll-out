@@ -77,14 +77,14 @@ export function TicketVehicleEditor({
     if (!editing) {
         return (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <KV label="YEAR / MAKE / MODEL" value={vehicleLabel || '—'} />
-                <KV label="TRIM" value={current.trim ?? '—'} />
-                <KV label="COLOR" value={current.color ?? '—'} />
+                <KV label="Year / make / model" value={vehicleLabel || '—'} />
+                <KV label="Trim" value={current.trim ?? '—'} />
+                <KV label="Color" value={current.color ?? '—'} />
                 <KV label="VIN" value={current.vin ?? '—'} mono />
                 {canManage && (
                     <div>
                         <button type="button" className="admin-action-btn muted" onClick={() => setEditing(true)}>
-                            CHANGE VEHICLE
+                            Change vehicle
                         </button>
                     </div>
                 )}
@@ -103,7 +103,7 @@ export function TicketVehicleEditor({
             />
             <div style={{ display: 'flex', gap: 8 }}>
                 <button type="button" className="admin-action-btn" disabled={pending} onClick={save}>
-                    {pending ? 'SAVING…' : 'SAVE VEHICLE'}
+                    {pending ? 'Saving…' : 'Save vehicle'}
                 </button>
                 <button
                     type="button"
@@ -111,7 +111,7 @@ export function TicketVehicleEditor({
                     disabled={pending}
                     onClick={() => setEditing(false)}
                 >
-                    CANCEL
+                    Cancel
                 </button>
             </div>
         </div>

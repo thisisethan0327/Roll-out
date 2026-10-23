@@ -12,18 +12,7 @@ import { TicketCheckins } from './TicketCheckins';
 import { TicketWorkers } from './TicketWorkers';
 import { TicketChat } from './TicketChat';
 import { TicketMaterials } from './TicketMaterials';
-
-const ACTIVITY_PILL: Record<string, '' | 'gold' | 'neon' | 'warn'> = {
-    created: 'gold',
-    status_change: 'neon',
-    checkin: 'neon',
-    checkout: 'neon',
-    progress: '',
-    worker_assigned: '',
-    service_added: 'gold',
-    photo_added: '',
-    note: '',
-};
+import { shopStyles as sh } from '@/components/glide-shop/parts';
 
 /** Resolve public.profiles display names for a set of ids. */
 async function resolveNames(pub: any, ids: (string | null | undefined)[]): Promise<Map<string, string>> {
@@ -36,7 +25,7 @@ async function resolveNames(pub: any, ids: (string | null | undefined)[]): Promi
         .in('id', unique);
     if (error) console.error('[shop/tickets/[id]] resolveNames failed:', error.message);
     for (const s of (data ?? []) as any[]) {
-        map.set(s.id, `${s.first_name ?? ''} ${s.last_name ?? ''}`.trim() || s.email || 'STAFF');
+        map.set(s.id, `${s.first_name ?? ''} ${s.last_name ?? ''}`.trim() || s.email || 'Staff');
     }
     return map;
 }
@@ -163,40 +152,22 @@ export async function ActivitySection({ ticketRowId }: { ticketRowId: string }) 
     const names = await resolveNames(pub, activity.map((a) => a.created_by));
 
     if (activity.length === 0) {
-        return <div className="admin-empty">NO ACTIVITY YET</div>;
+        return <p className={sh.muted} style={{ margin: 0 }}>No activity yet</p>;
     }
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <ol className={sh.timeline}>
             {activity.map((a) => (
-                <div
-                    key={a.id}
-                    style={{
-                        display: 'grid',
-                        gridTemplateColumns: '130px 1fr',
-                        gap: 10,
-                        fontSize: 12,
-                        borderBottom: '1px solid var(--line)',
-                        padding: '6px 0',
-                    }}
-                >
-                    <div className="admin-handle">
-                        {a.created_at
-                            ? new Date(a.created_at).toISOString().slice(0, 16).replace('T', ' ')
-                            : '—'}
-                    </div>
+                <li key={a.id}>
+                    <time dateTime={a.created_at ?? undefined}>
+                        {a.created_at ? new Date(a.created_at).toISOString().slice(0, 16).replace('T', ' ') : '—'}
+                    </time>
                     <div>
-                        <span className={`admin-pill ${ACTIVITY_PILL[a.type] ?? ''}`} style={{ marginRight: 8 }}>
-                            {(a.title ?? a.type ?? '—').toString()}
-                        </span>
-                        {a.description && <span style={{ color: 'var(--text-2)' }}>{a.description}</span>}
-                        {a.created_by && names.get(a.created_by) && (
-                            <span className="admin-handle" style={{ marginLeft: 8 }}>
-                                {names.get(a.created_by)}
-                            </span>
-                        )}
+                        <b>{(a.title ?? a.type ?? '—').toString()}</b>
+                        {a.description ? <span> · {a.description}</span> : null}
+                        {a.created_by && names.get(a.created_by) ? <span> · {names.get(a.created_by)}</span> : null}
                     </div>
-                </div>
+                </li>
             ))}
-        </div>
+        </ol>
     );
 }

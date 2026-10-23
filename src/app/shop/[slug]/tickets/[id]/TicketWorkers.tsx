@@ -57,8 +57,8 @@ export function TicketWorkers({
     if (pool.length === 0) {
         return (
             <div className="admin-empty">
-                NO ASSIGNABLE STAFF — LINK SHOP MEMBERS TO STAFF RECORDS TO ENABLE
-                ASSIGNMENT.
+                No assignable staff — link shop members to staff records to enable
+                assignment.
             </div>
         );
     }
@@ -74,7 +74,7 @@ export function TicketWorkers({
                 ))}
             </div>
         ) : (
-            <div className="admin-empty">NO INSTALLERS ASSIGNED</div>
+            <div className="admin-empty">No installers assigned</div>
         );
     }
 
@@ -115,7 +115,7 @@ export function TicketWorkers({
                         disabled={pending}
                         onClick={save}
                     >
-                        {pending ? 'SAVING…' : 'SAVE ASSIGNMENT'}
+                        {pending ? 'Saving…' : 'Save assignment'}
                     </button>
                 </div>
             )}

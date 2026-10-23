@@ -105,7 +105,7 @@ export function VehiclePicker({
             {customerId && (existing.length > 0 || loading) && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                     <div style={{ fontSize: 10, letterSpacing: 1, color: 'var(--text-3)' }}>
-                        {loading ? 'LOADING VEHICLES…' : 'CUSTOMER VEHICLES'}
+                        {loading ? 'Loading vehicles…' : 'Customer vehicles'}
                     </div>
                     {existing.map((v) => {
                         const label = [v.year, v.make, v.model, v.trim].filter(Boolean).join(' ');
@@ -131,13 +131,13 @@ export function VehiclePicker({
                             >
                                 <span style={{ fontSize: 13 }}>{label || '(vehicle)'}</span>
                                 <span className="admin-handle" style={{ fontSize: 11 }}>
-                                    {picked ? 'SELECTED' : v.vin ? v.vin.slice(-6) : v.color ?? ''}
+                                    {picked ? 'Selected' : v.vin ? v.vin.slice(-6) : v.color ?? ''}
                                 </span>
                             </button>
                         );
                     })}
                     <div style={{ fontSize: 10, letterSpacing: 1, color: 'var(--text-3)', marginTop: 4 }}>
-                        OR ADD A NEW VEHICLE
+                        Or add a new vehicle
                     </div>
                 </div>
             )}
@@ -158,7 +158,7 @@ export function VehiclePicker({
                     onClick={decode}
                     disabled={disabled || decoding || value.vin.trim().length !== 17}
                 >
-                    {decoding ? 'DECODING…' : 'DECODE VIN'}
+                    {decoding ? 'Decoding…' : 'Decode VIN'}
                 </button>
             </div>
             {decodeMsg && (

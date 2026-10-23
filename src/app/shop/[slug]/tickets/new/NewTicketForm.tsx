@@ -13,7 +13,9 @@ import { VehiclePicker, EMPTY_VEHICLE, type VehicleValue } from '../VehiclePicke
 import { ServiceLinesEditor } from '../ServiceLinesEditor';
 import { createTicketStructured } from '../actions';
 import type { ServiceLine } from '@/lib/ticket-services';
-import { ChevronRight } from '@/components/icons';
+import { Plus } from 'lucide-react';
+import { GlideButton } from '@/components/glide/primitives';
+import { Panel, shopStyles as sh } from '@/components/glide-shop/parts';
 
 const STATUS_OPTIONS = [
     'quote',
@@ -84,11 +86,11 @@ export function NewTicketForm({ slug, canCreate }: { slug: string; canCreate: bo
                 </div>
             )}
 
-            <FormSection title="CUSTOMER">
+            <FormSection title="Customer">
                 <CustomerPicker slug={slug} value={customer} onChange={setCustomer} disabled={disabled} />
             </FormSection>
 
-            <FormSection title="VEHICLE">
+            <FormSection title="Vehicle">
                 <VehiclePicker
                     slug={slug}
                     customerId={customer.customerId}
@@ -98,14 +100,14 @@ export function NewTicketForm({ slug, canCreate }: { slug: string; canCreate: bo
                 />
             </FormSection>
 
-            <FormSection title="SERVICES">
+            <FormSection title="Services">
                 <ServiceLinesEditor slug={slug} lines={services} onChange={setServices} disabled={disabled} />
             </FormSection>
 
-            <FormSection title="SCHEDULING">
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <FormSection title="Scheduling">
+                <div className={sh.grid2}>
                     <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                        <span className="admin-form-label">SERVICE DAY</span>
+                        <span className="admin-form-label">Service day</span>
                         <input
                             type="date"
                             className="admin-form-input"
@@ -115,7 +117,7 @@ export function NewTicketForm({ slug, canCreate }: { slug: string; canCreate: bo
                         />
                     </label>
                     <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                        <span className="admin-form-label">END DATE</span>
+                        <span className="admin-form-label">End date</span>
                         <input
                             type="date"
                             className="admin-form-input"
@@ -125,7 +127,7 @@ export function NewTicketForm({ slug, canCreate }: { slug: string; canCreate: bo
                         />
                     </label>
                     <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                        <span className="admin-form-label">STATUS</span>
+                        <span className="admin-form-label">Status</span>
                         <select
                             className="admin-form-input"
                             value={status}
@@ -134,13 +136,13 @@ export function NewTicketForm({ slug, canCreate }: { slug: string; canCreate: bo
                         >
                             {STATUS_OPTIONS.map((s) => (
                                 <option key={s} value={s}>
-                                    {s.toUpperCase().replace(/-/g, ' ')}
+                                    {s.charAt(0).toUpperCase() + s.slice(1).replace(/-/g, ' ')}
                                 </option>
                             ))}
                         </select>
                     </label>
                     <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                        <span className="admin-form-label">PRIORITY</span>
+                        <span className="admin-form-label">Priority</span>
                         <select
                             className="admin-form-input"
                             value={priority}
@@ -149,7 +151,7 @@ export function NewTicketForm({ slug, canCreate }: { slug: string; canCreate: bo
                         >
                             {PRIORITY_OPTIONS.map((p) => (
                                 <option key={p} value={p}>
-                                    {p.toUpperCase()}
+                                    {p.charAt(0).toUpperCase() + p.slice(1)}
                                 </option>
                             ))}
                         </select>
@@ -157,7 +159,7 @@ export function NewTicketForm({ slug, canCreate }: { slug: string; canCreate: bo
                 </div>
             </FormSection>
 
-            <FormSection title="NOTES">
+            <FormSection title="Notes">
                 <textarea
                     className="admin-form-input"
                     rows={4}
@@ -169,30 +171,15 @@ export function NewTicketForm({ slug, canCreate }: { slug: string; canCreate: bo
                 />
             </FormSection>
 
-            <div style={{ display: 'flex', gap: 8 }}>
-                <button type="button" className="admin-form-btn" disabled={disabled} onClick={submit}>
-                    {pending ? 'CREATING…' : <>CREATE TICKET <ChevronRight /></>}
-                </button>
+            <div>
+                <GlideButton onClick={submit} disabled={disabled} icon={<Plus size={20} strokeWidth={2} />}>
+                    {pending ? 'Creating…' : 'Create ticket'}
+                </GlideButton>
             </div>
         </div>
     );
 }
 
 function FormSection({ title, children }: { title: string; children: React.ReactNode }) {
-    return (
-        <section style={{ border: '1px solid var(--line)', background: 'var(--bg-1)', padding: 16 }}>
-            <div
-                style={{
-                    fontFamily: 'var(--font-display)',
-                    fontSize: 10,
-                    letterSpacing: 'var(--track-widest)',
-                    color: 'var(--text-3)',
-                    marginBottom: 12,
-                }}
-            >
-                {title}
-            </div>
-            {children}
-        </section>
-    );
+    return <Panel title={title}>{children}</Panel>;
 }

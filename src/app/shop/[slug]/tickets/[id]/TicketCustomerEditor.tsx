@@ -57,12 +57,12 @@ export function TicketCustomerEditor({
     if (!editing) {
         return (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <KV label="NAME" value={current.name ?? '—'} />
-                <KV label="EMAIL" value={current.email ?? '—'} mono />
-                <KV label="PHONE" value={current.phone ?? '—'} mono />
+                <KV label="Name" value={current.name ?? '—'} />
+                <KV label="Email" value={current.email ?? '—'} mono />
+                <KV label="Phone" value={current.phone ?? '—'} mono />
                 {current.customerId && (
                     <KV
-                        label="CUSTOMER ID"
+                        label="Customer ID"
                         value={
                             <Link
                                 href={`/shop/${slug}/customers/l-${current.customerId}`}
@@ -77,7 +77,7 @@ export function TicketCustomerEditor({
                 {canManage && (
                     <div>
                         <button type="button" className="admin-action-btn muted" onClick={() => setEditing(true)}>
-                            CHANGE CUSTOMER
+                            Change customer
                         </button>
                     </div>
                 )}
@@ -90,7 +90,7 @@ export function TicketCustomerEditor({
             <CustomerPicker slug={slug} value={value} onChange={setValue} disabled={pending} />
             <div style={{ display: 'flex', gap: 8 }}>
                 <button type="button" className="admin-action-btn" disabled={pending} onClick={save}>
-                    {pending ? 'SAVING…' : 'SAVE CUSTOMER'}
+                    {pending ? 'Saving…' : 'Save customer'}
                 </button>
                 <button
                     type="button"
@@ -98,7 +98,7 @@ export function TicketCustomerEditor({
                     disabled={pending}
                     onClick={() => setEditing(false)}
                 >
-                    CANCEL
+                    Cancel
                 </button>
             </div>
         </div>
