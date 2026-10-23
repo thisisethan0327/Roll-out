@@ -18,6 +18,11 @@
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { PendingButton } from '@/components/feedback';
+import { CircleCheck, CircleX, CreditCard, PackageCheck, Truck, Undo2 } from 'lucide-react';
+import { CardHead } from '@/components/glide-console/parts';
+import cs from '@/components/glide-console/console.module.css';
+import { Notice, cx } from '@/components/glide-shopbiz/parts';
+import bz from '@/components/glide-shopbiz/biz.module.css';
 import {
     shipOrderAction,
     fulfillOrderAction,
@@ -161,116 +166,99 @@ export function OrderActions({
         );
     };
 
-    const wrap: React.CSSProperties = {
-        border: '1px solid var(--line)',
-        background: 'var(--bg-1)',
-        padding: 16,
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 14,
-    };
-    const titleStyle: React.CSSProperties = {
-        fontFamily: 'var(--font-display)',
-        fontSize: 10,
-        letterSpacing: 'var(--track-widest)',
-        color: 'var(--text-3)',
-    };
+    const ic = { size: 17, strokeWidth: 2, 'aria-hidden': true } as const;
 
     if (canceled) {
         return (
-            <div style={wrap}>
-                <div style={titleStyle}>ACTIONS</div>
-                <div className="admin-handle" style={{ fontSize: 12 }}>
-                    This order is canceled — no further actions are available.
+            <section className="g-card" aria-labelledby="oa-h">
+                <CardHead id="oa-h" title="Actions" />
+                <div className={cx(cs.cardBody, cs.form)}>
+                    <p className={cs.small}>This order is canceled — no further actions are available.</p>
+                    {msg && <Banner msg={msg} />}
                 </div>
-                {msg && <Banner msg={msg} />}
-            </div>
+            </section>
         );
     }
 
-    return (
-        <div style={wrap}>
-            <div style={titleStyle}>ACTIONS</div>
+    /** Carrier + tracking number, shared by "fulfil" and "add tracking". */
+    const trackingFields = (
+        <div className={bz.trackGrid}>
+            <div className={cs.field}>
+                <label className={cs.label} htmlFor="oa-carrier">
+                    Carrier
+                </label>
+                <select
+                    id="oa-carrier"
+                    className={cx(cs.input, bz.in)}
+                    value={carrier}
+                    onChange={(e) => setCarrier(e.target.value)}
+                    disabled={pending}
+                >
+                    {CARRIERS.map((c) => (
+                        <option key={c.value} value={c.value}>
+                            {c.label}
+                        </option>
+                    ))}
+                </select>
+            </div>
+            <div className={cs.field}>
+                <label className={cs.label} htmlFor="oa-tracking">
+                    Tracking number
+                </label>
+                <input
+                    id="oa-tracking"
+                    className={cx(cs.input, bz.in)}
+                    placeholder="1Z…"
+                    value={trackingNumber}
+                    onChange={(e) => setTrackingNumber(e.target.value)}
+                    disabled={pending}
+                    autoCapitalize="characters"
+                    autoCorrect="off"
+                    spellCheck={false}
+                />
+            </div>
+        </div>
+    );
 
-            {/* Fulfill + tracking. Hidden once the money has gone back: a fully
-                refunded order should not invite anybody to put goods in a box
-                and send them (run 10, lane G2 on #176). A PARTIAL refund still
-                offers it — part of that order may genuinely still ship. */}
-            {hasUnfulfilledItems && !fullyRefunded && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    <div style={{ fontSize: 12, color: 'var(--text-2)' }}>
-                        Create fulfillment with tracking
-                    </div>
-                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                        <select
-                            className="admin-form-input"
-                            value={carrier}
-                            onChange={(e) => setCarrier(e.target.value)}
-                            style={{ width: 120 }}
-                            disabled={pending}
-                        >
-                            {CARRIERS.map((c) => (
-                                <option key={c.value} value={c.value}>
-                                    {c.label}
-                                </option>
-                            ))}
-                        </select>
-                        <input
-                            className="admin-form-input"
-                            placeholder="Tracking number"
-                            value={trackingNumber}
-                            onChange={(e) => setTrackingNumber(e.target.value)}
-                            style={{ flex: 1, minWidth: 180 }}
-                            disabled={pending}
-                        />
+    return (
+        <section className="g-card g-edge" aria-labelledby="oa-h">
+            <CardHead id="oa-h" title="Actions" />
+            <div className={cx(cs.cardBody, cs.form)} style={{ paddingBottom: 30 }}>
+                {/* Fulfill + tracking. Hidden once the money has gone back: a fully
+                    refunded order should not invite anybody to put goods in a box
+                    and send them (run 10, lane G2 on #176). A PARTIAL refund still
+                    offers it — part of that order may genuinely still ship. */}
+                {hasUnfulfilledItems && !fullyRefunded && (
+                    <div className={bz.step}>
+                        <h3 className={bz.stepH}>Create fulfillment with tracking</h3>
+                        {trackingFields}
                         <PendingButton
                             type="button"
-                            className="admin-action-btn"
+                            className="g-btn g-btn--sm g-btn--block"
                             pending={busyOn('fulfil')}
-                            pendingLabel="FULFILLING"
+                            pendingLabel="Fulfilling"
                             onClick={doFulfill}
                         >
-                            FULFILL + SHIP
+                            <span>Fulfill and ship</span>
+                            <span className="g-btn-k" aria-hidden="true">
+                                <Truck size={18} strokeWidth={2} />
+                            </span>
                         </PendingButton>
                     </div>
-                </div>
-            )}
+                )}
 
-            {/* Add tracking — a fulfilment exists but never shipped, usually
-                because attaching the label failed. Without this the order sat
-                at PACKED and staff had no way forward at all. */}
-            {!hasUnfulfilledItems && hasUnshippedFulfillment && !fullyRefunded && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    <div style={{ fontSize: 12, color: 'var(--text-2)' }}>
-                        Fulfilled but not shipped — add tracking to send it
-                    </div>
-                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                        <select
-                            className="admin-form-input"
-                            value={carrier}
-                            onChange={(e) => setCarrier(e.target.value)}
-                            style={{ width: 120 }}
-                            disabled={pending}
-                        >
-                            {CARRIERS.map((c) => (
-                                <option key={c.value} value={c.value}>
-                                    {c.label}
-                                </option>
-                            ))}
-                        </select>
-                        <input
-                            className="admin-form-input"
-                            placeholder="Tracking number"
-                            value={trackingNumber}
-                            onChange={(e) => setTrackingNumber(e.target.value)}
-                            style={{ flex: 1, minWidth: 180 }}
-                            disabled={pending}
-                        />
+                {/* Add tracking — a fulfilment exists but never shipped, usually
+                    because attaching the label failed. Without this the order sat
+                    at PACKED and staff had no way forward at all. */}
+                {!hasUnfulfilledItems && hasUnshippedFulfillment && !fullyRefunded && (
+                    <div className={bz.step}>
+                        <h3 className={bz.stepH}>Fulfilled but not shipped — add tracking to send it</h3>
+                        {trackingFields}
                         <PendingButton
                             type="button"
-                            className="admin-action-btn"
+                            className="g-btn g-btn--sm g-btn--block"
                             pending={busyOn('ship')}
-                            pendingLabel="SENDING"
+                            pendingLabel="Sending"
                             onClick={() => {
                                 if (!trackingNumber.trim()) {
                                     setMsg({ kind: 'err', text: 'Enter a tracking number first.' });
@@ -283,187 +271,193 @@ export function OrderActions({
                                 );
                             }}
                         >
-                            ADD TRACKING
+                            <span>Add tracking</span>
+                            <span className="g-btn-k" aria-hidden="true">
+                                <Truck size={18} strokeWidth={2} />
+                            </span>
                         </PendingButton>
                     </div>
-                </div>
-            )}
-
-            {/* Mark delivered */}
-            {canDeliver && (
-                <div>
-                    <PendingButton
-                        type="button"
-                        className="admin-action-btn muted"
-                        pending={busyOn('deliver')}
-                        pendingLabel="UPDATING"
-                        onClick={() => run(() => markDeliveredAction(slug, orderId), 'Marked delivered.', 'deliver')}
-                    >
-                        MARK DELIVERED
-                    </PendingButton>
-                </div>
-            )}
-
-            {/* Capture (legacy authorized-only) */}
-            {canMoney && hasAuthorizedPayment && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                    <PendingButton
-                        type="button"
-                        className="admin-action-btn"
-                        pending={busyOn('capture')}
-                        pendingLabel="CAPTURING"
-                        onClick={() => run(() => capturePaymentAction(slug, orderId), 'Payment captured.', 'capture')}
-                    >
-                        CAPTURE PAYMENT
-                    </PendingButton>
-                    <div className="admin-handle" style={{ fontSize: 10 }}>
-                        This payment is still authorized (legacy). New orders capture automatically.
-                    </div>
-                </div>
-            )}
-
-            {/* Money actions — owner/admin/manager only. Hidden rather than
-                disabled: a button that exists to refuse you is just noise. The
-                server refuses regardless (see ../actions.ts). */}
-            {canMoney && (
-            <div style={{ borderTop: '1px solid var(--line)', paddingTop: 12 }}>
-                {armed ? (
-                    <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                        <PendingButton
-                            type="button"
-                            className="admin-action-btn danger"
-                            pending={busyOn('cancel')}
-                            pendingLabel="CANCELING"
-                            onClick={() => {
-                                setArmed(false);
-                                run(() => cancelOrderAction(slug, orderId), 'Order canceled.', 'cancel');
-                            }}
-                        >
-                            CONFIRM CANCEL
-                        </PendingButton>
-                        <button
-                            type="button"
-                            className="admin-action-btn muted"
-                            onClick={() => setArmed(false)}
-                            disabled={pending}
-                        >
-                            KEEP ORDER
-                        </button>
-                        <span className="admin-handle" style={{ fontSize: 10 }}>
-                            Click confirm to cancel this order.
-                        </span>
-                    </div>
-                ) : (
-                    <button
-                        type="button"
-                        className="admin-action-btn muted"
-                        onClick={() => setArmed(true)}
-                        disabled={pending}
-                    >
-                        CANCEL ORDER
-                    </button>
                 )}
 
-                {/* Refund — two-click armed, like cancel. Empty amount refunds
-                    everything still refundable; the server validates the figure
-                    against captured minus already-refunded either way. Tax
-                    reverses itself through the refund-order-tax subscriber. */}
-                <div style={{ marginTop: 12, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                    <input
-                        className="admin-input"
-                        placeholder="Refund amount (blank = all)"
-                        inputMode="decimal"
-                        value={refundAmount}
-                        onChange={(e) => setRefundAmount(e.target.value)}
-                        style={{ width: 200 }}
-                        disabled={pending}
-                    />
-                    {refundArmed ? (
-                        <>
+                {/* Mark delivered */}
+                {canDeliver && (
+                    <div className={bz.acts}>
+                        <PendingButton
+                            type="button"
+                            className={bz.act}
+                            pending={busyOn('deliver')}
+                            pendingLabel="Updating"
+                            onClick={() => run(() => markDeliveredAction(slug, orderId), 'Marked delivered.', 'deliver')}
+                        >
+                            <PackageCheck {...ic} />
+                            Mark delivered
+                        </PendingButton>
+                    </div>
+                )}
+
+                {/* Capture (legacy authorized-only) */}
+                {canMoney && hasAuthorizedPayment && (
+                    <div className={bz.step}>
+                        <div className={bz.acts}>
                             <PendingButton
                                 type="button"
-                                className="admin-action-btn danger"
-                                pending={busyOn('refund')}
-                                pendingLabel="REFUNDING"
-                                onClick={() => {
-                                    setRefundArmed(false);
-                                    run(() => refundOrderAction(slug, orderId, parsedRefundCents), 'Refund issued.', 'refund');
-                                }}
+                                className={bz.act}
+                                pending={busyOn('capture')}
+                                pendingLabel="Capturing"
+                                onClick={() => run(() => capturePaymentAction(slug, orderId), 'Payment captured.', 'capture')}
                             >
-                                CONFIRM REFUND
+                                <CreditCard {...ic} />
+                                Capture payment
                             </PendingButton>
-                            <button
-                                type="button"
-                                className="admin-action-btn muted"
-                                onClick={() => setRefundArmed(false)}
-                                disabled={pending}
-                            >
-                                KEEP PAYMENT
-                            </button>
-                        </>
-                    ) : (
-                        <button
-                            type="button"
-                            className="admin-action-btn muted"
-                            onClick={() => {
-                                if (refundAmount.trim() && parsedRefundCents == null) {
-                                    setMsg({ kind: 'err', text: 'Enter a refund amount like 24.99, or leave it blank to refund everything.' });
-                                    return;
-                                }
-                                setRefundArmed(true);
-                            }}
-                            disabled={pending}
-                        >
-                            REFUND
-                        </button>
-                    )}
-                </div>
-
-                {/* Complete — the terminal state for goods that are not coming
-                    back. Only offered once the order has shipped or been
-                    refunded, matching the /app widget and the server check. */}
-                {!canceled && !isCompleted && (refunded || isShipped) && (
-                    <div style={{ marginTop: 12 }}>
-                        <PendingButton
-                            type="button"
-                            className="admin-action-btn"
-                            pending={busyOn('complete')}
-                            pendingLabel="COMPLETING"
-                            onClick={() => run(() => completeOrderAction(slug, orderId), 'Order completed.', 'complete')}
-                        >
-                            COMPLETE ORDER
-                        </PendingButton>
-                        <div className="admin-handle" style={{ fontSize: 10, marginTop: 4 }}>
-                            Closes the order for good. Custom goods are not returnable — refund, then complete.
                         </div>
+                        <p className={bz.fine}>This payment is still authorized (legacy). New orders capture automatically.</p>
                     </div>
                 )}
+
+                {/* Money actions — owner/admin/manager only. Hidden rather than
+                    disabled: a button that exists to refuse you is just noise. The
+                    server refuses regardless (see ../actions.ts). */}
+                {canMoney && (
+                    <div className={bz.money}>
+                        <h3 className={bz.stepH}>Payment and order</h3>
+                        {armed ? (
+                            <div className={bz.step}>
+                                <div className={bz.acts}>
+                                    <PendingButton
+                                        type="button"
+                                        className={cx(bz.act, bz.actArmed)}
+                                        pending={busyOn('cancel')}
+                                        pendingLabel="Canceling"
+                                        onClick={() => {
+                                            setArmed(false);
+                                            run(() => cancelOrderAction(slug, orderId), 'Order canceled.', 'cancel');
+                                        }}
+                                    >
+                                        <CircleX {...ic} />
+                                        Confirm cancel
+                                    </PendingButton>
+                                    <button type="button" className={cx(bz.act, bz.actInk)} onClick={() => setArmed(false)} disabled={pending}>
+                                        Keep order
+                                    </button>
+                                </div>
+                                <p className={bz.fine} role="status">
+                                    Click confirm to cancel this order.
+                                </p>
+                            </div>
+                        ) : (
+                            <div className={bz.acts}>
+                                <button type="button" className={cx(bz.act, bz.actInk, bz.actDanger)} onClick={() => setArmed(true)} disabled={pending}>
+                                    <CircleX {...ic} />
+                                    Cancel order
+                                </button>
+                            </div>
+                        )}
+
+                        {/* Refund — two-click armed, like cancel. Empty amount refunds
+                            everything still refundable; the server validates the figure
+                            against captured minus already-refunded either way. Tax
+                            reverses itself through the refund-order-tax subscriber. */}
+                        <div className={bz.refundRow}>
+                            <div className={cs.field}>
+                                <label className={cs.label} htmlFor="oa-refund">
+                                    Refund amount
+                                </label>
+                                <div className={cs.affix}>
+                                    <span aria-hidden="true">$</span>
+                                    <input
+                                        id="oa-refund"
+                                        className={cx(cs.input, bz.in)}
+                                        placeholder="0.00"
+                                        inputMode="decimal"
+                                        value={refundAmount}
+                                        onChange={(e) => setRefundAmount(e.target.value)}
+                                        disabled={pending}
+                                        aria-describedby="oa-refund-hint"
+                                    />
+                                </div>
+                                <p className={cs.hint} id="oa-refund-hint">
+                                    Leave blank to refund everything still refundable.
+                                </p>
+                            </div>
+                            <div className={bz.acts}>
+                                {refundArmed ? (
+                                    <>
+                                        <PendingButton
+                                            type="button"
+                                            className={cx(bz.act, bz.actArmed)}
+                                            pending={busyOn('refund')}
+                                            pendingLabel="Refunding"
+                                            onClick={() => {
+                                                setRefundArmed(false);
+                                                run(() => refundOrderAction(slug, orderId, parsedRefundCents), 'Refund issued.', 'refund');
+                                            }}
+                                        >
+                                            <Undo2 {...ic} />
+                                            Confirm refund
+                                        </PendingButton>
+                                        <button type="button" className={cx(bz.act, bz.actInk)} onClick={() => setRefundArmed(false)} disabled={pending}>
+                                            Keep payment
+                                        </button>
+                                    </>
+                                ) : (
+                                    <button
+                                        type="button"
+                                        className={cx(bz.act, bz.actInk)}
+                                        onClick={() => {
+                                            if (refundAmount.trim() && parsedRefundCents == null) {
+                                                setMsg({ kind: 'err', text: 'Enter a refund amount like 24.99, or leave it blank to refund everything.' });
+                                                return;
+                                            }
+                                            setRefundArmed(true);
+                                        }}
+                                        disabled={pending}
+                                    >
+                                        <Undo2 {...ic} />
+                                        Refund
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Complete — the terminal state for goods that are not coming
+                            back. Only offered once the order has shipped or been
+                            refunded, matching the /app widget and the server check. */}
+                        {!canceled && !isCompleted && (refunded || isShipped) && (
+                            <div className={bz.step}>
+                                <div className={bz.acts}>
+                                    <PendingButton
+                                        type="button"
+                                        className={bz.act}
+                                        pending={busyOn('complete')}
+                                        pendingLabel="Completing"
+                                        onClick={() => run(() => completeOrderAction(slug, orderId), 'Order completed.', 'complete')}
+                                    >
+                                        <CircleCheck {...ic} />
+                                        Complete order
+                                    </PendingButton>
+                                </div>
+                                <p className={bz.fine}>Closes the order for good. Custom goods are not returnable — refund, then complete.</p>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {!canMoney && (
+                    <p className={cx(bz.fine, bz.money)}>
+                        Capture, cancel, refund and complete need an owner or admin. Your role is {role}.
+                    </p>
+                )}
+
+                {msg && <Banner msg={msg} />}
             </div>
-            )}
-
-            {!canMoney && (
-                <div className="admin-handle" style={{ fontSize: 10, borderTop: '1px solid var(--line)', paddingTop: 12 }}>
-                    Capture, cancel, refund and complete need an owner or admin. Your role is {role}.
-                </div>
-            )}
-
-            {msg && <Banner msg={msg} />}
-        </div>
+        </section>
     );
 }
 
 function Banner({ msg }: { msg: { kind: 'ok' | 'err'; text: string } }) {
     return (
-        <div
-            style={{
-                fontSize: 12,
-                padding: '8px 10px',
-                border: '1px solid ' + (msg.kind === 'ok' ? 'var(--line-mid)' : 'var(--warn, #c0392b)'),
-                background: 'var(--bg-2)',
-                color: msg.kind === 'ok' ? 'var(--gold)' : 'var(--warn, #e57373)',
-            }}
-        >
+        <Notice tone={msg.kind === 'ok' ? 'ok' : 'bad'} live>
             {msg.text}
-        </div>
+        </Notice>
     );
 }

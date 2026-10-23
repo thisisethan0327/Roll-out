@@ -2,25 +2,17 @@ import Link from 'next/link';
 import { requireShopMemberBySlug } from '@/lib/auth-guard';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { PostActions } from './PostActions';
-import { ChevronRight, CircleDot, Heart } from '@/components/icons';
+import { Eye, Globe, Heart, Lock, MessageCircle, Newspaper, Search, Trash2, Users } from 'lucide-react';
+import { BizPage } from '@/components/glide-shopbiz/BizPage';
+import { CardEmpty, CountStrip, FilterLink, cx } from '@/components/glide-shopbiz/parts';
+import bz from '@/components/glide-shopbiz/biz.module.css';
+import { ConsoleHead } from '@/components/glide-console/parts';
+import cs from '@/components/glide-console/console.module.css';
 
 export const metadata = { title: 'Posts' };
 
 const TYPE_TABS = ['ALL', 'BUILD', 'MEET', 'EDU', 'TRADE'] as const;
 type TypeTab = (typeof TYPE_TABS)[number];
-
-const TYPE_PILL: Record<string, string> = {
-    BUILD: 'admin-pill gold',
-    MEET: 'admin-pill neon',
-    EDU: 'admin-pill',
-    TRADE: 'admin-pill warn',
-};
-
-const VIS_PILL: Record<string, string> = {
-    public: 'admin-pill neon',
-    followers: 'admin-pill',
-    private: 'admin-pill warn',
-};
 
 async function fetchShopPageProfileId(shopId: number): Promise<string | null> {
     const admin = getSupabaseAdmin();
@@ -133,17 +125,16 @@ export default async function ShopPostsPage({
 
     if (!authorId) {
         return (
-            <>
-                <div className="admin-page-head">
-                    <div>
-                        <div className="admin-page-title">POSTS</div>
-                        <div className="admin-page-sub">{shop.name.toUpperCase()}</div>
-                    </div>
-                </div>
-                <div className="admin-empty">
-                    NO SHOP PAGE PROFILE FOUND — CONTACT SUPPORT.
-                </div>
-            </>
+            <BizPage slug={slug}>
+                <ConsoleHead title="Posts" sub={shop.name} />
+                <section className="g-card">
+                    <CardEmpty
+                        icon={<Newspaper size={22} strokeWidth={1.75} />}
+                        title="No shop page profile found"
+                        body="Posts are published from the shop’s page profile, and this shop doesn’t have one yet. Contact support to set it up."
+                    />
+                </section>
+            </BizPage>
         );
     }
 
@@ -162,144 +153,154 @@ export default async function ShopPostsPage({
         const qs = sp.toString();
         return qs ? `${baseHref}?${qs}` : baseHref;
     };
+    const label = (t: string) => (t === 'EDU' ? 'Edu' : t.charAt(0) + t.slice(1).toLowerCase());
 
     return (
-        <>
-            <div className="admin-page-head">
-                <div>
-                    <div className="admin-page-title">POSTS</div>
-                    <div className="admin-page-sub">
-                        {shop.name.toUpperCase()} · {data.rows.length} SHOWN
-                        {showDeleted ? ' · DELETED' : ''}
-                    </div>
-                </div>
-                <Link
-                    href={buildHref(null, !showDeleted)}
-                    className={`admin-action-btn ${showDeleted ? '' : 'muted'}`}
-                    style={{ textDecoration: 'none' }}
-                >
-                    {showDeleted ? 'SHOW ACTIVE' : 'SHOW DELETED'}
-                </Link>
+        <BizPage slug={slug}>
+            <ConsoleHead
+                title="Posts"
+                sub={`${shop.name} · ${data.rows.length} shown${showDeleted ? ' · deleted' : ''}`}
+                actions={
+                    <Link href={buildHref(null, !showDeleted)} className={cx(bz.act, bz.actInk)}>
+                        {showDeleted ? <Eye size={16} strokeWidth={2} aria-hidden="true" /> : <Trash2 size={16} strokeWidth={2} aria-hidden="true" />}
+                        {showDeleted ? 'Show active' : 'Show deleted'}
+                    </Link>
+                }
+            />
+
+            {/* Drafts are not counted: the schema has no drafts yet, so it was always 0. */}
+            <CountStrip
+                label="Post totals"
+                items={[
+                    { label: 'Published', value: data.published },
+                    { label: 'Total likes', value: data.totalLikes },
+                    { label: 'Total comments', value: data.totalComments },
+                ]}
+            />
+
+            <div className={bz.bar}>
+                <nav className={bz.chips} aria-label="Post type">
+                    {TYPE_TABS.map((t) => (
+                        <FilterLink key={t} href={buildHref(t)} on={t === type}>
+                            {label(t)}
+                        </FilterLink>
+                    ))}
+                </nav>
+                <form className={bz.search} action={baseHref} role="search">
+                    {type !== 'ALL' && <input type="hidden" name="type" value={type.toLowerCase()} />}
+                    {showDeleted && <input type="hidden" name="deleted" value="1" />}
+                    <Search size={18} strokeWidth={2} aria-hidden="true" />
+                    <input name="q" defaultValue={q ?? ''} placeholder="Search post text" aria-label="Search posts" />
+                    <button type="submit">Search</button>
+                </form>
             </div>
 
-            <div className="admin-stat-grid">
-                <Stat label="PUBLISHED" value={data.published} />
-                <Stat label="DRAFTS" value={data.drafts} />
-                <Stat label="TOTAL LIKES" value={data.totalLikes} />
-                <Stat label="TOTAL COMMENTS" value={data.totalComments} />
-            </div>
-
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', margin: '12px 0' }}>
-                {TYPE_TABS.map((t) => {
-                    const isActive = t === type;
-                    return (
-                        <Link
-                            key={t}
-                            href={buildHref(t)}
-                            className={`admin-action-btn ${isActive ? '' : 'muted'}`}
-                            style={{ textDecoration: 'none' }}
-                        >
-                            {t}
-                        </Link>
-                    );
-                })}
-            </div>
-
-            <form className="admin-search" action={baseHref}>
-                {type !== 'ALL' && <input type="hidden" name="type" value={type.toLowerCase()} />}
-                {showDeleted && <input type="hidden" name="deleted" value="1" />}
-                <input
-                    name="q"
-                    defaultValue={q ?? ''}
-                    className="admin-search-input"
-                    placeholder="SEARCH POST BODY"
-                />
-                <button type="submit" className="admin-action-btn">
-                    SEARCH <ChevronRight />
-                </button>
-            </form>
-
-            <div className="admin-table-wrap">
-                <table className="admin-table">
-                    <thead>
-                        <tr>
-                            <th>WHEN</th>
-                            <th>TYPE</th>
-                            <th>BODY</th>
-                            <th>STATS</th>
-                            <th>VISIBILITY</th>
-                            <th style={{ textAlign: 'right' }}>ACTIONS</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {data.rows.length === 0 ? (
-                            <tr>
-                                <td colSpan={6}>
-                                    <div className="admin-empty">
-                                        NO {showDeleted ? 'DELETED' : type} POSTS.
-                                    </div>
-                                </td>
-                            </tr>
-                        ) : (
-                            data.rows.map((p: any) => (
-                                <tr key={p.id}>
-                                    <td>
-                                        {new Date(p.created_at).toISOString().slice(0, 16).replace('T', ' ')}
-                                    </td>
-                                    <td>
-                                        <span className={TYPE_PILL[p.type] ?? 'admin-pill'}>
-                                            {p.type}
-                                        </span>
-                                    </td>
-                                    <td style={{ maxWidth: 360 }}>
-                                        {truncate(p.body, 80)}
-                                    </td>
-                                    <td>
-                                        <span className="admin-handle">
-                                            <Heart fill="currentColor" /> {p.like_count ?? 0} · <CircleDot /> {p.comment_count ?? 0}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                                            <span className={VIS_PILL[p.visibility] ?? 'admin-pill'}>
-                                                {String(p.visibility).toUpperCase()}
-                                            </span>
-                                            {p.deleted_at && (
-                                                <span className="admin-pill warn">DELETED</span>
-                                            )}
-                                        </div>
-                                    </td>
-                                    <td style={{ textAlign: 'right' }}>
-                                        <PostActions
-                                            postId={p.id}
-                                            shopId={shop.shopId}
-                                            deleted={!!p.deleted_at}
-                                            callerRole={role}
-                                        />
-                                    </td>
+            <section className="g-card" aria-label="Posts">
+                {data.rows.length === 0 ? (
+                    <CardEmpty
+                        icon={<Newspaper size={22} strokeWidth={1.75} />}
+                        title={showDeleted ? 'No deleted posts' : type === 'ALL' ? 'No posts' : `No ${label(type).toLowerCase()} posts`}
+                        body={q ? `Nothing matches “${q}”.` : showDeleted ? 'Posts you delete land here and can be restored.' : 'Posts from the shop’s page show up here.'}
+                    />
+                ) : (
+                    <div className={cs.tblWrap}>
+                        <table className={cs.tbl}>
+                            <thead>
+                                <tr>
+                                    <th scope="col">Post</th>
+                                    <th scope="col">Type</th>
+                                    <th scope="col" className={cs.mHide}>
+                                        Stats
+                                    </th>
+                                    <th scope="col">Visibility</th>
+                                    <th scope="col">
+                                        <span className="g-sr">Actions</span>
+                                    </th>
                                 </tr>
-                            ))
-                        )}
-                    </tbody>
-                </table>
-            </div>
-        </>
+                            </thead>
+                            <tbody>
+                                {data.rows.map((p: any) => (
+                                    <tr key={p.id}>
+                                        <td>
+                                            <span className={bz.clip} style={{ fontWeight: 500 }}>
+                                                {truncate(p.body, 80)}
+                                            </span>
+                                            <small>
+                                                <span className={bz.mono}>
+                                                    {new Date(p.created_at).toISOString().slice(0, 16).replace('T', ' ')}
+                                                </span>
+                                            </small>
+                                        </td>
+                                        <td>
+                                            <span className="g-chip">{label(String(p.type))}</span>
+                                        </td>
+                                        <td className={cs.mHide}>
+                                            <span className={bz.stats}>
+                                                <span className={bz.stat}>
+                                                    <Heart size={14} strokeWidth={2} aria-hidden="true" />
+                                                    {p.like_count ?? 0}
+                                                    <span className="g-sr"> likes</span>
+                                                </span>
+                                                <span className={bz.stat}>
+                                                    <MessageCircle size={14} strokeWidth={2} aria-hidden="true" />
+                                                    {p.comment_count ?? 0}
+                                                    <span className="g-sr"> comments</span>
+                                                </span>
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <div className="g-chips">
+                                                <VisChip v={String(p.visibility)} />
+                                                {p.deleted_at && (
+                                                    <span className="g-chip" style={{ color: 'var(--ink-2)' }}>
+                                                        <Trash2 size={14} strokeWidth={2} aria-hidden="true" />
+                                                        Deleted
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </td>
+                                        <td className={bz.tdActs}>
+                                            <PostActions
+                                                postId={p.id}
+                                                shopId={shop.shopId}
+                                                deleted={!!p.deleted_at}
+                                                callerRole={role}
+                                            />
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+            </section>
+        </BizPage>
     );
 }
 
-function Stat({
-    label,
-    value,
-    accent,
-}: {
-    label: string;
-    value: number | string;
-    accent?: 'gold' | 'warn';
-}) {
+function VisChip({ v }: { v: string }) {
+    const ic = { size: 14, strokeWidth: 2, 'aria-hidden': true } as const;
+    const text = v.charAt(0).toUpperCase() + v.slice(1);
+    if (v === 'public') {
+        return (
+            <span className="g-chip g-chip--tint">
+                <Globe {...ic} />
+                {text}
+            </span>
+        );
+    }
+    if (v === 'private') {
+        return (
+            <span className="g-chip">
+                <Lock {...ic} />
+                {text}
+            </span>
+        );
+    }
     return (
-        <div className="admin-stat">
-            <div className="admin-stat-lbl">{label}</div>
-            <div className={`admin-stat-num ${accent ?? ''}`}>{value}</div>
-        </div>
+        <span className="g-chip">
+            <Users {...ic} />
+            {text}
+        </span>
     );
 }

@@ -1,7 +1,9 @@
 'use client';
 import { useTransition } from 'react';
 import { softDeletePost, undeletePost } from './actions';
-import { ArrowUpRight } from '@/components/icons';
+import { ArrowUpRight, Trash2, Undo2 } from 'lucide-react';
+import { cx } from '@/components/glide-shopbiz/parts';
+import bz from '@/components/glide-shopbiz/biz.module.css';
 
 const MANAGER_ROLES = new Set(['owner', 'admin', 'manager']);
 
@@ -29,36 +31,32 @@ export function PostActions({
         });
     };
 
+    const ic = { size: 16, strokeWidth: 2, 'aria-hidden': true } as const;
     return (
-        <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-            <a
-                className="admin-action-btn muted"
-                href={`https://rollout.club/post/${postId}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ textDecoration: 'none' }}
-            >
-                VIEW <ArrowUpRight />
+        <div className={cx(bz.acts, bz.actsEnd)}>
+            <a className={cx(bz.act, bz.actInk)} href={`https://rollout.club/post/${postId}`} target="_blank" rel="noopener noreferrer">
+                View
+                <ArrowUpRight {...ic} />
+                <span className="g-sr">(opens in a new tab)</span>
             </a>
             {canManage && !deleted && (
                 <button
-                    className="admin-action-btn danger"
+                    type="button"
+                    className={cx(bz.act, bz.actInk, bz.actDanger)}
                     disabled={pending}
                     onClick={() => {
                         if (!confirm('Soft-delete this post? It will be hidden from feeds.')) return;
                         run(() => softDeletePost(postId, shopId));
                     }}
                 >
-                    DELETE
+                    <Trash2 {...ic} />
+                    Delete
                 </button>
             )}
             {canManage && deleted && (
-                <button
-                    className="admin-action-btn"
-                    disabled={pending}
-                    onClick={() => run(() => undeletePost(postId, shopId))}
-                >
-                    UNDELETE
+                <button type="button" className={bz.act} disabled={pending} onClick={() => run(() => undeletePost(postId, shopId))}>
+                    <Undo2 {...ic} />
+                    Restore
                 </button>
             )}
         </div>

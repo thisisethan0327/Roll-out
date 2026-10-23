@@ -2,6 +2,8 @@ import { redirect } from 'next/navigation';
 import { requireShopMemberBySlug } from '@/lib/auth-guard';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { EmailSettingsForm } from './EmailSettingsForm';
+import { BizPage } from '@/components/glide-shopbiz/BizPage';
+import { ConsoleHead } from '@/components/glide-console/parts';
 
 export const metadata = { title: 'Email Settings' };
 
@@ -32,22 +34,9 @@ export default async function EmailSettingsPage({
     const row = await loadShop(shop.shopId);
 
     return (
-        <>
-            <div className="admin-page-head">
-                <div>
-                    <div className="admin-page-title">EMAIL</div>
-                    <div className="admin-page-sub">
-                        {shop.name.toUpperCase()} · BRANDING &amp; REPLY-TO
-                    </div>
-                </div>
-            </div>
-
-            <EmailSettingsForm
-                shopId={shop.shopId}
-                slug={slug}
-                row={row}
-                shopName={shop.name}
-            />
-        </>
+        <BizPage slug={slug}>
+            <ConsoleHead title="Email" sub={`${shop.name} · Branding and reply-to`} />
+            <EmailSettingsForm shopId={shop.shopId} slug={slug} row={row} shopName={shop.name} />
+        </BizPage>
     );
 }

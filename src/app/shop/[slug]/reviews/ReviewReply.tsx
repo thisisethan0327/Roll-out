@@ -1,6 +1,11 @@
 'use client';
 import { useState, useTransition } from 'react';
 import { replyToReview } from './actions';
+import { Pencil, Reply, Store, Trash2 } from 'lucide-react';
+import { GlideButton } from '@/components/glide/primitives';
+import cs from '@/components/glide-console/console.module.css';
+import { cx } from '@/components/glide-shopbiz/parts';
+import bz from '@/components/glide-shopbiz/biz.module.css';
 
 export type ReviewReplyData = {
     id: string;
@@ -23,13 +28,19 @@ export function ReviewReply({ id, shopId, ownerReply }: ReviewReplyData) {
         });
     };
 
+    const ic = { size: 16, strokeWidth: 2, 'aria-hidden': true } as const;
+
     if (ownerReply && !editing) {
         return (
-            <div style={{ marginTop: 12, marginLeft: 12, paddingLeft: 14, borderLeft: '2px solid var(--line-mid)' }}>
-                <div className="admin-form-label" style={{ marginBottom: 4 }}>SHOP REPLY</div>
-                <p style={{ color: 'var(--text-2)', fontSize: 13, lineHeight: 1.5, margin: '0 0 8px' }}>{ownerReply}</p>
-                <button className="admin-action-btn muted" type="button" onClick={() => setEditing(true)}>
-                    EDIT REPLY
+            <div className={bz.reply}>
+                <h3>
+                    <Store {...ic} />
+                    Shop reply
+                </h3>
+                <p>{ownerReply}</p>
+                <button className={bz.act} type="button" onClick={() => setEditing(true)}>
+                    <Pencil {...ic} />
+                    Edit reply
                 </button>
             </div>
         );
@@ -37,39 +48,40 @@ export function ReviewReply({ id, shopId, ownerReply }: ReviewReplyData) {
 
     if (!editing) {
         return (
-            <div style={{ marginTop: 12 }}>
-                <button className="admin-action-btn" type="button" onClick={() => setEditing(true)}>
-                    REPLY
+            <div style={{ marginTop: 14 }}>
+                <button className={bz.act} type="button" onClick={() => setEditing(true)}>
+                    <Reply {...ic} />
+                    Reply
                 </button>
             </div>
         );
     }
 
     return (
-        <form action={onSubmit} className="admin-form" style={{ marginTop: 12 }}>
-            <textarea
-                name="reply"
-                className="admin-form-input"
-                defaultValue={ownerReply ?? ''}
-                placeholder="Write a public reply…"
-                rows={3}
-                style={{ resize: 'vertical' }}
-            />
-            <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                <button className="admin-form-btn" type="submit" disabled={pending}>
-                    {pending ? 'SAVING…' : 'POST REPLY'}
-                </button>
-                <button
-                    className="admin-action-btn muted"
-                    type="button"
-                    onClick={() => setEditing(false)}
-                    disabled={pending}
-                >
-                    CANCEL
+        <form action={onSubmit} className={cx(cs.form, bz.reply)}>
+            <div className={cs.field}>
+                <label className={cs.label} htmlFor={`reply-${id}`}>
+                    Public reply
+                </label>
+                <textarea
+                    id={`reply-${id}`}
+                    name="reply"
+                    className={cx(cs.input, bz.in)}
+                    defaultValue={ownerReply ?? ''}
+                    placeholder="Write a public reply…"
+                    rows={3}
+                />
+            </div>
+            <div className={cs.actRow}>
+                <GlideButton type="submit" size="sm" disabled={pending} aria-busy={pending}>
+                    {pending ? 'Saving…' : 'Post reply'}
+                </GlideButton>
+                <button className={cx(bz.act, bz.actInk)} type="button" onClick={() => setEditing(false)} disabled={pending}>
+                    Cancel
                 </button>
                 {ownerReply ? (
                     <button
-                        className="admin-action-btn danger"
+                        className={cx(bz.act, bz.actInk, bz.actDanger)}
                         type="button"
                         onClick={() => {
                             const fd = new FormData();
@@ -78,7 +90,8 @@ export function ReviewReply({ id, shopId, ownerReply }: ReviewReplyData) {
                         }}
                         disabled={pending}
                     >
-                        REMOVE
+                        <Trash2 {...ic} />
+                        Remove
                     </button>
                 ) : null}
             </div>

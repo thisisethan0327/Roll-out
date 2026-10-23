@@ -1,7 +1,12 @@
 'use client';
 import { useState, useTransition } from 'react';
 import { updateShopPage } from './actions';
-import { Check } from '@/components/icons';
+import { BadgeCheck, Eye, MapPin, TriangleAlert } from 'lucide-react';
+import { GlideButton } from '@/components/glide/primitives';
+import { Field, FormSection } from '@/components/glide-console/parts';
+import cs from '@/components/glide-console/console.module.css';
+import { Notice, cx } from '@/components/glide-shopbiz/parts';
+import bz from '@/components/glide-shopbiz/biz.module.css';
 
 export function ShopPageForm({
     shopId,
@@ -46,269 +51,125 @@ export function ShopPageForm({
         });
     };
 
+    const inp = cx(cs.input, bz.in);
+    const initials = (displayName || handle || '?').trim().slice(0, 2).toUpperCase();
+
     return (
-        <div
-            style={{
-                display: 'grid',
-                gridTemplateColumns: 'minmax(0, 1fr) 320px',
-                gap: 24,
-                alignItems: 'start',
-            }}
-        >
-            <form onSubmit={submit} className="admin-form">
-                <div className="admin-form-label">HANDLE</div>
-                <input
-                    type="text"
-                    value={handle}
-                    onChange={(e) => setHandle(e.target.value)}
-                    className="admin-form-input"
-                    placeholder="emwraps"
-                    autoCapitalize="none"
-                    autoCorrect="off"
-                />
-                <div
-                    style={{
-                        fontFamily: 'var(--font-display)',
-                        fontSize: 10,
-                        letterSpacing: 'var(--track-wider)',
-                        color: 'var(--text-2)',
-                        marginTop: -8,
-                        marginBottom: 12,
-                    }}
-                >
-                    CAREFUL — CHANGING THIS BREAKS @MENTIONS.
-                </div>
+        <div className={bz.split}>
+            <form onSubmit={submit} className={cs.col}>
+                <FormSection id="sp-id" title="Identity" sub="How the shop appears on its public page." edge>
+                    <Field
+                        label="Handle"
+                        htmlFor="sp-handle"
+                        hint={
+                            <>
+                                <TriangleAlert size={15} strokeWidth={2} aria-hidden="true" />
+                                Careful — changing this breaks @mentions.
+                            </>
+                        }
+                    >
+                        <div className={cs.affix}>
+                            <span aria-hidden="true">@</span>
+                            <input
+                                id="sp-handle"
+                                type="text"
+                                value={handle}
+                                onChange={(e) => setHandle(e.target.value)}
+                                className={inp}
+                                placeholder="emwraps"
+                                autoCapitalize="none"
+                                autoCorrect="off"
+                            />
+                        </div>
+                    </Field>
+                    <Field label="Display name" htmlFor="sp-name">
+                        <input id="sp-name" type="text" value={displayName} onChange={(e) => setDisplayName(e.target.value)} className={inp} placeholder="EMWRAPS" />
+                    </Field>
+                    <Field label={`Bio (${bio.length}/400)`} htmlFor="sp-bio">
+                        <textarea
+                            id="sp-bio"
+                            value={bio}
+                            onChange={(e) => setBio(e.target.value.slice(0, 400))}
+                            className={inp}
+                            rows={4}
+                            placeholder="Premium vehicle wraps and tint…"
+                        />
+                    </Field>
+                    <div className={cs.grid2f}>
+                        <Field label="Location" htmlFor="sp-loc">
+                            <input id="sp-loc" type="text" value={location} onChange={(e) => setLocation(e.target.value)} className={inp} placeholder="City, ST" />
+                        </Field>
+                        <Field label="Sector code" htmlFor="sp-sector">
+                            <input id="sp-sector" type="text" value={sectorCode} onChange={(e) => setSectorCode(e.target.value)} className={inp} placeholder="SECTOR 06" />
+                        </Field>
+                    </div>
+                </FormSection>
 
-                <div className="admin-form-label">DISPLAY NAME</div>
-                <input
-                    type="text"
-                    value={displayName}
-                    onChange={(e) => setDisplayName(e.target.value)}
-                    className="admin-form-input"
-                    placeholder="EMWRAPS"
-                />
-
-                <div className="admin-form-label">BIO ({bio.length}/400)</div>
-                <textarea
-                    value={bio}
-                    onChange={(e) => setBio(e.target.value.slice(0, 400))}
-                    className="admin-form-input"
-                    rows={4}
-                    style={{ resize: 'vertical', minHeight: 84 }}
-                    placeholder="Premium vehicle wraps and tint in Seattle…"
-                />
-
-                <div className="admin-form-label">LOCATION</div>
-                <input
-                    type="text"
-                    value={location}
-                    onChange={(e) => setLocation(e.target.value)}
-                    className="admin-form-input"
-                    placeholder="Seattle, WA"
-                />
-
-                <div className="admin-form-label">SECTOR CODE</div>
-                <input
-                    type="text"
-                    value={sectorCode}
-                    onChange={(e) => setSectorCode(e.target.value)}
-                    className="admin-form-input"
-                    placeholder="SECTOR 06"
-                />
-
-                <div className="admin-form-label">AVATAR URL</div>
-                <input
-                    type="text"
-                    value={avatarUrl}
-                    onChange={(e) => setAvatarUrl(e.target.value)}
-                    className="admin-form-input"
-                    placeholder="https://…"
-                />
-
-                <div className="admin-form-label">BANNER URL</div>
-                <input
-                    type="text"
-                    value={bannerUrl}
-                    onChange={(e) => setBannerUrl(e.target.value)}
-                    className="admin-form-input"
-                    placeholder="https://…"
-                />
+                <FormSection id="sp-img" title="Images" sub="Paste an image link. Square works best for the avatar, 3:1 for the banner.">
+                    <Field label="Avatar URL" htmlFor="sp-avatar">
+                        <input id="sp-avatar" type="text" value={avatarUrl} onChange={(e) => setAvatarUrl(e.target.value)} className={inp} placeholder="https://…" />
+                    </Field>
+                    <Field label="Banner URL" htmlFor="sp-banner">
+                        <input id="sp-banner" type="text" value={bannerUrl} onChange={(e) => setBannerUrl(e.target.value)} className={inp} placeholder="https://…" />
+                    </Field>
+                </FormSection>
 
                 {err && (
-                    <div className="admin-login-error" style={{ padding: 8 }}>
+                    <Notice tone="bad" live>
                         {err}
-                    </div>
+                    </Notice>
                 )}
                 {ok && (
-                    <div
-                        style={{
-                            padding: 8,
-                            border: '1px solid var(--gold)',
-                            background: 'var(--gold-glow)',
-                            color: 'var(--gold)',
-                            fontFamily: 'var(--font-display)',
-                            fontSize: 11,
-                            letterSpacing: 'var(--track-wide)',
-                        }}
-                    >
-                        SAVED.
-                    </div>
+                    <Notice tone="ok" live>
+                        Saved.
+                    </Notice>
                 )}
-                <button
-                    type="submit"
-                    disabled={pending}
-                    className="admin-form-btn"
-                >
-                    {pending ? 'SAVING…' : 'SAVE CHANGES'}
-                </button>
+                <div>
+                    <GlideButton type="submit" disabled={pending} aria-busy={pending}>
+                        {pending ? 'Saving…' : 'Save changes'}
+                    </GlideButton>
+                </div>
             </form>
 
-            <div
-                style={{
-                    border: '1px solid var(--line-mid)',
-                    background: 'var(--bg-2)',
-                    padding: 16,
-                }}
-            >
-                <div
-                    style={{
-                        fontFamily: 'var(--font-display)',
-                        fontSize: 11,
-                        letterSpacing: 'var(--track-wider)',
-                        color: 'var(--text-2)',
-                        marginBottom: 12,
-                    }}
-                >
-                    PREVIEW
-                </div>
-                <div
-                    style={{
-                        position: 'relative',
-                        width: '100%',
-                        aspectRatio: '3 / 1',
-                        background: 'var(--bg-1)',
-                        border: '1px solid var(--line-mid)',
-                        overflow: 'hidden',
-                    }}
-                >
-                    {bannerUrl ? (
-                        <img
-                            src={bannerUrl}
-                            alt=""
-                            style={{
-                                position: 'absolute',
-                                inset: 0,
-                                width: '100%',
-                                height: '100%',
-                                objectFit: 'cover',
-                            }}
-                        />
-                    ) : (
-                        <div
-                            style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                width: '100%',
-                                height: '100%',
-                                color: 'var(--text-2)',
-                                fontFamily: 'var(--font-display)',
-                                fontSize: 10,
-                                letterSpacing: 'var(--track-wider)',
-                            }}
-                        >
-                            NO BANNER
-                        </div>
-                    )}
-                </div>
-                <div
-                    style={{
-                        display: 'flex',
-                        gap: 12,
-                        alignItems: 'center',
-                        marginTop: -28,
-                        paddingLeft: 12,
-                    }}
-                >
-                    <div
-                        style={{
-                            position: 'relative',
-                            width: 64,
-                            height: 64,
-                            border: '2px solid var(--bg-2)',
-                            background: 'var(--bg-1)',
-                            overflow: 'hidden',
-                        }}
-                    >
-                        {avatarUrl ? (
-                            <img
-                                src={avatarUrl}
-                                alt=""
-                                style={{
-                                    position: 'absolute',
-                                    inset: 0,
-                                    width: '100%',
-                                    height: '100%',
-                                    objectFit: 'cover',
-                                }}
-                            />
-                        ) : null}
-                    </div>
-                </div>
-                <div style={{ marginTop: 12 }}>
-                    <div
-                        style={{
-                            fontFamily: 'var(--font-display)',
-                            fontSize: 14,
-                            fontWeight: 700,
-                            color: 'var(--text)',
-                            letterSpacing: 'var(--track-wide)',
-                        }}
-                    >
-                        {displayName || '—'}{' '}
-                        {profile?.is_verified && (
-                            <span style={{ color: 'var(--gold)' }}><Check /></span>
+            <aside className={cx('g-card', cs.sticky)} aria-labelledby="sp-prev-h">
+                <div className={cs.cardBody} style={{ paddingTop: 20, paddingBottom: 28 }}>
+                    <h2 id="sp-prev-h" className={bz.prevH}>
+                        <Eye size={16} strokeWidth={2} aria-hidden="true" />
+                        Preview
+                    </h2>
+                    <div className={bz.banner}>
+                        {bannerUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={bannerUrl} alt="" />
+                        ) : (
+                            <span>No banner</span>
                         )}
                     </div>
-                    <div
-                        style={{
-                            fontFamily: 'var(--font-display)',
-                            fontSize: 11,
-                            color: 'var(--text-2)',
-                            letterSpacing: 'var(--track-wider)',
-                        }}
-                    >
+                    <div className={bz.pvAv}>
+                        {avatarUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={avatarUrl} alt="" />
+                        ) : (
+                            <span aria-hidden="true">{initials}</span>
+                        )}
+                    </div>
+                    <p className={bz.pvName}>
+                        {displayName || '—'}
+                        {profile?.is_verified && <BadgeCheck size={20} strokeWidth={2} role="img" aria-label="Verified" />}
+                    </p>
+                    <p className={bz.pvMeta}>
                         @{handle || '—'}
                         {sectorCode && ` · ${sectorCode}`}
-                    </div>
+                    </p>
                     {location && (
-                        <div
-                            style={{
-                                fontFamily: 'var(--font-display)',
-                                fontSize: 10,
-                                color: 'var(--text-2)',
-                                letterSpacing: 'var(--track-wider)',
-                                marginTop: 4,
-                            }}
-                        >
+                        <p className={bz.pvMeta}>
+                            <MapPin size={14} strokeWidth={2} aria-hidden="true" style={{ verticalAlign: -2, marginRight: 4 }} />
                             {location}
-                        </div>
+                        </p>
                     )}
-                    {bio && (
-                        <div
-                            style={{
-                                marginTop: 10,
-                                fontSize: 12,
-                                color: 'var(--text)',
-                                lineHeight: 1.5,
-                                whiteSpace: 'pre-wrap',
-                            }}
-                        >
-                            {bio}
-                        </div>
-                    )}
+                    {bio && <p className={bz.pvBio}>{bio}</p>}
                 </div>
-            </div>
+            </aside>
         </div>
     );
 }

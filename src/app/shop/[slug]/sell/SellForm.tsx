@@ -16,7 +16,12 @@ import {
     submitCommerceApplication,
     type SubmitDoc,
 } from './actions';
-import { ChevronRight } from '@/components/icons';
+import { FileCheck, LoaderCircle, ShieldCheck } from 'lucide-react';
+import { GlideButton } from '@/components/glide/primitives';
+import { Field, FormSection } from '@/components/glide-console/parts';
+import cs from '@/components/glide-console/console.module.css';
+import { Notice, cx } from '@/components/glide-shopbiz/parts';
+import bz from '@/components/glide-shopbiz/biz.module.css';
 
 // Kept in sync with lib/verification-docs.ts (that module is server-only, so a
 // Client Component can't import from it — hence this local literal).
@@ -105,65 +110,73 @@ export function SellForm({ shopId, slug }: { shopId: number; slug: string }) {
         });
     };
 
+    const inp = cx(cs.input, bz.in);
+
     return (
-        <div className="admin-form" style={{ maxWidth: 640 }}>
-            <SectionHeading>BUSINESS DETAILS</SectionHeading>
-            <label className="admin-form-label">LEGAL BUSINESS NAME</label>
-            <input className="admin-form-input" value={legalName} onChange={(e) => setLegalName(e.target.value)} placeholder="Apex Auto Styling LLC" disabled={pending} />
+        <div className={cx(cs.col, bz.narrow)}>
+            <FormSection id="sell-biz" title="Business details" edge>
+                <Field label="Legal business name" htmlFor="sell-legal">
+                    <input id="sell-legal" className={inp} value={legalName} onChange={(e) => setLegalName(e.target.value)} placeholder="Apex Auto Styling LLC" disabled={pending} />
+                </Field>
+                <Field label="UBI number (9 digits)" htmlFor="sell-ubi">
+                    <input id="sell-ubi" className={inp} value={ubi} onChange={(e) => setUbi(e.target.value)} inputMode="numeric" placeholder="601123456" disabled={pending} />
+                </Field>
+            </FormSection>
 
-            <label className="admin-form-label">UBI NUMBER (9 DIGITS)</label>
-            <input className="admin-form-input" value={ubi} onChange={(e) => setUbi(e.target.value)} inputMode="numeric" placeholder="601123456" disabled={pending} />
-
-            <SectionHeading>DOCUMENTS</SectionHeading>
-            {SLOTS.map((s) => (
-                <div key={s.key} style={{ marginBottom: 14 }}>
-                    <label className="admin-form-label">
-                        {s.label.toUpperCase()} {s.required ? '*' : ''}
-                    </label>
-                    <input
-                        type="file"
-                        accept={ACCEPT}
-                        disabled={pending}
-                        onChange={(e) => pickFile(s.key, e.target.files?.[0] ?? null)}
-                        className="admin-form-input"
-                        style={{ padding: 8 }}
-                    />
-                    <div className="admin-form-hint" style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 3 }}>{s.hint}</div>
-                    {files[s.key] ? (
-                        <div style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 3 }}>
-                            Selected: {files[s.key]!.name} ({Math.round(files[s.key]!.size / 1024)} KB)
+            <FormSection id="sell-docs" title="Documents" sub="PDF or image, up to 10 MB each.">
+                {SLOTS.map((s) => (
+                    <div key={s.key} className={cs.field}>
+                        <label className={cs.label} htmlFor={`sell-${s.key}`}>
+                            {s.label}
+                            {s.required ? ' (required)' : ''}
+                        </label>
+                        <div className={bz.file}>
+                            <input
+                                id={`sell-${s.key}`}
+                                type="file"
+                                accept={ACCEPT}
+                                disabled={pending}
+                                onChange={(e) => pickFile(s.key, e.target.files?.[0] ?? null)}
+                                aria-describedby={`sell-${s.key}-hint`}
+                            />
                         </div>
-                    ) : null}
+                        <p className={cs.hint} id={`sell-${s.key}-hint`}>
+                            {s.hint}
+                        </p>
+                        {files[s.key] ? (
+                            <span className={bz.picked}>
+                                <FileCheck size={16} strokeWidth={2} aria-hidden="true" />
+                                Selected: {files[s.key]!.name} ({Math.round(files[s.key]!.size / 1024)} KB)
+                            </span>
+                        ) : null}
+                    </div>
+                ))}
+            </FormSection>
+
+            <FormSection id="sell-pay" title="Payouts" sub="Stripe Connect">
+                <p className={cs.small} style={{ fontSize: 14.5 }}>
+                    Payouts setup — coming soon. You’ll connect your bank through Stripe’s hosted onboarding once the payouts platform is live. Until then, approved sellers settle through Rollout’s interim process.
+                </p>
+            </FormSection>
+
+            {error ? <Notice tone="bad" live>{error}</Notice> : null}
+            {progress ? (
+                <Notice live icon={<LoaderCircle size={20} strokeWidth={2} className="g-spin" aria-hidden="true" />}>
+                    {progress}
+                </Notice>
+            ) : null}
+
+            <div className={cs.form}>
+                <div>
+                    <GlideButton type="button" onClick={onSubmit} disabled={pending} aria-busy={pending}>
+                        {pending ? 'Submitting…' : 'Submit application'}
+                    </GlideButton>
                 </div>
-            ))}
-
-            <SectionHeading>PAYOUTS</SectionHeading>
-            <div style={{ border: '1px dashed var(--line)', padding: 14, borderRadius: 4, color: 'var(--text-2)', fontSize: 13 }}>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: 2, color: 'var(--gold)', marginBottom: 6 }}>
-                    STRIPE CONNECT
-                </div>
-                Payouts setup — coming soon. You’ll connect your bank through Stripe’s hosted onboarding once the payouts platform is live. Until then, approved sellers settle through Rollout’s interim process.
+                <p className={bz.fine}>
+                    <ShieldCheck size={16} strokeWidth={2} aria-hidden="true" />
+                    Documents are stored privately and only visible to Rollout reviewers. Rejected-application documents are purged after 90 days.
+                </p>
             </div>
-
-            {error ? <div style={{ color: 'var(--danger, #d33)', fontSize: 13, marginTop: 12 }}>{error}</div> : null}
-            {progress ? <div style={{ color: 'var(--text-2)', fontSize: 13, marginTop: 12 }}>{progress}</div> : null}
-
-            <div style={{ marginTop: 18 }}>
-                <button type="button" className="admin-form-btn" onClick={onSubmit} disabled={pending}>
-                    {pending ? 'SUBMITTING…' : <>SUBMIT APPLICATION <ChevronRight /></>}
-                </button>
-            </div>
-            <div className="admin-form-hint" style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 8 }}>
-                Documents are stored privately and only visible to Rollout reviewers. Rejected-application documents are purged after 90 days.
-            </div>
-        </div>
-    );
-}
-
-function SectionHeading({ children }: { children: React.ReactNode }) {
-    return (
-        <div style={{ marginTop: 14, marginBottom: 6, fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: 'var(--track-wider)', color: 'var(--gold)', borderTop: '1px solid var(--rule)', paddingTop: 10 }}>
-            {children}
         </div>
     );
 }

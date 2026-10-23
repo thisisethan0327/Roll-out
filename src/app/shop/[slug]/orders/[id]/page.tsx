@@ -18,7 +18,12 @@ import { fmtMoney, fmtDate, maskEmail, StatusChip } from '../ui';
 import { OrderActions } from './OrderActions';
 import { SHOPS_WITH_OWN_ADMIN } from '@/lib/tenant-hosts';
 import { ManagedElsewhereNotice } from '../../ManagedElsewhereNotice';
-import { ChevronLeft, ChevronRight } from '@/components/icons';
+import { ExternalLink, Eye, Package, Truck } from 'lucide-react';
+import { BizPage } from '@/components/glide-shopbiz/BizPage';
+import { CardEmpty, Notice, cx } from '@/components/glide-shopbiz/parts';
+import bz from '@/components/glide-shopbiz/biz.module.css';
+import { CardHead, ConsoleHead } from '@/components/glide-console/parts';
+import cs from '@/components/glide-console/console.module.css';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Order' };
@@ -31,19 +36,6 @@ export const metadata = { title: 'Order' };
  */
 const MANAGE_ROLES = new Set(['owner', 'admin', 'manager', 'installer', 'staff']);
 const MONEY_ROLES = new Set(['owner', 'admin', 'manager']);
-
-const SECTION: React.CSSProperties = {
-    border: '1px solid var(--line)',
-    background: 'var(--bg-1)',
-    padding: 16,
-};
-const SECTION_TITLE: React.CSSProperties = {
-    fontFamily: 'var(--font-display)',
-    fontSize: 10,
-    letterSpacing: 'var(--track-widest)',
-    color: 'var(--text-3)',
-    marginBottom: 12,
-};
 
 export default async function OrderDetailPage({
     params,
@@ -106,35 +98,16 @@ export default async function OrderDetailPage({
         }
     }
 
+    const ic = { size: 18, strokeWidth: 2, 'aria-hidden': true } as const;
+
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-            <div>
-                <Link
-                    href={`/shop/${slug}/orders`}
-                    className="text-link"
-                    style={{
-                        fontFamily: 'var(--font-display)',
-                        fontSize: 10,
-                        letterSpacing: 'var(--track-wider)',
-                        textDecoration: 'none',
-                        color: 'var(--text-2)',
-                    }}
-                >
-                    <ChevronLeft /> ALL ORDERS
-                </Link>
-                <div className="admin-page-head" style={{ marginTop: 8 }}>
-                    <div>
-                        <div
-                            className="admin-page-title"
-                            style={{ fontFamily: 'var(--font-mono, monospace)' }}
-                        >
-                            #{o.display_id ?? o.id.slice(-8)}
-                        </div>
-                        <div className="admin-page-sub">
-                            {fmtDate(o.created_at)} · {maskEmail(o.email)}
-                        </div>
-                    </div>
-                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+        <BizPage slug={slug}>
+            <ConsoleHead
+                back={{ href: `/shop/${slug}/orders`, label: 'All orders' }}
+                title={<span className="g-w">#{o.display_id ?? o.id.slice(-8)}</span>}
+                sub={`${fmtDate(o.created_at)} · ${maskEmail(o.email)}`}
+                actions={
+                    <div className="g-chips">
                         {o.payment_status && <StatusChip status={o.payment_status} />}
                         {o.status === 'canceled' ? (
                             <StatusChip status="canceled" />
@@ -142,228 +115,200 @@ export default async function OrderDetailPage({
                             o.fulfillment_status && <StatusChip status={o.fulfillment_status} />
                         )}
                     </div>
-                </div>
-            </div>
+                }
+            />
 
-            {/* ACTIONS */}
-            {managedElsewhere ? (
-                <ManagedElsewhereNotice adminUrl={managedElsewhere} what="orders" />
-            ) : canManage ? (
-                <OrderActions
-                    slug={slug}
-                    orderId={o.id}
-                    status={o.status}
-                    paymentStatus={o.payment_status}
-                    fulfillmentStatus={o.fulfillment_status}
-                    hasAuthorizedPayment={o.hasAuthorizedPayment}
-                    hasUnfulfilledItems={o.hasUnfulfilledItems}
-                    hasUnshippedFulfillment={o.fulfillments.some(
-                        (f) => !f.canceled_at && !f.shipped_at,
+            <div className={bz.split}>
+                {/* Actions first in the DOM so a phone sees the next step
+                    before the receipt; on a wide screen it sits on the right. */}
+                <div className={cx(cs.col, bz.sideFirst)}>
+                    {managedElsewhere ? (
+                        <ManagedElsewhereNotice adminUrl={managedElsewhere} what="orders" />
+                    ) : canManage ? (
+                        <OrderActions
+                            slug={slug}
+                            orderId={o.id}
+                            status={o.status}
+                            paymentStatus={o.payment_status}
+                            fulfillmentStatus={o.fulfillment_status}
+                            hasAuthorizedPayment={o.hasAuthorizedPayment}
+                            hasUnfulfilledItems={o.hasUnfulfilledItems}
+                            hasUnshippedFulfillment={o.fulfillments.some(
+                                (f) => !f.canceled_at && !f.shipped_at,
+                            )}
+                            canMoney={canMoney}
+                            role={role}
+                        />
+                    ) : (
+                        <Notice icon={<Eye {...ic} />}>Viewing only — your role has no order actions on this shop.</Notice>
                     )}
-                    canMoney={canMoney}
-                    role={role}
-                />
-            ) : (
-                <div
-                    style={{
-                        border: '1px solid var(--line)',
-                        background: 'var(--bg-2)',
-                        padding: '10px 12px',
-                        fontSize: 12,
-                        color: 'var(--text-2)',
-                    }}
-                >
-                    Viewing only — your role has no order actions on this shop.
-                </div>
-            )}
 
-            {refundPolicyLine ? (
-                <section style={SECTION}>
-                    <div style={SECTION_TITLE}>REFUND & CANCELLATION POLICY (PAID EVENT)</div>
-                    <p style={{ fontSize: 13, margin: 0, color: 'var(--text-2)', lineHeight: 1.6 }}>
-                        {refundPolicyLine}{' '}
-                        <Link href={REFUND_POLICY_PATH} className="text-link">
-                            Full policy <ChevronRight />
-                        </Link>
-                    </p>
-                </section>
-            ) : null}
-
-            {/* ITEMS + TOTALS */}
-            <section style={SECTION}>
-                <div style={SECTION_TITLE}>ITEMS ({o.items.length})</div>
-                {o.items.length === 0 ? (
-                    <div className="admin-empty">NO ITEMS</div>
-                ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                        {o.items.map((it) => (
-                            <div
-                                key={it.id}
-                                style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: 10,
-                                    borderTop: '1px solid var(--line)',
-                                    paddingTop: 8,
-                                }}
-                            >
-                                {it.thumbnail ? (
-                                    // eslint-disable-next-line @next/next/no-img-element
-                                    <img
-                                        src={it.thumbnail}
-                                        alt=""
-                                        style={{ width: 44, height: 44, objectFit: 'cover', border: '1px solid var(--line)' }}
-                                    />
-                                ) : (
-                                    <div style={{ width: 44, height: 44, background: 'var(--bg-2)', border: '1px solid var(--line)' }} />
-                                )}
-                                <div style={{ flex: 1, minWidth: 0 }}>
-                                    <div style={{ fontSize: 13, color: 'var(--text)' }}>{it.title ?? 'Item'}</div>
-                                    <div className="admin-handle" style={{ fontSize: 11 }}>
-                                        Qty {it.quantity ?? 1}
-                                        {it.fulfilledQuantity > 0 ? ` · ${it.fulfilledQuantity} fulfilled` : ''}
-                                    </div>
-                                </div>
-                                <div style={{ fontSize: 12, fontFamily: 'var(--font-mono, monospace)', color: 'var(--text-2)' }}>
-                                    {fmtMoney(it.unit_price, cur)}
-                                </div>
+                    {refundPolicyLine ? (
+                        <section className="g-card" aria-labelledby="ord-policy">
+                            <CardHead id="ord-policy" title="Refund policy" sub="Paid event" />
+                            <div className={cs.cardBody}>
+                                <p className={cs.small}>
+                                    {refundPolicyLine}{' '}
+                                    <Link href={REFUND_POLICY_PATH}>Full policy</Link>
+                                </p>
                             </div>
-                        ))}
-                    </div>
-                )}
-                <div style={{ marginTop: 14, borderTop: '1px solid var(--line-mid)', paddingTop: 12, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    <TotalRow label="SUBTOTAL" value={fmtMoney(o.item_subtotal, cur)} />
-                    {o.discount_total ? <TotalRow label="DISCOUNT" value={`- ${fmtMoney(o.discount_total, cur)}`} /> : null}
-                    <TotalRow label="SHIPPING" value={fmtMoney(o.shipping_total, cur)} />
-                    {o.tax_total ? <TotalRow label="TAX" value={fmtMoney(o.tax_total, cur)} /> : null}
-                    <TotalRow label="TOTAL" value={fmtMoney(o.total, cur)} strong />
+                        </section>
+                    ) : null}
                 </div>
-            </section>
 
-            {/* SHIPPING + PAYMENT */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 18 }}>
-                <section style={SECTION}>
-                    <div style={SECTION_TITLE}>SHIPPING</div>
-                    {addrLines.length > 0 ? (
-                        <div style={{ fontSize: 13, color: 'var(--text)', lineHeight: 1.6 }}>
-                            {addrLines.map((line, i) => (
-                                <div key={i}>{line}</div>
-                            ))}
+                <div className={cs.col}>
+                    {/* ITEMS + TOTALS */}
+                    <section className="g-card" aria-labelledby="ord-items">
+                        <CardHead id="ord-items" title="Items" sub={`${o.items.length} line${o.items.length === 1 ? '' : 's'}`} />
+                        {o.items.length === 0 ? (
+                            <CardEmpty icon={<Package size={22} strokeWidth={1.75} />} title="No items on this order" />
+                        ) : (
+                            <ul className={cx('g-rows', cs.cardRows)}>
+                                {o.items.map((it) => (
+                                    <li key={it.id} className="g-row" style={{ minHeight: 72, paddingRight: 24 }}>
+                                        {it.thumbnail ? (
+                                            // eslint-disable-next-line @next/next/no-img-element
+                                            <img src={it.thumbnail} alt="" className={bz.thumbSq} />
+                                        ) : (
+                                            <span className={cx(bz.thumbSq, bz.thumbBlank)} aria-hidden="true">
+                                                <Package size={20} strokeWidth={1.75} />
+                                            </span>
+                                        )}
+                                        <span className="g-row-t">
+                                            <b>{it.title ?? 'Item'}</b>
+                                            <small>
+                                                Qty {it.quantity ?? 1}
+                                                {it.fulfilledQuantity > 0 ? ` · ${it.fulfilledQuantity} fulfilled` : ''}
+                                            </small>
+                                        </span>
+                                        <span className={cs.rowValue}>{fmtMoney(it.unit_price, cur)}</span>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                        <div className={cs.cardBody}>
+                            <ul className={bz.kv} aria-label="Totals">
+                                <TotalRow label="Subtotal" value={fmtMoney(o.item_subtotal, cur)} />
+                                {o.discount_total ? <TotalRow label="Discount" value={`- ${fmtMoney(o.discount_total, cur)}`} /> : null}
+                                <TotalRow label="Shipping" value={fmtMoney(o.shipping_total, cur)} />
+                                {o.tax_total ? <TotalRow label="Tax" value={fmtMoney(o.tax_total, cur)} /> : null}
+                                <TotalRow label="Total" value={fmtMoney(o.total, cur)} strong />
+                            </ul>
                         </div>
-                    ) : (
-                        <div className="admin-handle" style={{ fontSize: 12 }}>No shipping address on file.</div>
-                    )}
-                    {o.shipping_method && (
-                        <div style={{ marginTop: 12, borderTop: '1px solid var(--line)', paddingTop: 10, display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
-                            <span className="admin-handle">{o.shipping_method.name ?? 'Shipping'}</span>
-                            <span style={{ fontFamily: 'var(--font-mono, monospace)', color: 'var(--text)' }}>
-                                {fmtMoney(o.shipping_method.amount, cur)}
-                            </span>
-                        </div>
-                    )}
-                    {tracking.length > 0 && (
-                        <div style={{ marginTop: 12, borderTop: '1px solid var(--line)', paddingTop: 10 }}>
-                            <div style={{ ...SECTION_TITLE, marginBottom: 8 }}>TRACKING</div>
-                            {tracking.map((t, i) => (
-                                <div key={i} style={{ fontSize: 12, fontFamily: 'var(--font-mono, monospace)' }}>
-                                    {t.url ? (
-                                        <a href={t.url} target="_blank" rel="noopener noreferrer" className="text-link" style={{ color: 'var(--gold)' }}>
-                                            {t.number ?? 'Track shipment'}
-                                        </a>
-                                    ) : (
-                                        <span style={{ color: 'var(--text)' }}>{t.number}</span>
-                                    )}
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </section>
+                    </section>
 
-                <section style={SECTION}>
-                    <div style={SECTION_TITLE}>PAYMENT</div>
-                    {o.payments.length === 0 ? (
-                        <div className="admin-handle" style={{ fontSize: 12 }}>No payment details available.</div>
-                    ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                            {o.payments.map((p) => {
-                                // A refunded payment must not read as money received.
-                                const refunded = Number(p.refunded_amount ?? 0);
-                                const fully = refunded > 0 && Number(p.amount ?? 0) - refunded <= 0.005;
-                                return (
-                                <div key={p.id} style={{ fontSize: 12 }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                        <span className="admin-handle">
-                                            {p.captured_at
-                                                ? fully ? 'Refunded' : refunded > 0 ? 'Partly refunded' : 'Captured'
-                                                : p.canceled_at ? 'Canceled' : 'Authorized'}
-                                        </span>
-                                        <span
-                                            style={{
-                                                fontFamily: 'var(--font-mono, monospace)',
-                                                color: 'var(--text)',
-                                                textDecoration: fully ? 'line-through' : undefined,
-                                                opacity: fully ? 0.6 : 1,
-                                            }}
-                                        >
-                                            {fmtMoney(p.amount, cur)}
-                                        </span>
+                    {/* SHIPPING + PAYMENT */}
+                    <div className={cs.g2}>
+                        <section className="g-card" aria-labelledby="ord-ship">
+                            <CardHead id="ord-ship" title="Shipping" />
+                            <div className={cs.cardBody}>
+                                {addrLines.length > 0 ? (
+                                    <address className={bz.addr}>
+                                        {addrLines.map((line, i) => (
+                                            <span key={i}>{line}</span>
+                                        ))}
+                                    </address>
+                                ) : (
+                                    <p className={cs.small}>No shipping address on file.</p>
+                                )}
+                                {o.shipping_method && (
+                                    <ul className={bz.kv} style={{ marginTop: 12 }}>
+                                        <li className={bz.kvLine}>
+                                            <span>{o.shipping_method.name ?? 'Shipping'}</span>
+                                            <span className={bz.num}>{fmtMoney(o.shipping_method.amount, cur)}</span>
+                                        </li>
+                                    </ul>
+                                )}
+                                {tracking.length > 0 && (
+                                    <div className={bz.track}>
+                                        <h3>
+                                            <Truck size={16} strokeWidth={2} aria-hidden="true" />
+                                            Tracking
+                                        </h3>
+                                        {tracking.map((t, i) =>
+                                            t.url ? (
+                                                <a key={i} href={t.url} target="_blank" rel="noopener noreferrer" className={cx('g-link', bz.mono)}>
+                                                    {t.number ?? 'Track shipment'}
+                                                    <ExternalLink size={15} strokeWidth={2} aria-hidden="true" />
+                                                </a>
+                                            ) : (
+                                                <span key={i} className={bz.mono}>
+                                                    {t.number}
+                                                </span>
+                                            ),
+                                        )}
                                     </div>
-                                    {refunded > 0 ? (
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 2 }}>
-                                            <span className="admin-handle" style={{ fontSize: 11 }}>Refunded</span>
-                                            <span style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: 11 }}>
-                                                - {fmtMoney(refunded, cur)}
-                                            </span>
-                                        </div>
-                                    ) : null}
-                                    {refunded > 0 && !fully ? (
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 2 }}>
-                                            <span className="admin-handle" style={{ fontSize: 11 }}>Net</span>
-                                            <span style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: 11 }}>
-                                                {fmtMoney(p.net_amount, cur)}
-                                            </span>
-                                        </div>
-                                    ) : null}
-                                    <div className="admin-handle" style={{ fontSize: 11, marginTop: 2 }}>
-                                        {p.captured_at
-                                            ? `Charged ${fmtDate(p.captured_at)}`
-                                            : p.canceled_at
-                                                ? `Canceled ${fmtDate(p.canceled_at)}`
-                                                : 'Authorized — capture when the order ships'}
+                                )}
+                            </div>
+                        </section>
+
+                        <section className="g-card" aria-labelledby="ord-pay">
+                            <CardHead id="ord-pay" title="Payment" />
+                            <div className={cs.cardBody}>
+                                {o.payments.length === 0 ? (
+                                    <p className={cs.small}>No payment details available.</p>
+                                ) : (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                                        {o.payments.map((p) => {
+                                            // A refunded payment must not read as money received.
+                                            const refunded = Number(p.refunded_amount ?? 0);
+                                            const fully = refunded > 0 && Number(p.amount ?? 0) - refunded <= 0.005;
+                                            return (
+                                                <ul key={p.id} className={bz.kv}>
+                                                    <li style={{ color: 'var(--ink)', fontWeight: 600 }}>
+                                                        <span>
+                                                            {p.captured_at
+                                                                ? fully
+                                                                    ? 'Refunded'
+                                                                    : refunded > 0
+                                                                      ? 'Partly refunded'
+                                                                      : 'Captured'
+                                                                : p.canceled_at
+                                                                  ? 'Canceled'
+                                                                  : 'Authorized'}
+                                                        </span>
+                                                        <span className={cx(bz.num, fully && bz.strike)}>{fmtMoney(p.amount, cur)}</span>
+                                                    </li>
+                                                    {refunded > 0 ? (
+                                                        <li className={bz.sub}>
+                                                            <span>Refunded</span>
+                                                            <span className={bz.num}>- {fmtMoney(refunded, cur)}</span>
+                                                        </li>
+                                                    ) : null}
+                                                    {refunded > 0 && !fully ? (
+                                                        <li className={bz.sub}>
+                                                            <span>Net</span>
+                                                            <span className={bz.num}>{fmtMoney(p.net_amount, cur)}</span>
+                                                        </li>
+                                                    ) : null}
+                                                    <li className={bz.sub}>
+                                                        <span>
+                                                            {p.captured_at
+                                                                ? `Charged ${fmtDate(p.captured_at)}`
+                                                                : p.canceled_at
+                                                                  ? `Canceled ${fmtDate(p.canceled_at)}`
+                                                                  : 'Authorized — capture when the order ships'}
+                                                        </span>
+                                                    </li>
+                                                </ul>
+                                            );
+                                        })}
                                     </div>
-                                </div>
-                                );
-                            })}
-                        </div>
-                    )}
-                </section>
+                                )}
+                            </div>
+                        </section>
+                    </div>
+                </div>
             </div>
-        </div>
+        </BizPage>
     );
 }
 
 function TotalRow({ label, value, strong }: { label: string; value: string; strong?: boolean }) {
     return (
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-            <span
-                style={{
-                    fontFamily: 'var(--font-display)',
-                    fontSize: strong ? 11 : 10,
-                    letterSpacing: 'var(--track-wider)',
-                    color: strong ? 'var(--text)' : 'var(--text-3)',
-                }}
-            >
-                {label}
-            </span>
-            <span
-                style={{
-                    fontFamily: 'var(--font-mono, monospace)',
-                    fontSize: strong ? 16 : 13,
-                    color: strong ? 'var(--gold)' : 'var(--text-2)',
-                }}
-            >
-                {value}
-            </span>
-        </div>
+        <li className={strong ? bz.total : undefined}>
+            <span>{label}</span>
+            <span className={bz.num}>{value}</span>
+        </li>
     );
 }

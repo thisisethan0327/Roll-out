@@ -13,6 +13,12 @@
 import { requireShopMemberBySlug } from '@/lib/auth-guard';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { AccountForm } from './AccountForm';
+import { AtSign, CalendarDays, Mail, ShieldCheck } from 'lucide-react';
+import { BizPage } from '@/components/glide-shopbiz/BizPage';
+import { Notice, cx } from '@/components/glide-shopbiz/parts';
+import bz from '@/components/glide-shopbiz/biz.module.css';
+import { ConsoleHead } from '@/components/glide-console/parts';
+import cs from '@/components/glide-console/console.module.css';
 
 export const metadata = { title: 'My Account' };
 
@@ -60,8 +66,7 @@ function fmtDate(iso: string | null): string {
             year: 'numeric',
             month: 'short',
             day: 'numeric',
-        })
-        .toUpperCase();
+        });
 }
 
 function initials(name: string | null, handle: string): string {
@@ -101,116 +106,62 @@ export default async function AccountPage({
     const isPlaceholder = /^u_[0-9a-f]{8}$/i.test(handle);
 
     return (
-        <>
-            <div className="admin-page-head">
-                <div>
-                    <div className="admin-page-title">MY ACCOUNT</div>
-                    <div className="admin-page-sub">
-                        {shop.name.toUpperCase()} · YOUR PROFILE
-                    </div>
-                </div>
-            </div>
-
-            {/* Identity summary */}
-            <div
-                style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 16,
-                    marginBottom: 16,
-                }}
-            >
-                <div
-                    aria-hidden
-                    style={{
-                        width: 56,
-                        height: 56,
-                        flex: '0 0 auto',
-                        borderRadius: '50%',
-                        border: '1px solid var(--line-mid)',
-                        background: 'var(--gold-glow, rgba(255,183,51,0.08))',
-                        color: 'var(--gold)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontFamily: 'var(--font-display)',
-                        fontSize: 18,
-                        letterSpacing: 'var(--track-wide)',
-                        backgroundImage: row?.avatar_url
-                            ? `url(${row.avatar_url})`
-                            : undefined,
-                        backgroundSize: 'cover',
-                        backgroundPosition: 'center',
-                    }}
-                >
-                    {!row?.avatar_url && initials(displayName, handle)}
-                </div>
-                <div style={{ minWidth: 0 }}>
-                    <div
-                        style={{
-                            fontFamily: 'var(--font-display)',
-                            fontSize: 16,
-                            color: 'var(--text)',
-                        }}
-                    >
-                        {displayName || '—'}
-                    </div>
-                    <div style={{ color: 'var(--gold)', fontSize: 13 }}>
-                        @{handle}
-                    </div>
-                </div>
-            </div>
-
-            <div className="admin-stat-grid" style={{ marginBottom: 20 }}>
-                <div className="admin-stat">
-                    <div className="admin-stat-lbl">SIGNED IN AS</div>
-                    <div
-                        className="admin-stat-num"
-                        style={{ fontSize: 14, wordBreak: 'break-all' }}
-                        title={email ?? undefined}
-                    >
-                        {email ?? 'NO EMAIL ON FILE'}
-                    </div>
-                </div>
-                <div className="admin-stat">
-                    <div className="admin-stat-lbl">ROLE AT THIS SHOP</div>
-                    <div className="admin-stat-num gold" style={{ fontSize: 16 }}>
-                        {role.toUpperCase()}
-                    </div>
-                </div>
-                <div className="admin-stat">
-                    <div className="admin-stat-lbl">MEMBER SINCE</div>
-                    <div className="admin-stat-num" style={{ fontSize: 14 }}>
-                        {fmtDate(memberSince)}
-                    </div>
-                </div>
-            </div>
+        <BizPage slug={slug}>
+            <ConsoleHead title="My account" sub={`${shop.name} · Your profile`} />
 
             {isPlaceholder && (
-                <div
-                    style={{
-                        padding: 10,
-                        marginBottom: 16,
-                        border: '1px solid var(--line-mid)',
-                        background: 'var(--gold-glow, rgba(255,183,51,0.06))',
-                        color: 'var(--text-2)',
-                        fontSize: 12,
-                        lineHeight: 1.5,
-                    }}
-                >
-                    You're using an auto-generated handle (
-                    <span style={{ color: 'var(--gold)' }}>@{handle}</span>).
-                    Claim a real one below — it's how teammates and customers
-                    find you across the network.
-                </div>
+                <Notice icon={<AtSign size={20} strokeWidth={2} aria-hidden="true" />}>
+                    You&apos;re using an auto-generated handle (<b>@{handle}</b>). Claim a real one below — it&apos;s how teammates
+                    and customers find you across the network.
+                </Notice>
             )}
 
-            <AccountForm
-                slug={slug}
-                initialHandle={handle}
-                initialDisplayName={displayName}
-                initialBio={bio}
-            />
-        </>
+            <div className={bz.split}>
+                <aside className={cx('g-card', bz.sideFirst)} aria-labelledby="acct-who">
+                    <div className={bz.who}>
+                        <span
+                            className={bz.acAv}
+                            style={row?.avatar_url ? { backgroundImage: `url(${row.avatar_url})` } : undefined}
+                            aria-hidden="true"
+                        >
+                            {!row?.avatar_url && initials(displayName, handle)}
+                        </span>
+                        <span style={{ minWidth: 0 }}>
+                            <h2 id="acct-who" className={bz.pvName} style={{ margin: 0 }}>
+                                {displayName || '—'}
+                            </h2>
+                            <p className={bz.pvMeta}>@{handle}</p>
+                        </span>
+                    </div>
+                    <ul className={cx('g-rows', cs.cardRows)} style={{ marginTop: 0 }}>
+                        <li className="g-row">
+                            <Mail size={20} strokeWidth={2} aria-hidden="true" />
+                            <span className="g-row-t">
+                                <b>Signed in as</b>
+                                <small style={{ overflowWrap: 'anywhere' }} title={email ?? undefined}>
+                                    {email ?? 'No email on file'}
+                                </small>
+                            </span>
+                        </li>
+                        <li className="g-row">
+                            <ShieldCheck size={20} strokeWidth={2} aria-hidden="true" />
+                            <span className="g-row-t">
+                                <b>Role at this shop</b>
+                                <small>{role.charAt(0).toUpperCase() + role.slice(1)}</small>
+                            </span>
+                        </li>
+                        <li className="g-row">
+                            <CalendarDays size={20} strokeWidth={2} aria-hidden="true" />
+                            <span className="g-row-t">
+                                <b>Member since</b>
+                                <small>{fmtDate(memberSince)}</small>
+                            </span>
+                        </li>
+                    </ul>
+                </aside>
+
+                <AccountForm slug={slug} initialHandle={handle} initialDisplayName={displayName} initialBio={bio} />
+            </div>
+        </BizPage>
     );
 }

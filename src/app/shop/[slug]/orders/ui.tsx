@@ -1,8 +1,9 @@
+import { CircleCheck, CircleDashed, CircleX, Clock } from 'lucide-react';
 import { formatDateTime } from '@/lib/event-time';
 /**
  * Server-safe presentational helpers for the Orders section (shared by the list
- * and detail views). Pure rendering — no client hooks. Matches the shop
- * dashboard's HUD idiom (admin-pill / mono / --gold).
+ * and detail views). Pure rendering — no client hooks. Glide chips (the
+ * kit's g-chip) inside the BizPage scope.
  */
 
 export function fmtMoney(amount: number | null | undefined, currency?: string | null): string {
@@ -66,11 +67,49 @@ function pillVariant(status: string | null | undefined): PillVariant {
     return '';
 }
 
+function sentence(status: string): string {
+    const t = status.replace(/[_-]+/g, ' ').trim().toLowerCase();
+    return t.charAt(0).toUpperCase() + t.slice(1);
+}
+
+/**
+ * A Medusa status as a Glide chip (same mapping as before): done states take
+ * the tint with a check, waiting states a clock, closed states a muted chip.
+ * Never red text (DESIGN.md).
+ */
 export function StatusChip({ status }: { status: string | null | undefined }) {
     if (!status) return null;
+    const v = pillVariant(status);
+    const ic = { size: 14, strokeWidth: 2, 'aria-hidden': true } as const;
+    const label = sentence(String(status));
+    if (v === 'neon') {
+        return (
+            <span className="g-chip g-chip--tint">
+                <CircleCheck {...ic} />
+                {label}
+            </span>
+        );
+    }
+    if (v === 'gold') {
+        return (
+            <span className="g-chip">
+                <Clock {...ic} />
+                {label}
+            </span>
+        );
+    }
+    if (v === 'warn') {
+        return (
+            <span className="g-chip" style={{ color: 'var(--ink-2)' }}>
+                <CircleX {...ic} />
+                {label}
+            </span>
+        );
+    }
     return (
-        <span className={`admin-pill ${pillVariant(status)}`}>
-            {String(status).replace(/_/g, ' ').toUpperCase()}
+        <span className="g-chip">
+            <CircleDashed {...ic} />
+            {label}
         </span>
     );
 }

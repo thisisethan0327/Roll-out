@@ -1,0 +1,1224 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   Glide shop console, part 2 (the business): orders, products, sell,
+   services, reviews, posts, the public-page editor, staff, settings and the
+   member's account. Boards: G5 (shops, store, orders) and G3 (web host
+   console: tables, count strip, cards).
+
+   Each page root is a BizPage (`.glide` + the /me console's
+   `.scope`), so Glide tokens apply and the legacy admin-* pieces still on
+   these pages read in Glide. The console SHELL (sidebar, nav, layout) belongs
+   to the shopops lane; the only thing this file does to it is let a page
+   paint its own surface when it sits in the legacy `.admin-main`.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* Two layers. `.frame` carries `.glide` (the palette) and, inside the
+   legacy shell, cancels .admin-main's padding so the page can paint the
+   whole column. `.page` is the element the page actually lives in: it can
+   override palette tokens (tenant doors, field outlines) without fighting the
+   palette selectors' specificity, because it is not itself a `.glide`. */
+.frame {
+  min-width: 0;
+}
+:global(.admin-main) > .frame {
+  margin: -32px -40px -80px;
+  /* Fill the column even when the sidebar is the taller of the two. */
+  min-height: calc(100% + 112px);
+  display: flex;
+  flex-direction: column;
+}
+.page {
+  /* Field and control outlines at 3:1 against cards (the kit's line-strong
+     is ~1.5:1; see the lane report). */
+  --biz-field: #5a6f92;
+  background: var(--surface);
+  color: var(--ink);
+  min-width: 0;
+}
+.page > * {
+  max-width: 1320px;
+}
+:global(.admin-main) > .frame > .page {
+  flex: 1 0 auto;
+  min-height: 100vh;
+  padding: 32px 40px 80px;
+}
+@media (max-width: 900px) {
+  :global(.admin-main) > .frame > .page {
+    padding: 24px 16px 64px;
+  }
+}
+:global(:root[data-dark='graphite']) .page {
+  --biz-field: #6e6e6e;
+}
+:global(:root[data-theme='light']) .page {
+  --biz-field: #7f8a9c;
+}
+@media (prefers-color-scheme: light) {
+  :global(:root:not([data-theme])) .page {
+    --biz-field: #7f8a9c;
+  }
+}
+/* Form controls drawn by the /me console's .input, with the 3:1 outline. */
+.page .in {
+  box-shadow: inset 0 0 0 1px var(--biz-field);
+}
+.page .in:focus,
+.page .in:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+.page .in[aria-invalid='true'] {
+  box-shadow: inset 0 0 0 2px var(--ink);
+}
+.page .in:disabled {
+  box-shadow: inset 0 0 0 1px var(--line-strong);
+}
+
+/* ── Tenant doors ──────────────────────────────────────────────────────────
+   A tenant shop (UNITY USA, Popeye Energy) gets its own accent and no
+   Rollout marks: neutral surfaces instead of Midnight navy, no tricolore
+   edge or stripe, the brand accent on the primary pill, links and the
+   selected states. `--tenant-accent` comes from lib/tenant-brand.ts (the same
+   value the legacy console puts on --gold). Light mode keeps neutral ink,
+   since a white or yellow accent cannot carry text on white. */
+.page.tenant {
+  --surface: #161718;
+  --surface-2: #2d2d2d;
+  --card: #222222;
+  --float: #2a2a2b;
+  --float-ink: #f2f2f2;
+  --float-line: rgba(255, 255, 255, 0.09);
+  --ink: #f2f2f2;
+  --ink-2: #a3a3a3;
+  --ink-3: #7c7c7c;
+  --line: #2f3031;
+  --line-strong: #4a4b4c;
+  --biz-field: #707070;
+  --title: #f2f2f2;
+  --icon: var(--tenant-accent);
+  --link: var(--tenant-accent);
+  --stripe-1: var(--tenant-accent);
+  --stripe-2: #5a5a5a;
+  --stripe-3: #e5484d;
+  --accent: var(--tenant-accent);
+  --on-accent: #0e0e0e;
+  --on-accent-2: #2a2a2a;
+  --knob: #0e0e0e;
+  --knob-ink: #ffffff;
+  --fill: var(--tenant-accent);
+  --done: #2d2d2d;
+  --on-done: #f2f2f2;
+  --tint: #333334;
+  --on-tint: var(--tenant-accent);
+  --nav-on: var(--tenant-accent);
+  --on-nav-on: #0e0e0e;
+  --seg: #2d2d2d;
+  --seg-ink: #b5b5b5;
+  --seg-on: var(--tenant-accent);
+  --seg-on-ink: #0e0e0e;
+  --shadow: 0, 0, 0;
+  --scrim: 0, 0, 0;
+  color-scheme: dark;
+}
+:global(:root[data-theme='light']) .page.tenant {
+  --surface: #f2f2f3;
+  --surface-2: #e6e6e8;
+  --card: #ffffff;
+  --float: #ffffff;
+  --float-ink: #141416;
+  --float-line: rgba(0, 0, 0, 0.08);
+  --ink: #18181a;
+  --ink-2: #5b5b60;
+  --ink-3: #85858a;
+  --line: #e4e4e7;
+  --line-strong: #cfcfd4;
+  --biz-field: #7e7e84;
+  --title: #111113;
+  --icon: #111113;
+  --link: #111113;
+  --stripe-1: #111113;
+  --stripe-2: #8e8e94;
+  --accent: #111113;
+  --on-accent: #ffffff;
+  --on-accent-2: #d0d0d0;
+  --knob: #ffffff;
+  --knob-ink: #111113;
+  --fill: #3a3a3d;
+  --done: #e6e6e8;
+  --on-done: #111113;
+  --tint: #ececee;
+  --on-tint: #111113;
+  --nav-on: #111113;
+  --on-nav-on: #ffffff;
+  --seg: #111113;
+  --seg-ink: #d0d0d0;
+  --seg-on: #ffffff;
+  --seg-on-ink: #111113;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: light) {
+  :global(:root:not([data-theme])) .page.tenant {
+    --surface: #f2f2f3;
+    --surface-2: #e6e6e8;
+    --card: #ffffff;
+    --float: #ffffff;
+    --float-ink: #141416;
+    --ink: #18181a;
+    --ink-2: #5b5b60;
+    --ink-3: #85858a;
+    --line: #e4e4e7;
+    --line-strong: #cfcfd4;
+    --biz-field: #7e7e84;
+    --title: #111113;
+    --icon: #111113;
+    --link: #111113;
+    --stripe-1: #111113;
+    --accent: #111113;
+    --on-accent: #ffffff;
+    --knob: #ffffff;
+    --knob-ink: #111113;
+    --tint: #ececee;
+    --on-tint: #111113;
+    --nav-on: #111113;
+    --on-nav-on: #ffffff;
+    --seg: #111113;
+    --seg-ink: #d0d0d0;
+    --seg-on: #ffffff;
+    --seg-on-ink: #111113;
+    color-scheme: light;
+  }
+}
+/* No tricolore on a tenant's console: it is Rollout's mark. */
+.tenant :global(.g-edge)::after,
+.tenant :global(.g-tri) {
+  display: none;
+}
+/* Links that would otherwise match the ink get an underline. */
+.tenant :global(.g-link),
+.tenant .lnk {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* ── Shared pieces ─────────────────────────────────────────────────────── */
+/* Toolbar: filter chips on the left, search or a toggle on the right. */
+.bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+/* A 44px toggle chip: the pill chip at target size. */
+.fchip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 44px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 22px;
+  background: var(--card);
+  box-shadow: inset 0 0 0 1px var(--biz-field);
+  font-family: var(--ui);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  white-space: nowrap;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.15s ease-out, color 0.15s ease-out;
+}
+.fchip:hover {
+  background: var(--surface-2);
+}
+.fchip[aria-pressed='true'],
+.fchip[aria-current='page'] {
+  background: var(--nav-on);
+  color: var(--on-nav-on);
+  box-shadow: none;
+}
+.fchip svg {
+  flex: none;
+}
+.fchip .n {
+  font-family: var(--wide);
+  font-size: 11px;
+  opacity: 0.85;
+}
+
+/* Search: a pill field with a submit button inside. */
+.search {
+  max-width: 560px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: min(100%, 340px);
+  min-height: 52px;
+  padding: 4px 4px 4px 18px;
+  border-radius: 26px;
+  background: var(--card);
+  box-shadow: inset 0 0 0 1px var(--biz-field);
+}
+.search:focus-within {
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+.search > svg {
+  color: var(--icon);
+  flex: none;
+}
+.search input {
+  flex: 1;
+  min-width: 0;
+  height: 44px;
+  border: 0;
+  background: none;
+  font-family: var(--ui);
+  font-size: 16px;
+  color: var(--ink);
+  caret-color: var(--link);
+  outline: none;
+}
+.search input::placeholder {
+  color: var(--ink-2);
+  opacity: 1;
+}
+.search button {
+  height: 44px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 22px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-family: var(--ui);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* Small outlined action at 44px, for table rows and toolbars. */
+.act {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 22px;
+  background: var(--card);
+  box-shadow: inset 0 0 0 1px var(--biz-field);
+  font-family: var(--ui);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--link);
+  white-space: nowrap;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.15s ease-out;
+}
+.act:hover {
+  background: var(--surface);
+}
+.act:disabled {
+  cursor: default;
+  color: var(--ink-2);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1.5px var(--line);
+}
+.act svg {
+  flex: none;
+}
+.actInk {
+  color: var(--ink);
+}
+/* Armed destructive: red only on the icon, the fill says "this one". */
+.actArmed {
+  background: var(--ink);
+  color: var(--surface);
+  box-shadow: none;
+}
+.actArmed:hover {
+  background: var(--ink);
+}
+.actArmed svg {
+  color: var(--stripe-3);
+}
+.actDanger svg {
+  color: var(--stripe-3);
+}
+.acts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.actsEnd {
+  justify-content: flex-end;
+}
+
+/* Status line under an action (role says, policy, hints). */
+.fine {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink-2);
+}
+.fine svg {
+  vertical-align: -3px;
+  margin-right: 5px;
+  color: var(--icon);
+}
+
+/* Notices (g-note with variants) */
+.note {
+  font-weight: 500;
+  line-height: 1.45;
+}
+.note b {
+  font-weight: 700;
+}
+.noteSplit {
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+.noteBad svg {
+  color: var(--stripe-3);
+}
+.noteBody {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Two-column page body: content + a side card. */
+.split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 380px;
+  gap: 20px;
+  align-items: start;
+}
+.splitWide {
+  grid-template-columns: minmax(0, 1fr) minmax(340px, 440px);
+}
+@media (max-width: 1180px) {
+  .split,
+  .splitWide {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.narrow {
+  max-width: 760px;
+}
+
+/* Totals and key/value lines (order detail, payment) */
+.kv {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.kv li {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  min-height: 34px;
+  font-size: 14.5px;
+  color: var(--ink-2);
+}
+.kv li .num {
+  font-family: var(--wide);
+  font-size: 12.5px;
+  color: var(--ink);
+  white-space: nowrap;
+}
+.kv li.total {
+  margin-top: 6px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  color: var(--ink);
+  font-weight: 700;
+}
+.kv li.total .num {
+  font-size: 17px;
+  color: var(--title);
+}
+.kv li.sub {
+  min-height: 24px;
+  font-size: 13px;
+}
+.strike {
+  text-decoration: line-through;
+  opacity: 0.7;
+}
+
+/* Item rows with a square thumbnail. */
+.thumbSq {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  object-fit: cover;
+  flex: none;
+  display: block;
+  background: var(--surface-2);
+}
+.thumbBlank {
+  display: grid;
+  place-items: center;
+  color: var(--ink-3);
+}
+
+/* The product grid (Medusa catalogue) */
+.grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px;
+}
+.tile {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 8px 8px 0;
+  border-radius: 24px;
+  background: var(--card);
+  box-shadow: 0 0 0 1px var(--line);
+  overflow: hidden;
+}
+.tileIm {
+  aspect-ratio: 1;
+  border-radius: 18px;
+  overflow: hidden;
+  background: var(--surface-2);
+  display: grid;
+  place-items: center;
+  color: var(--ink-3);
+}
+.tileIm img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.tileBd {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 8px 16px;
+  flex: 1;
+}
+.tileBd b {
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--ink);
+}
+.price {
+  font-family: var(--wide);
+  font-size: 13px;
+  color: var(--title);
+  font-variant-numeric: tabular-nums;
+}
+.priceNone {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+.tileBd .chipsSm {
+  margin-top: auto;
+}
+.chipsSm {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* Inline edit panel inside a table (products, services) */
+.editRow td {
+  background: var(--surface);
+}
+.editPanel {
+  padding: 18px 8px 10px;
+}
+.editGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 12px;
+}
+
+/* Section heading inside a card body */
+.secH {
+  margin: 8px 0 0;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+  font-family: var(--disp);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  font-size: 16px;
+  color: var(--title);
+}
+.secH:first-child {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+}
+
+/* File field: the native input drawn as a pill row. */
+.file {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 56px;
+  padding: 6px 16px 6px 6px;
+  border-radius: 18px;
+  background: var(--card);
+  box-shadow: inset 0 0 0 1px var(--biz-field);
+  font-size: 14.5px;
+  color: var(--ink-2);
+}
+.file input {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--ui);
+  font-size: 14px;
+  color: var(--ink-2);
+}
+.file input::file-selector-button {
+  min-height: 44px;
+  margin-right: 12px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 22px;
+  background: var(--surface-2);
+  color: var(--ink);
+  font-family: var(--ui);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.file:focus-within {
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+.picked {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.picked svg {
+  color: var(--icon);
+}
+
+/* Colour swatch beside a hex field */
+.swatchRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.swatchRow > input {
+  flex: 1;
+}
+.swatch {
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  flex: none;
+  box-shadow: inset 0 0 0 1px var(--biz-field);
+  background-image: linear-gradient(45deg, var(--surface-2) 25%, transparent 25%, transparent 75%, var(--surface-2) 75%),
+    linear-gradient(45deg, var(--surface-2) 25%, transparent 25%, transparent 75%, var(--surface-2) 75%);
+  background-size: 12px 12px;
+  background-position: 0 0, 6px 6px;
+  position: relative;
+  overflow: hidden;
+}
+.swatch i {
+  position: absolute;
+  inset: 0;
+}
+
+/* Choice cards (map presence): real radios inside labelled rows. */
+.choices {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+.choices legend {
+  margin-bottom: 7px;
+  padding: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+.choice {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-height: 56px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: var(--card);
+  box-shadow: inset 0 0 0 1px var(--biz-field);
+  cursor: pointer;
+  transition: background 0.15s ease-out, box-shadow 0.15s ease-out;
+}
+.choice:hover {
+  background: var(--surface);
+}
+.choice:has(input:checked) {
+  background: var(--tint);
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+.choice:has(input:focus-visible) {
+  outline: 2px solid var(--link);
+  outline-offset: 2px;
+}
+.choice input {
+  width: 20px;
+  height: 20px;
+  margin: 1px 0 0;
+  flex: none;
+  accent-color: var(--accent);
+}
+.choice b {
+  display: block;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.choice small {
+  display: block;
+  margin-top: 2px;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--ink-2);
+}
+.choice:has(input:checked) small {
+  color: var(--on-tint);
+}
+.choice > svg {
+  color: var(--icon);
+  flex: none;
+  margin-top: 1px;
+}
+
+/* Preview panels (shop page, email) */
+.prevH {
+  margin: 0 0 12px;
+  font-family: var(--ui);
+  letter-spacing: 0;
+  text-transform: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+.prevH svg {
+  color: var(--icon);
+}
+.banner {
+  position: relative;
+  aspect-ratio: 3 / 1;
+  border-radius: 20px;
+  overflow: hidden;
+  background: var(--surface-2);
+  display: grid;
+  place-items: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+.banner img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.pvAv {
+  position: relative;
+  width: 72px;
+  height: 72px;
+  margin: -36px 0 0 16px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--nav-on);
+  box-shadow: 0 0 0 4px var(--card);
+  display: grid;
+  place-items: center;
+  color: var(--on-nav-on);
+  font-family: var(--wide);
+  font-size: 16px;
+}
+.pvAv img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.pvName {
+  margin: 12px 0 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--disp);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  font-size: 22px;
+  line-height: 1.05;
+  color: var(--title);
+  overflow-wrap: anywhere;
+}
+.pvName svg {
+  color: var(--link);
+  flex: none;
+}
+.pvMeta {
+  margin: 4px 0 0;
+  font-size: 14px;
+  color: var(--ink-2);
+  overflow-wrap: anywhere;
+}
+.pvBio {
+  margin: 12px 0 0;
+  font-size: 14.5px;
+  line-height: 1.5;
+  color: var(--ink);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+/* The email preview is the email itself: its own fixed palette, like the
+   message a customer receives (lib/email shell), not the console theme. */
+.mail {
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 0 0 1px var(--line);
+}
+
+/* Reviews */
+.reviews {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.rev {
+  padding: 20px 24px 22px;
+}
+.revTop {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+}
+.stars {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  color: var(--link);
+}
+.stars .off {
+  color: var(--biz-field);
+}
+.revWho {
+  margin: 10px 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.revWho span {
+  font-weight: 500;
+  color: var(--ink-2);
+}
+.revBody {
+  margin: 10px 0 0;
+  max-width: 72ch;
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--ink);
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+.reply {
+  margin-top: 16px;
+  padding: 14px 18px 16px;
+  border-radius: 18px;
+  background: var(--surface);
+}
+.reply h3 {
+  margin: 0;
+  font-family: var(--ui);
+  letter-spacing: 0;
+  text-transform: none;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+.reply h3 svg {
+  color: var(--icon);
+}
+.reply p {
+  margin: 6px 0 10px;
+  font-size: 14.5px;
+  line-height: 1.5;
+  color: var(--ink);
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+.date {
+  font-size: 13px;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+
+/* Small inline number for counts in a table cell */
+.stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--wide);
+  font-size: 11.5px;
+  color: var(--ink);
+  white-space: nowrap;
+}
+.stat svg {
+  color: var(--icon);
+}
+.stats {
+  display: inline-flex;
+  gap: 14px;
+}
+
+/* A role select inside a staff row */
+.selSm {
+  min-height: 44px;
+  width: auto;
+  min-width: 140px;
+  padding-left: 14px;
+  font-size: 14.5px;
+}
+
+.clip {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  max-width: 46ch;
+  overflow-wrap: anywhere;
+}
+.mono {
+  font-family: var(--wide);
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+.idLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  font-family: var(--wide);
+  font-size: 13px;
+  color: var(--title);
+}
+.muted {
+  color: var(--ink-2);
+}
+
+/* Identity summary (account) */
+.who {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 22px 24px;
+  min-width: 0;
+}
+
+/* Modal sheet for "Add service": the kit Sheet pattern, but a plain fixed
+   dialog so the form keeps its own submit flow. */
+.dlgRoot {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 40px 16px;
+  overflow: auto;
+  background: rgba(var(--scrim), 0.45);
+}
+.dlg {
+  width: min(720px, 100%);
+  padding: 8px 0 24px;
+  border-radius: 30px;
+  background: var(--card);
+  color: var(--ink);
+  box-shadow: 0 24px 60px -24px rgba(var(--shadow), 0.6), 0 0 0 1px var(--line);
+}
+
+@media (max-width: 760px) {
+  .rev {
+    padding: 18px 20px 20px;
+  }
+  .search {
+    width: 100%;
+  }
+  .who {
+    padding: 20px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fchip,
+  .act,
+  .choice {
+    transition: none;
+  }
+}
+
+/* Mobile-only line inside a table cell (the columns it stands for hide). */
+.page .mOnly {
+  display: none;
+}
+@media (max-width: 760px) {
+  .page .mOnly {
+    display: block;
+  }
+}
+.page table small {
+  display: block;
+  margin-top: 1px;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.n {
+  font-family: var(--wide);
+  font-size: 11px;
+}
+
+/* Order detail */
+@media (min-width: 1181px) {
+  .sideFirst {
+    order: 2;
+    position: sticky;
+    top: 20px;
+  }
+}
+.addr {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-style: normal;
+  font-size: 15px;
+  line-height: 1.45;
+  color: var(--ink);
+}
+.kv li.kvLine {
+  margin-top: 4px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+  color: var(--ink);
+  font-weight: 600;
+}
+.track {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+.track h3 {
+  margin: 0 0 2px;
+  font-family: var(--ui);
+  letter-spacing: 0;
+  text-transform: none;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+.track h3 svg {
+  color: var(--icon);
+}
+
+/* Order actions */
+.step {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.stepH {
+  margin: 0;
+  font-family: var(--ui);
+  letter-spacing: 0;
+  text-transform: none;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.trackGrid {
+  display: grid;
+  grid-template-columns: minmax(110px, 0.7fr) minmax(0, 1.3fr);
+  gap: 10px;
+}
+.money {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+.refundRow {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+@media (max-width: 420px) {
+  .trackGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* State card (sell: eligibility and review states) */
+.stateCard {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 24px 26px 32px;
+}
+.stateTop {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.stateH {
+  margin: 6px 0 0;
+  font-family: var(--disp);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  font-size: 24px;
+  line-height: 1.05;
+  color: var(--title);
+}
+.stateP {
+  margin: 0;
+  max-width: 62ch;
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--ink-2);
+}
+.stateAct {
+  margin-top: 8px;
+}
+
+/* Bare inline links in running text */
+.page p a:not([class]) {
+  color: var(--link);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* Account: member avatar, ringed in the accent (no tricolore) */
+.acAv {
+  width: 68px;
+  height: 68px;
+  margin: 4px;
+  border-radius: 50%;
+  flex: none;
+  display: grid;
+  place-items: center;
+  background: var(--nav-on) center / cover no-repeat;
+  color: var(--on-nav-on);
+  font-family: var(--wide);
+  font-size: 16px;
+  box-shadow: 0 0 0 3px var(--card), 0 0 0 5px var(--accent);
+}
+
+/* Services: one column grid across every category card. */
+@media (min-width: 761px) {
+  .svcTbl {
+    table-layout: fixed;
+  }
+}
+@media (max-width: 760px) {
+  .svcTbl colgroup {
+    display: none;
+  }
+}
+.svcDesc {
+  width: auto;
+}
+
+.bar .search {
+  flex: 0 1 460px;
+}
+/* Count strip: two by two on a phone. */
+@media (max-width: 600px) {
+  .page .cntWrap {
+    grid-auto-flow: row;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .page .cntWrap li {
+    padding-left: 20px;
+    border-left: 0;
+  }
+  .page .cntWrap li:nth-child(2n) {
+    border-left: 1px solid var(--line);
+  }
+  .page .cntWrap li:nth-child(n + 3) {
+    border-top: 1px solid var(--line);
+  }
+}
+/* Row actions take their own line under the cells on a phone. */
+@media (max-width: 760px) {
+  .page td.tdActs {
+    grid-column: 1 / -1;
+    margin-top: 10px;
+  }
+  .page td.tdActs .acts {
+    justify-content: flex-start;
+  }
+}
+/* The Add service dialog mounts inside the page head's actions; keep the
+   head's paragraph style off its hints. */
+.page .dlg p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.4;
+  max-width: none;
+}
+/* No divider above the money actions when they are the only step. */
+.money:first-child {
+  padding-top: 0;
+  border-top: 0;
+}

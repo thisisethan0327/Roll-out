@@ -9,7 +9,12 @@
 import { useEffect, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { checkAccountHandleAction, saveAccountAction } from './actions';
-import { Check } from '@/components/icons';
+import { Check, CircleAlert, LoaderCircle } from 'lucide-react';
+import { GlideButton } from '@/components/glide/primitives';
+import { FormSection } from '@/components/glide-console/parts';
+import cs from '@/components/glide-console/console.module.css';
+import { Notice, cx } from '@/components/glide-shopbiz/parts';
+import bz from '@/components/glide-shopbiz/biz.module.css';
 
 type HandleState =
     | { kind: 'idle' }
@@ -103,21 +108,34 @@ export function AccountForm({
         });
     };
 
+    const hintIc = { size: 15, strokeWidth: 2, 'aria-hidden': true } as const;
     const hint = (() => {
         switch (handleState.kind) {
             case 'checking':
-                return { text: 'CHECKING…', color: 'var(--text-3)' };
+                return (
+                    <>
+                        <LoaderCircle {...hintIc} className="g-spin" />
+                        Checking…
+                    </>
+                );
             case 'ok':
-                return { text: <><Check /> AVAILABLE</>, color: 'var(--gold)' };
+                return (
+                    <>
+                        <Check {...hintIc} />
+                        Available
+                    </>
+                );
             case 'current':
-                return { text: 'YOUR CURRENT HANDLE', color: 'var(--text-3)' };
+                return 'Your current handle';
             case 'bad':
-                return { text: handleState.reason.toUpperCase(), color: '#e5484d' };
+                return (
+                    <>
+                        <CircleAlert {...hintIc} />
+                        {handleState.reason}
+                    </>
+                );
             default:
-                return {
-                    text: 'LETTERS, NUMBERS, UNDERSCORES · 3–20 CHARS',
-                    color: 'var(--text-3)',
-                };
+                return 'Letters, numbers and underscores, 3–20 characters.';
         }
     })();
 
@@ -128,105 +146,93 @@ export function AccountForm({
         handleState.kind !== 'bad' &&
         handleState.kind !== 'checking';
 
+    const inp = cx(cs.input, bz.in);
+
     return (
-        <form onSubmit={submit} className="admin-form" style={{ maxWidth: 560 }}>
-            <div className="admin-form-label">HANDLE</div>
-            <div
-                style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 8,
-                    marginBottom: 4,
-                }}
-            >
-                <span
-                    style={{
-                        color: 'var(--text-3)',
-                        fontFamily: 'var(--font-mono, monospace)',
-                    }}
-                >
-                    @
-                </span>
-                <input
-                    type="text"
-                    value={handle}
-                    onChange={(e) => {
-                        setHandle(e.target.value);
-                        setSaved(false);
-                    }}
-                    placeholder="your_handle"
-                    className="admin-form-input"
-                    autoCapitalize="none"
-                    autoCorrect="off"
-                    autoComplete="off"
-                    spellCheck={false}
-                    style={{ flex: 1, marginBottom: 0 }}
-                />
-            </div>
-            <div
-                style={{
-                    fontSize: 10,
-                    letterSpacing: 'var(--track-wider)',
-                    color: hint.color,
-                    fontFamily: 'var(--font-display)',
-                    minHeight: 14,
-                    marginBottom: 12,
-                }}
-            >
-                {hint.text}
-            </div>
+        <form onSubmit={submit} className={cs.col}>
+            <FormSection id="acct-form" title="Profile" sub="Your handle, name and bio across the network." edge>
+                <div className={cs.field}>
+                    <label className={cs.label} htmlFor="acct-handle">
+                        Handle
+                    </label>
+                    <div className={cs.affix}>
+                        <span aria-hidden="true">@</span>
+                        <input
+                            id="acct-handle"
+                            type="text"
+                            value={handle}
+                            onChange={(e) => {
+                                setHandle(e.target.value);
+                                setSaved(false);
+                            }}
+                            placeholder="your_handle"
+                            className={inp}
+                            autoCapitalize="none"
+                            autoCorrect="off"
+                            autoComplete="off"
+                            spellCheck={false}
+                            aria-invalid={handleState.kind === 'bad' || undefined}
+                            aria-describedby="acct-handle-hint"
+                        />
+                    </div>
+                    <p id="acct-handle-hint" className={cx(cs.hint, handleState.kind === 'bad' && cs.hintBad)} aria-live="polite">
+                        {hint}
+                    </p>
+                </div>
 
-            <div className="admin-form-label">DISPLAY NAME</div>
-            <input
-                type="text"
-                value={displayName}
-                onChange={(e) => {
-                    setDisplayName(e.target.value);
-                    setSaved(false);
-                }}
-                placeholder="What people call you"
-                className="admin-form-input"
-                maxLength={60}
-            />
+                <div className={cs.field}>
+                    <label className={cs.label} htmlFor="acct-name">
+                        Display name
+                    </label>
+                    <input
+                        id="acct-name"
+                        type="text"
+                        value={displayName}
+                        onChange={(e) => {
+                            setDisplayName(e.target.value);
+                            setSaved(false);
+                        }}
+                        placeholder="What people call you"
+                        className={inp}
+                        maxLength={60}
+                    />
+                </div>
 
-            <div className="admin-form-label">BIO · OPTIONAL</div>
-            <textarea
-                value={bio}
-                onChange={(e) => {
-                    setBio(e.target.value);
-                    setSaved(false);
-                }}
-                placeholder="Your builds, your lane… (optional)"
-                className="admin-form-input"
-                maxLength={280}
-                rows={3}
-                style={{ resize: 'vertical', fontFamily: 'inherit' }}
-            />
+                <div className={cs.field}>
+                    <label className={cs.label} htmlFor="acct-bio">
+                        Bio (optional)
+                    </label>
+                    <textarea
+                        id="acct-bio"
+                        value={bio}
+                        onChange={(e) => {
+                            setBio(e.target.value);
+                            setSaved(false);
+                        }}
+                        placeholder="Your builds, your lane…"
+                        className={inp}
+                        maxLength={280}
+                        rows={3}
+                    />
+                </div>
+            </FormSection>
 
             {formErr && (
-                <div className="admin-login-error" style={{ padding: 8 }}>
+                <Notice tone="bad" live>
                     {formErr}
-                </div>
+                </Notice>
             )}
             {saved && !formErr && (
-                <div
-                    style={{
-                        padding: 8,
-                        border: '1px solid var(--gold)',
-                        background: 'var(--gold-glow)',
-                        color: 'var(--gold)',
-                        fontFamily: 'var(--font-display)',
-                        fontSize: 11,
-                        letterSpacing: 'var(--track-wide)',
-                    }}
-                >
-                    SAVED.
-                </div>
+                <Notice tone="ok" live>
+                    Saved.
+                </Notice>
             )}
 
-            <button type="submit" disabled={!canSubmit} className="admin-form-btn">
-                {pending ? 'SAVING…' : 'SAVE CHANGES'}
-            </button>
+            <div>
+                <GlideButton type="submit" disabled={!canSubmit} aria-busy={pending}>
+                    {pending ? 'Saving…' : 'Save changes'}
+                </GlideButton>
+            </div>
         </form>
     );
 }

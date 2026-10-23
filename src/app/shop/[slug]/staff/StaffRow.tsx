@@ -1,7 +1,10 @@
 'use client';
 import { useTransition } from 'react';
 import { removeStaff, setStaffRole, nominateHostAction } from './actions';
-import { Check } from '@/components/icons';
+import { Check, Clock, Flag, UserMinus } from 'lucide-react';
+import cs from '@/components/glide-console/console.module.css';
+import { cx } from '@/components/glide-shopbiz/parts';
+import bz from '@/components/glide-shopbiz/biz.module.css';
 
 const ROLES = ['owner', 'admin', 'manager', 'installer', 'staff'] as const;
 
@@ -50,57 +53,72 @@ export function StaffRow({
         });
     };
 
+    const ic = { size: 16, strokeWidth: 2, 'aria-hidden': true } as const;
+    const name: string = p?.display_name || p?.handle || '?';
+    const initials = name
+        .replace(/^@+/, '')
+        .split(/[\s_]+/)
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((w: string) => w[0])
+        .join('')
+        .toUpperCase();
+
     return (
         <tr>
             <td>
-                <span className="admin-handle">@{p?.handle ?? '?'}</span>
+                <div className={cs.cell}>
+                    <span className="g-av" aria-hidden="true">
+                        {initials}
+                    </span>
+                    <span style={{ minWidth: 0 }}>
+                        <b>{p?.display_name ?? '—'}</b>
+                        <small>@{p?.handle ?? '?'}</small>
+                    </span>
+                </div>
             </td>
-            <td>{p?.display_name ?? '—'}</td>
             <td>
+                <label className="g-sr" htmlFor={`role-${m.profile_id}`}>
+                    Role for @{p?.handle ?? 'user'}
+                </label>
                 <select
+                    id={`role-${m.profile_id}`}
                     defaultValue={m.role}
                     onChange={onChangeRole}
                     disabled={pending}
-                    style={{
-                        background: 'var(--bg-2)',
-                        color: 'var(--text)',
-                        border: '1px solid var(--line-mid)',
-                        padding: '4px 8px',
-                        fontFamily: 'var(--font-display)',
-                        fontWeight: 700,
-                        fontSize: 10,
-                        letterSpacing: 'var(--track-wider)',
-                    }}
+                    className={cx(cs.input, bz.in, bz.selSm)}
                 >
                     {ROLES.map((r) => (
                         <option key={r} value={r}>
-                            {r.toUpperCase()}
+                            {r.charAt(0).toUpperCase() + r.slice(1)}
                         </option>
                     ))}
                 </select>
             </td>
-            <td>
-                {m.created_at
-                    ? new Date(m.created_at).toISOString().slice(0, 10)
-                    : '—'}
+            <td className={cs.mHide}>
+                <span className={bz.mono}>{m.created_at ? new Date(m.created_at).toISOString().slice(0, 10) : '—'}</span>
             </td>
-            <td style={{ textAlign: 'right' }}>
-                <div style={{ display: 'inline-flex', gap: 6, alignItems: 'center', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+            <td className={bz.tdActs}>
+                <div className={cx(bz.acts, bz.actsEnd)}>
                     {hostStatus === 'verified' ? (
-                        <span className="admin-pill neon" title="Verified individual host">HOST <Check /></span>
+                        <span className="g-chip g-chip--tint" title="Verified individual host">
+                            <Check size={14} strokeWidth={2.5} aria-hidden="true" />
+                            Host
+                        </span>
                     ) : hostStatus === 'pending' ? (
-                        <span className="admin-pill gold" title="Host nomination under review">HOST PENDING</span>
+                        <span className="g-chip" title="Host nomination under review">
+                            <Clock size={14} strokeWidth={2} aria-hidden="true" />
+                            Host pending
+                        </span>
                     ) : canNominate ? (
-                        <button className="admin-action-btn muted" disabled={pending} onClick={onNominate} title="Nominate as an individual host">
-                            NOMINATE HOST
+                        <button type="button" className={bz.act} disabled={pending} onClick={onNominate} title="Nominate as an individual host">
+                            <Flag {...ic} />
+                            Nominate host
                         </button>
                     ) : null}
-                    <button
-                        className="admin-action-btn danger"
-                        disabled={pending}
-                        onClick={onRemove}
-                    >
-                        REMOVE
+                    <button type="button" className={cx(bz.act, bz.actInk, bz.actDanger)} disabled={pending} onClick={onRemove}>
+                        <UserMinus {...ic} />
+                        Remove
                     </button>
                 </div>
             </td>

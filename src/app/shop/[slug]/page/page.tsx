@@ -2,6 +2,10 @@ import { redirect } from 'next/navigation';
 import { requireShopMemberBySlug } from '@/lib/auth-guard';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { ShopPageForm } from './ShopPageForm';
+import { ShieldAlert, Store } from 'lucide-react';
+import { BizPage } from '@/components/glide-shopbiz/BizPage';
+import { CardEmpty, Notice } from '@/components/glide-shopbiz/parts';
+import { ConsoleHead } from '@/components/glide-console/parts';
 
 export const metadata = { title: 'Shop Page' };
 
@@ -33,55 +37,35 @@ export default async function ShopPageEditorPage({
     const profile = await loadShopPage(shop.shopId);
 
     return (
-        <>
-            <div className="admin-page-head">
-                <div>
-                    <div className="admin-page-title">SHOP PAGE</div>
-                    <div className="admin-page-sub">
-                        {shop.name.toUpperCase()} · PUBLIC IDENTITY
-                    </div>
-                </div>
-            </div>
+        <BizPage slug={slug}>
+            <ConsoleHead title="Shop page" sub={`${shop.name} · Public identity`} />
 
             {!profile ? (
-                <div className="admin-empty">
-                    NO SHOP_PAGE PROFILE EXISTS FOR THIS SHOP — CONTACT TEAM@ROLLOUT.CLUB.
-                </div>
+                <section className="g-card">
+                    <CardEmpty
+                        icon={<Store size={22} strokeWidth={1.75} />}
+                        title="This shop has no page profile yet"
+                        body={
+                            <>
+                                Contact <a href="mailto:team@rollout.club">team@rollout.club</a> and we’ll set it up.
+                            </>
+                        }
+                    />
+                </section>
             ) : (
                 <>
                     {!profile.is_verified && (
-                        <div
-                            style={{
-                                marginBottom: 20,
-                                padding: 14,
-                                border: '1px solid var(--gold)',
-                                background: 'var(--gold-glow)',
-                                fontFamily: 'var(--font-display)',
-                                fontSize: 11,
-                                letterSpacing: 'var(--track-wide)',
-                                color: 'var(--text-2)',
-                            }}
-                        >
-                            <strong style={{ color: 'var(--gold)' }}>
-                                NOT VERIFIED
-                            </strong>{' '}
-                            — verification is platform-admin-controlled. Email{' '}
-                            <a
-                                href="mailto:team@rollout.club"
-                                style={{ color: 'var(--gold)' }}
-                            >
+                        <Notice icon={<ShieldAlert size={20} strokeWidth={2} aria-hidden="true" />}>
+                            <b>Not verified.</b> Verification is platform-admin-controlled. Email{' '}
+                            <a href="mailto:team@rollout.club" style={{ color: 'var(--link)', textDecoration: 'underline', textUnderlineOffset: 3 }}>
                                 team@rollout.club
                             </a>{' '}
                             when you&apos;re ready to be reviewed.
-                        </div>
+                        </Notice>
                     )}
-                    <ShopPageForm
-                        shopId={shop.shopId}
-                        slug={slug}
-                        profile={profile}
-                    />
+                    <ShopPageForm shopId={shop.shopId} slug={slug} profile={profile} />
                 </>
             )}
-        </>
+        </BizPage>
     );
 }
