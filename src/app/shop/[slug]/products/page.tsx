@@ -18,6 +18,11 @@ import { fmtMoney } from '../orders/ui';
 import { ProductsManager } from './ProductsManager';
 import { SHOPS_WITH_OWN_ADMIN } from '@/lib/tenant-hosts';
 import { ManagedElsewhereNotice } from '../ManagedElsewhereNotice';
+import { CircleDashed, CirclePause, ImageOff, Layers, Package } from 'lucide-react';
+import { BizPage } from '@/components/glide-shopbiz/BizPage';
+import { CardEmpty, Notice } from '@/components/glide-shopbiz/parts';
+import bz from '@/components/glide-shopbiz/biz.module.css';
+import { ConsoleHead } from '@/components/glide-console/parts';
 
 export const metadata = { title: 'Products' };
 
@@ -66,16 +71,11 @@ export default async function ProductsPage({
     const medusaBacked = handles.length > 0;
 
     return (
-        <>
-            <div className="admin-page-head">
-                <div>
-                    <div className="admin-page-title">PRODUCTS</div>
-                    <div className="admin-page-sub">
-                        {shop.name.toUpperCase()} ·{' '}
-                        {medusaBacked ? 'MEDUSA CATALOG (READ-ONLY)' : 'INVENTORY'}
-                    </div>
-                </div>
-            </div>
+        <BizPage slug={slug}>
+            <ConsoleHead
+                title="Products"
+                sub={`${shop.name} · ${medusaBacked ? 'Store catalog, read-only here' : 'Inventory'}`}
+            />
 
             {medusaBacked ? (
                 <MedusaCatalog handles={handles} adminUrl={SHOPS_WITH_OWN_ADMIN[slug] ?? null} />
@@ -88,7 +88,7 @@ export default async function ProductsPage({
                     callerRole={SHOPS_WITH_OWN_ADMIN[slug] ? 'viewer' : role}
                 />
             )}
-        </>
+        </BizPage>
     );
 }
 
@@ -101,6 +101,7 @@ async function MedusaCatalog({
     adminUrl: string | null;
 }) {
     const { products, error } = await listVendorProducts(handles);
+    const ic = { size: 14, strokeWidth: 2, 'aria-hidden': true } as const;
 
     return (
         <>
@@ -108,92 +109,74 @@ async function MedusaCatalog({
                 <ManagedElsewhereNotice adminUrl={adminUrl} what="its catalogue" />
             ) : null}
 
-            <div
-                style={{
-                    border: '1px solid var(--line)',
-                    background: 'var(--bg-2)',
-                    padding: '10px 12px',
-                    marginBottom: 14,
-                    fontSize: 12,
-                    color: 'var(--text-2)',
-                }}
-            >
+            <Notice>
                 {/* Pointing a shop with its own admin at "the Medusa admin" sends
                     it to the wrong place — that is the platform's console, not
                     theirs. The notice above already named the right door. */}
                 {adminUrl
                     ? 'Paused and draft items are shown, so the list matches the catalog.'
                     : 'This catalog is managed in the Medusa admin. Product and pricing edits happen there; this view is read-only. Paused and draft items are shown, so the list matches the catalog.'}
-            </div>
+            </Notice>
 
             {error ? (
-                <div className="admin-empty">CATALOG UNAVAILABLE — {error.toUpperCase()}</div>
+                <Notice tone="bad">
+                    <b>The catalog is unavailable right now.</b> {error}
+                </Notice>
             ) : products.length === 0 ? (
-                <div className="admin-empty">NO PRODUCTS IN THIS CATALOG YET</div>
+                <section className="g-card">
+                    <CardEmpty
+                        icon={<Package size={22} strokeWidth={1.75} />}
+                        title="No products in this catalog yet"
+                        body="Products added to this shop’s store categories show up here, drafts and paused items included."
+                    />
+                </section>
             ) : (
-                <div
-                    style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
-                        gap: 14,
-                    }}
-                >
+                <ul className={bz.grid} aria-label="Catalog">
                     {products.map((p) => (
-                        <div
-                            key={p.id}
-                            style={{
-                                border: '1px solid var(--line)',
-                                background: 'var(--bg-1)',
-                                overflow: 'hidden',
-                                display: 'flex',
-                                flexDirection: 'column',
-                            }}
-                        >
-                            <div style={{ aspectRatio: '1', background: 'var(--bg-2)', overflow: 'hidden' }}>
-                                {p.thumbnail ? (
-                                    // eslint-disable-next-line @next/next/no-img-element
-                                    <img src={p.thumbnail} alt={p.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                ) : null}
-                            </div>
-                            <div style={{ padding: 10 }}>
-                                <div style={{ fontSize: 13, color: 'var(--text)', lineHeight: 1.3 }}>{p.title}</div>
-                                <div
-                                    style={{
-                                        marginTop: 6,
-                                        fontFamily: 'var(--font-mono, monospace)',
-                                        fontSize: 13,
-                                        color: 'var(--gold)',
-                                    }}
-                                >
-                                    {p.priceAmount != null
-                                        ? fmtMoney(p.priceAmount, p.currency)
-                                        : 'NO PRICE SET'}
+                        <li key={p.id}>
+                            <article className={bz.tile}>
+                                <div className={bz.tileIm}>
+                                    {p.thumbnail ? (
+                                        // eslint-disable-next-line @next/next/no-img-element
+                                        <img src={p.thumbnail} alt={p.title} />
+                                    ) : (
+                                        <ImageOff size={26} strokeWidth={1.5} aria-hidden="true" />
+                                    )}
                                 </div>
-                                {/* The state a shop most needs to see about its
-                                    own catalogue, and precisely what the old
-                                    store-API read could not show: paused items
-                                    and drafts were invisible to it by design. */}
-                                <div
-                                    style={{
-                                        marginTop: 6,
-                                        display: 'flex',
-                                        gap: 8,
-                                        flexWrap: 'wrap',
-                                        fontSize: 10,
-                                        letterSpacing: '0.06em',
-                                        color: 'var(--text-3)',
-                                    }}
-                                >
-                                    {p.paused && <span style={{ color: 'var(--warn)' }}>PAUSED</span>}
-                                    {p.status !== 'published' && <span>{p.status.toUpperCase()}</span>}
-                                    <span>
-                                        {p.variantCount} VARIANT{p.variantCount === 1 ? '' : 'S'}
-                                    </span>
+                                <div className={bz.tileBd}>
+                                    <b>{p.title}</b>
+                                    {p.priceAmount != null ? (
+                                        <span className={bz.price}>{fmtMoney(p.priceAmount, p.currency)}</span>
+                                    ) : (
+                                        <span className={bz.priceNone}>No price set</span>
+                                    )}
+                                    {/* The state a shop most needs to see about its
+                                        own catalogue, and precisely what the old
+                                        store-API read could not show: paused items
+                                        and drafts were invisible to it by design. */}
+                                    <div className={bz.chipsSm}>
+                                        {p.paused && (
+                                            <span className="g-chip">
+                                                <CirclePause {...ic} />
+                                                Paused
+                                            </span>
+                                        )}
+                                        {p.status !== 'published' && (
+                                            <span className="g-chip">
+                                                <CircleDashed {...ic} />
+                                                {p.status.charAt(0).toUpperCase() + p.status.slice(1)}
+                                            </span>
+                                        )}
+                                        <span className="g-chip">
+                                            <Layers {...ic} />
+                                            {p.variantCount} variant{p.variantCount === 1 ? '' : 's'}
+                                        </span>
+                                    </div>
                                 </div>
-                            </div>
-                        </div>
+                            </article>
+                        </li>
                     ))}
-                </div>
+                </ul>
             )}
         </>
     );

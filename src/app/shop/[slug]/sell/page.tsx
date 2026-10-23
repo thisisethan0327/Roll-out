@@ -14,23 +14,51 @@
  *   docs_verified   → "you're selling" (interim tier)
  *   verified        → "you're selling"
  */
-import Link from 'next/link';
 import { requireShopMemberBySlug } from '@/lib/auth-guard';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { SellForm } from './SellForm';
-import { ChevronLeft } from '@/components/icons';
+import { CircleCheck, Clock, Lock, Mail } from 'lucide-react';
+import { GlideButton } from '@/components/glide/primitives';
+import { BizPage } from '@/components/glide-shopbiz/BizPage';
+import bz from '@/components/glide-shopbiz/biz.module.css';
+import { ConsoleHead } from '@/components/glide-console/parts';
+import cs from '@/components/glide-console/console.module.css';
 
 export const metadata = { title: 'Sell on NeferStock' };
 export const dynamic = 'force-dynamic';
 
-function Card({ eyebrow, title, body, children }: { eyebrow: string; title: string; body: string; children?: React.ReactNode }) {
+/** A status card: icon roundel, state chip, heading, body and an optional action. */
+function StateCard({
+    icon,
+    state,
+    title,
+    body,
+    children,
+    edge,
+}: {
+    icon: React.ReactNode;
+    state: string;
+    title: string;
+    body: string;
+    children?: React.ReactNode;
+    edge?: boolean;
+}) {
     return (
-        <div className="feature-card" style={{ maxWidth: 620, padding: '28px 24px' }}>
-            <div className="eyebrow eyebrow-gold" style={{ marginBottom: 8 }}>{eyebrow}</div>
-            <h2 style={{ fontSize: 22, letterSpacing: 0.4, margin: '0 0 8px' }}>{title}</h2>
-            <p style={{ color: 'var(--text-2)', fontSize: 14, lineHeight: 1.6, margin: 0 }}>{body}</p>
-            {children}
-        </div>
+        <section className={`g-card ${edge ? 'g-edge' : ''} ${bz.narrow}`} aria-labelledby="sell-state-h">
+            <div className={bz.stateCard}>
+                <div className={bz.stateTop}>
+                    <span className="g-ic" aria-hidden="true">
+                        {icon}
+                    </span>
+                    <span className="g-chip">{state}</span>
+                </div>
+                <h2 id="sell-state-h" className={bz.stateH}>
+                    {title}
+                </h2>
+                <p className={bz.stateP}>{body}</p>
+                {children}
+            </div>
+        </section>
     );
 }
 
@@ -48,51 +76,59 @@ export default async function SellPage({ params }: { params: Promise<{ slug: str
     const row = (data ?? {}) as any;
     const commerceStatus: string = row.commerce_status ?? 'none';
     const eligible = row.origin_app === 'neferstock' || row.merchant_feature_enabled === true;
+    const ic = { size: 22, strokeWidth: 1.75 } as const;
 
     return (
-        <>
-            <div className="admin-page-head">
-                <div>
-                    <div className="admin-page-title">SELL ON NEFERSTOCK</div>
-                    <div className="admin-page-sub">{shop.name.toUpperCase()} · COMMERCE APPLICATION</div>
-                </div>
-                <Link href={`/shop/${slug}/overview`} className="admin-action-btn muted" style={{ textDecoration: 'none' }}><ChevronLeft /> BACK</Link>
-            </div>
+        <BizPage slug={slug}>
+            <ConsoleHead
+                back={{ href: `/shop/${slug}/overview`, label: 'Overview' }}
+                title="Sell on NeferStock"
+                sub={`${shop.name} · Commerce application`}
+            />
 
             {!eligible ? (
-                <Card
-                    eyebrow="／ MERCHANT FEATURE REQUIRED"
+                <StateCard
+                    icon={<Lock {...ic} />}
+                    state="Merchant feature required"
                     title="Unlock selling on NeferStock"
                     body="Your shop is verified on Rollout. Selling on NeferStock is a paid merchant add-on — once it’s enabled for your shop, the commerce application (business license, reseller certificate, UBI, and payouts) unlocks here. The merchant feature is rolling out soon."
                 >
-                    <div style={{ marginTop: 16 }}>
-                        <a href="mailto:info@emwraps.net?subject=Merchant%20feature%20interest" className="admin-action-btn">CONTACT ABOUT SELLING</a>
+                    <div className={bz.stateAct}>
+                        <a href="mailto:info@emwraps.net?subject=Merchant%20feature%20interest" className={bz.act}>
+                            <Mail size={17} strokeWidth={2} aria-hidden="true" />
+                            Contact about selling
+                        </a>
                     </div>
-                </Card>
+                </StateCard>
             ) : commerceStatus === 'pending' ? (
-                <Card
-                    eyebrow="／ UNDER REVIEW"
+                <StateCard
+                    icon={<Clock {...ic} />}
+                    state="Under review"
                     title="Your seller application is being reviewed"
                     body="Thanks — we’ve got your documents. A Rollout admin is reviewing your commerce KYC. We’ll email you the moment it’s approved, and your catalog tools unlock."
                 />
             ) : commerceStatus === 'docs_verified' || commerceStatus === 'verified' ? (
-                <Card
-                    eyebrow="／ APPROVED"
+                <StateCard
+                    edge
+                    icon={<CircleCheck {...ic} />}
+                    state="Approved"
                     title="You’re cleared to sell"
                     body="Your commerce KYC is approved. You can list products and sell on NeferStock. Payouts move to Stripe Connect once the payouts platform is live; until then, approved sellers settle through Rollout’s interim process."
                 >
-                    <div style={{ marginTop: 16, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                        <Link href={`/shop/${slug}/products`} className="admin-action-btn" style={{ textDecoration: 'none' }}>MANAGE PRODUCTS</Link>
+                    <div className={bz.stateAct}>
+                        <GlideButton href={`/shop/${slug}/products`} size="sm">
+                            Manage products
+                        </GlideButton>
                     </div>
-                </Card>
+                </StateCard>
             ) : (
                 <>
-                    <p style={{ color: 'var(--text-2)', fontSize: 14, lineHeight: 1.6, maxWidth: 620, margin: '0 0 8px' }}>
+                    <p className={cs.small} style={{ maxWidth: '62ch', fontSize: 15 }}>
                         Apply to sell your products on NeferStock. Upload your business license and reseller certificate, add your UBI, and we’ll review your commerce KYC. Documents are stored privately.
                     </p>
                     <SellForm shopId={shop.shopId} slug={slug} />
                 </>
             )}
-        </>
+        </BizPage>
     );
 }
