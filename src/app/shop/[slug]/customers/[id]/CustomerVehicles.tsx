@@ -106,16 +106,16 @@ export function CustomerVehicles({
     return (
         <div>
             {vehicles.length === 0 ? (
-                <div className="admin-empty">NO VEHICLES ON FILE</div>
+                <div className="admin-empty">No vehicles on file</div>
             ) : (
                 <div className="admin-table-wrap">
                     <table className="admin-table">
                         <thead>
                             <tr>
-                                <th>VEHICLE</th>
-                                <th>COLOR</th>
+                                <th>Vehicle</th>
+                                <th>Color</th>
                                 <th>VIN</th>
-                                <th>PLATE</th>
+                                <th>Plate</th>
                                 {canInstaller && <th></th>}
                             </tr>
                         </thead>
@@ -134,10 +134,10 @@ export function CustomerVehicles({
                                                 <VehicleFields v={v} />
                                                 <div style={{ display: 'flex', gap: 8 }}>
                                                     <button type="submit" className="admin-action-btn" disabled={pending}>
-                                                        {pending ? 'SAVING…' : 'SAVE'}
+                                                        {pending ? 'Saving…' : 'Save'}
                                                     </button>
                                                     <button type="button" className="admin-action-btn muted" onClick={() => setEditId(null)}>
-                                                        CANCEL
+                                                        Cancel
                                                     </button>
                                                 </div>
                                             </form>
@@ -155,7 +155,7 @@ export function CustomerVehicles({
                                         {canInstaller && (
                                             <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
                                                 <button type="button" className="admin-action-btn muted" onClick={() => setEditId(v.id)} disabled={pending}>
-                                                    EDIT
+                                                    Edit
                                                 </button>
                                                 {canManage && (
                                                     <button
@@ -166,7 +166,7 @@ export function CustomerVehicles({
                                                         disabled={pending}
                                                         style={{ marginLeft: 6 }}
                                                     >
-                                                        {armedDelete === v.id ? 'SURE?' : <X />}
+                                                        {armedDelete === v.id ? 'Sure?' : <X />}
                                                     </button>
                                                 )}
                                             </td>
@@ -199,16 +199,16 @@ export function CustomerVehicles({
                         <VehicleFields />
                         <div style={{ display: 'flex', gap: 8 }}>
                             <button type="submit" className="admin-action-btn" disabled={pending}>
-                                {pending ? 'ADDING…' : 'ADD VEHICLE'}
+                                {pending ? 'Adding…' : 'Add vehicle'}
                             </button>
                             <button type="button" className="admin-action-btn muted" onClick={() => setShowAdd(false)}>
-                                CANCEL
+                                Cancel
                             </button>
                         </div>
                     </form>
                 ) : (
                     <button type="button" className="admin-action-btn" onClick={() => setShowAdd(true)}>
-                        + ADD VEHICLE
+                        + Add vehicle
                     </button>
                 )}
             </div>

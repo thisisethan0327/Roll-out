@@ -2,6 +2,9 @@ import Link from 'next/link';
 import { requireShopMemberBySlug } from '@/lib/auth-guard';
 import { getSupabaseAdmin, getSupabasePublicAdmin } from '@/lib/supabase/admin';
 import { CalendarNav } from './CalendarGrid';
+import { CalendarClock, CalendarDays, Wrench } from 'lucide-react';
+import { ConsoleHead } from '@/components/glide-console/parts';
+import { Counts, EmptyRow, Panel, StatusChip, cx, fmtWhen, shopStyles as sh } from '@/components/glide-shop/parts';
 
 export const metadata = { title: 'Calendar' };
 
@@ -15,10 +18,8 @@ const SERVICE_LABEL: Record<string, string> = {
 };
 
 const DOW = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
-const MONTHS = [
-    'JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN',
-    'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC',
-];
+const DOW_LABEL = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const HOURS_START = 8; // 8am
 const HOURS_END = 20;  // 8pm exclusive
 
@@ -133,7 +134,7 @@ function bucketAppointment(a: any, weekStart: Date, slug: string): CalEvent | nu
     const dayIdx = Math.floor((dt.getTime() - weekStart.getTime()) / dayMs);
     if (dayIdx < 0 || dayIdx > 6) return null;
     const hour = dt.getHours();
-    const handle = a.requester?.handle ? `@${a.requester.handle}` : 'CUSTOMER';
+    const handle = a.requester?.handle ? `@${a.requester.handle}` : 'Customer';
     return {
         kind: 'appointment',
         id: a.id,
@@ -196,16 +197,6 @@ export default async function ShopCalendarPage({
         if (e) events.push(e);
     }
 
-    // Build a Map<`${day}-${hour}`, CalEvent[]>
-    const byCell = new Map<string, CalEvent[]>();
-    for (const e of events) {
-        const hr = Math.max(HOURS_START, Math.min(HOURS_END - 1, e.hour));
-        const key = `${e.dayIdx}-${hr}`;
-        const arr = byCell.get(key) ?? [];
-        arr.push(e);
-        byCell.set(key, arr);
-    }
-
     const dayHeaders: { dow: string; date: number; isToday: boolean }[] = [];
     const todayYmd = fmtYmd(new Date());
     for (let i = 0; i < 7; i++) {
@@ -218,172 +209,124 @@ export default async function ShopCalendarPage({
         });
     }
 
-    const hourRows: number[] = [];
-    for (let h = HOURS_START; h < HOURS_END; h++) hourRows.push(h);
+    // One column per day, the day's items in time order (tickets are day-level
+    // and lead the day; appointments follow by hour).
+    const byDay: CalEvent[][] = Array.from({ length: 7 }, () => []);
+    for (const e of events) byDay[e.dayIdx]?.push(e);
+    for (const list of byDay) list.sort((a, b) => (a.kind === b.kind ? a.hour - b.hour : a.kind === 'ticket' ? -1 : 1));
+    const hourLabel = (h: number) => (h === 12 ? '12 PM' : h < 12 ? `${h} AM` : `${h - 12} PM`);
 
     return (
-        <>
-            <div className="admin-page-head">
-                <div>
-                    <div className="admin-page-title">CALENDAR</div>
-                    <div className="admin-page-sub">
-                        {shop.name.toUpperCase()} · {formatRange(aligned, weekEnd).toUpperCase()}
+        <div className={sh.stack}>
+            <ConsoleHead
+                title="Calendar"
+                sub={`${shop.name} · ${formatRange(aligned, weekEnd)}`}
+                actions={<CalendarNav slug={slug} weekStart={fmtYmd(aligned)} />}
+            />
+
+            <Counts
+                label="This week"
+                items={[
+                    { label: 'Appointments', value: appts.length },
+                    { label: 'Tickets', value: tickets.length },
+                    { label: 'Total this week', value: events.length, dot: events.length > 0 },
+                ]}
+            />
+
+            <section className="g-card" aria-label={`Week of ${formatRange(aligned, weekEnd)}`}>
+                <div className={sh.panelH}>
+                    <div>
+                        <h2>{formatRange(aligned, weekEnd)}</h2>
+                    </div>
+                    <div className={sh.legend} aria-label="Legend">
+                        <span className="g-chip">
+                            <CalendarClock size={14} strokeWidth={2} aria-hidden="true" />
+                            Appointment
+                        </span>
+                        <span className="g-chip g-chip--tint">
+                            <Wrench size={14} strokeWidth={2} aria-hidden="true" />
+                            Ticket
+                        </span>
                     </div>
                 </div>
-                <CalendarNav slug={slug} weekStart={fmtYmd(aligned)} />
-            </div>
-
-            <div className="admin-stat-grid">
-                <Stat label="APPOINTMENTS" value={appts.length} />
-                <Stat label="TICKETS" value={tickets.length} />
-                <Stat label="TOTAL THIS WEEK" value={events.length} accent={events.length > 0 ? 'gold' : undefined} />
-            </div>
-
-            <div className="admin-table-wrap" style={{ marginTop: 12 }}>
-                <table className="admin-table" style={{ tableLayout: 'fixed' }}>
-                    <thead>
-                        <tr>
-                            <th style={{ width: 70 }}>TIME</th>
-                            {dayHeaders.map((d, i) => (
-                                <th key={i} style={{ color: d.isToday ? 'var(--gold)' : undefined }}>
-                                    {d.dow} {d.date}
-                                </th>
-                            ))}
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {hourRows.map((h) => {
-                            const label = h === 12 ? '12PM' : h < 12 ? `${h}AM` : `${h - 12}PM`;
-                            return (
-                                <tr key={h}>
-                                    <td style={{ fontFamily: 'var(--font-display)', fontSize: 11, opacity: 0.6 }}>
-                                        {label}
-                                    </td>
-                                    {dayHeaders.map((_, dayIdx) => {
-                                        const cell = byCell.get(`${dayIdx}-${h}`) ?? [];
-                                        return (
-                                            <td key={dayIdx} style={{ verticalAlign: 'top', padding: 4 }}>
-                                                {cell.length === 0 ? (
-                                                    <div style={{ opacity: 0.15, fontSize: 10 }}>·</div>
-                                                ) : (
-                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                                                        {cell.map((e) => (
-                                                            <Link
-                                                                key={`${e.kind}-${e.id}`}
-                                                                href={e.href}
-                                                                style={{ textDecoration: 'none' }}
-                                                            >
-                                                                <div
-                                                                    className={`admin-pill ${e.kind === 'appointment' ? 'gold' : 'neon'}`}
-                                                                    style={{
-                                                                        display: 'block',
-                                                                        textAlign: 'left',
-                                                                        padding: '4px 6px',
-                                                                        cursor: 'pointer',
-                                                                        whiteSpace: 'nowrap',
-                                                                        overflow: 'hidden',
-                                                                        textOverflow: 'ellipsis',
-                                                                    }}
-                                                                    title={`${e.title}${e.subtitle ? ' · ' + e.subtitle : ''}`}
-                                                                >
-                                                                    {e.title}
-                                                                    {e.subtitle && (
-                                                                        <div
-                                                                            style={{
-                                                                                fontSize: 9,
-                                                                                opacity: 0.7,
-                                                                                marginTop: 2,
-                                                                            }}
-                                                                        >
-                                                                            {e.subtitle}
-                                                                        </div>
-                                                                    )}
-                                                                </div>
-                                                            </Link>
-                                                        ))}
-                                                    </div>
-                                                )}
-                                            </td>
-                                        );
-                                    })}
-                                </tr>
-                            );
-                        })}
-                    </tbody>
-                </table>
-            </div>
-
-            <div className="admin-page-head" style={{ marginTop: 20, borderBottom: 'none', paddingBottom: 0 }}>
-                <div>
-                    <div className="admin-page-title" style={{ fontSize: 14 }}>
-                        UPCOMING NEXT WEEK
-                    </div>
-                    <div className="admin-page-sub">TOP 5 PAST THIS WEEK&apos;S END</div>
+                <div className={sh.week}>
+                    {dayHeaders.map((d, i) => (
+                        <div key={i} className={sh.dayCol}>
+                            <div className={sh.dayHead}>
+                                <span className={cx(sh.dayNum, d.isToday && sh.dayToday)} aria-hidden="true">
+                                    {d.date}
+                                </span>
+                                <small>
+                                    {DOW_LABEL[i]}
+                                    {d.isToday ? ' · Today' : ''}
+                                </small>
+                                <span className="g-sr">
+                                    {DOW_LABEL[i]} {d.date}
+                                </span>
+                            </div>
+                            {byDay[i].length === 0 ? (
+                                <span className={sh.dayEmpty}>Nothing booked</span>
+                            ) : (
+                                byDay[i].map((e) => (
+                                    <Link
+                                        key={`${e.kind}-${e.id}`}
+                                        href={e.href}
+                                        className={cx(sh.evt, e.kind === 'ticket' && sh.evtTicket)}
+                                        title={`${e.title}${e.subtitle ? ' · ' + e.subtitle : ''}`}
+                                    >
+                                        <span className={sh.evtTime}>
+                                            {e.kind === 'ticket' ? 'Service day' : hourLabel(Math.max(HOURS_START, Math.min(HOURS_END - 1, e.hour)))}
+                                        </span>
+                                        <b>{e.title}</b>
+                                        {e.subtitle ? <small>{e.subtitle}</small> : null}
+                                    </Link>
+                                ))
+                            )}
+                        </div>
+                    ))}
                 </div>
-            </div>
+            </section>
 
-            <div className="admin-table-wrap">
-                <table className="admin-table">
-                    <thead>
-                        <tr>
-                            <th>WHEN</th>
-                            <th>CUSTOMER</th>
-                            <th>SERVICE</th>
-                            <th>STATUS</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {upcomingNext.length === 0 ? (
+            <Panel id="next-week" title="Upcoming next week" sub="The first 5 after this week ends" flush>
+                <div className={sh.tblWrap}>
+                    <table className={sh.tbl}>
+                        <thead>
                             <tr>
-                                <td colSpan={4}>
-                                    <div className="admin-empty">NOTHING ON THE BOOKS YET.</div>
-                                </td>
+                                <th>When</th>
+                                <th>Customer</th>
+                                <th>Service</th>
+                                <th>Status</th>
                             </tr>
-                        ) : (
-                            upcomingNext.map((a: any) => (
-                                <tr key={a.id}>
-                                    <td>
-                                        {a.preferred_at
-                                            ? new Date(a.preferred_at).toISOString().slice(0, 16).replace('T', ' ')
-                                            : '—'}
-                                    </td>
-                                    <td>
-                                        @{a.requester?.handle ?? '?'}
-                                        <div className="admin-handle">{a.requester?.display_name}</div>
-                                    </td>
-                                    <td>
-                                        <span className="admin-pill">
-                                            {SERVICE_LABEL[a.service_type] ?? a.service_type}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <span className={`admin-pill ${a.status === 'converted' ? 'neon' : 'gold'}`}>
-                                            {String(a.status).toUpperCase()}
-                                        </span>
-                                    </td>
-                                </tr>
-                            ))
-                        )}
-                    </tbody>
-                </table>
-            </div>
-        </>
-    );
-}
-
-function Stat({
-    label,
-    value,
-    accent,
-}: {
-    label: string;
-    value: number | string;
-    accent?: 'gold' | 'warn';
-}) {
-    return (
-        <div className="admin-stat">
-            <div className="admin-stat-lbl">{label}</div>
-            <div className={`admin-stat-num ${accent ?? ''}`}>{value}</div>
+                        </thead>
+                        <tbody>
+                            {upcomingNext.length === 0 ? (
+                                <EmptyRow
+                                    colSpan={4}
+                                    icon={<CalendarDays size={18} strokeWidth={2} />}
+                                    title="Nothing on the books yet"
+                                    body="Accepted appointments for next week show up here."
+                                />
+                            ) : (
+                                upcomingNext.map((a: any) => (
+                                    <tr key={a.id}>
+                                        <td className={sh.when}>{fmtWhen(a.preferred_at)}</td>
+                                        <td>
+                                            @{a.requester?.handle ?? '?'}
+                                            <small>{a.requester?.display_name}</small>
+                                        </td>
+                                        <td>
+                                            <span className="g-chip">{SERVICE_LABEL[a.service_type] ?? a.service_type}</span>
+                                        </td>
+                                        <td>
+                                            <StatusChip status={a.status} />
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </Panel>
         </div>
     );
 }

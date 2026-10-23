@@ -3,10 +3,12 @@
  * optionally with a first vehicle (stamped with this shop_id so the customer
  * becomes visible to the shop immediately).
  */
-import Link from 'next/link';
 import { requireShopMemberBySlug } from '@/lib/auth-guard';
 import { createCustomer } from '../actions';
-import { ChevronLeft, ChevronRight } from '@/components/icons';
+import { Lock, UserPlus } from 'lucide-react';
+import { ConsoleHead, Field } from '@/components/glide-console/parts';
+import { GlideButton } from '@/components/glide/primitives';
+import { Panel, shopStyles as sh } from '@/components/glide-shop/parts';
 
 export const metadata = { title: 'New Customer' };
 
@@ -23,66 +25,77 @@ export default async function NewCustomerPage({
     const action = createCustomer.bind(null, slug);
 
     return (
-        <>
-            <div className="admin-page-head">
-                <div>
-                    <Link
-                        href={`/shop/${slug}/customers`}
-                        className="text-link"
-                        style={{
-                            fontFamily: 'var(--font-display)',
-                            fontSize: 11,
-                            letterSpacing: 'var(--track-wider)',
-                            textDecoration: 'none',
-                        }}
-                    >
-                        <ChevronLeft /> ALL CUSTOMERS
-                    </Link>
-                    <div className="admin-page-title">NEW CUSTOMER</div>
-                    <div className="admin-page-sub">CREATE A CONTACT + OPTIONAL FIRST VEHICLE</div>
-                </div>
-            </div>
+        <div className={sh.stack} style={{ maxWidth: 820 }}>
+            <ConsoleHead
+                back={{ href: `/shop/${slug}/customers`, label: 'All customers' }}
+                title="New customer"
+                sub="A contact, and their first vehicle if you have it"
+            />
 
             {!canCreate ? (
-                <div className="admin-empty">MANAGER ROLE REQUIRED TO CREATE CUSTOMERS.</div>
+                <div className={sh.note} role="note">
+                    <Lock size={20} strokeWidth={2} aria-hidden="true" />
+                    <span className={sh.noteText}>
+                        Manager role required
+                        <small>Ask a manager or the owner to add customers.</small>
+                    </span>
+                </div>
             ) : (
-                <form action={action} className="admin-form" style={{ maxWidth: 640, display: 'flex', flexDirection: 'column', gap: 12 }}>
-                    <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: 'var(--track-widest)', color: 'var(--text-3)' }}>
-                        CONTACT
-                    </div>
-                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                        <input name="first_name" placeholder="First name" className="admin-form-input" style={{ flex: 1, minWidth: 140 }} />
-                        <input name="last_name" placeholder="Last name" className="admin-form-input" style={{ flex: 1, minWidth: 140 }} />
-                    </div>
-                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                        <input name="email" placeholder="Email" className="admin-form-input" style={{ flex: 1, minWidth: 160 }} />
-                        <input name="phone" placeholder="Phone" className="admin-form-input" style={{ width: 160 }} />
-                    </div>
-                    <input name="company" placeholder="Company (optional)" className="admin-form-input" />
-                    <textarea name="notes" placeholder="Notes (optional)" rows={2} className="admin-form-input" style={{ resize: 'vertical' }} />
-
-                    <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: 'var(--track-widest)', color: 'var(--text-3)', marginTop: 8 }}>
-                        FIRST VEHICLE (OPTIONAL)
-                    </div>
-                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                        <input name="year" placeholder="Year" className="admin-form-input" style={{ width: 80 }} />
-                        <input name="make" placeholder="Make" className="admin-form-input" style={{ flex: 1, minWidth: 100 }} />
-                        <input name="model" placeholder="Model" className="admin-form-input" style={{ flex: 1, minWidth: 100 }} />
-                        <input name="trim" placeholder="Trim" className="admin-form-input" style={{ width: 110 }} />
-                    </div>
-                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                        <input name="color" placeholder="Color" className="admin-form-input" style={{ width: 120 }} />
-                        <input name="vin" placeholder="VIN" className="admin-form-input" style={{ flex: 1, minWidth: 140 }} />
-                        <input name="license_plate" placeholder="Plate" className="admin-form-input" style={{ width: 110 }} />
-                    </div>
-
+                <form action={action} className={sh.stack}>
+                    <Panel id="nc-contact" title="Contact">
+                        <div className={sh.grid2}>
+                            <Field label="First name" htmlFor="nc-first_name">
+                                <input id="nc-first_name" name="first_name" type="text" placeholder="" className={sh.field} />
+                            </Field>
+                            <Field label="Last name" htmlFor="nc-last_name">
+                                <input id="nc-last_name" name="last_name" type="text" placeholder="" className={sh.field} />
+                            </Field>
+                            <Field label="Email" htmlFor="nc-email">
+                                <input id="nc-email" name="email" type="text" inputMode="email" placeholder="" className={sh.field} />
+                            </Field>
+                            <Field label="Phone" htmlFor="nc-phone">
+                                <input id="nc-phone" name="phone" type="text" inputMode="tel" placeholder="" className={sh.field} />
+                            </Field>
+                            <Field label="Company" htmlFor="nc-company" className={sh.full}>
+                                <input id="nc-company" name="company" type="text" placeholder="Optional" className={sh.field} />
+                            </Field>
+                                <Field label="Notes" htmlFor="nc-notes" className={sh.full}>
+                                <textarea id="nc-notes" name="notes" placeholder="Optional" rows={3} className={sh.field} />
+                                </Field>
+                        </div>
+                    </Panel>
+                    <Panel id="nc-vehicle" title="First vehicle" sub="Optional">
+                        <div className={sh.grid2}>
+                            <Field label="Year" htmlFor="nc-year">
+                                <input id="nc-year" name="year" type="text" placeholder="" className={sh.field} />
+                            </Field>
+                            <Field label="Make" htmlFor="nc-make">
+                                <input id="nc-make" name="make" type="text" placeholder="" className={sh.field} />
+                            </Field>
+                            <Field label="Model" htmlFor="nc-model">
+                                <input id="nc-model" name="model" type="text" placeholder="" className={sh.field} />
+                            </Field>
+                            <Field label="Trim" htmlFor="nc-trim">
+                                <input id="nc-trim" name="trim" type="text" placeholder="" className={sh.field} />
+                            </Field>
+                            <Field label="Color" htmlFor="nc-color">
+                                <input id="nc-color" name="color" type="text" placeholder="" className={sh.field} />
+                            </Field>
+                            <Field label="Plate" htmlFor="nc-license_plate">
+                                <input id="nc-license_plate" name="license_plate" type="text" placeholder="" className={sh.field} />
+                            </Field>
+                            <Field label="VIN" htmlFor="nc-vin" className={sh.full}>
+                                <input id="nc-vin" name="vin" type="text" placeholder="" className={sh.field} />
+                            </Field>
+                        </div>
+                    </Panel>
                     <div>
-                        <button type="submit" className="admin-action-btn">
-                            CREATE CUSTOMER <ChevronRight />
-                        </button>
+                        <GlideButton type="submit" icon={<UserPlus size={20} strokeWidth={2} />}>
+                            Create customer
+                        </GlideButton>
                     </div>
                 </form>
             )}
-        </>
+        </div>
     );
 }
