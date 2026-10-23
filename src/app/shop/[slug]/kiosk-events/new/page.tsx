@@ -1,9 +1,10 @@
 import Link from 'next/link';
+import { ConsoleHead } from '@/components/glide-console/parts';
 import { redirect } from 'next/navigation';
 import { requireShopMemberBySlug } from '@/lib/auth-guard';
 import { createKioskEvent } from '../actions';
 import { TagListEditor } from '../TagListEditor';
-import { ChevronLeft, ChevronRight } from '@/components/icons';
+import { ChevronRight } from '@/components/icons';
 
 export const metadata = { title: 'New Kiosk Event' };
 
@@ -24,25 +25,15 @@ export default async function NewKioskEventPage({
 
     return (
         <>
-            <div className="admin-page-head">
-                <div>
-                    <div className="admin-page-title">NEW KIOSK EVENT</div>
-                    <div className="admin-page-sub">
-                        {shop.name.toUpperCase()} · SAVED AS DRAFT — PUBLISH WHEN READY
-                    </div>
-                </div>
-                <Link
-                    href={`/shop/${slug}/kiosk-events`}
-                    className="admin-action-btn muted"
-                    style={{ textDecoration: 'none' }}
-                >
-                    <ChevronLeft /> BACK
-                </Link>
-            </div>
+            <ConsoleHead
+                back={{ href: `/shop/${slug}/kiosk-events`, label: 'Kiosk events' }}
+                title="New kiosk event"
+                sub={`${shop.name} · saved as a draft; publish when it's ready`}
+            />
 
             <form className="admin-form" action={createBound} style={{ maxWidth: 720 }}>
-                <SectionHeading>DETAILS</SectionHeading>
-                <label className="admin-form-label">TITLE *</label>
+                <SectionHeading>Details</SectionHeading>
+                <label className="admin-form-label">Title *</label>
                 <input
                     name="title"
                     className="admin-form-input"
@@ -54,14 +45,14 @@ export default async function NewKioskEventPage({
                     TIP: THE KIOSK SPLITS THE TITLE AT &quot; WITH &quot; INTO A HEADLINE + ACCENT LINE.
                 </div>
 
-                <label className="admin-form-label">TAGLINE</label>
+                <label className="admin-form-label">Tagline</label>
                 <input
                     name="tagline"
                     className="admin-form-input"
                     placeholder="Two classic Porsches. Four days. One legend."
                 />
 
-                <label className="admin-form-label">DESCRIPTION</label>
+                <label className="admin-form-label">Description</label>
                 <textarea
                     name="description"
                     className="admin-form-input"
@@ -69,33 +60,33 @@ export default async function NewKioskEventPage({
                     placeholder="Full event description shown on the kiosk events page."
                 />
 
-                <SectionHeading>DATES</SectionHeading>
+                <SectionHeading>Dates</SectionHeading>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                     <div>
-                        <label className="admin-form-label">STARTS *</label>
+                        <label className="admin-form-label">Starts *</label>
                         <input type="date" name="starts_at" className="admin-form-input" required />
                     </div>
                     <div>
-                        <label className="admin-form-label">ENDS *</label>
+                        <label className="admin-form-label">Ends *</label>
                         <input type="date" name="ends_at" className="admin-form-input" required />
                     </div>
                 </div>
 
-                <SectionHeading>VENUE</SectionHeading>
-                <label className="admin-form-label">VENUE NAME</label>
+                <SectionHeading>Venue</SectionHeading>
+                <label className="admin-form-label">Venue name</label>
                 <input
                     name="venue_name"
                     className="admin-form-input"
                     placeholder="The Shop Seattle"
                 />
-                <label className="admin-form-label">VENUE ADDRESS</label>
+                <label className="admin-form-label">Venue address</label>
                 <input
                     name="venue_address"
                     className="admin-form-input"
                     placeholder="2233 6th Ave S, Seattle, WA 98134"
                 />
 
-                <SectionHeading>PARTNERS</SectionHeading>
+                <SectionHeading>Partners</SectionHeading>
                 <TagListEditor
                     initial={[]}
                     mode="plain"
@@ -103,7 +94,7 @@ export default async function NewKioskEventPage({
                     placeholder="RWB Seattle"
                 />
 
-                <SectionHeading>HIGHLIGHTS</SectionHeading>
+                <SectionHeading>Highlights</SectionHeading>
                 <TagListEditor
                     initial={[]}
                     mode="label-object"
@@ -111,8 +102,8 @@ export default async function NewKioskEventPage({
                     placeholder="Live build: Porsche 997"
                 />
 
-                <SectionHeading>LINK</SectionHeading>
-                <label className="admin-form-label">LINK URL (QR TARGET, OPTIONAL)</label>
+                <SectionHeading>Link</SectionHeading>
+                <label className="admin-form-label">Link URL (QR target, optional)</label>
                 <input
                     name="link_url"
                     className="admin-form-input"
@@ -128,7 +119,7 @@ export default async function NewKioskEventPage({
                         className="admin-action-btn muted"
                         style={{ textDecoration: 'none' }}
                     >
-                        CANCEL
+                        Cancel
                     </Link>
                 </div>
             </form>

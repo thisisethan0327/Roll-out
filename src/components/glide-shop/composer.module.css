@@ -1,0 +1,117 @@
+/* Glide composer (G6 chat). Renders inside the shop console's Glide scope. */
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.box {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  padding: 6px 6px 6px 18px;
+  border-radius: 28px;
+  background: var(--card);
+  box-shadow: inset 0 0 0 1px var(--field-line, var(--sh-field, var(--line-strong))), 0 10px 22px -16px rgba(var(--shadow), 0.5);
+  transition: box-shadow 0.15s ease-out;
+}
+.box:focus-within {
+  box-shadow: inset 0 0 0 2px var(--accent), 0 10px 22px -16px rgba(var(--shadow), 0.5);
+}
+.ta {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  max-height: 220px;
+  padding: 11px 0;
+  border: 0;
+  background: none;
+  resize: vertical;
+  font-family: var(--ui);
+  font-size: 15.5px;
+  line-height: 1.45;
+  color: var(--ink);
+  caret-color: var(--link);
+  outline: none;
+}
+.ta::placeholder {
+  color: var(--ink-2);
+  opacity: 1;
+}
+.acts {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+}
+.send {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 0;
+  display: grid;
+  place-items: center;
+  background: var(--accent);
+  color: var(--on-accent);
+  cursor: pointer;
+  transition: filter 0.15s ease-out;
+}
+.send:hover {
+  filter: brightness(1.08);
+}
+.send:disabled {
+  background: var(--surface-2);
+  color: var(--ink-2);
+  cursor: not-allowed;
+  filter: none;
+}
+.send:focus-visible {
+  outline: 2px solid var(--link);
+  outline-offset: 2px;
+}
+.hint {
+  margin: 0;
+  padding: 0 18px;
+  font-size: 12.5px;
+  color: var(--ink-2);
+}
+.err {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.err svg {
+  color: var(--stripe-3);
+  flex: none;
+}
+.locked {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: 12px 18px;
+  border-radius: 20px;
+  background: var(--surface);
+  font-size: 14.5px;
+  font-weight: 500;
+  color: var(--ink-2);
+}
+.locked svg {
+  color: var(--icon);
+  flex: none;
+}
+@media (max-width: 900px) {
+  .ta {
+    font-size: 16px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .box,
+  .send {
+    transition: none;
+  }
+}

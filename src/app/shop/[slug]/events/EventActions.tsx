@@ -39,7 +39,7 @@ export function EventActions({
                 disabled={pending}
                 onClick={() => router.push(`/shop/${slug}/events/${eventId}`)}
             >
-                EDIT
+                Edit
             </button>
             {canManage && !cancelled && (
                 <button
@@ -50,7 +50,7 @@ export function EventActions({
                         run(() => cancelEvent(eventId, shopId));
                     }}
                 >
-                    CANCEL
+                    Cancel
                 </button>
             )}
             {canManage && cancelled && (
@@ -59,7 +59,7 @@ export function EventActions({
                     disabled={pending}
                     onClick={() => run(() => uncancelEvent(eventId, shopId))}
                 >
-                    UNCANCEL
+                    Uncancel
                 </button>
             )}
         </div>

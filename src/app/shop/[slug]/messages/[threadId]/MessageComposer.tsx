@@ -7,7 +7,7 @@
  */
 import { useState, useTransition, useRef } from 'react';
 import { sendMessageAsShop } from '../actions';
-import { ChevronRight } from '@/components/icons';
+import { Composer, ComposerLocked } from '@/components/glide-shop/Composer';
 
 export function MessageComposer({
     threadId,
@@ -24,21 +24,7 @@ export function MessageComposer({
     const textareaRef = useRef<HTMLTextAreaElement>(null);
 
     if (!canSend) {
-        return (
-            <div
-                style={{
-                    padding: 16,
-                    border: '1px solid var(--line-mid)',
-                    background: 'var(--bg-2)',
-                    color: 'var(--text-2)',
-                    fontSize: 12,
-                    fontFamily: 'var(--font-display)',
-                    letterSpacing: 'var(--track-wider)',
-                }}
-            >
-                MANAGER+ REQUIRED TO POST ON BEHALF OF THE SHOP.
-            </div>
-        );
+        return <ComposerLocked>Managers and up can post on behalf of the shop.</ComposerLocked>;
     }
 
     const submit = () => {
@@ -57,81 +43,16 @@ export function MessageComposer({
     };
 
     return (
-        <div
-            style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 8,
-                padding: 12,
-                border: '1px solid var(--line-mid)',
-                background: 'var(--bg-1)',
-            }}
-        >
-            {error && (
-                <div
-                    style={{
-                        fontSize: 11,
-                        color: 'var(--warn)',
-                        fontFamily: 'var(--font-display)',
-                        letterSpacing: 'var(--track-wider)',
-                    }}
-                >
-                    {error}
-                </div>
-            )}
-            <textarea
-                ref={textareaRef}
-                value={body}
-                onChange={(e) => setBody(e.target.value)}
-                onKeyDown={(e) => {
-                    // Cmd/Ctrl+Enter to send; plain Enter inserts newline.
-                    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-                        e.preventDefault();
-                        submit();
-                    }
-                }}
-                placeholder="MESSAGE THE CUSTOMER…"
-                disabled={isPending}
-                rows={3}
-                style={{
-                    width: '100%',
-                    background: 'var(--bg-0)',
-                    color: 'var(--text)',
-                    border: '1px solid var(--line-mid)',
-                    padding: 10,
-                    fontFamily: 'inherit',
-                    fontSize: 14,
-                    resize: 'vertical',
-                    minHeight: 60,
-                }}
-            />
-            <div
-                style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    gap: 8,
-                }}
-            >
-                <div
-                    style={{
-                        fontSize: 10,
-                        color: 'var(--text-2)',
-                        fontFamily: 'var(--font-display)',
-                        letterSpacing: 'var(--track-wider)',
-                    }}
-                >
-                    POSTS AS THE SHOP · ⌘/CTRL+ENTER TO SEND
-                </div>
-                <button
-                    type="button"
-                    className="admin-action-btn"
-                    onClick={submit}
-                    disabled={isPending || !body.trim()}
-                >
-                    {isPending ? 'SENDING…' : <>SEND <ChevronRight /></>}
-                </button>
-            </div>
-        </div>
+        <Composer
+            value={body}
+            onChange={setBody}
+            onSubmit={submit}
+            pending={isPending}
+            error={error}
+            label="Message"
+            placeholder="Message the customer…"
+            hint="Posts as the shop · Ctrl or Cmd + Enter to send"
+            textareaRef={textareaRef}
+        />
     );
 }

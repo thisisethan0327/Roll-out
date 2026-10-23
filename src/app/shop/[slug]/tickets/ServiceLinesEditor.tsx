@@ -105,7 +105,7 @@ export function ServiceLinesEditor({
     return (
         <div>
             {activeCount === 0 && lines.length === 0 ? (
-                <div className="admin-empty">NO SERVICES YET</div>
+                <div className="admin-empty">No services yet</div>
             ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                     {lines.map((l, i) => {
@@ -136,7 +136,6 @@ export function ServiceLinesEditor({
                                         style={{
                                             fontSize: 10,
                                             letterSpacing: 1,
-                                            textTransform: 'uppercase',
                                             color: 'var(--text-3)',
                                         }}
                                     >
@@ -237,10 +236,10 @@ export function ServiceLinesEditor({
                     onClick={pickerOpen ? () => setPickerOpen(false) : openPicker}
                     disabled={disabled}
                 >
-                    {pickerOpen ? 'CLOSE CATALOG' : '+ FROM CATALOG'}
+                    {pickerOpen ? 'Close catalog' : '+ From catalog'}
                 </button>
                 <button type="button" className="admin-action-btn muted" onClick={addCustom} disabled={disabled}>
-                    + CUSTOM LINE
+                    + Custom line
                 </button>
                 {total != null && (
                     <span
@@ -252,7 +251,7 @@ export function ServiceLinesEditor({
                             alignSelf: 'center',
                         }}
                     >
-                        TOTAL ${total.toFixed(2)}
+                        Total ${total.toFixed(2)}
                     </span>
                 )}
             </div>
@@ -270,10 +269,10 @@ export function ServiceLinesEditor({
                     }}
                 >
                     {loadingCatalog && catalog == null ? (
-                        <div className="admin-empty">LOADING CATALOG…</div>
+                        <div className="admin-empty">Loading catalog…</div>
                     ) : cats.length === 0 ? (
                         <div className="admin-empty">
-                            NO CATALOG SERVICES. USE + CUSTOM LINE.
+                            No catalog services. Use + custom line.
                         </div>
                     ) : (
                         <>
@@ -356,7 +355,7 @@ export function ServiceLinesEditor({
                                     onClick={addFromCatalog}
                                     disabled={!item}
                                 >
-                                    + ADD
+                                    + Add
                                 </button>
                             </div>
                         </>

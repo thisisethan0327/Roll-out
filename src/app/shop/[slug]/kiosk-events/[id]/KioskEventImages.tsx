@@ -74,9 +74,9 @@ export function KioskEventImages({
         if (!file) return;
         start(async () => {
             try {
-                setBusyMsg('COMPRESSING HERO…');
+                setBusyMsg('Compressing hero…');
                 const blob = await compressImageFile(file, { maxDim: 2400, quality: 0.85 });
-                setBusyMsg('UPLOADING HERO…');
+                setBusyMsg('Uploading hero…');
                 const { path, token } = await mintHeroUploadTarget(eventId, shopId);
                 await uploadToBucket(path, token, blob);
                 const { url } = await attachHeroImage(eventId, shopId, path);
@@ -97,7 +97,7 @@ export function KioskEventImages({
         start(async () => {
             try {
                 for (let i = 0; i < list.length; i++) {
-                    setBusyMsg(`UPLOADING PHOTO ${i + 1} / ${list.length}…`);
+                    setBusyMsg(`Uploading photo ${i + 1} / ${list.length}…`);
                     const blob = await compressImageFile(list[i], {
                         maxDim: 1600,
                         quality: 0.82,
@@ -156,11 +156,11 @@ export function KioskEventImages({
 
     return (
         <div>
-            <SectionHeading>HERO IMAGE</SectionHeading>
+            <SectionHeading>Hero image</SectionHeading>
             {localHero ? (
                 <img src={localHero} alt="Event hero" className="admin-hero-preview" />
             ) : (
-                <div className="admin-empty">NO HERO IMAGE — THE KIOSK FALLS BACK TO HOST ART.</div>
+                <div className="admin-empty">No hero image — the kiosk falls back to host art.</div>
             )}
             {canManage && (
                 <div style={{ marginTop: 8 }}>
@@ -177,14 +177,14 @@ export function KioskEventImages({
                         disabled={pending}
                         onClick={() => heroInputRef.current?.click()}
                     >
-                        {localHero ? 'REPLACE HERO' : 'UPLOAD HERO'}
+                        {localHero ? 'Replace hero' : 'Upload hero'}
                     </button>
                 </div>
             )}
 
             <SectionHeading>GALLERY ({localGallery.length})</SectionHeading>
             {localGallery.length === 0 ? (
-                <div className="admin-empty">NO PHOTOS — THE KIOSK HIDES THE PHOTO STRIP.</div>
+                <div className="admin-empty">No photos — the kiosk hides the photo strip.</div>
             ) : (
                 <div className="admin-gallery-grid">
                     {localGallery.map((url, i) => (
@@ -217,7 +217,7 @@ export function KioskEventImages({
                                         onClick={() => remove(url)}
                                         aria-label="Remove photo"
                                     >
-                                        {armedRemove === url ? 'SURE?' : <X />}
+                                        {armedRemove === url ? 'Sure?' : <X />}
                                     </button>
                                 </div>
                             )}

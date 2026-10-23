@@ -1,20 +1,21 @@
 import Link from 'next/link';
+import { ConsoleHead } from '@/components/glide-console/parts';
 import { redirect } from 'next/navigation';
 import { requireShopMemberBySlug } from '@/lib/auth-guard';
 import { createEvent } from '../actions';
 import { EventCoverPicker } from '../EventCoverPicker';
 import { TierRowsEditor } from '../TierRowsEditor';
 import { EventStartAtField } from '@/components/EventStartAtField';
-import { ChevronLeft, ChevronRight } from '@/components/icons';
+import { ChevronRight } from '@/components/icons';
 
 export const metadata = { title: 'Host Event' };
 
 const MANAGER_ROLES = new Set(['owner', 'admin', 'manager']);
 
 const VISIBILITY: { value: string; label: string }[] = [
-    { value: 'public', label: 'PUBLIC' },
-    { value: 'followers', label: 'FOLLOWERS' },
-    { value: 'private', label: 'PRIVATE' },
+    { value: 'public', label: 'Public' },
+    { value: 'followers', label: 'Followers' },
+    { value: 'private', label: 'Private' },
 ];
 
 export default async function NewEventPage({
@@ -32,30 +33,22 @@ export default async function NewEventPage({
 
     return (
         <>
-            <div className="admin-page-head">
-                <div>
-                    <div className="admin-page-title">HOST EVENT</div>
-                    <div className="admin-page-sub">{shop.name.toUpperCase()} · NEW EVENT</div>
-                </div>
-                <Link
-                    href={`/shop/${slug}/events`}
-                    className="admin-action-btn muted"
-                    style={{ textDecoration: 'none' }}
-                >
-                    <ChevronLeft /> BACK
-                </Link>
-            </div>
+            <ConsoleHead
+                back={{ href: `/shop/${slug}/events`, label: 'Events' }}
+                title="Host event"
+                sub={`${shop.name} · new event`}
+            />
 
             <form
                 className="admin-form"
                 action={createEventBound}
                 style={{ maxWidth: 720 }}
             >
-                <SectionHeading>TYPE & COVER</SectionHeading>
+                <SectionHeading>Type & cover</SectionHeading>
                 <EventCoverPicker mode="create" />
 
-                <SectionHeading>DETAILS</SectionHeading>
-                <label className="admin-form-label">TITLE</label>
+                <SectionHeading>Details</SectionHeading>
+                <label className="admin-form-label">Title</label>
                 <input
                     name="title"
                     className="admin-form-input"
@@ -64,7 +57,7 @@ export default async function NewEventPage({
                     placeholder="Friday Night Cars & Coffee"
                 />
 
-                <label className="admin-form-label">DESCRIPTION</label>
+                <label className="admin-form-label">Description</label>
                 <textarea
                     name="description"
                     className="admin-form-input"
@@ -73,8 +66,8 @@ export default async function NewEventPage({
                     placeholder="What's the vibe? Who should come? (max 400 chars)"
                 />
 
-                <SectionHeading>LOCATION</SectionHeading>
-                <label className="admin-form-label">LOCATION NAME *</label>
+                <SectionHeading>Location</SectionHeading>
+                <label className="admin-form-label">Location name *</label>
                 <input
                     name="location_name"
                     className="admin-form-input"
@@ -83,14 +76,14 @@ export default async function NewEventPage({
                     minLength={2}
                 />
 
-                <label className="admin-form-label">LOCATION DETAIL (OPTIONAL)</label>
+                <label className="admin-form-label">Location detail (optional)</label>
                 <input
                     name="location_detail"
                     className="admin-form-input"
                     placeholder="Back lot, gate 3"
                 />
 
-                <label className="admin-form-label">GENERAL AREA (SHOWN ON PRIVATE LISTINGS)</label>
+                <label className="admin-form-label">General area (shown on private listings)</label>
                 <input
                     name="area_label"
                     className="admin-form-input"
@@ -103,7 +96,7 @@ export default async function NewEventPage({
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                     <div>
-                        <label className="admin-form-label">LAT (OPTIONAL)</label>
+                        <label className="admin-form-label">Lat (optional)</label>
                         <input
                             type="number"
                             step="any"
@@ -113,7 +106,7 @@ export default async function NewEventPage({
                         />
                     </div>
                     <div>
-                        <label className="admin-form-label">LNG (OPTIONAL)</label>
+                        <label className="admin-form-label">Lng (optional)</label>
                         <input
                             type="number"
                             step="any"
@@ -124,11 +117,11 @@ export default async function NewEventPage({
                     </div>
                 </div>
 
-                <SectionHeading>WHEN & CAPACITY</SectionHeading>
-                <label className="admin-form-label">START AT</label>
+                <SectionHeading>When & capacity</SectionHeading>
+                <label className="admin-form-label">Start at</label>
                 <EventStartAtField />
 
-                <label className="admin-form-label">CAPACITY (OPTIONAL)</label>
+                <label className="admin-form-label">Capacity (optional)</label>
                 <input
                     type="number"
                     min={1}
@@ -137,10 +130,10 @@ export default async function NewEventPage({
                     placeholder="50"
                 />
 
-                <SectionHeading>RSVP MODE & TIERS</SectionHeading>
+                <SectionHeading>RSVP mode & tiers</SectionHeading>
                 <TierRowsEditor />
 
-                <SectionHeading>VISIBILITY</SectionHeading>
+                <SectionHeading>Visibility</SectionHeading>
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                     {VISIBILITY.map((v) => (
                         <label
@@ -165,8 +158,8 @@ export default async function NewEventPage({
                     ))}
                 </div>
 
-                <SectionHeading>TAGS</SectionHeading>
-                <label className="admin-form-label">TAGS (COMMA-SEPARATED)</label>
+                <SectionHeading>Tags</SectionHeading>
+                <label className="admin-form-label">Tags (comma-separated)</label>
                 <input
                     name="tags"
                     className="admin-form-input"
@@ -175,14 +168,14 @@ export default async function NewEventPage({
 
                 <div style={{ marginTop: 18, display: 'flex', gap: 8 }}>
                     <button type="submit" className="admin-form-btn">
-                        HOST EVENT <ChevronRight />
+                        Host event <ChevronRight />
                     </button>
                     <Link
                         href={`/shop/${slug}/events`}
                         className="admin-action-btn muted"
                         style={{ textDecoration: 'none' }}
                     >
-                        CANCEL
+                        Cancel
                     </Link>
                 </div>
             </form>

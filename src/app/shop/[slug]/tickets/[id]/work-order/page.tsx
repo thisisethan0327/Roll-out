@@ -12,7 +12,8 @@ import { requireShopMemberBySlug } from '@/lib/auth-guard';
 import { getSupabaseAdmin, getSupabasePublicAdmin } from '@/lib/supabase/admin';
 import { PrintButton } from '../invoice/PrintButton';
 import { parseServices, lineTotal, visibleLines, serviceDisplayName } from '@/lib/ticket-services';
-import { ChevronLeft } from '@/components/icons';
+import { ChevronLeft } from 'lucide-react';
+import { shopStyles as sh } from '@/components/glide-shop/parts';
 
 export const metadata = { title: 'Work Order' };
 
@@ -105,11 +106,15 @@ export default async function WorkOrderPage({
                 }}
             />
 
-            <div className="no-print" style={{ display: 'flex', gap: 8, marginBottom: 16, alignItems: 'center' }}>
-                <Link href={`/shop/${slug}/tickets/${id}`} className="admin-action-btn muted" style={{ textDecoration: 'none' }}>
-                    <ChevronLeft /> BACK TO TICKET
+            <div className={`no-print g-fp ${sh.docBar}`}>
+                <Link href={`/shop/${slug}/tickets/${id}`} className="g-link" style={{ paddingLeft: 10 }}>
+                    <ChevronLeft size={18} strokeWidth={2} aria-hidden="true" />
+                    Back to ticket
                 </Link>
-                <PrintButton />
+                <span className={sh.docActs}>
+                    <span className={sh.muted} style={{ fontSize: 14 }}>Work order · {t.ticket_id ?? id}</span>
+                    <PrintButton />
+                </span>
             </div>
 
             <div

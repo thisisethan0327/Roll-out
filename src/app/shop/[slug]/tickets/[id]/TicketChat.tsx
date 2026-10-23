@@ -11,7 +11,9 @@
 import { useEffect, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { mintChatPhotoTarget, sendTicketMessage, sendTicketPhotoMessage } from './detail-actions';
-import { PendingButton } from '@/components/feedback';
+import { ImagePlus } from 'lucide-react';
+import { Composer } from '@/components/glide-shop/Composer';
+import { cx, shopStyles as sh } from '@/components/glide-shop/parts';
 import { getSupabaseBrowser } from '@/lib/supabase/browser';
 import { compressImageFile, KIOSK_IMAGE_ACCEPT } from '@/lib/kiosk-image';
 import { TICKET_BUCKET, TICKET_CACHE_CONTROL } from '@/lib/ticket-media-constants';
@@ -101,36 +103,20 @@ export function TicketChat({
     };
 
     return (
-        <div>
-            <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
+        <div className={sh.chatBox}>
+            <div className={sh.tabs} role="group" aria-label="Show messages">
                 {(['all', 'customer', 'internal'] as const).map((f) => (
-                    <button
-                        key={f}
-                        type="button"
-                        className={`admin-pill ${filter === f ? 'gold' : ''}`}
-                        style={{ cursor: 'pointer', opacity: filter === f ? 1 : 0.6 }}
-                        onClick={() => setFilter(f)}
-                    >
-                        {f.toUpperCase()}
+                    <button key={f} type="button" aria-pressed={filter === f} onClick={() => setFilter(f)}>
+                        {f === 'all' ? 'All' : f === 'customer' ? 'Customer' : 'Internal'}
                     </button>
                 ))}
             </div>
 
-            <div
-                ref={scrollRef}
-                style={{
-                    maxHeight: 340,
-                    overflowY: 'auto',
-                    border: '1px solid var(--line)',
-                    background: 'var(--bg-2)',
-                    padding: 10,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: 8,
-                }}
-            >
+            <div ref={scrollRef} className={cx(sh.chat, sh.chatScroll)}>
                 {shown.length === 0 ? (
-                    <div className="admin-empty">NO MESSAGES</div>
+                    <p className={sh.muted} style={{ margin: 'auto', fontSize: 14.5 }}>
+                        No messages
+                    </p>
                 ) : (
                     shown.map((m) => {
                         const isStaff = m.sender_type === 'staff';
@@ -139,50 +125,21 @@ export function TicketChat({
                         return (
                             <div
                                 key={m.id}
-                                style={{
-                                    alignSelf: isStaff ? 'flex-end' : 'flex-start',
-                                    maxWidth: '80%',
-                                    border: '1px solid var(--line)',
-                                    background: internal
-                                        ? 'var(--gold-glow)'
-                                        : isStaff
-                                          ? 'var(--bg-1)'
-                                          : 'var(--bg-3, var(--bg-2))',
-                                    borderLeft: internal
-                                        ? '2px solid var(--gold)'
-                                        : '1px solid var(--line)',
-                                    padding: '6px 10px',
-                                }}
+                                className={cx(sh.msg, isStaff ? sh.msgOut : sh.msgIn, internal && sh.msgInternal)}
                             >
-                                <div
-                                    style={{
-                                        fontFamily: 'var(--font-display)',
-                                        fontSize: 9,
-                                        letterSpacing: 'var(--track-wider)',
-                                        color: 'var(--text-3)',
-                                        marginBottom: 3,
-                                    }}
-                                >
-                                    {(m.sender_name ?? m.sender_type ?? '—').toUpperCase()}
-                                    {internal ? ' · INTERNAL' : ''}
+                                <span className={sh.msgMeta}>
+                                    <b>{m.sender_name ?? m.sender_type ?? '—'}</b>
+                                    {internal ? ' · Internal note' : ''}
                                     {m.created_at
                                         ? ` · ${new Date(m.created_at).toISOString().slice(5, 16).replace('T', ' ')}`
                                         : ''}
-                                </div>
-                                {m.message && (
-                                    <div style={{ fontSize: 13, color: 'var(--text)', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                                        {m.message}
-                                    </div>
-                                )}
+                                </span>
+                                {m.message ? <div className={sh.bubble}>{m.message}</div> : null}
                                 {atts.map((a: any, i: number) =>
                                     a?.url ? (
-                                        // eslint-disable-next-line @next/next/no-img-element
-                                        <a key={i} href={a.url} target="_blank" rel="noreferrer">
-                                            <img
-                                                src={a.url}
-                                                alt="attachment"
-                                                style={{ maxWidth: 160, marginTop: 6, borderRadius: 4 }}
-                                            />
+                                        <a key={i} href={a.url} target="_blank" rel="noreferrer" className={sh.att}>
+                                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                                            <img src={a.url} alt="Photo attachment" />
                                         </a>
                                     ) : null,
                                 )}
@@ -192,71 +149,49 @@ export function TicketChat({
                 )}
             </div>
 
-            <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <div style={{ display: 'flex', gap: 6 }}>
-                    {(['customer', 'internal'] as const).map((v) => (
-                        <button
-                            key={v}
-                            type="button"
-                            className={`admin-pill ${visibility === v ? (v === 'internal' ? 'warn' : 'neon') : ''}`}
-                            style={{ cursor: 'pointer', opacity: visibility === v ? 1 : 0.6 }}
-                            onClick={() => setVisibility(v)}
-                        >
-                            {v === 'customer' ? 'TO CUSTOMER' : 'INTERNAL NOTE'}
-                        </button>
-                    ))}
-                </div>
-                <textarea
-                    className="admin-form-input"
-                    rows={2}
-                    placeholder={
-                        visibility === 'internal'
-                            ? 'Internal note (staff only)…'
-                            : 'Message the customer…'
-                    }
-                    value={text}
-                    onChange={(e) => setText(e.target.value)}
-                    onKeyDown={(e) => {
-                        if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-                            e.preventDefault();
-                            send();
-                        }
-                    }}
-                    style={{ width: '100%', resize: 'vertical' }}
-                />
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                    <PendingButton
-                        type="button"
-                        className="admin-action-btn"
-                        pending={pending}
-                        pendingLabel="SENDING"
-                        disabled={!text.trim() || uploading}
-                        onClick={send}
-                    >
-                        {visibility === 'internal' ? 'ADD NOTE' : 'SEND'}
-                    </PendingButton>
-                    <input
-                        ref={fileRef}
-                        type="file"
-                        accept={KIOSK_IMAGE_ACCEPT}
-                        hidden
-                        onChange={(e) => onPhoto(e.target.files)}
-                    />
+            <div className={sh.tabs} role="group" aria-label="Send as">
+                {(['customer', 'internal'] as const).map((v) => (
+                    <button key={v} type="button" aria-pressed={visibility === v} onClick={() => setVisibility(v)}>
+                        {v === 'customer' ? 'To customer' : 'Internal note'}
+                    </button>
+                ))}
+            </div>
+            <input
+                ref={fileRef}
+                type="file"
+                accept={KIOSK_IMAGE_ACCEPT}
+                hidden
+                onChange={(e) => onPhoto(e.target.files)}
+            />
+            <Composer
+                value={text}
+                onChange={setText}
+                onSubmit={send}
+                pending={pending || uploading}
+                error={photoError}
+                label={visibility === 'internal' ? 'Internal note' : 'Message to the customer'}
+                placeholder={visibility === 'internal' ? 'Internal note (staff only)…' : 'Message the customer…'}
+                sendLabel={visibility === 'internal' ? 'Add note' : 'Send'}
+                hint={
+                    uploading
+                        ? 'Sending photo…'
+                        : visibility === 'internal'
+                          ? 'Staff only · Ctrl or Cmd + Enter to add'
+                          : 'The customer sees this · Ctrl or Cmd + Enter to send'
+                }
+                extra={
                     <button
                         type="button"
-                        className="admin-action-btn muted"
+                        className="g-cb g-cb--fill"
                         disabled={uploading || pending}
                         onClick={() => fileRef.current?.click()}
+                        aria-label={uploading ? 'Sending photo' : 'Add a photo'}
+                        title="Add a photo"
                     >
-                        {uploading ? 'SENDING PHOTO…' : '+ PHOTO'}
+                        <ImagePlus size={19} strokeWidth={2} aria-hidden="true" />
                     </button>
-                    {photoError && (
-                        <span role="alert" style={{ color: 'var(--warn)', fontSize: 12 }}>
-                            {photoError}
-                        </span>
-                    )}
-                </div>
-            </div>
+                }
+            />
         </div>
     );
 }

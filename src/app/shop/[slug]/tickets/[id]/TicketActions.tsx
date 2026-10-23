@@ -24,11 +24,20 @@ const STATUS_OPTIONS = [
 // (priority = ANY('normal','rush')); high/urgent would violate it.
 const PRIORITY_OPTIONS = ['normal', 'rush'];
 
+/** 'in-progress' → 'In progress' (the stored value is unchanged). */
+function label(v: string): string {
+    const t = v.replace(/[_-]/g, ' ');
+    return t.charAt(0).toUpperCase() + t.slice(1);
+}
+
 export function StatusSelect({
+    id,
     slug,
     ticketRowId,
     initial,
 }: {
+    /** For a visible <label htmlFor>. */
+    id?: string;
     slug: string;
     ticketRowId: string;
     initial: string | null;
@@ -37,6 +46,7 @@ export function StatusSelect({
     const [value, setValue] = useState(initial ?? 'pending');
     return (
         <select
+            id={id}
             disabled={pending}
             value={value}
             onChange={(e) => {
@@ -52,11 +62,11 @@ export function StatusSelect({
                 });
             }}
             className="admin-form-input"
-            style={{ width: '100%', fontFamily: 'var(--font-display)', fontSize: 12 }}
+            style={{ width: '100%' }}
         >
             {STATUS_OPTIONS.map((s) => (
                 <option key={s} value={s}>
-                    {s.toUpperCase().replace(/[_-]/g, ' ')}
+                    {label(s)}
                 </option>
             ))}
         </select>
@@ -64,10 +74,13 @@ export function StatusSelect({
 }
 
 export function PrioritySelect({
+    id,
     slug,
     ticketRowId,
     initial,
 }: {
+    /** For a visible <label htmlFor>. */
+    id?: string;
     slug: string;
     ticketRowId: string;
     initial: string | null;
@@ -76,6 +89,7 @@ export function PrioritySelect({
     const [value, setValue] = useState((initial ?? 'normal').toLowerCase());
     return (
         <select
+            id={id}
             disabled={pending}
             value={value}
             onChange={(e) => {
@@ -91,11 +105,11 @@ export function PrioritySelect({
                 });
             }}
             className="admin-form-input"
-            style={{ width: '100%', fontFamily: 'var(--font-display)', fontSize: 12 }}
+            style={{ width: '100%' }}
         >
             {PRIORITY_OPTIONS.map((p) => (
                 <option key={p} value={p}>
-                    {p.toUpperCase()}
+                    {label(p)}
                 </option>
             ))}
         </select>
@@ -131,7 +145,7 @@ export function ServiceDayInput({
                 });
             }}
             className="admin-form-input"
-            style={{ width: '100%', fontFamily: 'var(--font-mono, monospace)', fontSize: 12 }}
+            style={{ width: '100%' }}
         />
     );
 }
@@ -168,7 +182,7 @@ export function ScheduleEditor({
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <span className="admin-form-label">SERVICE DAY</span>
+                <span className="admin-form-label">Service day</span>
                 <input
                     type="date"
                     disabled={pending}
@@ -178,11 +192,11 @@ export function ScheduleEditor({
                         commit(e.target.value, endDate);
                     }}
                     className="admin-form-input"
-                    style={{ width: '100%', fontFamily: 'var(--font-mono, monospace)', fontSize: 12 }}
+                    style={{ width: '100%' }}
                 />
             </label>
             <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <span className="admin-form-label">END DATE</span>
+                <span className="admin-form-label">End date</span>
                 <input
                     type="date"
                     disabled={pending}
@@ -192,7 +206,7 @@ export function ScheduleEditor({
                         commit(serviceDay, e.target.value);
                     }}
                     className="admin-form-input"
-                    style={{ width: '100%', fontFamily: 'var(--font-mono, monospace)', fontSize: 12 }}
+                    style={{ width: '100%' }}
                 />
             </label>
         </div>
@@ -239,7 +253,7 @@ export function AppendNoteForm({
                     disabled={pending || !text.trim()}
                     className="admin-action-btn"
                 >
-                    {pending ? 'APPENDING…' : 'APPEND'}
+                    {pending ? 'Adding…' : 'Add note'}
                 </button>
             </div>
         </form>

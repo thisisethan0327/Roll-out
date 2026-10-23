@@ -45,9 +45,9 @@ const EMPTY_ROW: TierDraft = {
 };
 
 const PACKAGE_MODES: { value: TierDraft['packageMode']; label: string }[] = [
-    { value: 'none', label: 'NONE' },
-    { value: 'included', label: 'INCLUDED' },
-    { value: 'addon', label: 'ADD-ON' },
+    { value: 'none', label: 'None' },
+    { value: 'included', label: 'Included' },
+    { value: 'addon', label: 'Add-on' },
 ];
 
 /** Dollars string → integer cents ('' / junk → 0). */
@@ -121,7 +121,7 @@ export function TierRowsEditor({
                             onChange={() => setMode(m)}
                             disabled={disabled}
                         />
-                        {m === 'free' ? 'FREE' : 'TIERED'}
+                        {m === 'free' ? 'Free' : 'Tiered'}
                     </label>
                 ))}
             </div>
@@ -149,7 +149,7 @@ export function TierRowsEditor({
                                     }}
                                 >
                                     TIER {i + 1}
-                                    {row.id ? ' · SAVED' : ''}
+                                    {row.id ? ' · saved' : ''}
                                 </span>
                                 {rows.length > 1 ? (
                                     <button
@@ -158,14 +158,14 @@ export function TierRowsEditor({
                                         onClick={() => removeRow(i)}
                                         disabled={disabled}
                                     >
-                                        REMOVE
+                                        Remove
                                     </button>
                                 ) : null}
                             </div>
 
                             <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 12 }}>
                                 <div>
-                                    <label className="admin-form-label">NAME *</label>
+                                    <label className="admin-form-label">Name *</label>
                                     <input
                                         className="admin-form-input"
                                         value={row.name}
@@ -175,7 +175,7 @@ export function TierRowsEditor({
                                     />
                                 </div>
                                 <div>
-                                    <label className="admin-form-label">TICKET $ (0 = FREE)</label>
+                                    <label className="admin-form-label">Ticket $ (0 = free)</label>
                                     <input
                                         className="admin-form-input"
                                         type="number"
@@ -188,7 +188,7 @@ export function TierRowsEditor({
                                     />
                                 </div>
                                 <div>
-                                    <label className="admin-form-label">SUB-CAP</label>
+                                    <label className="admin-form-label">Sub-cap</label>
                                     <input
                                         className="admin-form-input"
                                         type="number"
@@ -201,7 +201,7 @@ export function TierRowsEditor({
                                 </div>
                             </div>
 
-                            <label className="admin-form-label">INCLUDES (COMMA-SEPARATED)</label>
+                            <label className="admin-form-label">Includes (comma-separated)</label>
                             <input
                                 className="admin-form-input"
                                 value={row.includes}
@@ -212,7 +212,7 @@ export function TierRowsEditor({
 
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, alignItems: 'end' }}>
                                 <div>
-                                    <label className="admin-form-label">PACKAGE</label>
+                                    <label className="admin-form-label">Package</label>
                                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                                         {PACKAGE_MODES.map((p) => (
                                             <label
@@ -238,7 +238,7 @@ export function TierRowsEditor({
                                 </div>
                                 {row.packageMode === 'addon' ? (
                                     <div>
-                                        <label className="admin-form-label">PACKAGE $</label>
+                                        <label className="admin-form-label">Package $</label>
                                         <input
                                             className="admin-form-input"
                                             type="number"
@@ -255,7 +255,7 @@ export function TierRowsEditor({
 
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 12, alignItems: 'end' }}>
                                 <div>
-                                    <label className="admin-form-label">MEDUSA PRODUCT ID (OPTIONAL)</label>
+                                    <label className="admin-form-label">Medusa product ID (optional)</label>
                                     <input
                                         className="admin-form-input"
                                         value={row.medusaProductId}
@@ -280,7 +280,7 @@ export function TierRowsEditor({
                                         onChange={(e) => setRow(i, { reservedSpot: e.target.checked })}
                                         disabled={disabled}
                                     />
-                                    RESERVED SPOT
+                                    Reserved spot
                                 </label>
                             </div>
                         </div>
@@ -293,7 +293,7 @@ export function TierRowsEditor({
                         disabled={disabled}
                         style={{ alignSelf: 'flex-start' }}
                     >
-                        + ADD TIER
+                        + Add tier
                     </button>
                 </div>
             ) : null}

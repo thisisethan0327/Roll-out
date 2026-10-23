@@ -101,11 +101,11 @@ export function CustomerPicker({
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
                     <span style={{ fontWeight: 600 }}>{value.name || '(unnamed)'}</span>
                     <span className="admin-handle" style={{ fontSize: 11 }}>
-                        {[value.email, value.phone].filter(Boolean).join(' · ') || 'LINKED CUSTOMER'}
+                        {[value.email, value.phone].filter(Boolean).join(' · ') || 'Linked customer'}
                     </span>
                 </div>
                 <button type="button" className="admin-action-btn muted" onClick={clear} disabled={disabled}>
-                    CHANGE
+                    Change
                 </button>
             </div>
         );
@@ -139,7 +139,7 @@ export function CustomerPicker({
                     >
                         {searching && results.length === 0 ? (
                             <div className="admin-empty" style={{ padding: 10 }}>
-                                SEARCHING…
+                                Searching…
                             </div>
                         ) : (
                             results.map((c) => (
@@ -172,7 +172,7 @@ export function CustomerPicker({
 
             {/* Inline new-customer fields (used when nothing is selected). */}
             <div style={{ fontSize: 10, letterSpacing: 1, color: 'var(--text-3)' }}>
-                OR ENTER A NEW CUSTOMER
+                Or enter a new customer
             </div>
             <input
                 className="admin-form-input"

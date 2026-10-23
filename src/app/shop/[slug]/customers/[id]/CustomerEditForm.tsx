@@ -47,7 +47,7 @@ export function CustomerEditForm({
     if (!open) {
         return (
             <button type="button" className="admin-action-btn muted" onClick={() => setOpen(true)} style={{ marginTop: 8 }}>
-                EDIT CONTACT
+                Edit contact
             </button>
         );
     }
@@ -81,10 +81,10 @@ export function CustomerEditForm({
             <textarea name="notes" defaultValue={customer.notes ?? ''} placeholder="Notes" rows={2} className="admin-form-input" style={{ resize: 'vertical' }} />
             <div style={{ display: 'flex', gap: 8 }}>
                 <button type="submit" className="admin-action-btn" disabled={pending}>
-                    {pending ? 'SAVING…' : 'SAVE CONTACT'}
+                    {pending ? 'Saving…' : 'Save contact'}
                 </button>
                 <button type="button" className="admin-action-btn muted" onClick={() => setOpen(false)}>
-                    CANCEL
+                    Cancel
                 </button>
             </div>
         </form>

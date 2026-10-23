@@ -1,6 +1,7 @@
 'use client';
 import { useTransition } from 'react';
 import { dismissShopActionItem } from './actions';
+import { shopStyles as sh } from '@/components/glide-shop/parts';
 
 /**
  * Client dismiss control for a shop_owner action item. Slug travels with the id
@@ -10,7 +11,8 @@ export function DismissButton({ slug, id }: { slug: string; id: string }) {
     const [pending, start] = useTransition();
     return (
         <button
-            className="admin-action-btn muted"
+            type="button"
+            className={`g-sec g-sec--ink ${sh.secSm}`}
             disabled={pending}
             onClick={() =>
                 start(async () => {
@@ -22,7 +24,7 @@ export function DismissButton({ slug, id }: { slug: string; id: string }) {
                 })
             }
         >
-            {pending ? '…' : 'DISMISS'}
+            {pending ? 'Dismissing…' : 'Dismiss'}
         </button>
     );
 }

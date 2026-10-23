@@ -54,7 +54,7 @@ export function KioskEventStatusActions({
                     disabled={pending}
                     onClick={() => router.push(`/shop/${slug}/kiosk-events/${eventId}`)}
                 >
-                    EDIT
+                    Edit
                 </button>
             )}
             {canManage && status !== 'published' && (
@@ -63,7 +63,7 @@ export function KioskEventStatusActions({
                     disabled={pending}
                     onClick={() => run(() => setKioskEventStatus(eventId, shopId, 'published'))}
                 >
-                    PUBLISH
+                    Publish
                 </button>
             )}
             {canManage && status === 'published' && (
@@ -72,7 +72,7 @@ export function KioskEventStatusActions({
                     disabled={pending}
                     onClick={() => run(() => setKioskEventStatus(eventId, shopId, 'draft'))}
                 >
-                    UNPUBLISH
+                    Unpublish
                 </button>
             )}
             {canManage && status !== 'archived' && (
@@ -81,7 +81,7 @@ export function KioskEventStatusActions({
                     disabled={pending}
                     onClick={() => run(() => setKioskEventStatus(eventId, shopId, 'archived'))}
                 >
-                    ARCHIVE
+                    Archive
                 </button>
             )}
             {canDelete && (
@@ -97,7 +97,7 @@ export function KioskEventStatusActions({
                         run(() => deleteKioskEvent(eventId, shopId));
                     }}
                 >
-                    {armed ? 'CONFIRM DELETE?' : 'DELETE'}
+                    {armed ? 'Confirm delete?' : 'Delete'}
                 </button>
             )}
         </div>

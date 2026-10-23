@@ -3,17 +3,19 @@ import { requireShopMemberBySlug } from '@/lib/auth-guard';
 import { getSupabaseAdmin, getSupabasePublicAdmin } from '@/lib/supabase/admin';
 import { CustomerVehicles } from './CustomerVehicles';
 import { CustomerEditForm } from './CustomerEditForm';
-import { Check, ChevronLeft } from '@/components/icons';
+import { BadgeCheck, Car, CircleAlert, History } from 'lucide-react';
+import { ConsoleHead } from '@/components/glide-console/parts';
+import { EmptyRow, KVList, Panel, StatusChip, cx, fmtWhen, initials, shopStyles as sh } from '@/components/glide-shop/parts';
 
 export const metadata = { title: 'Customer · Detail' };
 
 const SERVICE_LABEL: Record<string, string> = {
-    WRAP: 'VINYL WRAP',
+    WRAP: 'Vinyl wrap',
     PPF: 'PPF',
-    TINT: 'WINDOW TINT',
-    CERAMIC: 'CERAMIC',
-    PARTS: 'PARTS / INSTALL',
-    OTHER: 'OTHER',
+    TINT: 'Window tint',
+    CERAMIC: 'Ceramic',
+    PARTS: 'Parts / install',
+    OTHER: 'Other',
 };
 
 type TimelineEntry = {
@@ -26,28 +28,11 @@ type TimelineEntry = {
 };
 
 function fmtDate(iso?: string | null) {
-    if (!iso) return '—';
-    return new Date(iso).toISOString().slice(0, 10);
+    return fmtWhen(iso, false);
 }
 
 function fmtDateTime(iso?: string | null) {
-    if (!iso) return '—';
-    return new Date(iso).toISOString().slice(0, 16).replace('T', ' ');
-}
-
-function initials(name?: string | null) {
-    if (!name) return '?';
-    const parts = name.trim().split(/\s+/).slice(0, 2);
-    return parts.map((p) => p[0]?.toUpperCase() ?? '').join('') || '?';
-}
-
-function pillTone(status?: string | null): '' | 'gold' | 'neon' | 'warn' {
-    if (!status) return '';
-    const s = status.toLowerCase();
-    if (s === 'pending' || s === 'in_progress' || s === 'scheduled') return 'gold';
-    if (s === 'accepted' || s === 'completed' || s === 'paid') return 'neon';
-    if (s === 'declined' || s === 'cancelled' || s === 'canceled') return 'warn';
-    return '';
+    return fmtWhen(iso);
 }
 
 /** Rollout-side detail loader. */
@@ -184,33 +169,30 @@ export default async function CustomerDetailPage({
 
     if (prefix !== 'r-' && prefix !== 'l-') {
         return (
-            <>
-                <div className="admin-page-head">
-                    <div>
-                        <div className="admin-page-title">CUSTOMER</div>
-                        <div className="admin-page-sub">UNRECOGNIZED ID PREFIX</div>
-                    </div>
-                    <Link
-                        href={`/shop/${slug}/customers`}
-                        className="admin-action-btn muted"
-                        style={{ textDecoration: 'none' }}
-                    >
-                        <ChevronLeft /> ALL CUSTOMERS
-                    </Link>
-                </div>
-                <div className="admin-empty">
-                    ID MUST BE PREFIXED `r-` (ROLLOUT) OR `l-` (LEGACY).
-                </div>
-            </>
+            <NotFoundCard
+                slug={slug}
+                title="Customer"
+                body="This link is not a customer record. Customer IDs start with r- (Rollout) or l- (legacy)."
+            />
         );
     }
 
     if (prefix === 'r-') {
-        return (
-            <RolloutBranch slug={slug} shopId={shop.shopId} profileId={rawId} />
-        );
+        return <RolloutBranch slug={slug} shopId={shop.shopId} profileId={rawId} />;
     }
     return <LegacyBranch slug={slug} shopId={shop.shopId} customerId={rawId} role={role} />;
+}
+
+function NotFoundCard({ slug, title, body }: { slug: string; title: string; body: string }) {
+    return (
+        <div className={sh.stack}>
+            <ConsoleHead back={{ href: `/shop/${slug}/customers`, label: 'All customers' }} title={title} />
+            <div className={sh.note} role="note">
+                <CircleAlert size={20} strokeWidth={2} aria-hidden="true" />
+                <span className={sh.noteText}>{body}</span>
+            </div>
+        </div>
+    );
 }
 
 async function RolloutBranch({
@@ -222,30 +204,10 @@ async function RolloutBranch({
     shopId: number;
     profileId: string;
 }) {
-    const { profile, appts, vehicles, legacyTickets } = await loadRolloutCustomer(
-        profileId,
-        shopId,
-    );
+    const { profile, appts, vehicles, legacyTickets } = await loadRolloutCustomer(profileId, shopId);
 
     if (!profile) {
-        return (
-            <>
-                <div className="admin-page-head">
-                    <div>
-                        <div className="admin-page-title">CUSTOMER NOT FOUND</div>
-                        <div className="admin-page-sub">PROFILE {profileId}</div>
-                    </div>
-                    <Link
-                        href={`/shop/${slug}/customers`}
-                        className="admin-action-btn muted"
-                        style={{ textDecoration: 'none' }}
-                    >
-                        <ChevronLeft /> ALL CUSTOMERS
-                    </Link>
-                </div>
-                <div className="admin-empty">NO ROLLOUT PROFILE WITH THIS ID.</div>
-            </>
-        );
+        return <NotFoundCard slug={slug} title="Customer not found" body="There is no Rollout profile with this ID." />;
     }
 
     // Compose a merged timeline (top 30).
@@ -254,13 +216,9 @@ async function RolloutBranch({
         timeline.push({
             when: a.created_at,
             kind: 'appt',
-            label: `APPT REQUEST · ${SERVICE_LABEL[a.service_type] ?? a.service_type ?? '—'}`,
+            label: `Appointment request · ${SERVICE_LABEL[a.service_type] ?? a.service_type ?? '—'}`,
             status: a.status,
-            sub: a.preferred_at
-                ? `PREFERRED ${a.preferred_at}`
-                : a.notes
-                  ? String(a.notes).slice(0, 80)
-                  : null,
+            sub: a.preferred_at ? `Preferred ${fmtDateTime(a.preferred_at)}` : a.notes ? String(a.notes).slice(0, 80) : null,
         });
     }
     for (const t of legacyTickets) {
@@ -268,7 +226,7 @@ async function RolloutBranch({
         timeline.push({
             when: t.created_at,
             kind: 'ticket',
-            label: `TICKET ${t.ticket_id ?? t.id.slice(0, 8)}`,
+            label: `Ticket ${t.ticket_id ?? t.id.slice(0, 8)}`,
             status: t.status,
             sub: veh || null,
             amount: t.total_price,
@@ -278,98 +236,86 @@ async function RolloutBranch({
     const topTimeline = timeline.slice(0, 30);
 
     return (
-        <>
-            <div className="admin-page-head">
-                <div>
-                    <div className="admin-page-title">
-                        {(profile.display_name ?? profile.handle ?? 'CUSTOMER').toUpperCase()}
-                    </div>
-                    <div className="admin-page-sub">
-                        @{profile.handle ?? '—'}{' '}
-                        <span
-                            className="admin-pill gold"
-                            style={{ marginLeft: 8 }}
-                        >
-                            ROLLOUT MEMBER
-                        </span>
+        <div className={sh.stack}>
+            <ConsoleHead
+                back={{ href: `/shop/${slug}/customers`, label: 'All customers' }}
+                title={profile.display_name ?? profile.handle ?? 'Customer'}
+                sub={
+                    <span className="g-chips">
+                        <span className="g-chip">@{profile.handle ?? '—'}</span>
+                        <span className="g-chip g-chip--tint">Rollout member</span>
                         {profile.is_verified ? (
-                            <span className="admin-pill neon" style={{ marginLeft: 6 }}>
-                                <Check /> VERIFIED
+                            <span className="g-chip g-chip--tint">
+                                <BadgeCheck size={14} strokeWidth={2} aria-hidden="true" />
+                                Verified
                             </span>
                         ) : null}
-                    </div>
+                    </span>
+                }
+            />
+
+            <div className={sh.split}>
+                <div className={sh.stack}>
+                    <Panel id="timeline" title="Activity" sub={`${topTimeline.length} entries`} flush>
+                        <Timeline entries={topTimeline} slug={slug} />
+                    </Panel>
+                    <Panel id="vehicles" title="Vehicles" sub={`${vehicles.length} on file`} flush>
+                        <div className={sh.tblWrap}>
+                            <table className={sh.tbl}>
+                                <thead>
+                                    <tr>
+                                        <th>Vehicle</th>
+                                        <th>Color</th>
+                                        <th>Stage</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {vehicles.length === 0 ? (
+                                        <EmptyRow
+                                            colSpan={3}
+                                            icon={<Car size={18} strokeWidth={2} />}
+                                            title="No vehicles on file"
+                                            body="Cars in this member's garage appear here."
+                                        />
+                                    ) : (
+                                        vehicles.map((v: any) => (
+                                            <tr key={v.id}>
+                                                <td>
+                                                    <b style={{ fontWeight: 600 }}>
+                                                        {`${v.year ?? ''} ${v.make ?? ''} ${v.model ?? ''}`.trim() || '—'}
+                                                    </b>
+                                                    {v.trim ? <small>{v.trim}</small> : null}
+                                                </td>
+                                                <td data-label="Color">{v.color ?? '—'}</td>
+                                                <td data-label="Stage">
+                                                    {v.build_stage ? <span className="g-chip">{v.build_stage}</span> : '—'}
+                                                </td>
+                                            </tr>
+                                        ))
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </Panel>
                 </div>
-                <Link
-                    href={`/shop/${slug}/customers`}
-                    className="admin-action-btn muted"
-                    style={{ textDecoration: 'none' }}
-                >
-                    <ChevronLeft /> ALL CUSTOMERS
-                </Link>
+                <aside className={sh.stack}>
+                    <IdentityPanel
+                        avatar={profile.avatar_url}
+                        name={profile.display_name}
+                        handle={profile.handle}
+                        email={null}
+                        phone={null}
+                        location={profile.location}
+                        joined={profile.created_at}
+                    />
+                    <Panel id="notes" title="Notes">
+                        <p className={sh.muted} style={{ margin: 0 }}>
+                            Internal notes for Rollout members are not available yet.
+                        </p>
+                    </Panel>
+                </aside>
             </div>
-
-            <IdentityPanel
-                avatar={profile.avatar_url}
-                name={profile.display_name}
-                handle={profile.handle}
-                email={null}
-                phone={null}
-                location={profile.location}
-                joined={profile.created_at}
-            />
-
-            <SectionHead title="ACTIVITY TIMELINE" sub={`${topTimeline.length} ENTRIES`} />
-            <Timeline entries={topTimeline} slug={slug} />
-
-            <SectionHead
-                title="VEHICLES"
-                sub={`${vehicles.length} ON FILE`}
-            />
-            <div className="admin-table-wrap">
-                <table className="admin-table">
-                    <thead>
-                        <tr>
-                            <th>VEHICLE</th>
-                            <th>COLOR</th>
-                            <th>STAGE</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {vehicles.length === 0 ? (
-                            <tr>
-                                <td colSpan={3}>
-                                    <div className="admin-empty">NO VEHICLES ON FILE</div>
-                                </td>
-                            </tr>
-                        ) : (
-                            vehicles.map((v: any) => (
-                                <tr key={v.id}>
-                                    <td>
-                                        {`${v.year ?? ''} ${v.make ?? ''} ${v.model ?? ''}`.trim() || '—'}
-                                        {v.trim ? (
-                                            <div className="admin-handle">{v.trim}</div>
-                                        ) : null}
-                                    </td>
-                                    <td>{v.color ?? '—'}</td>
-                                    <td>
-                                        {v.build_stage ? (
-                                            <span className="admin-pill">{v.build_stage}</span>
-                                        ) : (
-                                            '—'
-                                        )}
-                                    </td>
-                                </tr>
-                            ))
-                        )}
-                    </tbody>
-                </table>
-            </div>
-
-            <SectionHead title="NOTES" />
-            <div className="admin-empty">
-                NO INTERNAL NOTES YET — ROLLOUT-NATIVE NOTES COMING IN PHASE 2.
-            </div>
-        </>
+        </div>
     );
 }
 
@@ -388,24 +334,11 @@ async function LegacyBranch({
 
     if (!customer) {
         return (
-            <>
-                <div className="admin-page-head">
-                    <div>
-                        <div className="admin-page-title">CUSTOMER NOT FOUND</div>
-                        <div className="admin-page-sub">LEGACY {customerId}</div>
-                    </div>
-                    <Link
-                        href={`/shop/${slug}/customers`}
-                        className="admin-action-btn muted"
-                        style={{ textDecoration: 'none' }}
-                    >
-                        <ChevronLeft /> ALL CUSTOMERS
-                    </Link>
-                </div>
-                <div className="admin-empty">
-                    NO EMWRAPS CUSTOMER WITH THIS ID AT YOUR SHOP.
-                </div>
-            </>
+            <NotFoundCard
+                slug={slug}
+                title="Customer not found"
+                body="There is no EMWRAPS customer with this ID at your shop."
+            />
         );
     }
 
@@ -414,16 +347,16 @@ async function LegacyBranch({
         `${customer.first_name ?? ''} ${customer.last_name ?? ''}`.trim() ||
         customer.email ||
         customer.phone ||
-        'CUSTOMER';
+        'Customer';
 
     const timeline: TimelineEntry[] = tickets.map((t: any) => {
         const veh = `${t.car_year ?? ''} ${t.car_make ?? ''} ${t.car_model ?? ''}`.trim();
         return {
             when: t.created_at,
             kind: 'ticket',
-            label: `TICKET ${t.ticket_id ?? t.id.slice(0, 8)}`,
+            label: `Ticket ${t.ticket_id ?? t.id.slice(0, 8)}`,
             status: t.status,
-            sub: veh || (t.service_day ? `SERVICE DAY ${t.service_day}` : null),
+            sub: veh || (t.service_day ? `Service day ${t.service_day}` : null),
             amount: t.total_price,
         };
     });
@@ -431,76 +364,50 @@ async function LegacyBranch({
     const topTimeline = timeline.slice(0, 30);
 
     return (
-        <>
-            <div className="admin-page-head">
-                <div>
-                    <div className="admin-page-title">
-                        {String(displayName).toUpperCase()}
-                    </div>
-                    <div className="admin-page-sub">
-                        {customer.email ?? customer.phone ?? '—'}{' '}
-                        <span
-                            className="admin-pill"
-                            style={{ marginLeft: 8 }}
-                        >
-                            LEGACY CUSTOMER
-                        </span>
-                    </div>
+        <div className={sh.stack}>
+            <ConsoleHead
+                back={{ href: `/shop/${slug}/customers`, label: 'All customers' }}
+                title={String(displayName)}
+                sub={
+                    <span className="g-chips">
+                        <span className="g-chip">{customer.email ?? customer.phone ?? '—'}</span>
+                        <span className="g-chip">Legacy customer</span>
+                    </span>
+                }
+            />
+
+            <div className={sh.split}>
+                <div className={sh.stack}>
+                    <Panel id="timeline" title="Activity" sub={`${topTimeline.length} entries`} flush>
+                        <Timeline entries={topTimeline} slug={slug} />
+                    </Panel>
+                    <Panel id="vehicles" title="Vehicles" sub={`${vehicles.length} on file`}>
+                        <CustomerVehicles slug={slug} customerId={customer.id} vehicles={vehicles} callerRole={role} />
+                    </Panel>
                 </div>
-                <Link
-                    href={`/shop/${slug}/customers`}
-                    className="admin-action-btn muted"
-                    style={{ textDecoration: 'none' }}
-                >
-                    <ChevronLeft /> ALL CUSTOMERS
-                </Link>
+                <aside className={sh.stack}>
+                    <IdentityPanel
+                        avatar={null}
+                        name={displayName}
+                        handle={null}
+                        email={customer.email}
+                        phone={customer.phone}
+                        location={customer.company ?? null}
+                        joined={customer.created_at}
+                    />
+                    <CustomerEditForm slug={slug} customer={customer} callerRole={role} />
+                    <Panel id="notes" title="Notes">
+                        {customer.notes ? (
+                            <pre className={sh.pre}>{customer.notes}</pre>
+                        ) : (
+                            <p className={sh.muted} style={{ margin: 0 }}>
+                                No notes on file
+                            </p>
+                        )}
+                    </Panel>
+                </aside>
             </div>
-
-            <IdentityPanel
-                avatar={null}
-                name={displayName}
-                handle={null}
-                email={customer.email}
-                phone={customer.phone}
-                location={customer.company ?? null}
-                joined={customer.created_at}
-            />
-            <CustomerEditForm slug={slug} customer={customer} callerRole={role} />
-
-            <SectionHead
-                title="ACTIVITY TIMELINE"
-                sub={`${topTimeline.length} ENTRIES`}
-            />
-            <Timeline entries={topTimeline} slug={slug} />
-
-            <SectionHead title="VEHICLES" sub={`${vehicles.length} ON FILE`} />
-            <CustomerVehicles
-                slug={slug}
-                customerId={customer.id}
-                vehicles={vehicles}
-                callerRole={role}
-            />
-
-            <SectionHead title="NOTES" />
-            {customer.notes ? (
-                <div
-                    style={{
-                        border: '1px solid var(--bdr)',
-                        background: 'var(--surf-1)',
-                        padding: 14,
-                        fontFamily: 'var(--font-display)',
-                        fontSize: 12,
-                        letterSpacing: 'var(--track-wide)',
-                        color: 'var(--text-2)',
-                        whiteSpace: 'pre-wrap',
-                    }}
-                >
-                    {customer.notes}
-                </div>
-            ) : (
-                <div className="admin-empty">NO NOTES ON FILE</div>
-            )}
-        </>
+        </div>
     );
 }
 
@@ -522,160 +429,81 @@ function IdentityPanel({
     joined: string | null;
 }) {
     return (
-        <div
-            style={{
-                display: 'grid',
-                gridTemplateColumns: '88px 1fr',
-                gap: 16,
-                alignItems: 'center',
-                border: '1px solid var(--bdr)',
-                background: 'var(--surf-1)',
-                padding: 16,
-                marginTop: 8,
-            }}
-        >
-            <div
-                style={{
-                    width: 88,
-                    height: 88,
-                    borderRadius: 6,
-                    border: '1px solid var(--bdr)',
-                    background: 'var(--surf-2)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontFamily: 'var(--font-display)',
-                    fontSize: 28,
-                    letterSpacing: 'var(--track-wide)',
-                    color: 'var(--gold)',
-                    overflow: 'hidden',
-                }}
-            >
-                {avatar ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                        src={avatar}
-                        alt=""
-                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                    />
-                ) : (
-                    initials(name)
-                )}
-            </div>
-            <div
-                style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
-                    gap: 12,
-                }}
-            >
-                <IdField label="NAME" value={name ?? '—'} />
-                <IdField label="HANDLE" value={handle ? `@${handle}` : '—'} />
-                <IdField label="EMAIL" value={email ?? '—'} />
-                <IdField label="PHONE" value={phone ?? '—'} />
-                <IdField label="LOCATION" value={location ?? '—'} />
-                <IdField label="JOINED" value={fmtDate(joined)} />
-            </div>
-        </div>
-    );
-}
-
-function IdField({ label, value }: { label: string; value: string }) {
-    return (
-        <div>
-            <div className="admin-stat-lbl" style={{ marginBottom: 2 }}>
-                {label}
-            </div>
-            <div
-                style={{
-                    fontFamily: 'var(--font-display)',
-                    fontSize: 13,
-                    letterSpacing: 'var(--track-wide)',
-                    color: 'var(--text-1)',
-                    wordBreak: 'break-word',
-                }}
-            >
-                {value}
-            </div>
-        </div>
-    );
-}
-
-function SectionHead({ title, sub }: { title: string; sub?: string }) {
-    return (
-        <div
-            className="admin-page-head"
-            style={{ marginTop: 28, borderBottom: 'none', paddingBottom: 0 }}
-        >
-            <div>
-                <div className="admin-page-title" style={{ fontSize: 14 }}>
-                    {title}
+        <section className="g-card g-edge" aria-label="Contact">
+            <div className={sh.idTop}>
+                <span
+                    className={sh.idAv}
+                    style={avatar ? { backgroundImage: `url(${avatar})` } : undefined}
+                    aria-hidden="true"
+                >
+                    {avatar ? null : initials(name)}
+                </span>
+                <div style={{ minWidth: 0 }}>
+                    <h2 className={sh.idName}>{name ?? '—'}</h2>
+                    {handle ? <p className={sh.idSub}>@{handle}</p> : null}
                 </div>
-                {sub ? <div className="admin-page-sub">{sub}</div> : null}
             </div>
-        </div>
+            <div style={{ padding: '0 24px 26px' }}>
+                <KVList
+                    rows={[
+                        { k: 'Email', v: email ?? '—' },
+                        { k: 'Phone', v: phone ?? '—' },
+                        { k: 'Location', v: location ?? '—' },
+                        { k: 'Joined', v: fmtDate(joined) },
+                    ]}
+                />
+            </div>
+        </section>
     );
 }
 
-function Timeline({
-    entries,
-    slug,
-}: {
-    entries: TimelineEntry[];
-    slug: string;
-}) {
+function Timeline({ entries, slug }: { entries: TimelineEntry[]; slug: string }) {
     if (entries.length === 0) {
-        return <div className="admin-empty">NO ACTIVITY YET</div>;
+        return (
+            <div className={sh.tblEmpty}>
+                <span className="g-ic g-ic--sm" aria-hidden="true">
+                    <History size={18} strokeWidth={2} />
+                </span>
+                <span>
+                    <b>No activity yet</b>
+                    <small>Appointment requests and tickets for this customer appear here.</small>
+                </span>
+            </div>
+        );
     }
     return (
-        <div className="admin-table-wrap">
-            <table className="admin-table">
+        <div className={sh.tblWrap}>
+            <table className={sh.tbl}>
                 <thead>
                     <tr>
-                        <th>WHEN</th>
-                        <th>EVENT</th>
-                        <th>STATUS</th>
-                        <th>DETAIL</th>
-                        <th style={{ textAlign: 'right' }}>AMOUNT</th>
+                        <th>Event</th>
+                        <th>Status</th>
+                        <th>Detail</th>
+                        <th>When</th>
+                        <th className={sh.r}>Amount</th>
                     </tr>
                 </thead>
                 <tbody>
                     {entries.map((e, i) => (
                         <tr key={`${e.kind}-${i}-${e.when}`}>
-                            <td>{fmtDateTime(e.when)}</td>
                             <td>
                                 {e.kind === 'ticket' ? (
-                                    <Link
-                                        href={`/shop/${slug}/tickets`}
-                                        style={{
-                                            color: 'var(--gold)',
-                                            textDecoration: 'none',
-                                        }}
-                                    >
+                                    <Link href={`/shop/${slug}/tickets`} className="text-link">
                                         {e.label}
                                     </Link>
                                 ) : (
-                                    e.label
+                                    <b style={{ fontWeight: 600 }}>{e.label}</b>
                                 )}
                             </td>
-                            <td>
-                                {e.status ? (
-                                    <span
-                                        className={`admin-pill ${pillTone(e.status)}`}
-                                    >
-                                        {String(e.status).toUpperCase()}
-                                    </span>
-                                ) : (
-                                    '—'
-                                )}
+                            <td>{e.status ? <StatusChip status={e.status} /> : '—'}</td>
+                            <td data-label="Detail" className={sh.muted}>
+                                {e.sub ?? '—'}
                             </td>
-                            <td>
-                                <span className="admin-handle">{e.sub ?? '—'}</span>
+                            <td data-label="When" className={sh.when}>
+                                {fmtDateTime(e.when)}
                             </td>
-                            <td style={{ textAlign: 'right' }}>
-                                {typeof e.amount === 'number'
-                                    ? `$${e.amount.toFixed(2)}`
-                                    : '—'}
+                            <td className={cx(sh.r, sh.num)} data-label="Amount">
+                                {typeof e.amount === 'number' ? `$${e.amount.toFixed(2)}` : '—'}
                             </td>
                         </tr>
                     ))}

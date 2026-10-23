@@ -88,7 +88,7 @@ export function EventCoverPicker({
             </label>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 10, marginBottom: 10 }}>
                 <Tile
-                    label="AUTO"
+                    label="Auto"
                     sublabel="follows type"
                     active={isAuto}
                     disabled={disabled}
@@ -113,7 +113,7 @@ export function EventCoverPicker({
                 onClick={() => setShowAll((s) => !s)}
                 style={{ marginBottom: showAll ? 12 : 0 }}
             >
-                {showAll ? <><ChevronDown /> HIDE ALL COVERS</> : <><ChevronRight /> ALL COVERS</>}
+                {showAll ? <><ChevronDown /> Hide all covers</> : <><ChevronRight /> All covers</>}
             </button>
 
             {showAll ? (
@@ -134,7 +134,7 @@ export function EventCoverPicker({
             ) : null}
 
             <label className="admin-form-label" style={{ marginTop: 8 }}>
-                CUSTOM COVER URL (OPTIONAL)
+                Custom cover URL (optional)
             </label>
             <input
                 type="url"

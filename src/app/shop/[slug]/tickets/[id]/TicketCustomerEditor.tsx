@@ -6,6 +6,7 @@
  */
 import { useState, useTransition } from 'react';
 import Link from 'next/link';
+import { shopStyles as sh } from '@/components/glide-shop/parts';
 import { useRouter } from 'next/navigation';
 import { CustomerPicker, type CustomerValue } from '../CustomerPicker';
 import { relinkTicketCustomer } from '../form-actions';
@@ -56,18 +57,17 @@ export function TicketCustomerEditor({
 
     if (!editing) {
         return (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <KV label="NAME" value={current.name ?? '—'} />
-                <KV label="EMAIL" value={current.email ?? '—'} mono />
-                <KV label="PHONE" value={current.phone ?? '—'} mono />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                <KV label="Name" value={current.name ?? '—'} />
+                <KV label="Email" value={current.email ?? '—'} mono />
+                <KV label="Phone" value={current.phone ?? '—'} mono />
                 {current.customerId && (
                     <KV
-                        label="CUSTOMER ID"
+                        label="Customer ID"
                         value={
                             <Link
                                 href={`/shop/${slug}/customers/l-${current.customerId}`}
-                                className="text-link"
-                                style={{ fontFamily: 'var(--font-mono, monospace)' }}
+                                className="g-link"
                             >
                                 {current.customerId}
                             </Link>
@@ -77,7 +77,7 @@ export function TicketCustomerEditor({
                 {canManage && (
                     <div>
                         <button type="button" className="admin-action-btn muted" onClick={() => setEditing(true)}>
-                            CHANGE CUSTOMER
+                            Change customer
                         </button>
                     </div>
                 )}
@@ -90,7 +90,7 @@ export function TicketCustomerEditor({
             <CustomerPicker slug={slug} value={value} onChange={setValue} disabled={pending} />
             <div style={{ display: 'flex', gap: 8 }}>
                 <button type="button" className="admin-action-btn" disabled={pending} onClick={save}>
-                    {pending ? 'SAVING…' : 'SAVE CUSTOMER'}
+                    {pending ? 'Saving…' : 'Save customer'}
                 </button>
                 <button
                     type="button"
@@ -98,36 +98,18 @@ export function TicketCustomerEditor({
                     disabled={pending}
                     onClick={() => setEditing(false)}
                 >
-                    CANCEL
+                    Cancel
                 </button>
             </div>
         </div>
     );
 }
 
-function KV({ label, value, mono }: { label: string; value: React.ReactNode; mono?: boolean }) {
+function KV({ label, value }: { label: string; value: React.ReactNode; mono?: boolean }) {
     return (
-        <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: 10, fontSize: 12, lineHeight: 1.5 }}>
-            <div
-                style={{
-                    fontFamily: 'var(--font-display)',
-                    fontSize: 9,
-                    letterSpacing: 'var(--track-wider)',
-                    color: 'var(--text-3)',
-                    paddingTop: 2,
-                }}
-            >
-                {label}
-            </div>
-            <div
-                style={{
-                    fontFamily: mono ? 'var(--font-mono, monospace)' : 'var(--font-body)',
-                    color: 'var(--text)',
-                    wordBreak: 'break-word',
-                }}
-            >
-                {value}
-            </div>
+        <div className={sh.kvRow}>
+            <span>{label}</span>
+            <span>{value}</span>
         </div>
     );
 }

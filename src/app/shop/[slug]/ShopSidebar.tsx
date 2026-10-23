@@ -1,27 +1,93 @@
 'use client';
+/**
+ * Shop console navigation, in Glide (boards: G3 web host console, G5).
+ *
+ *   desktop  a sticky column: the console's mark, the shop card, the grouped
+ *            module links (the current one a navy pill) and the footer (who is
+ *            signed in, switch shop, Appearance, sign out)
+ *   ≤ 900px  a top bar with the shop name and a Menu button; the same links
+ *            and footer open in a bottom sheet
+ *
+ * The links, their order, the role and module gates, SELL ON NEFERSTOCK,
+ * SWITCH SHOP and the global sign-out are exactly as before; only the look
+ * changed. On a tenant's own door (brandLabel set) the Rollout wordmark is
+ * replaced by the tenant's name.
+ */
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
+import { useEffect, useState, type ComponentType } from 'react';
+import {
+    ArrowLeftRight,
+    CalendarDays,
+    ChevronRight,
+    Flag,
+    IdCard,
+    Inbox,
+    LayoutDashboard,
+    LogOut,
+    Mail,
+    Menu,
+    MessagesSquare,
+    MonitorSmartphone,
+    Newspaper,
+    Package,
+    Settings,
+    ShoppingBag,
+    Star,
+    Store,
+    Tags,
+    UserRound,
+    Users,
+    Wrench,
+    type LucideProps,
+} from 'lucide-react';
 import { getSupabaseBrowser } from '@/lib/supabase/browser';
 import { LinkPending } from '@/components/feedback';
+import { Sheet } from '@/components/glide/Sheet';
 import { SHOP_NAV as NAV, SHOP_NAV_SECTIONS, SHOP_ROLE_RANK as RANK } from '@/lib/shop-nav';
 import { ShopThemeToggle } from './ShopThemeToggle';
-import { ArrowLeftRight, ChevronRight } from '@/components/icons';
+import s from '@/components/glide-shop/shell.module.css';
 
-const SWITCH_SHOP_STYLE: React.CSSProperties = {
-    color: 'var(--text-2)',
-    fontFamily: 'var(--font-display)',
-    fontSize: 10,
-    letterSpacing: 'var(--track-wider)',
-    textDecoration: 'none',
+const ICONS: Record<string, ComponentType<LucideProps>> = {
+    overview: LayoutDashboard,
+    inbox: Inbox,
+    messages: MessagesSquare,
+    calendar: CalendarDays,
+    tickets: Wrench,
+    customers: Users,
+    products: Package,
+    orders: ShoppingBag,
+    posts: Newspaper,
+    events: Flag,
+    'kiosk-events': MonitorSmartphone,
+    reviews: Star,
+    page: Store,
+    account: UserRound,
+    staff: IdCard,
+    services: Tags,
+    'settings/general': Settings,
+    'settings/email': Mail,
+    sell: Store,
 };
+
+/** The nav config is uppercase (shared with the admin console); Glide shows sentence case. */
+function sentence(label: string): string {
+    const t = label.toLowerCase();
+    return t.charAt(0).toUpperCase() + t.slice(1);
+}
 
 /** Compact an email for the narrow sidebar footer (keeps the domain visible). */
 function truncEmail(email: string | null): string | null {
     if (!email) return null;
-    if (email.length <= 24) return email;
+    if (email.length <= 26) return email;
     const [user, domain] = email.split('@');
-    if (!domain) return email.slice(0, 23) + '…';
+    if (!domain) return email.slice(0, 25) + '…';
     return `${user.slice(0, 8)}…@${domain}`;
+}
+
+function initials(handle: string): string {
+    const t = handle.replace(/^@+/, '').replace(/[^a-z0-9]/gi, ' ').trim().split(/\s+/);
+    return ((t[0]?.[0] ?? '?') + (t.length > 1 ? t[t.length - 1][0] : '')).toUpperCase();
 }
 
 export function ShopSidebar({
@@ -37,6 +103,7 @@ export function ShopSidebar({
     switchShopHref = '/shop/picker',
     variant = 'main',
     shopStatus = 'verified',
+    brandLabel = null,
 }: {
     slug: string;
     shopName: string;
@@ -68,12 +135,21 @@ export function ShopSidebar({
     variant?: 'main' | 'sub';
     /** The shop's status; shown as a pill in the sub header when not verified. */
     shopStatus?: string;
+    /** A tenant's own name for this console (UNITY USA…), set by the layout for
+     *  a tenant-branded shop. Replaces the Rollout wordmark; null on Rollout. */
+    brandLabel?: string | null;
 }) {
     const pathname = usePathname() || '';
     const router = useRouter();
+    const [menuOpen, setMenuOpen] = useState(false);
     const rank = RANK[callerRole] ?? 0;
     const enabled = new Set(enabledModules);
     const adminOnly = new Set(adminOnlyModules);
+
+    // A tap on a link in the phone sheet navigates; close the sheet with it.
+    useEffect(() => {
+        setMenuOpen(false);
+    }, [pathname]);
 
     const signOut = async () => {
         const supabase = getSupabaseBrowser();
@@ -91,130 +167,164 @@ export function ShopSidebar({
             (!n.minRole || rank >= RANK[n.minRole]) &&
             enabled.has(n.module),
     );
-    const sections = SHOP_NAV_SECTIONS;
-
     const sub = variant === 'sub';
-    const Root = sub ? 'div' : 'aside';
 
-    return (
-        <Root className={sub ? 'shop-subnav' : 'shop-sidebar'}>
-            {sub ? (
-                <div className="admin-subnav-head">
-                    <div className="admin-subnav-eyebrow">ACTING AS @{slug.toUpperCase()}</div>
-                    <div className="admin-subnav-title">{shopName}</div>
-                    {shopStatus !== 'verified' ? (
-                        <div style={{ marginTop: 6 }}>
-                            <span className="admin-pill warn">{shopStatus.toUpperCase()}</span>
-                        </div>
-                    ) : null}
-                </div>
-            ) : (
-            <div className="shop-sidebar-brand">
-                <div className="shop-sidebar-brand-word">{shopName.toUpperCase()}</div>
-                <div className="shop-sidebar-brand-sub">@{slug} · SHOP DASHBOARD</div>
-            </div>
-            )}
-            {sections.map((sec) => {
+    const navLink = (key: string, href: string, label: string, tag?: boolean) => {
+        const active = pathname === href || pathname.startsWith(href + '/');
+        const Icon = ICONS[key] ?? ChevronRight;
+        return (
+            <Link key={key} href={href} className={s.link} aria-current={active ? 'page' : undefined}>
+                <Icon size={18} strokeWidth={2} aria-hidden="true" />
+                <span className={s.linkLabel}>{label}</span>
+                {tag ? (
+                    <span
+                        className={s.adminTag}
+                        title="Hidden for this shop's tier; shown because you are a Rollout admin"
+                    >
+                        Admin
+                    </span>
+                ) : null}
+                <LinkPending />
+            </Link>
+        );
+    };
+
+    const groups = (
+        <>
+            {SHOP_NAV_SECTIONS.map((sec) => {
                 const items = visible.filter((n) => n.section === sec);
                 if (items.length === 0) return null;
                 return (
-                    <div key={sec} className="admin-subnav-group">
-                        <div className="admin-sidebar-section">{sec}</div>
-                        {items.map((n) => {
-                            const href = `/shop/${slug}/${n.href}`;
-                            const active = pathname === href || pathname.startsWith(href + '/');
-                            return (
-                                <Link
-                                    key={n.href}
-                                    href={href}
-                                    className={`admin-sidebar-link ${active ? 'active' : ''}`}
-                                >
-                                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                                        {n.label}
-                                        {adminOnly.has(n.module) ? (
-                                            <span
-                                                title="Hidden for this shop's tier; shown because you are a Rollout admin"
-                                                style={{
-                                                    fontSize: 8,
-                                                    letterSpacing: 'var(--track-wider)',
-                                                    color: 'var(--text-3)',
-                                                    border: '1px solid var(--line)',
-                                                    padding: '1px 4px',
-                                                }}
-                                            >
-                                                ADMIN
-                                            </span>
-                                        ) : null}
-                                        <LinkPending />
-                                    </span>
-                                    {active && <span><ChevronRight /></span>}
-                                </Link>
-                            );
-                        })}
+                    <div key={sec} className={s.group}>
+                        <div className={s.groupLabel}>{sentence(sec)}</div>
+                        {items.map((n) =>
+                            navLink(n.href, `/shop/${slug}/${n.href}`, sentence(n.label), adminOnly.has(n.module)),
+                        )}
                     </div>
                 );
             })}
-            {showSellOnNeferstock && rank >= RANK.owner ? (() => {
-                const href = `/shop/${slug}/sell`;
-                const active = pathname === href || pathname.startsWith(href + '/');
-                return (
-                    <div className="admin-subnav-group">
-                        <div className="admin-sidebar-section">COMMERCE</div>
-                        <Link href={href} className={`admin-sidebar-link ${active ? 'active' : ''}`}>
-                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                                SELL ON NEFERSTOCK
-                                <LinkPending />
-                            </span>
-                            {active && <span><ChevronRight /></span>}
-                        </Link>
-                    </div>
-                );
-            })() : null}
-            {sub ? (
-                <div className="admin-subnav-foot">
-                    <ShopThemeToggle />
+            {showSellOnNeferstock && rank >= RANK.owner ? (
+                <div className={s.group}>
+                    <div className={s.groupLabel}>Commerce</div>
+                    {navLink('sell', `/shop/${slug}/sell`, 'Sell on NeferStock')}
                 </div>
-            ) : (
-            <div className="admin-sidebar-foot">
-                <Link
-                    href={`/shop/${slug}/account`}
-                    style={{ display: 'block', textDecoration: 'none', color: 'inherit' }}
-                    title="View / edit your account"
-                >
-                    <div>SIGNED IN AS <ChevronRight /></div>
-                    <div style={{ color: 'var(--gold)', marginTop: 4 }}>@{callerHandle}</div>
-                    {truncEmail(callerEmail) && (
-                        <div
-                            style={{ marginTop: 4, color: 'var(--text-3)', wordBreak: 'break-all' }}
-                            title={callerEmail ?? undefined}
-                        >
-                            {truncEmail(callerEmail)}
-                        </div>
-                    )}
-                    <div style={{ marginTop: 6 }}>ROLE: {callerRole.toUpperCase()}</div>
-                </Link>
-                {showSwitchShop ? (
-                    <div style={{ marginTop: 10 }}>
-                        {/* A cross-origin href is a real navigation off this
-                            host, so it goes out as a plain anchor rather than a
-                            Link the router would try to prefetch. */}
-                        {switchShopHref.startsWith('http') ? (
-                            <a href={switchShopHref} style={SWITCH_SHOP_STYLE}>
-                                <ArrowLeftRight /> SWITCH SHOP
-                            </a>
-                        ) : (
-                            <Link href={switchShopHref} style={SWITCH_SHOP_STYLE}>
-                                <ArrowLeftRight /> SWITCH SHOP
-                            </Link>
-                        )}
-                    </div>
-                ) : null}
-                <ShopThemeToggle />
-                <button className="admin-sidebar-signout" onClick={signOut}>
-                    SIGN OUT
+            ) : null}
+        </>
+    );
+
+    const email = truncEmail(callerEmail);
+    const footer = sub ? (
+        <div className={s.foot}>
+            <ShopThemeToggle className={s.footBtn} />
+        </div>
+    ) : (
+        <div className={s.foot}>
+            <Link href={`/shop/${slug}/account`} className={s.who} title="View or edit your account">
+                <span className={s.av} aria-hidden="true">
+                    {initials(callerHandle)}
+                </span>
+                <span className={s.whoText}>
+                    @{callerHandle}
+                    {email ? <small title={callerEmail ?? undefined}>{email}</small> : null}
+                    <small>Role: {sentence(callerRole)}</small>
+                </span>
+                <ChevronRight size={18} strokeWidth={2} className={s.whoChev} aria-hidden="true" />
+            </Link>
+            {showSwitchShop ? (
+                // A cross-origin href is a real navigation off this host, so it
+                // goes out as a plain anchor rather than a Link the router would
+                // try to prefetch.
+                switchShopHref.startsWith('http') ? (
+                    <a href={switchShopHref} className={`g-link ${s.footLink}`}>
+                        <ArrowLeftRight size={17} strokeWidth={2} aria-hidden="true" />
+                        Switch shop
+                    </a>
+                ) : (
+                    <Link href={switchShopHref} className={`g-link ${s.footLink}`}>
+                        <ArrowLeftRight size={17} strokeWidth={2} aria-hidden="true" />
+                        Switch shop
+                    </Link>
+                )
+            ) : null}
+            <div className={s.footRow}>
+                <ShopThemeToggle className={s.footBtn} />
+                <button type="button" className={`g-sec g-sec--ink ${s.footBtn}`} onClick={signOut}>
+                    <LogOut size={17} strokeWidth={2} aria-hidden="true" />
+                    Sign out
                 </button>
             </div>
-            )}
-        </Root>
+        </div>
+    );
+
+    const mark = brandLabel ? (
+        <span className={s.tenantMark}>{brandLabel}</span>
+    ) : (
+        <>
+            <span className={s.wm}>rollout</span>
+            <span className={s.badge}>
+                <Store size={15} strokeWidth={2} aria-hidden="true" />
+                Shop console
+            </span>
+        </>
+    );
+
+    const statusChip =
+        shopStatus !== 'verified' ? (
+            <div className={s.statusChip}>
+                <span className="admin-pill warn">{sentence(shopStatus)}</span>
+            </div>
+        ) : null;
+
+    if (sub) {
+        // Inside the admin shell: just the shop card and the links, in a Glide scope.
+        return (
+            <div className={`glide ${s.side}`} style={{ position: 'static', height: 'auto' }}>
+                <div className={s.shopCard}>
+                    <p className={s.shopSub}>Acting as @{slug}</p>
+                    <h2 className={s.shopName}>{shopName}</h2>
+                    {statusChip}
+                </div>
+                <nav aria-label="Shop console">{groups}</nav>
+                {footer}
+            </div>
+        );
+    }
+
+    return (
+        <>
+            <aside className={s.side} aria-label="Shop console">
+                <div className={s.brandRow}>{mark}</div>
+                <div className={s.shopCard}>
+                    <h2 className={s.shopName}>{shopName}</h2>
+                    <p className={s.shopSub}>@{slug}</p>
+                    {statusChip}
+                </div>
+                <nav aria-label="Shop console">{groups}</nav>
+                {footer}
+            </aside>
+
+            <header className={s.bar}>
+                <span className={s.barText}>
+                    <b>{shopName}</b>
+                    <small>{brandLabel ? brandLabel : `@${slug} · Shop console`}</small>
+                </span>
+                <button
+                    type="button"
+                    className={`g-sec g-sec--ink ${s.menuBtn}`}
+                    onClick={() => setMenuOpen(true)}
+                    aria-haspopup="dialog"
+                    aria-expanded={menuOpen}
+                >
+                    <Menu size={18} strokeWidth={2} aria-hidden="true" />
+                    Menu
+                </button>
+            </header>
+            <Sheet open={menuOpen} onClose={() => setMenuOpen(false)} title={shopName}>
+                <nav aria-label="Shop console" className={s.sheetNav}>
+                    {groups}
+                </nav>
+                <div className={s.sheetFoot}>{footer}</div>
+            </Sheet>
+        </>
     );
 }

@@ -1,10 +1,11 @@
-import React from 'react';
 import Link from 'next/link';
 import { requireShopMemberBySlug } from '@/lib/auth-guard';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { AppointmentActions } from './AppointmentActions';
 import { RealtimeRefresh } from './RealtimeRefresh';
-import { ArrowRight, ChevronRight } from '@/components/icons';
+import { CalendarDays, Inbox } from 'lucide-react';
+import { ConsoleHead } from '@/components/glide-console/parts';
+import { Counts, EmptyRow, FilterTabs, SearchBar, StatusChip, cx, fmtWhen, initials, shopStyles as sh } from '@/components/glide-shop/parts';
 
 export const metadata = { title: 'Inbox' };
 
@@ -28,23 +29,19 @@ const STATUS_TABS = [
 ] as const;
 type StatusTab = (typeof STATUS_TABS)[number];
 
-function pillClass(status: string): string {
-    switch (status) {
-        case 'pending':
-            return 'admin-pill gold';
-        case 'reschedule_requested':
-            return 'admin-pill gold';
-        case 'accepted':
-            return 'admin-pill neon';
-        case 'converted':
-            return 'admin-pill neon';
-        case 'declined':
-        case 'cancelled':
-            return 'admin-pill warn';
-        default:
-            return 'admin-pill';
-    }
-}
+const TAB_LABEL: Record<StatusTab, string> = {
+    ALL: 'All',
+    PENDING: 'Pending',
+    ACCEPTED: 'Accepted',
+    RESCHEDULE_REQUESTED: 'Reschedule',
+    DECLINED: 'Declined',
+    CANCELLED: 'Cancelled',
+    CONVERTED: 'Converted',
+};
+
+const STATUS_LABEL: Record<string, string> = {
+    reschedule_requested: 'New time asked',
+};
 
 async function loadInbox(shopId: number, status: StatusTab, query?: string) {
     const admin = getSupabaseAdmin();
@@ -139,162 +136,126 @@ export default async function ShopInboxPage({
 
     const data = await loadInbox(shop.shopId, status, q);
 
+    const tabHref = (t: StatusTab) => {
+        const params = new URLSearchParams();
+        params.set('status', t);
+        if (q) params.set('q', q);
+        return `/shop/${slug}/inbox?${params.toString()}`;
+    };
+    const vehicleOf = (a: any) =>
+        a.vehicle ? `${a.vehicle.year ?? ''} ${a.vehicle.make ?? ''} ${a.vehicle.model ?? ''}`.trim() || '—' : '—';
+
     return (
-        <>
+        <div className={sh.stack}>
             <RealtimeRefresh shopId={shop.shopId} />
-            <div className="admin-page-head">
-                <div>
-                    <div className="admin-page-title">INBOX</div>
-                    <div className="admin-page-sub">
-                        {shop.name.toUpperCase()} · APPOINTMENT REQUESTS
-                    </div>
-                </div>
-                <Link
-                    href={`/shop/${slug}/calendar`}
-                    className="admin-action-btn"
-                    style={{ textDecoration: 'none' }}
-                >
-                    CALENDAR <ChevronRight />
-                </Link>
-            </div>
+            <ConsoleHead
+                title="Inbox"
+                sub={`${shop.name} · appointment requests`}
+                actions={
+                    <Link href={`/shop/${slug}/calendar`} className={cx('g-sec', sh.sec)}>
+                        <CalendarDays size={18} strokeWidth={2} aria-hidden="true" />
+                        Calendar
+                    </Link>
+                }
+            />
 
-            <div className="admin-stat-grid">
-                <Stat label="PENDING" value={data.pending} accent={data.pending > 0 ? 'gold' : undefined} />
-                <Stat label="ACCEPTED / 7D" value={data.acceptedThisWeek} />
-                <Stat label="THIS MONTH" value={data.thisMonth} />
-            </div>
+            <Counts
+                label="Request counts"
+                items={[
+                    { label: 'Pending', value: data.pending, dot: data.pending > 0 },
+                    { label: 'Accepted, last 7 days', value: data.acceptedThisWeek },
+                    { label: 'This month', value: data.thisMonth },
+                ]}
+            />
 
-            {/* Status filter pills */}
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', margin: '12px 0' }}>
-                {STATUS_TABS.map((s) => {
-                    const isActive = s === status;
-                    const params = new URLSearchParams();
-                    params.set('status', s);
-                    if (q) params.set('q', q);
-                    return (
-                        <Link
-                            key={s}
-                            href={`/shop/${slug}/inbox?${params.toString()}`}
-                            className={`admin-action-btn ${isActive ? '' : 'muted'}`}
-                            style={{ textDecoration: 'none' }}
-                        >
-                            {s}
-                        </Link>
-                    );
-                })}
-            </div>
-
-            <form className="admin-search" action={`/shop/${slug}/inbox`}>
-                <input type="hidden" name="status" value={status} />
-                <input
-                    name="q"
-                    defaultValue={q ?? ''}
-                    className="admin-search-input"
-                    placeholder="SEARCH HANDLE, SERVICE OR NOTES"
+            <div className={sh.toolbar}>
+                <FilterTabs
+                    label="Request status"
+                    items={STATUS_TABS.map((t) => ({ href: tabHref(t), label: TAB_LABEL[t], active: t === status }))}
                 />
-                <button type="submit" className="admin-action-btn">
-                    SEARCH <ChevronRight />
-                </button>
-            </form>
-
-            <div className="admin-table-wrap">
-                <table className="admin-table">
-                    <thead>
-                        <tr>
-                            <th>WHEN</th>
-                            <th>CUSTOMER</th>
-                            <th>SERVICE</th>
-                            <th>VEHICLE</th>
-                            <th>PREFERRED</th>
-                            <th>STATUS</th>
-                            <th style={{ textAlign: 'right' }}>ACTIONS</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {data.rows.length === 0 ? (
-                            <tr>
-                                <td colSpan={7}>
-                                    <div className="admin-empty">
-                                        NO {status} REQUESTS.
-                                    </div>
-                                </td>
-                            </tr>
-                        ) : (
-                            data.rows.map((a: any) => {
-                                const fmt = (iso: string | null) =>
-                                    iso ? new Date(iso).toISOString().slice(0, 16).replace('T', ' ') : '—';
-                                return (
-                                    <React.Fragment key={a.id}>
-                                        <tr>
-                                            <td>{fmt(a.created_at)}</td>
-                                            <td>
-                                                <Link
-                                                    href={`/shop/${slug}/customers/${a.requester_profile_id}`}
-                                                    className="text-link"
-                                                >
-                                                    @{a.requester?.handle ?? '?'}
-                                                </Link>
-                                                <div className="admin-handle">
-                                                    {a.requester?.display_name}
-                                                </div>
-                                            </td>
-                                            <td>
-                                                <span className="admin-pill">
-                                                    {SERVICE_LABEL[a.service_type] ?? a.service_type}
-                                                </span>
-                                            </td>
-                                            <td>
-                                                {a.vehicle
-                                                    ? `${a.vehicle.year ?? ''} ${a.vehicle.make ?? ''} ${a.vehicle.model ?? ''}`.trim() || '—'
-                                                    : '—'}
-                                            </td>
-                                            <td>{fmt(a.preferred_at)}</td>
-                                            <td>
-                                                <span className={pillClass(a.status)}>
-                                                    {a.status.toUpperCase()}
-                                                </span>
-                                            </td>
-                                            <td style={{ textAlign: 'right' }}>
-                                                <AppointmentActions
-                                                    appointmentId={a.id}
-                                                    shopId={shop.shopId}
-                                                    status={a.status}
-                                                />
-                                            </td>
-                                        </tr>
-                                        {a.status === 'reschedule_requested' && (
-                                            <tr className="admin-subrow">
-                                                <td colSpan={7}>
-                                                    <div className="admin-handle" style={{ paddingLeft: 8 }}>
-                                                        RESCHEDULE: {fmt(a.previous_preferred_at)} <ArrowRight /> {fmt(a.preferred_at)}
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        )}
-                                    </React.Fragment>
-                                );
-                            })
-                        )}
-                    </tbody>
-                </table>
+                <SearchBar
+                    action={`/shop/${slug}/inbox`}
+                    defaultValue={q ?? ''}
+                    label="Search requests"
+                    placeholder="Search handle, service or notes"
+                    hidden={{ status }}
+                    clearHref={q ? `/shop/${slug}/inbox?status=${status}` : null}
+                />
             </div>
-        </>
-    );
-}
 
-function Stat({
-    label,
-    value,
-    accent,
-}: {
-    label: string;
-    value: number | string;
-    accent?: 'gold' | 'warn';
-}) {
-    return (
-        <div className="admin-stat">
-            <div className="admin-stat-lbl">{label}</div>
-            <div className={`admin-stat-num ${accent ?? ''}`}>{value}</div>
+            <section className="g-card" aria-label="Appointment requests">
+                <div className={sh.tblWrap}>
+                    <table className={sh.tbl}>
+                        <thead>
+                            <tr>
+                                <th>Customer</th>
+                                <th>Service</th>
+                                <th>Vehicle</th>
+                                <th>Preferred</th>
+                                <th>Status</th>
+                                <th>Received</th>
+                                <th className={sh.r}>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {data.rows.length === 0 ? (
+                                <EmptyRow
+                                    colSpan={7}
+                                    icon={<Inbox size={18} strokeWidth={2} />}
+                                    title={status === 'ALL' ? 'No requests yet' : `No ${TAB_LABEL[status].toLowerCase()} requests`}
+                                    body="Booking requests from your shop page land here. New ones appear without a reload."
+                                />
+                            ) : (
+                                data.rows.map((a: any) => (
+                                    <tr key={a.id}>
+                                        <td>
+                                            <span className={sh.cell}>
+                                                <span className={sh.av} aria-hidden="true">
+                                                    {initials(a.requester?.display_name ?? a.requester?.handle)}
+                                                </span>
+                                                <span style={{ minWidth: 0 }}>
+                                                    <Link
+                                                        href={`/shop/${slug}/customers/${a.requester_profile_id}`}
+                                                        className="text-link"
+                                                    >
+                                                        @{a.requester?.handle ?? '?'}
+                                                    </Link>
+                                                    <small>{a.requester?.display_name}</small>
+                                                </span>
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span className="g-chip">{SERVICE_LABEL[a.service_type] ?? a.service_type}</span>
+                                        </td>
+                                        <td data-label="Vehicle">{vehicleOf(a)}</td>
+                                        <td data-label="Preferred" className={sh.when}>
+                                            {fmtWhen(a.preferred_at)}
+                                            {a.status === 'reschedule_requested' ? (
+                                                <small>
+                                                    Moved from {fmtWhen(a.previous_preferred_at)}
+                                                </small>
+                                            ) : null}
+                                        </td>
+                                        <td>
+                                            <StatusChip status={a.status} label={STATUS_LABEL[a.status]} />
+                                        </td>
+                                        <td data-label="Received" className={cx(sh.when, sh.mHide)}>
+                                            {fmtWhen(a.created_at)}
+                                        </td>
+                                        <td className={cx(sh.r, sh.mEnd)}>
+                                            <AppointmentActions
+                                                appointmentId={a.id}
+                                                shopId={shop.shopId}
+                                                status={a.status}
+                                            />
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </section>
         </div>
     );
 }

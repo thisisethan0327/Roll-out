@@ -1,6 +1,7 @@
 'use client';
 import { useRouter } from 'next/navigation';
-import { ChevronLeft, ChevronRight } from '@/components/icons';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { shopStyles as sh } from '@/components/glide-shop/parts';
 
 function fmtYmd(d: Date): string {
     const y = d.getFullYear();
@@ -28,15 +29,15 @@ export function CalendarNav({ slug, weekStart }: { slug: string; weekStart: stri
     };
 
     return (
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-            <button className="admin-action-btn muted" onClick={() => go(-7)}>
-                <ChevronLeft /> PREV WEEK
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <button type="button" className={`g-cb g-cb--fill ${sh.navBtn}`} onClick={() => go(-7)} aria-label="Previous week">
+                <ChevronLeft size={20} strokeWidth={2} aria-hidden="true" />
             </button>
-            <button className="admin-action-btn" onClick={() => go(null)}>
-                TODAY
+            <button type="button" className={`g-sec ${sh.sec}`} onClick={() => go(null)}>
+                Today
             </button>
-            <button className="admin-action-btn muted" onClick={() => go(7)}>
-                NEXT WEEK <ChevronRight />
+            <button type="button" className={`g-cb g-cb--fill ${sh.navBtn}`} onClick={() => go(7)} aria-label="Next week">
+                <ChevronRight size={20} strokeWidth={2} aria-hidden="true" />
             </button>
         </div>
     );

@@ -1,0 +1,1192 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   Glide shop console: page pieces (count strip, filter track, search bar,
+   panels, quiet tables, definition rows, thread list, chat). Boards: G3 (web
+   host console), G5 (shops), G6 (messages). Everything renders inside the
+   console shell's `.glide` scope.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* Sheets portal to <body>, outside the shell: give them the field outline too. */
+.sheetBody {
+  --sh-field: #7d8a9c;
+  padding: 4px 24px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+:global(:root[data-theme='dark']) .sheetBody {
+  --sh-field: #5e7396;
+}
+:global(:root[data-theme='dark'][data-dark='graphite']) .sheetBody {
+  --sh-field: #737373;
+}
+.sheetBody > p {
+  margin: 0;
+  font-size: 14.5px;
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+
+.label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+/* A plain Glide field (input, select, textarea). */
+.field {
+  width: 100%;
+  min-width: 0;
+  min-height: 52px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 16px;
+  background: var(--card);
+  box-shadow: inset 0 0 0 1px var(--field-line, var(--sh-field));
+  font-family: var(--ui);
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--ink);
+  caret-color: var(--link);
+  outline: none;
+}
+textarea.field {
+  padding: 14px 16px;
+  min-height: 96px;
+  line-height: 1.45;
+  resize: vertical;
+}
+select.field {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 40px;
+  background-image: linear-gradient(45deg, transparent 50%, var(--ink-2) 50%), linear-gradient(135deg, var(--ink-2) 50%, transparent 50%);
+  background-position: calc(100% - 22px) 50%, calc(100% - 16px) 50%;
+  background-size: 6px 6px;
+  background-repeat: no-repeat;
+}
+.field:disabled {
+  background: var(--surface);
+  color: var(--ink-2);
+}
+.field::placeholder {
+  color: var(--ink-2);
+  opacity: 1;
+}
+.field:focus,
+.field:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+.err {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.err svg {
+  color: var(--stripe-3);
+  flex: none;
+}
+
+/* ── Page stack ────────────────────────────────────────────────────────── */
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+}
+.split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: 20px;
+  align-items: start;
+}
+.splitWide {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(300px, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+.two {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+@media (max-width: 1180px) {
+  .split,
+  .splitWide {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 900px) {
+  .two {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .stack {
+    gap: 16px;
+  }
+}
+
+/* ── Count strip (G3 `.cnt`) ───────────────────────────────────────────── */
+.counts {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  border-radius: 24px;
+  background: var(--card);
+  box-shadow: 0 0 0 1px var(--line), 0 14px 30px -22px rgba(var(--shadow), 0.6);
+  overflow: hidden;
+}
+.counts li {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 76px;
+  padding: 12px 18px;
+  min-width: 0;
+  box-shadow: -1px 0 0 var(--line), 0 -1px 0 var(--line);
+}
+.counts small {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.counts b {
+  margin-top: 5px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--wide);
+  font-weight: 400;
+  font-size: 19px;
+  color: var(--title);
+  white-space: nowrap;
+}
+.counts b i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--stripe-1);
+  flex: none;
+}
+@media (max-width: 600px) {
+  .counts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* ── Filter track (segmented links) ────────────────────────────────────── */
+.tabs {
+  display: flex;
+  gap: 2px;
+  padding: 4px;
+  border-radius: 26px;
+  background: var(--seg);
+  max-width: 100%;
+  width: max-content;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.tabs::-webkit-scrollbar {
+  display: none;
+}
+.tabs a {
+  flex: none;
+  min-height: 44px;
+  padding: 0 16px;
+  border-radius: 22px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--seg-ink);
+  white-space: nowrap;
+  text-decoration: none;
+  transition: background 0.15s ease-out, color 0.15s ease-out;
+}
+.tabs a:hover {
+  color: var(--seg-on);
+}
+.tabs a[aria-current='page'] {
+  background: var(--seg-on);
+  color: var(--seg-on-ink);
+}
+.tabs a:focus-visible {
+  outline: 2px solid var(--link);
+  outline-offset: -2px;
+}
+.tabs button {
+  flex: none;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 22px;
+  background: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--ui);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--seg-ink);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.15s ease-out, color 0.15s ease-out;
+}
+.tabs button[aria-pressed='true'] {
+  background: var(--seg-on);
+  color: var(--seg-on-ink);
+}
+.tabs button:focus-visible {
+  outline: 2px solid var(--link);
+  outline-offset: -2px;
+}
+.tabs a span {
+  font-family: var(--wide);
+  font-size: 11px;
+  opacity: 0.85;
+}
+
+/* ── Toolbar: filter track + search ────────────────────────────────────── */
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+.toolbar > form {
+  flex: 1 1 320px;
+}
+.search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.searchField {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+}
+.searchField svg {
+  position: absolute;
+  left: 18px;
+  color: var(--ink-2);
+  pointer-events: none;
+}
+.searchField input {
+  width: 100%;
+  min-width: 0;
+  min-height: 52px;
+  padding: 0 18px 0 48px;
+  border: 0;
+  border-radius: 26px;
+  background: var(--card);
+  box-shadow: inset 0 0 0 1px var(--field-line, var(--sh-field)), 0 8px 20px -14px rgba(var(--shadow), 0.4);
+  font-family: var(--ui);
+  font-size: 15.5px;
+  font-weight: 500;
+  color: var(--ink);
+  caret-color: var(--link);
+  outline: none;
+}
+.searchField input::placeholder {
+  color: var(--ink-2);
+  opacity: 1;
+}
+.searchField input:focus-visible,
+.searchField input:focus {
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+.searchBtn {
+  min-height: 52px;
+  border-radius: 26px;
+  box-shadow: inset 0 0 0 1.5px var(--field-line, var(--sh-field));
+}
+@media (max-width: 900px) {
+  .searchField input {
+    font-size: 16px;
+  }
+}
+
+/* ── Buttons not in the kit ────────────────────────────────────────────── */
+/* The kit's secondary pill with a 3:1 outline (kit issue: line-strong is ~1.5:1). */
+.sec {
+  box-shadow: inset 0 0 0 1.5px var(--field-line, var(--sh-field));
+}
+.secSm {
+  min-height: 44px;
+  padding: 0 16px;
+  font-size: 14px;
+  box-shadow: inset 0 0 0 1.5px var(--field-line, var(--sh-field));
+}
+
+/* A real off state (kit issue: disabled is only opacity 0.6). */
+.sec:disabled,
+.secSm:disabled,
+.sec[aria-disabled='true'],
+.secSm[aria-disabled='true'] {
+  opacity: 1;
+  color: var(--ink-2);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1.5px var(--line-strong);
+  cursor: not-allowed;
+}
+/* Destructive: ink text, the red only on the icon. */
+.danger {
+  color: var(--ink);
+}
+.danger svg {
+  color: var(--stripe-3);
+}
+
+.codeTitle {
+  font-family: var(--wide);
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  font-size: 0.8em;
+}
+
+/* ── Panels ────────────────────────────────────────────────────────────── */
+.panel {
+  min-width: 0;
+}
+.panelH {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 12px;
+  min-height: 64px;
+  padding: 16px 16px 4px 24px;
+}
+.panelH h2 {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--disp);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  font-size: 19px;
+  line-height: 1.1;
+  color: var(--title);
+}
+.panelH p {
+  margin: 4px 0 0;
+  font-size: 13.5px;
+  line-height: 1.4;
+  color: var(--ink-2);
+}
+.panelBody {
+  padding: 10px 24px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+.panelFlush {
+  padding: 8px 0 6px;
+}
+.count {
+  min-width: 26px;
+  height: 26px;
+  padding: 0 8px;
+  border-radius: 13px;
+  display: inline-grid;
+  place-items: center;
+  background: var(--nav-on);
+  color: var(--on-nav-on);
+  font-family: var(--wide);
+  font-size: 11px;
+  letter-spacing: 0;
+}
+@media (max-width: 900px) {
+  .panelH {
+    padding-left: 20px;
+  }
+  .panelBody {
+    padding: 8px 20px 22px;
+  }
+}
+
+/* ── Notices ───────────────────────────────────────────────────────────── */
+.note {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px 12px;
+  min-height: 52px;
+  padding: 12px 18px;
+  border-radius: 20px;
+  background: var(--card);
+  box-shadow: inset 0 0 0 1px var(--line-strong);
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--ink);
+  text-decoration: none;
+}
+.note > svg {
+  flex: none;
+  color: var(--icon);
+}
+a.note:hover {
+  background: var(--surface);
+}
+.noteText {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+.noteText small {
+  display: block;
+  margin-top: 2px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink-2);
+}
+.noteActs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+/* ── Quiet table ───────────────────────────────────────────────────────── */
+.tblWrap {
+  overflow-x: auto;
+}
+.tbl {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+.tbl th {
+  height: 44px;
+  padding: 0 12px;
+  font-size: 12.5px;
+  font-weight: 600;
+  text-align: left;
+  color: var(--ink-2);
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+.tbl td {
+  height: 62px;
+  padding: 8px 12px;
+  font-size: 14.5px;
+  color: var(--ink);
+  border-bottom: 1px solid var(--line);
+  vertical-align: middle;
+}
+.tbl th:first-child,
+.tbl td:first-child {
+  padding-left: 24px;
+}
+.tbl th:last-child,
+.tbl td:last-child {
+  padding-right: 24px;
+}
+.tbl tbody tr:last-child td {
+  border-bottom: 0;
+}
+.tbl td small {
+  display: block;
+  margin-top: 2px;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.tbl .r {
+  text-align: right;
+}
+.tbl tbody tr {
+  position: relative;
+  transition: background 0.15s ease-out;
+}
+.rowLink tbody tr:hover td,
+.tbl tbody tr:has(.stretch:focus-visible) td {
+  background: var(--surface);
+}
+.stretch {
+  color: inherit;
+  font-weight: 600;
+  text-decoration: none;
+}
+.stretch::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+}
+.stretch:focus-visible {
+  outline: none;
+}
+.tbl tbody tr:has(.stretch:focus-visible) {
+  outline: 2px solid var(--link);
+  outline-offset: -2px;
+}
+/* Controls inside a stretched row sit above the row link. */
+.above {
+  position: relative;
+  z-index: 1;
+}
+.num {
+  font-family: var(--wide);
+  font-size: 12.5px;
+  color: var(--title);
+  white-space: nowrap;
+}
+.code {
+  font-family: var(--wide);
+  font-size: 12.5px;
+  letter-spacing: 0.02em;
+  color: var(--title);
+  white-space: nowrap;
+}
+.muted {
+  color: var(--ink-2);
+}
+.when {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--ink);
+}
+.cell {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.cell b {
+  display: block;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.av {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  flex: none;
+  display: grid;
+  place-items: center;
+  background: var(--tint);
+  color: var(--on-tint);
+  font-family: var(--wide);
+  font-size: 11.5px;
+}
+.emptyRow td {
+  height: auto;
+  padding: 0;
+}
+.tblEmpty {
+  padding: 22px 24px 26px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.tblEmpty b {
+  display: block;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.tblEmpty small {
+  display: block;
+  margin-top: 2px;
+  font-size: 13.5px;
+  color: var(--ink-2);
+}
+
+/* Phones: each row becomes a block; cells with data-label show their label. */
+@media (max-width: 760px) {
+  .tbl thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+  }
+  .tbl,
+  .tbl tbody,
+  .tbl tr,
+  .tbl td {
+    display: block;
+  }
+  .tbl tbody tr {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 14px;
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--line);
+  }
+  .tbl tbody tr:last-child {
+    border-bottom: 0;
+  }
+  .tbl td,
+  .tbl td:first-child,
+  .tbl td:last-child {
+    height: auto;
+    padding: 0;
+    border: 0;
+  }
+  .tbl td:first-child {
+    flex: 1 0 100%;
+  }
+  .tbl td[data-label]::before {
+    content: attr(data-label) ' ';
+    font-family: var(--ui);
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--ink-2);
+    margin-right: 4px;
+  }
+  .tbl td.mHide {
+    display: none;
+  }
+  .tbl .r {
+    text-align: left;
+  }
+  .tbl td.mEnd {
+    flex: 1 0 100%;
+  }
+  .emptyRow td {
+    padding: 0;
+  }
+}
+
+/* ── Definition rows (key · value) ─────────────────────────────────────── */
+.kv {
+  margin: 0;
+  display: grid;
+  grid-template-columns: minmax(96px, 128px) minmax(0, 1fr);
+  border-top: 1px solid var(--line);
+}
+.kv dt,
+.kv dd {
+  margin: 0;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 14.5px;
+  line-height: 1.4;
+  min-width: 0;
+}
+.kv dt {
+  padding-right: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+.kv dd {
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.kv dd.w {
+  font-family: var(--wide);
+  font-size: 12.5px;
+  color: var(--title);
+}
+
+/* ── Identity card (customer detail) ───────────────────────────────────── */
+.idTop {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 22px 24px 16px;
+}
+.idAv {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  flex: none;
+  display: grid;
+  place-items: center;
+  background: var(--nav-on) center / cover no-repeat;
+  color: var(--on-nav-on);
+  font-family: var(--wide);
+  font-size: 16px;
+}
+.idName {
+  margin: 0;
+  font-family: var(--disp);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  font-size: 22px;
+  line-height: 1.05;
+  color: var(--title);
+  overflow-wrap: anywhere;
+}
+.idSub {
+  margin: 4px 0 0;
+  font-size: 14px;
+  color: var(--ink-2);
+}
+
+.kvRow {
+  display: grid;
+  grid-template-columns: minmax(96px, 128px) minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 14.5px;
+  line-height: 1.4;
+}
+.kvRow > span:first-child {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+.kvRow > span:last-child {
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.kvRow + div:not(.kvRow) {
+  margin-top: 12px;
+}
+
+/* ── Pre-formatted notes ───────────────────────────────────────────────── */
+.pre {
+  margin: 0;
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: var(--surface);
+  font-family: var(--ui);
+  font-size: 14.5px;
+  line-height: 1.55;
+  color: var(--ink);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* ── Timeline (activity) ───────────────────────────────────────────────── */
+.timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.timeline li {
+  display: grid;
+  grid-template-columns: 132px minmax(0, 1fr);
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 14.5px;
+  line-height: 1.4;
+}
+.timeline li:last-child {
+  border-bottom: 0;
+}
+.timeline time {
+  font-size: 13px;
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+}
+.timeline b {
+  font-weight: 600;
+  color: var(--ink);
+}
+.timeline span {
+  color: var(--ink-2);
+}
+@media (max-width: 600px) {
+  .timeline li {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+  }
+}
+
+/* ── Thread list (G6 Messages) ─────────────────────────────────────────── */
+.threads {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.thread {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 76px;
+  padding: 10px 20px 10px 18px;
+  color: var(--ink);
+  text-decoration: none;
+  transition: background 0.15s ease-out;
+}
+.thread::after {
+  content: '';
+  position: absolute;
+  left: 80px;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: var(--line);
+}
+.threads li:last-child .thread::after {
+  display: none;
+}
+.thread:hover {
+  background: var(--surface);
+}
+.thread:focus-visible {
+  outline: 2px solid var(--link);
+  outline-offset: -2px;
+}
+.threadAv {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  flex: none;
+  display: grid;
+  place-items: center;
+  background: var(--surface-2);
+  color: var(--ink);
+  font-family: var(--wide);
+  font-size: 13px;
+}
+.threadAvOn {
+  background: var(--nav-on);
+  color: var(--on-nav-on);
+  box-shadow: 0 0 0 2px var(--card), 0 0 0 4px var(--stripe-1), 0 0 0 5px var(--card), 0 0 0 6.5px var(--stripe-3);
+  margin: 4px;
+}
+.threadT {
+  flex: 1;
+  min-width: 0;
+}
+.threadTop {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.threadTop b {
+  flex: 1;
+  min-width: 0;
+  font-size: 16px;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.threadTop time {
+  flex: none;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+.threadTop time.on {
+  font-family: var(--wide);
+  font-size: 12px;
+  color: var(--link);
+}
+.threadBot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 3px;
+}
+.threadBot > span:first-child {
+  flex: 1;
+  min-width: 0;
+  font-size: 14.5px;
+  color: var(--ink-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.threadBot > span.on {
+  color: var(--ink);
+}
+.unread {
+  min-width: 26px;
+  height: 26px;
+  padding: 0 8px;
+  border-radius: 13px;
+  display: grid;
+  place-items: center;
+  flex: none;
+  background: var(--nav-on);
+  color: var(--on-nav-on);
+  font-family: var(--wide);
+  font-size: 11px;
+}
+
+/* ── Chat (G6 crew chat / messages thread) ─────────────────────────────── */
+.chat {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px 20px 20px;
+}
+.day {
+  align-self: center;
+  margin: 8px 0 4px;
+  padding: 0 12px;
+  min-height: 28px;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 14px;
+  background: var(--surface);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+.msg {
+  max-width: min(560px, 82%);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.msgIn {
+  align-self: flex-start;
+}
+.msgOut {
+  align-self: flex-end;
+  align-items: flex-end;
+}
+.bubble {
+  padding: 11px 15px;
+  border-radius: 20px 20px 20px 6px;
+  background: var(--surface-2);
+  color: var(--ink);
+  font-size: 15px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.msgOut .bubble {
+  border-radius: 20px 20px 6px 20px;
+  background: var(--nav-on);
+  color: var(--on-nav-on);
+}
+.msgInternal .bubble {
+  background: var(--card);
+  box-shadow: inset 0 0 0 1.5px var(--line-strong);
+  color: var(--ink);
+}
+.msgMeta {
+  padding: 0 6px;
+  font-size: 12.5px;
+  color: var(--ink-2);
+}
+.msgMeta b {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+/* The ticket chat: filter, scrolling thread, send-as and composer. */
+.chatBox {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.chatScroll {
+  max-height: 380px;
+  min-height: 160px;
+  overflow-y: auto;
+  padding: 14px 16px;
+  border-radius: 20px;
+  background: var(--surface);
+}
+.chatScroll .bubble {
+  background: var(--card);
+}
+.chatScroll .msgOut .bubble {
+  background: var(--nav-on);
+}
+.chatScroll .msgInternal .bubble {
+  background: var(--card);
+}
+.att {
+  display: block;
+  width: 160px;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 0 0 1px var(--line);
+}
+.att img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* ── Week calendar ─────────────────────────────────────────────────────── */
+.week {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  border-top: 1px solid var(--line);
+}
+.dayCol {
+  min-width: 0;
+  min-height: 260px;
+  padding: 12px 10px 14px;
+  box-shadow: -1px 0 0 var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.dayCol:first-child {
+  box-shadow: none;
+}
+.dayHead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 0 4px;
+}
+.dayHead small {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+.dayNum {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-family: var(--wide);
+  font-size: 14px;
+  color: var(--title);
+  background: var(--surface);
+  flex: none;
+}
+.dayToday {
+  background: var(--nav-on);
+  color: var(--on-nav-on);
+  box-shadow: 0 0 0 2px var(--card), 0 0 0 4px var(--stripe-1), 0 0 0 5px var(--card), 0 0 0 6.5px var(--stripe-3);
+  margin: 4px;
+}
+.evt {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 44px;
+  padding: 8px 10px;
+  border-radius: 14px;
+  background: var(--surface);
+  color: var(--ink);
+  text-decoration: none;
+  font-size: 13.5px;
+  line-height: 1.3;
+  transition: background 0.15s ease-out;
+}
+.evt:hover {
+  background: var(--surface-2);
+}
+.evt b {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.evt small {
+  font-size: 12.5px;
+  color: var(--ink-2);
+}
+.evtTime {
+  font-family: var(--wide);
+  font-size: 11px;
+  color: var(--link);
+}
+.evtTicket {
+  background: var(--tint);
+  color: var(--on-tint);
+}
+.evtTicket small,
+.evtTicket .evtTime {
+  color: var(--on-tint);
+}
+.evtTicket .evtTime {
+  font-family: var(--ui);
+  font-size: 12px;
+  font-weight: 600;
+}
+.dayEmpty {
+  padding: 4px;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.navBtn {
+  width: 48px;
+  height: 48px;
+  color: var(--ink);
+}
+.navBtn:hover {
+  background: var(--line-strong);
+}
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+@media (max-width: 1100px) {
+  .week {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .dayCol {
+    min-height: 0;
+    box-shadow: 0 -1px 0 var(--line);
+    padding: 10px 16px 14px;
+  }
+  .dayCol:first-child {
+    box-shadow: none;
+  }
+}
+
+/* ── Forms (new customer, new event, kiosk) ────────────────────────────── */
+.grid2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 14px;
+}
+@media (max-width: 600px) {
+  .grid2 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.full {
+  grid-column: 1 / -1;
+}
+.formCard {
+  max-width: 760px;
+}
+
+/* ── Document chrome (invoice, work order) ─────────────────────────────── */
+.docBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+  padding: 10px 12px 10px 10px;
+  border-radius: 34px;
+  margin-bottom: 18px;
+}
+.docActs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tabs a,
+  .thread,
+  .evt,
+  .tbl tbody tr {
+    transition: none;
+  }
+}

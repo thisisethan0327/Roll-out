@@ -7,7 +7,11 @@ import {
     acceptReschedule,
     declineReschedule,
 } from './actions';
-import { ChevronRight } from '@/components/icons';
+import { ArrowRight, Check, X } from 'lucide-react';
+import { shopStyles as sh } from '@/components/glide-shop/parts';
+
+const ROW: React.CSSProperties = { display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' };
+const IC = { size: 16, strokeWidth: 2, 'aria-hidden': true } as const;
 
 export function AppointmentActions({
     appointmentId,
@@ -32,16 +36,19 @@ export function AppointmentActions({
 
     if (status === 'pending') {
         return (
-            <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+            <div style={ROW}>
                 <button
-                    className="admin-action-btn"
+                    type="button"
+                    className={`g-sec ${sh.secSm}`}
                     disabled={pending}
                     onClick={() => run(() => acceptAppointment(appointmentId, shopId))}
                 >
-                    ACCEPT
+                    <Check {...IC} />
+                    Accept
                 </button>
                 <button
-                    className="admin-action-btn danger"
+                    type="button"
+                    className={`g-sec g-sec--ink ${sh.secSm} ${sh.danger}`}
                     disabled={pending}
                     onClick={() => {
                         const reason = prompt('Decline reason (optional):', '');
@@ -49,7 +56,8 @@ export function AppointmentActions({
                         run(() => declineAppointment(appointmentId, shopId, reason));
                     }}
                 >
-                    DECLINE
+                    <X {...IC} />
+                    Decline
                 </button>
             </div>
         );
@@ -57,13 +65,15 @@ export function AppointmentActions({
 
     if (status === 'accepted') {
         return (
-            <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+            <div style={ROW}>
                 <button
-                    className="admin-action-btn"
+                    type="button"
+                    className={`g-sec ${sh.secSm}`}
                     disabled={pending}
                     onClick={() => run(() => convertAppointmentToTicket(appointmentId, shopId))}
                 >
-                    CONVERT TO TICKET <ChevronRight />
+                    Convert to ticket
+                    <ArrowRight {...IC} />
                 </button>
             </div>
         );
@@ -71,24 +81,28 @@ export function AppointmentActions({
 
     if (status === 'reschedule_requested') {
         return (
-            <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+            <div style={ROW}>
                 <button
-                    className="admin-action-btn"
+                    type="button"
+                    className={`g-sec ${sh.secSm}`}
                     disabled={pending}
                     onClick={() => run(() => acceptReschedule(appointmentId, shopId))}
                 >
-                    ACCEPT NEW TIME
+                    <Check {...IC} />
+                    Accept new time
                 </button>
                 <button
-                    className="admin-action-btn danger"
+                    type="button"
+                    className={`g-sec g-sec--ink ${sh.secSm} ${sh.danger}`}
                     disabled={pending}
                     onClick={() => run(() => declineReschedule(appointmentId, shopId))}
                 >
-                    DECLINE NEW TIME
+                    <X {...IC} />
+                    Decline new time
                 </button>
             </div>
         );
     }
 
-    return <span className="admin-handle">—</span>;
+    return <span className={sh.muted}>—</span>;
 }

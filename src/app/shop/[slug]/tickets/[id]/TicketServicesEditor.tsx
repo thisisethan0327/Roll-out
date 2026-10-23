@@ -50,7 +50,7 @@ export function TicketServicesEditor({
     if (!canManage) {
         const shown = visibleLines(lines); // hide tombstones from read-only view
         return shown.length === 0 ? (
-            <div className="admin-empty">NO SERVICES LISTED</div>
+            <div className="admin-empty">No services listed</div>
         ) : (
             <ul style={{ margin: 0, paddingLeft: 18, lineHeight: 1.65 }}>
                 {shown.map((l, i) => {
@@ -79,7 +79,7 @@ export function TicketServicesEditor({
                         disabled={pending}
                         onClick={save}
                     >
-                        {pending ? 'SAVING…' : 'SAVE SERVICES'}
+                        {pending ? 'Saving…' : 'Save services'}
                     </button>
                 </div>
             )}

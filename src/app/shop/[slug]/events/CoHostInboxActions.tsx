@@ -34,10 +34,10 @@ export function CoHostInboxActions({
         return (
             <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
                 <button className="admin-action-btn" disabled={pending} onClick={() => respond(true)}>
-                    ACCEPT
+                    Accept
                 </button>
                 <button className="admin-action-btn danger" disabled={pending} onClick={() => respond(false)}>
-                    DECLINE
+                    Decline
                 </button>
             </div>
         );

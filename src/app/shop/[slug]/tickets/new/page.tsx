@@ -6,10 +6,11 @@
  * status, priority, and notes. The heavy lifting lives in NewTicketForm (client)
  * and the createTicketStructured server action.
  */
-import Link from 'next/link';
 import { requireShopMemberBySlug } from '@/lib/auth-guard';
 import { NewTicketForm } from './NewTicketForm';
-import { ChevronLeft } from '@/components/icons';
+import { Lock } from 'lucide-react';
+import { ConsoleHead } from '@/components/glide-console/parts';
+import { shopStyles as sh } from '@/components/glide-shop/parts';
 
 export const metadata = { title: 'New Ticket' };
 
@@ -25,43 +26,24 @@ export default async function NewTicketPage({
     const canCreate = MANAGER_ROLES.has(role);
 
     return (
-        <>
-            <div className="admin-page-head">
-                <div>
-                    <Link
-                        href={`/shop/${slug}/tickets`}
-                        className="text-link"
-                        style={{
-                            fontFamily: 'var(--font-display)',
-                            fontSize: 11,
-                            letterSpacing: 'var(--track-wider)',
-                            textDecoration: 'none',
-                        }}
-                    >
-                        <ChevronLeft /> ALL TICKETS
-                    </Link>
-                    <div className="admin-page-title">NEW TICKET</div>
-                    <div className="admin-page-sub">{shop.name.toUpperCase()} · MANUAL ENTRY</div>
-                </div>
-            </div>
+        <div className={sh.stack} style={{ maxWidth: 900 }}>
+            <ConsoleHead
+                back={{ href: `/shop/${slug}/tickets`, label: 'All tickets' }}
+                title="New ticket"
+                sub={`${shop.name} · manual entry for walk-ins and phone-ins`}
+            />
 
             {!canCreate && (
-                <div
-                    style={{
-                        marginBottom: 16,
-                        padding: 14,
-                        border: '1px solid var(--warn)',
-                        color: 'var(--warn)',
-                        fontFamily: 'var(--font-display)',
-                        fontSize: 11,
-                        letterSpacing: 'var(--track-wider)',
-                    }}
-                >
-                    YOUR ROLE ({role.toUpperCase()}) CAN&apos;T CREATE TICKETS. ASK A MANAGER.
+                <div className={sh.note} role="note">
+                    <Lock size={20} strokeWidth={2} aria-hidden="true" />
+                    <span className={sh.noteText}>
+                        Your role ({role}) can&apos;t create tickets
+                        <small>Ask a manager to open the ticket.</small>
+                    </span>
                 </div>
             )}
 
             <NewTicketForm slug={slug} canCreate={canCreate} />
-        </>
+        </div>
     );
 }
