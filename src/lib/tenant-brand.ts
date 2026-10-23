@@ -29,6 +29,14 @@ export type ConsoleBrand = {
     accentGlow: string;
     /** The house this console belongs to, for the rare sentence that needs it. */
     house: string;
+    /**
+     * Glide token overrides for the console (light, and both dark styles).
+     * Rollout's own console has none: Glide's navy and light blue ARE Rollout's
+     * brand, so a tenant replaces every accent role, and the tricolore marks
+     * (edge stripes, banded stripes, date-roundel rings) are hidden by the
+     * console shell whenever a tenant brand is in force.
+     */
+    glide?: { light: Record<string, string>; dark: Record<string, string> };
 };
 
 export const ROLLOUT_BRAND: ConsoleBrand = {
@@ -51,6 +59,27 @@ const UNITY_BRAND: ConsoleBrand = {
     accentDim: 'rgba(255, 255, 255, 0.16)',
     accentGlow: 'rgba(255, 255, 255, 0.06)',
     house: 'UNITY USA',
+    // Monochrome: near-black on light, white on dark. Pairs measured AA.
+    glide: {
+        light: {
+            accent: '#141414', 'on-accent': '#FFFFFF', 'on-accent-2': '#D4D4D4',
+            knob: '#FFFFFF', 'knob-ink': '#141414', fill: '#3A3A3A',
+            'nav-on': '#141414', 'on-nav-on': '#FFFFFF',
+            seg: '#141414', 'seg-ink': '#D4D4D4', 'seg-on': '#FFFFFF', 'seg-on-ink': '#141414',
+            link: '#141414', icon: '#2B2B2B', title: '#141414',
+            tint: '#E8E8E8', 'on-tint': '#141414', done: '#E8E8E8', 'on-done': '#141414',
+            'stripe-1': '#8A8A8A', 'stripe-2': '#141414', 'stripe-3': '#8A8A8A',
+        },
+        dark: {
+            accent: '#FFFFFF', 'on-accent': '#141414', 'on-accent-2': '#3A3A3A',
+            knob: '#141414', 'knob-ink': '#FFFFFF', fill: '#BDBDBD',
+            'nav-on': '#FFFFFF', 'on-nav-on': '#141414',
+            seg: '#2D2D2D', 'seg-ink': '#BDBDBD', 'seg-on': '#FFFFFF', 'seg-on-ink': '#141414',
+            link: '#FFFFFF', icon: '#D9D9D9', title: '#FFFFFF',
+            tint: '#333333', 'on-tint': '#FFFFFF', done: '#333333', 'on-done': '#FFFFFF',
+            'stripe-1': '#8A8A8A', 'stripe-2': '#FFFFFF', 'stripe-3': '#8A8A8A',
+        },
+    },
 };
 
 /**
@@ -65,6 +94,27 @@ const POPEYE_BRAND: ConsoleBrand = {
     accentDim: 'rgba(255, 210, 63, 0.18)',
     accentGlow: 'rgba(255, 210, 63, 0.08)',
     house: 'Popeye Energy',
+    // The yellow carries fills (with dark ink); text links stay ink on light.
+    glide: {
+        light: {
+            accent: '#FFD23F', 'on-accent': '#1A1A1A', 'on-accent-2': '#4A3B00',
+            knob: '#1A1A1A', 'knob-ink': '#FFD23F', fill: '#E0B200',
+            'nav-on': '#1D4F91', 'on-nav-on': '#FFFFFF',
+            seg: '#1D4F91', 'seg-ink': '#D6E2F2', 'seg-on': '#FFD23F', 'seg-on-ink': '#1A1A1A',
+            link: '#1D4F91', icon: '#1D4F91', title: '#1A1A1A',
+            tint: '#FFF3C4', 'on-tint': '#3D3100', done: '#FFF3C4', 'on-done': '#3D3100',
+            'stripe-1': '#FFD23F', 'stripe-2': '#1D4F91', 'stripe-3': '#D7262E',
+        },
+        dark: {
+            accent: '#FFD23F', 'on-accent': '#1A1A1A', 'on-accent-2': '#4A3B00',
+            knob: '#1A1A1A', 'knob-ink': '#FFD23F', fill: '#E0B200',
+            'nav-on': '#FFD23F', 'on-nav-on': '#1A1A1A',
+            seg: '#2D2D2D', 'seg-ink': '#C8C8C8', 'seg-on': '#FFD23F', 'seg-on-ink': '#1A1A1A',
+            link: '#FFD23F', icon: '#FFD23F', title: '#FFFFFF',
+            tint: '#3A3210', 'on-tint': '#FFE58A', done: '#3A3210', 'on-done': '#FFE58A',
+            'stripe-1': '#FFD23F', 'stripe-2': '#1D4F91', 'stripe-3': '#D7262E',
+        },
+    },
 };
 
 const BRAND_BY_SLUG: Record<string, ConsoleBrand> = {
@@ -90,5 +140,19 @@ export function brandForSlug(slug: string | null | undefined): ConsoleBrand {
  */
 export function brandStyle(brand: ConsoleBrand): string {
     if (brand === ROLLOUT_BRAND) return '';
-    return `.shop-layout{--gold:${brand.accent};--gold-dim:${brand.accentDim};--gold-glow:${brand.accentGlow};}`;
+    const legacy = `.shop-layout{--gold:${brand.accent};--gold-dim:${brand.accentDim};--gold-glow:${brand.accentGlow};}`;
+    if (!brand.glide) return legacy;
+    // Glide: the console root and any sheet it opens (sheets portal to <body>).
+    const vars = (m: Record<string, string>) =>
+        Object.entries(m)
+            .map(([k, v]) => `--${k}:${v};`)
+            .join('');
+    const scope = '.glide[data-tenant],body:has(.glide[data-tenant]) .g-sheet-root';
+    const light = `:root[data-theme='light'] :is(${scope})`;
+    return [
+        legacy,
+        `:is(${scope}){${vars(brand.glide.dark)}}`,
+        `${light}{${vars(brand.glide.light)}}`,
+        `@media (prefers-color-scheme: light){:root:not([data-theme]) :is(${scope}){${vars(brand.glide.light)}}}`,
+    ].join('');
 }

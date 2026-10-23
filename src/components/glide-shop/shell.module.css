@@ -1,0 +1,915 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   Glide shop console: the shell (sidebar, phone bar, content column) and the
+   legacy bridge for every /shop/[slug] page.
+
+   Boards: G3 (web host console), G5, G6 (messages). The shell is a
+   `.glide` scope, so the Glide palettes apply to the whole console and the
+   legacy variable bridge in src/styles/glide.css maps the old names.
+
+   `.shell :global(.admin-*)` restyles the legacy console classes that pages
+   still use (tables, fields, pills, buttons, empty states) so a page that has
+   not been rebuilt yet still reads as Glide. Specificity is two classes: a
+   page's own module (`.scope :global(.admin-x)`) loads later and wins a tie.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* A field and chip outline that reaches 3:1 against cards in every palette.
+   The kit lane is adding a shared `--field-line`; when it lands it wins. */
+.shell,
+.sheetNav,
+.sheetFoot {
+  --sh-field: #7d8a9c;
+}
+.shell {
+  --sh-side: 280px;
+}
+:global(:root[data-theme='dark']) :is(.shell, .sheetNav, .sheetFoot) {
+  --sh-field: #5e7396;
+}
+:global(:root[data-theme='dark'][data-dark='graphite']) :is(.shell, .sheetNav, .sheetFoot) {
+  --sh-field: #737373;
+}
+@media (prefers-color-scheme: dark) {
+  :global(:root:not([data-theme])) :is(.shell, .sheetNav, .sheetFoot) {
+    --sh-field: #5e7396;
+  }
+  :global(:root:not([data-theme])[data-dark='graphite']) :is(.shell, .sheetNav, .sheetFoot) {
+    --sh-field: #737373;
+  }
+}
+
+/* ── Shell ─────────────────────────────────────────────────────────────── */
+.shell:global(.shop-layout) {
+  display: grid;
+  grid-template-columns: var(--sh-side) minmax(0, 1fr);
+  min-height: 100dvh;
+  background: var(--surface);
+}
+.shell {
+  color: var(--ink);
+  font-family: var(--ui);
+  /* The legacy console type tokens, neutralised inside Glide: no HUD tracking. */
+  --track-wide: 0.01em;
+  --track-wider: 0.02em;
+  --track-widest: 0.02em;
+  --font-display: var(--ui);
+  --font-mono: var(--ui);
+  --warn: var(--ink);
+  --danger: var(--ink);
+  --neon: var(--link);
+  --orange: var(--ink);
+}
+.shell :global(.lucide) {
+  flex: none;
+}
+
+/* ── Sidebar (desktop) ─────────────────────────────────────────────────── */
+.side {
+  position: sticky;
+  top: 0;
+  height: 100dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 22px 14px 18px 20px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+.brandRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 0 4px;
+}
+.wm {
+  font-family: var(--wide);
+  font-size: 21px;
+  letter-spacing: 0.01em;
+  color: var(--title);
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+}
+.tenantMark {
+  font-family: var(--disp);
+  font-weight: 700;
+  font-size: 17px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--title);
+}
+.badge {
+  height: 30px;
+  padding: 0 11px 0 9px;
+  border-radius: 15px;
+  background: var(--tint);
+  color: var(--on-tint);
+  font-size: 12.5px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+.shopCard {
+  margin: 10px 0 8px;
+  padding: 16px 18px 16px;
+  border-radius: 24px;
+  background: var(--card);
+  box-shadow: 0 0 0 1px var(--line), 0 14px 30px -24px rgba(var(--shadow), 0.6);
+}
+.shopName {
+  margin: 0;
+  font-family: var(--disp);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  font-size: 20px;
+  line-height: 1.05;
+  color: var(--title);
+  overflow-wrap: anywhere;
+}
+.shopSub {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--ink-2);
+  overflow-wrap: anywhere;
+}
+.statusChip {
+  margin-top: 10px;
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 10px;
+}
+.groupLabel {
+  padding: 6px 14px 4px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+.link {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: 22px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+  text-decoration: none;
+  transition: background 0.15s ease-out, color 0.15s ease-out;
+}
+.link svg {
+  color: var(--icon);
+}
+.link:hover {
+  background: var(--surface-2);
+}
+.link[aria-current='page'] {
+  background: var(--nav-on);
+  color: var(--on-nav-on);
+}
+.link[aria-current='page'] svg {
+  color: var(--on-nav-on);
+}
+.link:focus-visible {
+  outline: 2px solid var(--link);
+  outline-offset: 2px;
+}
+.linkLabel {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.adminTag {
+  flex: none;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 11px;
+  display: inline-flex;
+  align-items: center;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--sh-field);
+}
+.link[aria-current='page'] .adminTag {
+  color: var(--on-nav-on);
+  box-shadow: inset 0 0 0 1px currentColor;
+}
+
+/* Footer: who is signed in, switch shop, appearance, sign out. */
+.foot {
+  margin-top: auto;
+  padding-top: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.who {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 56px;
+  padding: 8px 12px 8px 8px;
+  border-radius: 22px;
+  color: var(--ink);
+  text-decoration: none;
+  transition: background 0.15s ease-out;
+}
+.who:hover {
+  background: var(--surface-2);
+}
+.av {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  flex: none;
+  display: grid;
+  place-items: center;
+  background: var(--nav-on);
+  color: var(--on-nav-on);
+  font-family: var(--wide);
+  font-size: 12px;
+}
+.whoText {
+  min-width: 0;
+  flex: 1;
+  font-size: 14.5px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+.whoText small {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--ink-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.whoChev {
+  color: var(--ink-2);
+  flex: none;
+}
+.footRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.footBtn {
+  flex: 1 1 auto;
+  min-height: 44px;
+  padding: 0 14px;
+  font-size: 14px;
+  box-shadow: inset 0 0 0 1.5px var(--field-line, var(--sh-field));
+}
+.footLink {
+  padding: 0 10px;
+  color: var(--link);
+}
+
+/* ── Content column ────────────────────────────────────────────────────── */
+.main {
+  min-width: 0;
+  padding: 26px 40px 96px 20px;
+}
+.mainIn {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 1360px;
+  min-width: 0;
+}
+
+/* ── Phone bar (≤ 900px): the sidebar becomes a top bar and a sheet ────── */
+.bar {
+  display: none;
+}
+.sheetNav {
+  padding: 4px 12px 8px;
+}
+.sheetNav .group:first-child {
+  margin-top: 0;
+}
+.sheetFoot {
+  padding: 8px 12px 0;
+  border-top: 1px solid var(--line);
+  margin-top: 8px;
+}
+@media (max-width: 900px) {
+  .shell:global(.shop-layout) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .side {
+    display: none;
+  }
+  .bar {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 64px;
+    padding: 10px 12px 10px 16px;
+    background: var(--surface);
+    box-shadow: 0 1px 0 var(--line);
+  }
+  .barText {
+    flex: 1;
+    min-width: 0;
+  }
+  .barText b {
+    display: block;
+    font-family: var(--disp);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    font-size: 17px;
+    line-height: 1.1;
+    color: var(--title);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .barText small {
+    display: block;
+    font-size: 12.5px;
+    color: var(--ink-2);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .menuBtn {
+    min-height: 44px;
+    padding: 0 16px 0 14px;
+    font-size: 14px;
+    box-shadow: inset 0 0 0 1.5px var(--field-line, var(--sh-field));
+  }
+  .main {
+    padding: 16px 16px 80px;
+  }
+  .mainIn {
+    gap: 16px;
+  }
+}
+
+/* A platform admin acting in a shop: the pages inside the admin shell. */
+.acting {
+  background: var(--surface);
+  border-radius: 28px;
+  padding: 20px;
+}
+
+/* A platform admin acting in the shop: the strip over the page. */
+.adminStrip {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px 12px;
+  padding: 14px 18px;
+  border: 0;
+  border-radius: 20px;
+  background: var(--card);
+  box-shadow: inset 0 0 0 1px var(--line-strong);
+  font-family: var(--ui);
+  font-size: 14.5px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-decoration: none;
+  color: var(--ink);
+  margin: 0 0 16px;
+}
+.adminStrip svg {
+  color: var(--icon);
+}
+
+/* ── Pending gate (shop not yet verified) ──────────────────────────────── */
+.gate {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 24px 16px;
+  background: var(--surface);
+  color: var(--ink);
+}
+.gateCard {
+  width: 100%;
+  max-width: 560px;
+  padding: 30px 28px 32px;
+  text-align: center;
+}
+.gateCard h1 {
+  margin: 14px 0 6px;
+  font-family: var(--disp);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  font-size: 28px;
+  line-height: 1.05;
+  color: var(--title);
+}
+.gateCard p {
+  margin: 0 auto 18px;
+  max-width: 46ch;
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--ink-2);
+}
+.gateActs {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+}
+
+/* ── Tenant door: the tenant's skin, never Rollout's marks ─────────────── */
+.shell[data-tenant] :global(.g-edge)::after,
+.shell[data-tenant] :global(.g-tri) {
+  display: none;
+}
+.shell[data-tenant] :global(.g-dt--rings) {
+  box-shadow: none;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   LEGACY BRIDGE — the shared console classes inside the Glide shop console
+   ══════════════════════════════════════════════════════════════════════════ */
+.shell :global(.admin-content) {
+  padding: 0 !important;
+}
+.shell :global(.admin-page-head) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px 20px;
+  margin: 0 0 18px;
+  padding: 0;
+  border: 0;
+}
+.shell :global(.admin-page-title) {
+  font-family: var(--disp);
+  font-weight: 600;
+  font-size: 30px;
+  line-height: 1.05;
+  letter-spacing: 0.015em;
+  text-transform: uppercase;
+  color: var(--title);
+  overflow-wrap: anywhere;
+}
+.shell :global(.admin-page-sub) {
+  margin-top: 6px;
+  font-family: var(--ui);
+  font-size: 14px;
+  letter-spacing: 0;
+  color: var(--ink-2);
+}
+.shell :global(.admin-form) {
+  max-width: 640px;
+  gap: 14px;
+  padding: 22px 24px 24px;
+  border: 0;
+  border-radius: 28px;
+  background: var(--card);
+  box-shadow: 0 0 0 1px var(--line), 0 14px 30px -22px rgba(var(--shadow), 0.6);
+}
+.shell :global(.admin-form-label) {
+  font-family: var(--ui);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ink-2);
+}
+.shell :global(.admin-form-hint) {
+  font-family: var(--ui);
+  font-size: 13px;
+  letter-spacing: 0;
+  color: var(--ink-2);
+}
+.shell :global(.admin-form-input),
+.shell :global(.admin-search-input),
+.shell :global(.admin-input) {
+  min-height: 48px;
+  padding: 11px 16px;
+  border: 0;
+  border-radius: 16px;
+  background: var(--card);
+  box-shadow: inset 0 0 0 1px var(--field-line, var(--sh-field));
+  font-family: var(--ui);
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: 0;
+  color: var(--ink);
+  caret-color: var(--link);
+  outline: none;
+  box-sizing: border-box;
+  transition: box-shadow 0.15s ease-out;
+}
+.shell :global(textarea.admin-form-input) {
+  line-height: 1.45;
+}
+.shell :global(select.admin-form-input) {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 40px;
+  background-image: linear-gradient(45deg, transparent 50%, var(--ink-2) 50%), linear-gradient(135deg, var(--ink-2) 50%, transparent 50%);
+  background-position: calc(100% - 22px) 50%, calc(100% - 16px) 50%;
+  background-size: 6px 6px;
+  background-repeat: no-repeat;
+}
+.shell :global(.admin-form-input)::placeholder,
+.shell :global(.admin-search-input)::placeholder {
+  color: var(--ink-2);
+  opacity: 1;
+  text-transform: none;
+}
+.shell :global(.admin-form-input):focus,
+.shell :global(.admin-form-input):focus-visible,
+.shell :global(.admin-search-input):focus,
+.shell :global(.admin-search-input):focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+.shell :global(.admin-form-input):disabled,
+.shell :global(.admin-form-input[readonly]) {
+  background: var(--surface);
+  color: var(--ink-2);
+}
+.shell :global(.admin-search) {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 0 0 16px;
+}
+.shell :global(.admin-search-input) {
+  flex: 1 1 260px;
+  border-radius: 24px;
+  padding-left: 20px;
+}
+
+/* Buttons: the outlined secondary pill; the form submit is the filled pill. */
+.shell :global(.admin-action-btn) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 22px;
+  background: var(--card);
+  box-shadow: inset 0 0 0 1.5px var(--field-line, var(--sh-field));
+  font-family: var(--ui);
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: 0;
+  text-transform: none;
+  text-decoration: none;
+  white-space: nowrap;
+  color: var(--link);
+  cursor: pointer;
+  transition: background 0.15s ease-out;
+}
+.shell :global(.admin-action-btn):hover {
+  background: var(--surface);
+}
+.shell :global(.admin-action-btn.muted),
+.shell :global(.admin-action-btn.danger) {
+  color: var(--ink);
+}
+.shell :global(.admin-action-btn.danger) :global(.lucide) {
+  color: var(--stripe-3);
+}
+.shell :global(.admin-action-btn[disabled]),
+.shell :global(.admin-form-btn[disabled]) {
+  opacity: 1;
+  color: var(--ink-2);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1.5px var(--line-strong);
+  cursor: not-allowed;
+}
+.shell :global(.admin-form-btn),
+.shell :global(.btn) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 0 22px;
+  border: 0;
+  border-radius: 24px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-family: var(--disp);
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-decoration: none;
+  cursor: pointer;
+  box-shadow: 0 10px 22px -14px rgba(var(--shadow), 0.7);
+}
+.shell :global(.admin-form-btn):hover,
+.shell :global(.btn):hover {
+  background: var(--accent);
+  filter: brightness(1.08);
+}
+.shell :global(.btn-ghost) {
+  background: var(--card);
+  color: var(--ink);
+  box-shadow: inset 0 0 0 1.5px var(--field-line, var(--sh-field));
+  font-family: var(--ui);
+  text-transform: none;
+  letter-spacing: 0;
+}
+.shell :global(.btn-ghost):hover {
+  background: var(--surface);
+  filter: none;
+}
+.shell :global(.text-link) {
+  color: var(--link);
+  font-weight: 600;
+  text-decoration: none;
+}
+.shell :global(.text-link):hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* Errors and empty states */
+.shell :global(.admin-form-error),
+.shell :global(.admin-login-error) {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border: 0;
+  border-radius: 18px;
+  background: var(--card);
+  box-shadow: inset 0 0 0 1.5px var(--line-strong);
+  font-family: var(--ui);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0;
+  color: var(--ink);
+}
+.shell :global(.admin-empty) {
+  padding: 24px;
+  border: 0;
+  border-radius: 20px;
+  background: var(--surface);
+  font-family: var(--ui);
+  font-size: 14.5px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  text-align: left;
+  color: var(--ink-2);
+}
+
+/* Pills become Glide chips; the status variants take the tint. */
+.shell :global(.admin-pill) {
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--card);
+  box-shadow: inset 0 0 0 1px var(--field-line, var(--sh-field));
+  font-family: var(--ui);
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--ink);
+  white-space: nowrap;
+  vertical-align: middle;
+}
+.shell :global(.admin-pill.neon),
+.shell :global(.admin-pill.gold) {
+  background: var(--tint);
+  color: var(--on-tint);
+  box-shadow: none;
+}
+.shell :global(.admin-pill.warn) {
+  color: var(--ink-2);
+}
+.shell :global(a.admin-pill) {
+  min-height: 44px;
+  padding: 0 16px;
+  border-radius: 22px;
+  font-size: 14px;
+}
+.shell :global(.admin-handle) {
+  font-size: 13px;
+  letter-spacing: 0;
+  color: var(--ink-2);
+}
+
+/* Stat grid → one quiet count strip. */
+.shell :global(.admin-stat-grid) {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0;
+  margin: 0 0 18px;
+  border-radius: 24px;
+  background: var(--card);
+  box-shadow: 0 0 0 1px var(--line), 0 14px 30px -22px rgba(var(--shadow), 0.6);
+  overflow: hidden;
+}
+.shell :global(.admin-stat) {
+  padding: 14px 18px;
+  border: 0;
+  box-shadow: -1px 0 0 var(--line);
+  background: none;
+}
+.shell :global(.admin-stat-lbl) {
+  margin-bottom: 6px;
+  font-family: var(--ui);
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0;
+  color: var(--ink-2);
+}
+.shell :global(.admin-stat-num) {
+  font-family: var(--wide);
+  font-weight: 400;
+  font-size: 20px;
+  letter-spacing: 0.02em;
+  color: var(--title);
+}
+.shell :global(.admin-stat-num.gold),
+.shell :global(.admin-stat-num.warn) {
+  color: var(--title);
+}
+
+/* Tables: Glide's quiet table in a card. */
+.shell :global(.admin-table-wrap) {
+  border: 0;
+  border-radius: 24px;
+  background: var(--card);
+  box-shadow: 0 0 0 1px var(--line), 0 14px 30px -22px rgba(var(--shadow), 0.6);
+  overflow-x: auto;
+}
+.shell :global(.admin-table) {
+  font-family: var(--ui);
+  font-size: 14.5px;
+  letter-spacing: 0;
+}
+.shell :global(.admin-table) thead th {
+  height: 44px;
+  padding: 0 12px;
+  background: none;
+  border-bottom: 1px solid var(--line);
+  font-family: var(--ui);
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+.shell :global(.admin-table) tbody td {
+  padding: 12px;
+  border-bottom: 1px solid var(--line);
+  font-size: 14.5px;
+  letter-spacing: 0;
+  color: var(--ink);
+}
+.shell :global(.admin-table) thead th:first-child,
+.shell :global(.admin-table) tbody td:first-child {
+  padding-left: 22px;
+}
+.shell :global(.admin-table) thead th:last-child,
+.shell :global(.admin-table) tbody td:last-child {
+  padding-right: 22px;
+}
+.shell :global(.admin-table) tbody tr:hover td {
+  background: var(--surface);
+}
+.shell :global(.admin-table) tbody tr:last-child td {
+  border-bottom: 0;
+}
+.shell :global(.admin-table td .text-link) {
+  color: var(--link);
+}
+.shell :global(.admin-table) :global(.admin-empty) {
+  background: none;
+  padding: 18px 0;
+}
+
+/* Needs-attention items */
+.shell :global(.admin-attention-derived) {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px 12px;
+  padding: 14px 18px;
+  border: 0;
+  border-radius: 20px;
+  background: var(--card);
+  box-shadow: inset 0 0 0 1px var(--line-strong);
+  font-family: var(--ui);
+  font-size: 14.5px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-decoration: none;
+  color: var(--ink);
+  min-height: 52px;
+  margin: 0 0 10px;
+}
+.shell :global(.admin-attention-derived):hover {
+  background: var(--surface);
+}
+
+/* Two-column forms, chip lists and galleries (kiosk events, services) */
+.shell :global(.admin-chip) {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 4px 0 12px;
+  border: 0;
+  border-radius: 16px;
+  background: var(--tint);
+  color: var(--on-tint);
+  font-family: var(--ui);
+  font-size: 13.5px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+.shell :global(.admin-chip-x) {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  color: var(--on-tint);
+}
+.shell :global(.admin-gallery-item) {
+  border: 0;
+  border-radius: 18px;
+  overflow: hidden;
+  background: var(--card);
+  box-shadow: 0 0 0 1px var(--line);
+}
+.shell :global(.admin-hero-preview) {
+  border: 0;
+  border-radius: 18px;
+  overflow: hidden;
+}
+
+/* Legacy cards and frames used inline by older components. */
+.shell :global(.feature-card) {
+  border: 0;
+  border-radius: 28px;
+  background: var(--card);
+  box-shadow: 0 0 0 1px var(--line), 0 14px 30px -22px rgba(var(--shadow), 0.6);
+}
+.shell :global(.corner-bottom-left),
+.shell :global(.corner-bottom-right) {
+  display: none;
+}
+.shell :global(.eyebrow) {
+  display: none;
+}
+
+/* Skeletons follow the palette. */
+.shell :global(.rl-skel) {
+  background: var(--surface-2);
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .link,
+  .who,
+  .shell :global(.admin-action-btn),
+  .shell :global(.admin-form-input) {
+    transition: none;
+  }
+}
+
+/* ── Phone widths: 44px targets and 16px fields (iOS zoom guard) ───────── */
+@media (max-width: 900px) {
+  .shell :global(.admin-form-input),
+  .shell :global(.admin-search-input) {
+    font-size: 16px;
+  }
+  .shell :global(.admin-page-title) {
+    font-size: 26px;
+  }
+  .shell :global(.admin-stat-grid) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

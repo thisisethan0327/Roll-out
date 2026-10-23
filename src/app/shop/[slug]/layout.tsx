@@ -11,9 +11,11 @@ import { getShopVendorBySlug } from '@/lib/store-shops';
 import { adminModuleView, enabledModules, ModuleKey } from '@/lib/shop-modules';
 import { ShopSidebar } from './ShopSidebar';
 import { AdminShell } from '@/app/admin/AdminShell';
-import { brandForSlug, brandStyle } from '@/lib/tenant-brand';
+import { brandForSlug, brandStyle, ROLLOUT_BRAND } from '@/lib/tenant-brand';
 import { ROLLOUT_ORIGIN, tenantForHost } from '@/lib/tenant-hosts';
 import { AuthHashGuard } from '@/components/auth/AuthHashGuard';
+import { ArrowLeftRight, CircleX, Clock, ShieldCheck } from 'lucide-react';
+import shell from '@/components/glide-shop/shell.module.css';
 
 const ACTIVE_SHOP_COOKIE = 'rollout_active_shop';
 
@@ -33,46 +35,44 @@ function ShopPendingGate({
     const copy =
         status === 'rejected'
             ? {
-                  eyebrow: '／ APPLICATION NOT APPROVED',
                   title: 'This shop was not approved',
                   body: 'Your Rollout listing application was declined. If you think this is a mistake, reply to the email we sent or reach out to support.',
               }
             : status === 'suspended'
               ? {
-                    eyebrow: '／ SHOP SUSPENDED',
                     title: 'This shop is suspended',
                     body: 'Your shop is currently suspended and hidden from Rollout. Contact support to resolve it.',
                 }
               : {
-                    eyebrow: '／ UNDER REVIEW',
                     title: 'Your shop is pending verification',
                     body: 'Thanks for applying. A Rollout admin is reviewing your shop. Once verified it goes live on the directory and map, and your console unlocks. We’ll email you the moment it’s approved.',
                 };
+    const Icon = status === 'rejected' || status === 'suspended' ? CircleX : Clock;
     return (
-        <div className="shop-layout" data-theme="dark">
-            <div className="admin-main" style={{ display: 'flex', minHeight: '100vh', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-                <div className="feature-card corner-wrap" style={{ maxWidth: 560, width: '100%', padding: '40px 32px', textAlign: 'center' }}>
-                    <span className="corner-bottom-left" />
-                    <span className="corner-bottom-right" />
-                    <div className="eyebrow eyebrow-gold mb-4">{copy.eyebrow}</div>
-                    <h1 style={{ fontSize: 26, letterSpacing: 0.5, margin: '0 0 8px' }}>{copy.title}</h1>
-                    <div className="mono-row" style={{ justifyContent: 'center', fontSize: 12, marginBottom: 18 }}>
-                        <span className="accent">{(shopName || 'SHOP').toUpperCase()}</span>
-                        <span className="sep" />
-                        <span>{status.toUpperCase()}</span>
-                    </div>
-                    <p style={{ color: 'var(--text-2)', fontSize: 15, lineHeight: 1.6, margin: '0 0 20px' }}>{copy.body}</p>
-                    {reviewNote && (status === 'rejected' || status === 'suspended') ? (
-                        <p style={{ color: 'var(--text-2)', fontSize: 13, fontStyle: 'italic', margin: '0 0 20px' }}>
-                            Note from review: &ldquo;{reviewNote}&rdquo;
-                        </p>
-                    ) : null}
-                    <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
-                        <a href="/shop/picker" className="btn btn-ghost">Switch shop</a>
-                        <a href="/" className="btn btn-ghost">Back to the dashboard</a>
-                    </div>
+        <div className={`shop-layout glide ${shell.gate}`}>
+            <main className={`g-card ${shell.gateCard}`}>
+                <span className="g-ic" aria-hidden="true">
+                    <Icon size={22} strokeWidth={2} />
+                </span>
+                <h1>{copy.title}</h1>
+                <div className="g-chips" style={{ justifyContent: 'center', marginBottom: 16 }}>
+                    <span className="g-chip">{shopName || 'Shop'}</span>
+                    <span className="g-chip">{status.charAt(0).toUpperCase() + status.slice(1)}</span>
                 </div>
-            </div>
+                <p>{copy.body}</p>
+                {reviewNote && (status === 'rejected' || status === 'suspended') ? (
+                    <p>Note from review: &ldquo;{reviewNote}&rdquo;</p>
+                ) : null}
+                <div className={shell.gateActs}>
+                    <a href="/shop/picker" className="g-sec g-sec--ink">
+                        <ArrowLeftRight size={17} strokeWidth={2} aria-hidden="true" />
+                        Switch shop
+                    </a>
+                    <a href="/" className="g-sec g-sec--ink">
+                        Back to the dashboard
+                    </a>
+                </div>
+            </main>
         </div>
     );
 }
@@ -140,15 +140,16 @@ export default async function ShopLayout({
         }
     }
 
-    // Stamp the console theme server-side from the cookie so the first paint is
-    // already correct (no flash-of-wrong-theme). Dark is the default; only an
-    // explicit 'light' cookie flips it. The attribute lives solely on this
-    // wrapper, so the scoped light tokens never leak outside /shop/*.
+    // The legacy console theme cookie. Glide follows the site Appearance
+    // (stamped on <html>), so only the admin shell's own chrome still reads it.
     const shopTheme =
         cookieStore.get('rollout_shop_theme')?.value === 'light' ? 'light' : 'dark';
 
     const brand = brandForSlug(shop.slug);
     const brandCss = brandStyle(brand);
+    // A tenant-branded shop shows its own name where Rollout's wordmark was, and
+    // the shell hides the tricolore marks (data-tenant).
+    const isTenantBrand = brand !== ROLLOUT_BRAND;
 
     // A tenant's own door (admin.unityusa.co) is the whole product there: the
     // middleware refuses every other path on that host, so the two sidebar
@@ -200,21 +201,33 @@ export default async function ShopLayout({
                         shopStatus={status}
                     />
                 }
-                banner={
-                    <div className="shop-admin-strip">
-                        ADMIN · ACTING AS @{shop.slug.toUpperCase()}
-                        {status !== 'verified' ? ` · SHOP ${status.toUpperCase()}` : ''} — EVERY CHANGE HERE IS
-                        MADE AS THE SHOP.
-                    </div>
-                }
+                banner={null}
             >
-                {children}
+                <div
+                    className={`glide ${shell.shell} ${shell.acting}`}
+                    data-tenant={isTenantBrand ? brand.house : undefined}
+                >
+                    <div className={shell.mainIn}>
+                        <div className={shell.adminStrip} role="note">
+                            <ShieldCheck size={18} strokeWidth={2} aria-hidden="true" />
+                            <span>
+                                Admin · acting as @{shop.slug}
+                                {status !== 'verified' ? ` · shop ${status}` : ''}. Every change here is made as
+                                the shop.
+                            </span>
+                        </div>
+                        {children}
+                    </div>
+                </div>
             </AdminShell>
         );
     }
 
     return (
-        <div className="shop-layout" data-theme={shopTheme}>
+        <div
+            className={`shop-layout glide ${shell.shell}`}
+            data-tenant={isTenantBrand ? brand.house : undefined}
+        >
             {tenantStyle}
             {/* Strip an auth fragment wherever the broker drops somebody who was
                 already signed in — they never pass the login page, so nothing
@@ -231,8 +244,11 @@ export default async function ShopLayout({
                 showSellOnNeferstock={!onTenantHost}
                 showSwitchShop={showSwitchShop}
                 switchShopHref={switchShopHref}
+                brandLabel={isTenantBrand ? brand.label : null}
             />
-            <div className="admin-main">{children}</div>
+            <main className={shell.main}>
+                <div className={shell.mainIn}>{children}</div>
+            </main>
         </div>
     );
 }
