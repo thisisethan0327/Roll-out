@@ -11,11 +11,12 @@
  * + individual /u/[handle] pages.
  */
 import type { Metadata } from 'next';
-import { EmptyRow } from '@/app/me/ui';
 import Link from 'next/link';
-import { BandReveal } from '@/components/motion/BandReveal';
+import { ArrowRight, BadgeCheck, MapPin, Star, Store } from 'lucide-react';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
-import { ArrowRight, Check, Stars } from '@/components/icons';
+import { Card, Chip, GlideButton, IconRoundel, SecButton } from '@/components/glide/primitives';
+import { ViewToggle } from '@/components/glide-discover/ui';
+import { dioramaFor } from '@/components/glide-discover/dioramas';
 
 // Render at request time, not build time: this page reads via the service-role
 // admin client whose key is runtime-only on Coolify. Static prerender at build
@@ -110,10 +111,6 @@ async function loadShops(): Promise<ShopCard[]> {
     }));
 }
 
-function stars(rating: number) {
-    return <Stars rating={rating} />;
-}
-
 export const metadata: Metadata = {
     title: 'Car Wrap, PPF & Detail Shops',
     description:
@@ -132,97 +129,70 @@ export default async function ShopsDirectoryPage() {
     const shops = await loadShops();
 
     return (
-        <>
-            {/* HERO */}
-            <BandReveal>
-            <section className="hero-band" data-band="shops">
-                <div className="container" style={{ paddingTop: 64, paddingBottom: 48 }}>
-                    <div className="eyebrow eyebrow-gold mb-4">／ SHOPS</div>
-                    <h1 data-band-title style={{ fontSize: 'clamp(32px, 5vw, 56px)', letterSpacing: 1, margin: 0 }}>
-                        SHOPS ON ROLLOUT
-                    </h1>
-                    <p data-band-copy style={{ fontSize: 16, marginTop: 14, maxWidth: 620 }}>
-                        Vehicle wraps, paint protection film, ceramic coating, tint, and more —
-                        find a shop near you, check the reviews, and book online.
-                    </p>
-                    {shops.length > 0 && (
-                        <div className="mono-row" style={{ marginTop: 22 }}>
-                            <span className="accent">{shops.length}</span>
-                            <span>{shops.length === 1 ? 'SHOP LISTED' : 'SHOPS LISTED'}</span>
-                        </div>
-                    )}
-                </div>
-            </section>
-            </BandReveal>
-
-            {/* LIST */}
-            <section className="section" style={{ padding: '48px 0' }}>
-                <div className="container">
-                    {shops.length === 0 ? (
-                        <EmptyRow text="No shops on the map yet. Check back soon." art="empty-shops" />
-                    ) : (
-                        <div className="shop-grid">
-                            {shops.map((s) => (
-                                <ShopDirectoryCard key={s.id} shop={s} />
-                            ))}
-                        </div>
-                    )}
-                </div>
-            </section>
-
-            {/* MAP TEASER */}
-            <section style={{ borderTop: '1px solid var(--line)', background: 'var(--bg-1)' }}>
-                <div
-                    className="container shop-map-teaser"
-                    style={{ padding: '56px 0' }}
-                >
-                    <div style={{ flex: 1, minWidth: 260 }}>
-                        <div className="eyebrow eyebrow-gold mb-4">／ MAP</div>
-                        <h2 style={{ fontSize: 'clamp(24px, 3.5vw, 36px)', margin: 0 }}>
-                            SEE EVERY SHOP ON THE MAP
-                        </h2>
-                        <p style={{ color: 'var(--text-2)', fontSize: 15, marginTop: 12, maxWidth: 520 }}>
-                            Shops, meets, and convoys plotted together. Find what&apos;s near you and
-                            plan the route.
-                        </p>
-                        <Link href="/meets/map" className="btn" style={{ marginTop: 22 }}>
-                            Open The Map
-                        </Link>
-                    </div>
-                    <div className="shop-map-glyph corner-wrap" aria-hidden>
-                        <span className="corner-bottom-left" />
-                        <span className="corner-bottom-right" />
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src="/illo/map-teaser.svg" alt="" width={138} height={138} style={{ display: 'block', width: '100%', height: '100%', objectFit: 'cover' }} />
-                    </div>
-                </div>
-            </section>
-
-            {/* RUN A SHOP CTA */}
-            <section style={{ borderTop: '1px solid var(--line)' }}>
-                <div
-                    className="container shop-run-cta"
-                    style={{ padding: '48px 0' }}
-                >
+        <div className="glide glide-page gd-page">
+            <div className="g-wrap">
+                <header className="gd-head">
                     <div>
-                        <div className="eyebrow mb-4">／ FOR SHOPS</div>
-                        <h3 style={{ fontSize: 'clamp(20px, 2.6vw, 28px)', margin: 0 }}>
-                            RUN A SHOP?
-                        </h3>
-                        <p style={{ color: 'var(--text-2)', fontSize: 14, marginTop: 10, maxWidth: 480 }}>
-                            Get on the map, take bookings, message customers, and sell — all from one
-                            console.
+                        <h1>Shops</h1>
+                        <p>
+                            {shops.length > 0 ? (
+                                <>
+                                    <span className="g-w">{shops.length}</span> verified {shops.length === 1 ? 'shop' : 'shops'} · A to Z ·{' '}
+                                </>
+                            ) : null}
+                            Wraps, paint protection film, ceramic coating, tint and more. Check the reviews and book online.
                         </p>
                     </div>
-                    <Link href="/shop/apply" className="btn" style={{ whiteSpace: 'nowrap' }}>
-                        OPEN A SHOP <ArrowRight />
-                    </Link>
-                    <Link href="/shop/login" className="btn btn-ghost" style={{ whiteSpace: 'nowrap' }}>
-                        Shop Console <ArrowRight />
-                    </Link>
+                    <ViewToggle current="list" listHref="/shops" mapHref="/meets/map" />
+                </header>
+
+                {shops.length === 0 ? (
+                    <Card className="gd-empty" style={{ marginTop: 20 }}>
+                        <IconRoundel>
+                            <Store size={21} strokeWidth={1.75} />
+                        </IconRoundel>
+                        <span>
+                            <b>No shops listed yet</b>
+                            Check back soon, or list your own shop.
+                        </span>
+                    </Card>
+                ) : (
+                    <ul className="gd-shops">
+                        {shops.map((s) => (
+                            <li key={s.id}>
+                                <ShopDirectoryCard shop={s} />
+                            </li>
+                        ))}
+                    </ul>
+                )}
+
+                <div className="gd-pair">
+                    <Card edge>
+                        <h2>See every shop on the map</h2>
+                        <p>Shops and meets plotted together. Find what is near you and plan the drive.</p>
+                        <div className="gd-acts">
+                            <GlideButton href="/meets/map" size="sm">
+                                Open the map
+                            </GlideButton>
+                        </div>
+                    </Card>
+                    <Card>
+                        <h2>Run a shop?</h2>
+                        <p>Get on the map, take bookings, message customers and sell, all from one console.</p>
+                        <div className="gd-acts">
+                            <SecButton href="/shop/apply">
+                                <Store size={18} strokeWidth={1.75} aria-hidden="true" />
+                                List your shop
+                            </SecButton>
+                            <Link href="/shop/login" className="g-link">
+                                Shop console
+                                <ArrowRight size={15} strokeWidth={2} aria-hidden="true" />
+                            </Link>
+                        </div>
+                    </Card>
                 </div>
-            </section>
-        </>
+            </div>
+        </div>
     );
 }
 
@@ -230,89 +200,61 @@ export default async function ShopsDirectoryPage() {
 function ShopDirectoryCard({ shop: s }: { shop: ShopCard }) {
     const locationText = [s.city, s.state_region].filter(Boolean).join(', ') || s.region || '';
     const isArea = s.location_precision === 'area';
-    const initial = (s.name ?? s.slug ?? '?').trim().charAt(0).toUpperCase();
+    const name = s.name ?? s.slug;
+    const dio = dioramaFor(s.slug);
+    // Area shops are city-level presence: online-based, the city, never a street.
+    const where = isArea ? ['Online', locationText ? `based in ${locationText}` : null].filter(Boolean).join(' · ') : locationText || 'Online';
 
     const inner = (
-        <article className="shop-card feature-card corner-wrap">
-            <span className="corner-bottom-left" />
-            <span className="corner-bottom-right" />
-
-            <div className="shop-card-head">
-                <div className="shop-logo">
-                    {s.avatar_url ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={s.avatar_url} alt={`${s.name ?? s.slug} logo`} loading="lazy" />
-                    ) : (
-                        <span className="shop-logo-fallback">{initial}</span>
-                    )}
-                </div>
-                <div style={{ minWidth: 0 }}>
-                    <div className="mono-row" style={{ fontSize: 10 }}>
-                        {s.is_verified ? (
-                            <span className="accent"><Check /> VERIFIED</span>
-                        ) : (
-                            <span>SHOP</span>
-                        )}
-                        {/* The city, not the broad region code ("PNW"): a card is local, the site is not. */}
-                        {s.city ? (
-                            <>
-                                <span className="sep" />
-                                <span>{s.city.toUpperCase()}</span>
-                            </>
-                        ) : null}
-                    </div>
-                    <h3 style={{ fontSize: 18, letterSpacing: 0.5, margin: '6px 0 0', color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {(s.name ?? s.slug).toUpperCase()}
-                    </h3>
-                </div>
-            </div>
-
-            <div className="text-dim" style={{ fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
-                {isArea ? (
-                    // City-level presence: online-based, show the city (never a
-                    // street), tagged ONLINE so it reads as area not exact.
+        <>
+            <span className={dio ? 'gd-shop-im gd-shop-im--dio' : 'gd-shop-im'}>
+                {dio ? (
                     <>
-                        <span className="shop-chip">ONLINE</span>
-                        {locationText && <span>BASED IN {locationText}</span>}
-                    </>
-                ) : locationText ? (
-                    <>
-                        {/* Only show the map-pin affordance when we actually have a place. */}
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden style={{ flexShrink: 0 }}>
-                            <path d="M12 21s-6-5.3-6-10a6 6 0 0 1 12 0c0 4.7-6 10-6 10z" />
-                            <circle cx="12" cy="11" r="2" />
-                        </svg>
-                        {locationText}
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img className="g-only-light" src={dio.day} alt="" loading="lazy" />
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img className="g-only-dark" src={dio.night} alt="" loading="lazy" />
                     </>
                 ) : (
-                    <span className="shop-chip">ONLINE</span>
+                    <span className="gd-logo">
+                        {s.avatar_url ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={s.avatar_url} alt="" loading="lazy" />
+                        ) : (
+                            (name ?? '?').trim().charAt(0).toUpperCase()
+                        )}
+                    </span>
                 )}
-            </div>
-
-            {(s.offers_services || s.sells_products) && (
-                <div className="shop-chips">
-                    {s.offers_services && <span className="shop-chip">SERVICES</span>}
-                    {s.sells_products && <span className="shop-chip">STORE</span>}
-                </div>
-            )}
-
-            <div className="mono-row shop-card-foot" style={{ fontSize: 12 }}>
-                <span className="accent" style={{ letterSpacing: 2 }}>{stars(s.rating_avg)}</span>
-                <span className="sep" />
-                <span>
-                    {s.rating_count > 0
-                        ? `${s.rating_avg.toFixed(1)} · ${s.rating_count} ${s.rating_count === 1 ? 'REVIEW' : 'REVIEWS'}`
-                        : 'NO REVIEWS YET'}
+            </span>
+            <span className="gd-shop-tx">
+                <span className="gd-shop-nm">
+                    <b>{name}</b>
+                    {s.is_verified ? <BadgeCheck size={19} strokeWidth={2} aria-label="Verified shop" /> : null}
                 </span>
-            </div>
-        </article>
+                <small>
+                    <MapPin size={14} strokeWidth={2} aria-hidden="true" style={{ verticalAlign: -2, marginRight: 4, color: 'var(--icon)' }} />
+                    {where}
+                </small>
+                <span className="g-chips">
+                    {s.rating_count > 0 ? (
+                        <Chip icon={<Star size={14} strokeWidth={2} fill="currentColor" aria-hidden="true" className="gd-star" />}>
+                            <span className="g-w">{s.rating_avg.toFixed(1)}</span> · {s.rating_count} {s.rating_count === 1 ? 'review' : 'reviews'}
+                        </Chip>
+                    ) : (
+                        <Chip>No reviews yet</Chip>
+                    )}
+                    {s.offers_services ? <Chip>Services</Chip> : null}
+                    {s.sells_products ? <Chip>Store</Chip> : null}
+                </span>
+            </span>
+        </>
     );
 
     return s.handle ? (
-        <Link href={`/u/${s.handle}`} style={{ textDecoration: 'none', display: 'block', height: '100%' }}>
+        <Link href={`/u/${s.handle}`} className="gd-shop">
             {inner}
         </Link>
     ) : (
-        <div style={{ height: '100%' }}>{inner}</div>
+        <div className="gd-shop">{inner}</div>
     );
 }
