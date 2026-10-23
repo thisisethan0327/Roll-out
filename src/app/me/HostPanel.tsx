@@ -1,6 +1,6 @@
 'use client';
 /**
- * "Become a host" panel on the /me overview.
+ * "Become a host" panel on the /me overview, in Glide.
  *
  * Three states driven by the member's host_status:
  *   • none      → pitch + apply form (become_host RPC via becomeHostAction)
@@ -10,124 +10,108 @@
  * Nominated members (host_appointed_by_shop_id set) whose status is pending see
  * a slightly different note (a shop vouched for them).
  */
-import Link from 'next/link';
 import { useActionState } from 'react';
+import { BadgeCheck, CircleAlert, Clock, Flag, LoaderCircle, Plus } from 'lucide-react';
 import { becomeHostAction } from './actions';
-import { ChevronRight } from '@/components/icons';
+import { Card, GlideButton, SecButton } from '@/components/glide/primitives';
+import { CardHead } from '@/components/glide-console/parts';
+import s from '@/components/glide-console/console.module.css';
 
 type HostStatus = 'none' | 'pending' | 'verified';
 
-export function HostPanel({
-    hostStatus,
-    nominated,
-}: {
-    hostStatus: HostStatus;
-    nominated: boolean;
-}) {
+export function HostPanel({ hostStatus, nominated }: { hostStatus: HostStatus; nominated: boolean }) {
     const [state, formAction, pending] = useActionState(becomeHostAction, null);
 
     return (
-        <section
-            style={{
-                border: '1px solid var(--line)',
-                background: 'var(--bg-1)',
-                padding: 20,
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 12,
-            }}
-        >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
-                <div
-                    style={{
-                        fontFamily: 'var(--font-display)',
-                        fontSize: 11,
-                        letterSpacing: 'var(--track-wider)',
-                        color: 'var(--gold)',
-                    }}
-                >
-                    ／ BECOME A HOST
-                </div>
-                <StatusBadge status={hostStatus} />
+        <Card as="section" aria-labelledby="host-h" edge={hostStatus === 'verified'}>
+            <CardHead id="host-h" title="Host on Rollout" action={<StatusBadge status={hostStatus} />} />
+            <div className={s.cardBody} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                {hostStatus === 'verified' ? (
+                    <>
+                        <p className={s.small} style={{ fontSize: 15 }}>
+                            You’re a verified host. Create your own meets, runs, and shows — they appear on the public Meets directory and map, and you can invite people by email.
+                        </p>
+                        <div className={s.actRow}>
+                            <GlideButton href="/me/events/new" size="sm" icon={<Plus size={18} strokeWidth={2} />}>
+                                Host an event
+                            </GlideButton>
+                            <SecButton href="/me/events" className="g-sec--ink">
+                                My events
+                            </SecButton>
+                        </div>
+                    </>
+                ) : hostStatus === 'pending' ? (
+                    <p className={s.small} style={{ fontSize: 15 }}>
+                        {nominated
+                            ? 'A shop nominated you as a host. A Rollout admin is reviewing it — you’ll be able to host your own events once approved.'
+                            : 'Your host application is under review. We’ll email you the moment a Rollout admin approves it, and hosting unlocks here.'}
+                    </p>
+                ) : (
+                    <>
+                        <p className={s.small} style={{ fontSize: 15 }}>
+                            Want to run your own meets? Apply to become an individual host. Once a Rollout admin verifies you, you can create community events (no shop required) and invite people by email.
+                        </p>
+                        <form action={formAction} className={s.form}>
+                            <div className={s.field}>
+                                <label className={s.label} htmlFor="host-why">
+                                    What do you want to host? <span style={{ fontWeight: 500 }}>(optional)</span>
+                                </label>
+                                <textarea
+                                    id="host-why"
+                                    name="why"
+                                    rows={2}
+                                    maxLength={500}
+                                    placeholder="Helps the review."
+                                    className={s.input}
+                                />
+                            </div>
+                            {state?.error ? (
+                                <p className={`${s.hint} ${s.hintBad}`} role="alert">
+                                    <CircleAlert size={16} strokeWidth={2} aria-hidden="true" />
+                                    {state.error}
+                                </p>
+                            ) : null}
+                            <div>
+                                <GlideButton
+                                    type="submit"
+                                    size="sm"
+                                    disabled={pending}
+                                    aria-busy={pending}
+                                    icon={pending ? <LoaderCircle size={18} strokeWidth={2} className="g-spin" /> : undefined}
+                                >
+                                    {pending ? 'Submitting…' : 'Apply to host'}
+                                </GlideButton>
+                            </div>
+                        </form>
+                    </>
+                )}
             </div>
-
-            {hostStatus === 'verified' ? (
-                <>
-                    <p style={{ color: 'var(--text-2)', fontSize: 14, lineHeight: 1.6, margin: 0 }}>
-                        You’re a verified host. Create your own meets, runs, and shows — they appear on the public Meets directory and map, and you can invite people by email.
-                    </p>
-                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                        <Link href="/me/events/new" className="admin-action-btn" style={{ textDecoration: 'none' }}>
-                            HOST AN EVENT <ChevronRight />
-                        </Link>
-                        <Link href="/me/events" className="admin-action-btn muted" style={{ textDecoration: 'none' }}>
-                            MY EVENTS
-                        </Link>
-                    </div>
-                </>
-            ) : hostStatus === 'pending' ? (
-                <p style={{ color: 'var(--text-2)', fontSize: 14, lineHeight: 1.6, margin: 0 }}>
-                    {nominated
-                        ? 'A shop nominated you as a host. A Rollout admin is reviewing it — you’ll be able to host your own events once approved.'
-                        : 'Your host application is under review. We’ll email you the moment a Rollout admin approves it, and hosting unlocks here.'}
-                </p>
-            ) : (
-                <>
-                    <p style={{ color: 'var(--text-2)', fontSize: 14, lineHeight: 1.6, margin: 0 }}>
-                        Want to run your own meets? Apply to become an individual host. Once a Rollout admin verifies you, you can create community events (no shop required) and invite people by email.
-                    </p>
-                    <form action={formAction} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                        <textarea
-                            name="why"
-                            rows={2}
-                            maxLength={500}
-                            placeholder="Tell us what you want to host (optional) — helps the review."
-                            style={{
-                                width: '100%',
-                                padding: '9px 11px',
-                                background: 'var(--bg-2)',
-                                border: '1px solid var(--line)',
-                                color: 'var(--text)',
-                                // 16px or iOS zooms the page on focus. Every
-                                // other input in the app is already 16.
-                                fontSize: 16,
-                                borderRadius: 3,
-                                resize: 'vertical',
-                                boxSizing: 'border-box',
-                            }}
-                        />
-                        {state?.error ? (
-                            <div style={{ color: 'var(--danger, #d33)', fontSize: 12 }}>{state.error}</div>
-                        ) : null}
-                        <button type="submit" className="admin-action-btn" disabled={pending} style={{ alignSelf: 'flex-start' }}>
-                            {pending ? 'SUBMITTING…' : <>APPLY TO HOST <ChevronRight /></>}
-                        </button>
-                    </form>
-                </>
-            )}
-        </section>
+        </Card>
     );
 }
 
 function StatusBadge({ status }: { status: HostStatus }) {
-    const map: Record<HostStatus, { label: string; color: string }> = {
-        none: { label: 'NOT A HOST', color: 'var(--text-3)' },
-        pending: { label: 'UNDER REVIEW', color: 'var(--gold)' },
-        verified: { label: 'VERIFIED HOST', color: 'var(--neon, #6cf)' },
-    };
-    const s = map[status];
+    const ic = { size: 14, strokeWidth: 2, 'aria-hidden': true } as const;
+    if (status === 'verified') {
+        return (
+            <span className="g-chip g-chip--tint">
+                <BadgeCheck {...ic} />
+                Verified host
+            </span>
+        );
+    }
+    if (status === 'pending') {
+        return (
+            <span className="g-chip">
+                <Clock {...ic} />
+                Under review
+            </span>
+        );
+    }
     return (
-        <span
-            style={{
-                fontFamily: 'var(--font-display)',
-                fontSize: 9,
-                letterSpacing: 2,
-                color: s.color,
-                border: `1px solid ${s.color}`,
-                padding: '3px 8px',
-            }}
-        >
-            {s.label}
+        <span className="g-chip">
+            <Flag {...ic} />
+            Not a host
         </span>
     );
 }
