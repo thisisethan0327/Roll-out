@@ -6,17 +6,42 @@ import { formatEventStamp } from '@/lib/event-time';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
-import { resolveCover, coverFocus } from '@/lib/event-covers';
 import { getSellingShops } from '@/lib/store-shops';
 import { fetchCatalogByHandles, type MedusaProduct } from '@/lib/medusa';
-import { ProductCard } from '@/components/ProductCard';
+
 import { ROLLOUT_ORIGIN } from '@/lib/tenant-hosts';
 import { UNITY_ORG, WEBSITE_ID, jsonLdHtml, postalAddress } from '@/lib/structured-data';
 import { isSeedProfile } from '@/lib/seed-content';
 import { isTestShop } from '@/lib/test-shops';
 import { selectWithBan } from '@/lib/ban-server';
 import { isBannedUntil } from '@/lib/ban';
-import { ArrowRight, Check, ChevronRight, Dot, Heart, Pencil, Stars } from '@/components/icons';
+import {
+    ArrowRight,
+    BadgeCheck,
+    CalendarDays,
+    CalendarPlus,
+    Car,
+    ChevronRight,
+    Compass,
+    ExternalLink,
+    Globe,
+    Heart,
+    Images,
+    Info,
+    MapPin,
+    MessageCircle,
+    Reply,
+    ShieldCheck,
+    ShoppingBag,
+    Star,
+    UserX,
+    Wrench,
+} from 'lucide-react';
+import { Card, Chip, DateRoundel, GlideButton, IconRoundel, Row, SecButton } from '@/components/glide/primitives';
+import { Avatar, CardHead, ProductTile, StarRow } from '@/components/glide-discover/ui';
+import { ShopDiorama } from '@/components/glide-discover/ShopDiorama';
+import { dioramaFor } from '@/components/glide-discover/dioramas';
+import { eventDateParts, placeName } from '@/lib/glide-format';
 
 // ── Types (loose; rollout schema not codegen'd) ────────────────────────────
 type Profile = {
@@ -121,26 +146,21 @@ function truncate(s: string | null | undefined, n: number): string {
     return s.length <= n ? s : s.slice(0, n - 1).trimEnd() + '…';
 }
 
-function initials(name: string | null | undefined, handle: string): string {
-    const src = (name && name.trim().length ? name : handle).trim();
-    const parts = src.split(/\s+/).filter(Boolean);
-    if (parts.length === 0) return '·';
-    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-}
-
-function stars(rating: number) {
-    return <Stars rating={rating} />;
-}
-
 function reviewAge(iso: string | null | undefined): string {
     if (!iso) return '';
     const d = Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000);
-    if (d < 1) return 'TODAY';
-    if (d === 1) return 'YESTERDAY';
-    if (d < 7) return `${d}D AGO`;
-    if (d < 30) return `${Math.floor(d / 7)}W AGO`;
-    return `${Math.floor(d / 30)}MO AGO`;
+    if (d < 1) return 'Today';
+    if (d === 1) return 'Yesterday';
+    if (d < 7) return `${d} days ago`;
+    if (d < 30) return `${Math.floor(d / 7)} wk ago`;
+    return `${Math.floor(d / 30)} mo ago`;
+}
+
+/** "BUILD" → "Build", "EDU" → "Guide"; the post kinds as members read them. */
+const POST_TYPE_LABEL: Record<string, string> = { BUILD: 'Build', MEET: 'Meet', EDU: 'Guide', TRADE: 'For sale', POST: 'Post' };
+function postTypeLabel(t: string | null | undefined): string {
+    if (!t) return 'Post';
+    return POST_TYPE_LABEL[t.toUpperCase()] ?? t.charAt(0).toUpperCase() + t.slice(1).toLowerCase();
 }
 
 function formatEventDate(iso: string | null | undefined, tz?: string | null): string {
@@ -384,21 +404,21 @@ export async function generateMetadata({
 /** What anyone but the owner and admins sees for a suspended member. */
 function SuspendedProfileStub({ handle }: { handle: string }) {
     return (
-        <div className="legal">
-            <div className="container container-narrow" style={{ textAlign: 'center', paddingTop: 80 }}>
-                <div className="eyebrow eyebrow-gold mb-4">／ ACCOUNT SUSPENDED</div>
-                <h1 style={{ marginBottom: 12 }}>@{handle}</h1>
-                <p className="text-dim" style={{ fontSize: 17, marginBottom: 40 }}>
-                    This account is suspended.
-                </p>
-                <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
-                    <Link href="/" className="btn">
-                        Back to base
-                    </Link>
-                    <Link href="/meets" className="btn btn-ghost">
-                        Find a meet
-                    </Link>
-                </div>
+        <div className="glide glide-page gd-page">
+            <div className="g-wrap">
+                <Card edge className="gd-stub">
+                    <IconRoundel>
+                        <UserX size={21} strokeWidth={1.75} />
+                    </IconRoundel>
+                    <h1>@{handle}</h1>
+                    <p>This account is suspended.</p>
+                    <div className="gd-acts">
+                        <GlideButton href="/" size="sm">
+                            Back to home
+                        </GlideButton>
+                        <SecButton href="/meets">Find a meet</SecButton>
+                    </div>
+                </Card>
             </div>
         </div>
     );
@@ -533,561 +553,501 @@ export default async function HandlePage({
             : null;
 
     // No banner → one of three default plates (garage / detailing / workshop),
-    // chosen by profile id so it is stable, under the same scrim as a real one.
+    // chosen by profile id so it is stable.
     const defaultBanner = ['garage', 'detailing', 'workshop'][
         Array.from(String(profile.id ?? cleanHandle)).reduce((a, c) => a + c.charCodeAt(0), 0) % 3
     ];
-    const heroBg = `linear-gradient(180deg, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.85) 100%), url(${profile.banner_url || `/images/polish/banner-${defaultBanner}-21x9.webp`}) center/cover no-repeat`;
+    const bannerSrc = profile.banner_url || `/images/polish/banner-${defaultBanner}-21x9.webp`;
+    const postsN = card.posts_count ?? 0;
+    const followersN = card.followers_count ?? 0;
+    const followingN = card.following_count ?? 0;
+    const buildsN = card.builds_count ?? 0;
+    const plural = (n: number, one: string, many: string) => (n === 1 ? one : many);
+
+    const stats = (
+        <span className="gd-stats">
+            <span className="gd-stat">
+                <span className="g-w">{postsN}</span> {plural(postsN, 'post', 'posts')}
+            </span>
+            {isShop ? (
+                <span className="gd-stat">
+                    <span className="g-w">{eventsCount}</span> {plural(eventsCount, 'event', 'events')}
+                </span>
+            ) : (
+                <span className="gd-stat">
+                    <span className="g-w">{buildsN}</span> {plural(buildsN, 'build', 'builds')}
+                </span>
+            )}
+            {/* For another member the Follow control carries the live follower count. */}
+            {isShop || viewer !== 'other' ? (
+                <span className="gd-stat">
+                    <span className="g-w">{followersN}</span> {plural(followersN, 'follower', 'followers')}
+                </span>
+            ) : null}
+            <span className="gd-stat">
+                <span className="g-w">{followingN}</span> following
+            </span>
+        </span>
+    );
+
+    const postsCard = (
+        <Card as="section" aria-labelledby="prof-posts">
+            <CardHead id="prof-posts" title="Posts" sub={posts.length > 0 ? 'Most recent first' : undefined} />
+            {posts.length === 0 ? (
+                <div className="gd-card-body">
+                    <p>No posts yet.</p>
+                </div>
+            ) : (
+                <ul className="gd-posts">
+                    {posts.map((post) => (
+                        <li key={post.id}>
+                            <Link href={`/post/${post.id}`} className={post.hero_image_url ? 'gd-pt' : 'gd-pt gd-pt--text'}>
+                                {post.hero_image_url ? (
+                                    <span className="gd-pt-im">
+                                        {/* unoptimized: the bucket host is not in next.config remotePatterns */}
+                                        <Image
+                                            src={post.hero_image_url}
+                                            alt={truncate(post.body, 80) || 'Post image'}
+                                            fill
+                                            unoptimized
+                                            loading="lazy"
+                                            sizes="(max-width: 600px) 100vw, 320px"
+                                            style={{ objectFit: 'cover' }}
+                                        />
+                                        {post.type ? <Chip>{postTypeLabel(post.type)}</Chip> : null}
+                                    </span>
+                                ) : post.type ? (
+                                    <Chip>{postTypeLabel(post.type)}</Chip>
+                                ) : null}
+                                <p>{truncate(post.body, 140) || 'Untitled post'}</p>
+                                <span className="g-chips">
+                                    <Chip icon={<Heart size={14} strokeWidth={2} aria-hidden="true" />}>
+                                        <span className="g-w">{post.like_count ?? 0}</span>
+                                        <span className="g-sr"> likes</span>
+                                    </Chip>
+                                    <Chip icon={<MessageCircle size={14} strokeWidth={2} aria-hidden="true" />}>
+                                        <span className="g-w">{post.comment_count ?? 0}</span>
+                                        <span className="g-sr"> comments</span>
+                                    </Chip>
+                                </span>
+                            </Link>
+                        </li>
+                    ))}
+                </ul>
+            )}
+        </Card>
+    );
+
+    const aboutCard = (
+        <Card as="section" aria-labelledby="prof-about">
+            <CardHead id="prof-about" title="About" />
+            <div className="gd-card-body" style={{ paddingBottom: 6 }}>
+                <p>{profile.bio || 'No bio yet.'}</p>
+            </div>
+            <ul className="g-rows gd-rows-top">
+                <Row icon={<MapPin size={20} strokeWidth={1.75} aria-hidden="true" />} label="Location" value={profile.location || 'Not set'} />
+                {profile.sector_code ? <Row icon={<Compass size={20} strokeWidth={1.75} aria-hidden="true" />} label="Sector" value={profile.sector_code} /> : null}
+                {website && isShop ? (
+                    <Row
+                        icon={<Globe size={20} strokeWidth={1.75} aria-hidden="true" />}
+                        label="Website"
+                        sub={website.replace(/^https?:\/\//i, '').replace(/\/$/, '')}
+                        href={website}
+                        external
+                        trailing={<ExternalLink size={16} strokeWidth={2} className="g-row-ch" aria-hidden="true" />}
+                    />
+                ) : null}
+            </ul>
+            {isShop ? <div className="gd-about-stats">{stats}</div> : null}
+        </Card>
+    );
+
+    // ── Member page (board G4, member profile) ───────────────────────────
+    if (!isShop) {
+        return (
+            <div className="glide glide-page gd-page">
+                <div className="g-wrap">
+                    <section className="gd-hero" aria-labelledby="prof-name">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={bannerSrc} alt="" fetchPriority="high" />
+                        <div className="gd-id g-fp g-edge">
+                            <div className="gd-id-top">
+                                <Avatar src={profile.avatar_url} name={displayName} handle={cleanHandle} />
+                                <div style={{ minWidth: 0 }}>
+                                    <h1 id="prof-name">
+                                        {displayName}
+                                        {profile.is_verified ? <BadgeCheck size={24} strokeWidth={2} aria-label="Verified" /> : null}
+                                    </h1>
+                                    <p className="gd-id-sub">{['@' + cleanHandle, profile.location].filter(Boolean).join(' · ')}</p>
+                                </div>
+                            </div>
+                            {profile.bio ? <p className="gd-id-bio">{truncate(profile.bio, 240)}</p> : null}
+                            <div className="gd-id-acts">
+                                {viewer !== 'self' ? (
+                                    <FollowButton
+                                        targetProfileId={profile.id}
+                                        handle={cleanHandle}
+                                        viewer={viewer}
+                                        initialFollowing={initialFollowing}
+                                        initialCount={followersN}
+                                    />
+                                ) : null}
+                                {stats}
+                            </div>
+                        </div>
+                    </section>
+
+                    <div className="gd-prof">
+                        <div className="gd-prof-main">
+                            {vehicles.length > 0 ? (
+                                <Card as="section" aria-labelledby="prof-garage">
+                                    <CardHead id="prof-garage" title="Garage" sub={`${vehicles.length} ${plural(vehicles.length, 'car', 'cars')}`} />
+                                    <ul className="gd-cars">
+                                        {vehicles.map((v) => (
+                                            <li key={v.id} className="gd-car">
+                                                <span className="gd-car-im">
+                                                    {v.hero_image_url ? (
+                                                        // eslint-disable-next-line @next/next/no-img-element
+                                                        <img src={v.hero_image_url} alt="" loading="lazy" />
+                                                    ) : (
+                                                        <Car size={30} strokeWidth={1.5} aria-hidden="true" />
+                                                    )}
+                                                </span>
+                                                {v.garage_number != null ? (
+                                                    <Chip>
+                                                        Bay <span className="g-w">{v.garage_number}</span>
+                                                    </Chip>
+                                                ) : null}
+                                                <b>{[v.make, v.model].filter(Boolean).join(' ') || 'Unknown build'}</b>
+                                                {v.year ? <small>{v.year}</small> : null}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </Card>
+                            ) : null}
+                            {postsCard}
+                        </div>
+                        <aside className="gd-prof-side">{aboutCard}</aside>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    // ── Shop page (board G5, web shop page) ──────────────────────────────
+    const dio = dioramaFor(shop?.slug);
+    const showFindUs = !isOperator && shop?.lat != null && shop?.lng != null && shop?.show_on_map !== false;
+    const directions = showFindUs ? `https://www.google.com/maps?q=${shop!.lat},${shop!.lng}` : null;
+    const exact = (shop?.location_precision ?? 'exact') === 'exact' && !isOperator;
+    const cityState = [shop?.city, shop?.state_region].filter(Boolean).join(', ');
+    const placeLine =
+        (shop?.location_precision ?? 'exact') === 'area'
+            ? ['Online', cityState ? `based in ${cityState}` : null].filter(Boolean).join(' · ')
+            : cityState || profile.location || '';
+    const streetLine = exact ? shop?.address_line : null;
+    const cityLine = [shop?.city, shop?.state_region, exact ? shop?.postal : null].filter(Boolean).join(', ');
+    const bookHref = `/book/${cleanHandle}`;
+    const storeHref = storeSlug ? `/store?shop=${storeSlug}` : '/store';
+
+    const shopHeader = (
+        <>
+            <h1 id="shop-name">
+                {displayName}
+                {profile.is_verified ? <BadgeCheck size={24} strokeWidth={2} aria-label="Verified shop" /> : null}
+            </h1>
+            <p>{['@' + cleanHandle, placeLine].filter(Boolean).join(' · ')}</p>
+            <span className="g-chips">
+                {ratingCount > 0 ? (
+                    <Chip icon={<Star size={14} strokeWidth={2} fill="currentColor" className="gd-star" aria-hidden="true" />}>
+                        <span className="g-w">{ratingAvg.toFixed(1)}</span> · {ratingCount} {plural(ratingCount, 'review', 'reviews')}
+                    </Chip>
+                ) : (
+                    <Chip>No reviews yet</Chip>
+                )}
+                {profile.is_verified ? (
+                    <Chip tint icon={<ShieldCheck size={14} strokeWidth={2} aria-hidden="true" />}>
+                        Verified shop
+                    </Chip>
+                ) : null}
+            </span>
+        </>
+    );
+    const shopDetails = (
+        <ul className="g-rows">
+            {streetLine || cityLine ? (
+                <Row
+                    icon={<MapPin size={20} strokeWidth={1.75} aria-hidden="true" />}
+                    label={streetLine || cityLine}
+                    sub={streetLine ? cityLine : undefined}
+                    href={directions ?? undefined}
+                    external
+                    value={directions ? <span style={{ color: 'var(--link)', fontWeight: 600, fontSize: 14 }}>Directions</span> : undefined}
+                />
+            ) : null}
+            <Row
+                icon={<CalendarPlus size={20} strokeWidth={1.75} aria-hidden="true" />}
+                label="Book online"
+                sub="Request a time. The shop confirms."
+                href={bookHref}
+                trailing={<ChevronRight size={18} strokeWidth={2} className="g-row-ch" aria-hidden="true" />}
+            />
+            {products.length > 0 ? (
+                <Row
+                    icon={<ShoppingBag size={20} strokeWidth={1.75} aria-hidden="true" />}
+                    label="Store"
+                    sub="Products from this shop"
+                    href={storeHref}
+                    trailing={<ChevronRight size={18} strokeWidth={2} className="g-row-ch" aria-hidden="true" />}
+                />
+            ) : null}
+        </ul>
+    );
 
     return (
-        <>
-            {/* ── HERO ─────────────────────────────────────────────────── */}
-            {/* on-dark: the banner is a photo under a black scrim, or a gradient
-                that ends in #000 — dark in BOTH themes by construction, so its
-                ink must not follow the theme. Measured at run R12 (RG): the
-                handle, bio and follower count went near-black on it in light. */}
-            <section
-                className="on-dark"
-                style={{
-                    position: 'relative',
-                    minHeight: 320,
-                    background: heroBg,
-                    borderBottom: '1px solid var(--line)',
-                }}
-            >
-                <div
-                    className="container"
-                    style={{
-                        position: 'relative',
-                        zIndex: 1,
-                        paddingTop: 64,
-                        paddingBottom: 64,
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        textAlign: 'center',
-                        gap: 16,
-                    }}
-                >
-                    {/* Avatar */}
-                    <div
-                        style={{
-                            width: 120,
-                            height: 120,
-                            borderRadius: '50%',
-                            border: '2px solid var(--gold)',
-                            background: profile.avatar_url
-                                ? `url(${profile.avatar_url}) center/cover no-repeat`
-                                : 'var(--bg-2)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontFamily: 'var(--font-display)',
-                            fontSize: 36,
-                            fontWeight: 700,
-                            color: 'var(--gold)',
-                            overflow: 'hidden',
-                        }}
-                    >
-                        {!profile.avatar_url && initials(displayName, cleanHandle)}
-                    </div>
-
-                    {/* Name + verified */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', justifyContent: 'center' }}>
-                        <h1 style={{ fontSize: 'clamp(28px, 4vw, 44px)', letterSpacing: 2, margin: 0 }}>
-                            {displayName.toUpperCase()}
-                        </h1>
-                        {profile.is_verified ? (
-                            <span
-                                style={{
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: 4,
-                                    padding: '4px 10px',
-                                    borderRadius: 999,
-                                    background: 'var(--gold-dim)',
-                                    border: '1px solid var(--gold)',
-                                    color: 'var(--gold)',
-                                    fontFamily: 'var(--font-display)',
-                                    fontSize: 10,
-                                    fontWeight: 700,
-                                    letterSpacing: 'var(--track-wider)',
-                                }}
-                            >
-                                <Check /> VERIFIED
-                            </span>
-                        ) : null}
-                    </div>
-
-                    <div className="mono-row" style={{ color: 'var(--text-2)' }}>
-                        <span>@{cleanHandle}</span>
-                        {profile.sector_code ? (
-                            <>
-                                <span className="sep" />
-                                <span className="accent">{profile.sector_code}</span>
-                            </>
-                        ) : null}
-                        {profile.location ? (
-                            <>
-                                <span className="sep" />
-                                <span>{profile.location}</span>
-                            </>
-                        ) : null}
-                    </div>
-
-                    {profile.bio ? (
-                        <p style={{ maxWidth: 560, color: 'var(--text-2)', fontSize: 15, lineHeight: 1.55, marginTop: 4 }}>
-                            {truncate(profile.bio, 240)}
-                        </p>
-                    ) : null}
-
-                    <div className="mono-row" style={{ marginTop: 8 }}>
-                        <span className="accent"><Dot /></span>
-                        <span>{card.followers_count ?? 0} {(card.followers_count ?? 0) === 1 ? 'FOLLOWER' : 'FOLLOWERS'}</span>
-                    </div>
-                </div>
-            </section>
-
-            {/* ── STICKY STAT BAR ──────────────────────────────────────── */}
-            <section style={{ position: 'sticky', top: 0, zIndex: 5, background: 'var(--bg-1)', borderBottom: '1px solid var(--line)' }}>
-                <div className="container" style={{ padding: 0 }}>
-                    <div
-                        className="stat-band"
-                        style={{
-                            gridTemplateColumns: 'repeat(4, 1fr)',
-                            border: 'none',
-                            margin: 0,
-                        }}
-                    >
-                        <div className="stat-cell">
-                            <div className="lbl">Posts</div>
-                            <div className="val">{card.posts_count ?? 0}</div>
+        <div className="glide glide-page gd-page">
+            <div className="g-wrap">
+                <div className="gd-sp">
+                    <div className="gd-sp-main">
+                        <div className="gd-sp-hero">
+                            {dio ? (
+                                <ShopDiorama
+                                    dio={dio}
+                                    labelledBy="shop-name"
+                                    header={shopHeader}
+                                    details={shopDetails}
+                                    panes={{
+                                        book: {
+                                            title: 'Book a time',
+                                            sub: 'Pick a service and a time. The shop confirms.',
+                                            icon: <CalendarPlus size={18} strokeWidth={1.9} />,
+                                            body: (
+                                                <GlideButton href={bookHref} size="sm" block>
+                                                    Book online
+                                                </GlideButton>
+                                            ),
+                                        },
+                                        ...(products.length > 0
+                                            ? {
+                                                  store: {
+                                                      title: 'Store',
+                                                      sub: 'Products from this shop.',
+                                                      icon: <ShoppingBag size={18} strokeWidth={1.9} />,
+                                                      body: (
+                                                          <ul className="gd-prods gd-prods--two">
+                                                              {products.slice(0, 2).map((p) => (
+                                                                  <li key={p.id}>
+                                                                      <ProductTile product={p} />
+                                                                  </li>
+                                                              ))}
+                                                          </ul>
+                                                      ),
+                                                  },
+                                              }
+                                            : {}),
+                                        ...(profile.bio
+                                            ? {
+                                                  about: {
+                                                      title: 'About the shop',
+                                                      icon: <Info size={18} strokeWidth={1.9} />,
+                                                      body: <p>{truncate(profile.bio, 260)}</p>,
+                                                  },
+                                              }
+                                            : {}),
+                                        ...(posts.length > 0
+                                            ? {
+                                                  posts: {
+                                                      title: 'Recent posts',
+                                                      icon: <Images size={18} strokeWidth={1.9} />,
+                                                      body: (
+                                                          <ul className="g-rows gd-pane-rows">
+                                                              {posts.slice(0, 2).map((post) => (
+                                                                  <Row
+                                                                      key={post.id}
+                                                                      label={truncate(post.body, 60) || 'Untitled post'}
+                                                                      sub={postTypeLabel(post.type)}
+                                                                      href={`/post/${post.id}`}
+                                                                      trailing={<ChevronRight size={18} strokeWidth={2} className="g-row-ch" aria-hidden="true" />}
+                                                                  />
+                                                              ))}
+                                                          </ul>
+                                                      ),
+                                                  },
+                                              }
+                                            : {}),
+                                    }}
+                                />
+                            ) : (
+                                <section className="gd-sp-photohero" aria-labelledby="shop-name">
+                                    <div className="gd-sp-photo">
+                                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                                        <img src={bannerSrc} alt="" fetchPriority="high" />
+                                    </div>
+                                    <div className="gd-sp-card g-fp g-edge">
+                                        <div className="gd-sp-hd gd-sp-hd--logo">
+                                            <Avatar src={profile.avatar_url} name={displayName} handle={cleanHandle} />
+                                            <div style={{ minWidth: 0 }}>{shopHeader}</div>
+                                        </div>
+                                        {shopDetails}
+                                    </div>
+                                </section>
+                            )}
                         </div>
-                        {isShop ? (
-                            <div className="stat-cell">
-                                <div className="lbl">Followers</div>
-                                <div className="val accent">{card.followers_count ?? 0}</div>
-                            </div>
-                        ) : (
-                            <div className="stat-cell">
-                                <div className="lbl">Builds</div>
-                                <div className="val accent">{card.builds_count ?? 0}</div>
-                            </div>
-                        )}
-                        {isShop ? (
-                            <div className="stat-cell">
-                                <div className="lbl">Following</div>
-                                <div className="val">{card.following_count ?? 0}</div>
-                            </div>
-                        ) : (
-                            <div className="stat-cell">
-                                <div className="lbl">Followers</div>
-                                <div className="val accent">{card.followers_count ?? 0}</div>
-                            </div>
-                        )}
-                        {isShop ? (
-                            <div className="stat-cell">
-                                <div className="lbl">Events</div>
-                                <div className="val">{eventsCount}</div>
-                            </div>
-                        ) : (
-                            <div className="stat-cell">
-                                <div className="lbl">Following</div>
-                                <div className="val">{card.following_count ?? 0}</div>
-                            </div>
-                        )}
-                    </div>
-                </div>
-            </section>
 
-            {/* ── PRIMARY CTA ──────────────────────────────────────────── */}
-            {isShop || viewer !== 'self' ? (
-            <section className="section" style={{ padding: '56px 0', textAlign: 'center' }}>
-                <div className="container">
-                    {isShop ? (
-                        <>
-                            <Link className="btn btn-lg" href={`/book/${cleanHandle}`}>
-                                Book online
-                            </Link>
-                            <p className="text-muted" style={{ fontSize: 11, marginTop: 14, fontFamily: 'var(--font-display)', letterSpacing: 'var(--track-wider)' }}>
-                                REQUEST A TIME · THE SHOP CONFIRMS
-                            </p>
-                        </>
-                    ) : (
-                        <FollowButton
-                            targetProfileId={profile.id}
-                            handle={cleanHandle}
-                            viewer={viewer}
-                            initialFollowing={initialFollowing}
-                            initialCount={card.followers_count ?? 0}
-                        />
-                    )}
-                </div>
-            </section>
-            ) : null}
-
-            {/* ── SHOP PRODUCTS (selling shops) ────────────────────────── */}
-            {isShop && products.length > 0 ? (
-                <section className="section" style={{ padding: '56px 0', borderTop: '1px solid var(--line)' }}>
-                    <div className="container">
-                        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, marginBottom: 32, flexWrap: 'wrap' }}>
-                            <div>
-                                <div className="eyebrow eyebrow-gold mb-4">／ SHOP</div>
-                                <h2 style={{ margin: 0 }}>PRODUCTS</h2>
-                            </div>
-                            <Link
-                                href={storeSlug ? `/store?shop=${storeSlug}` : '/store'}
-                                className="font-display"
-                                style={{ fontSize: 11, letterSpacing: 'var(--track-wider)', color: 'var(--gold)', textDecoration: 'none' }}
-                            >
-                                SHOP ALL <ArrowRight />
-                            </Link>
-                        </div>
-                        <div
-                            style={{
-                                display: 'grid',
-                                gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
-                                gap: 16,
-                            }}
-                        >
-                            {products.map((p, i) => (
-                                <ProductCard key={p.id} product={p} groundIndex={i} />
-                            ))}
-                        </div>
-                    </div>
-                </section>
-            ) : null}
-
-            {/* ── RECENT BUILDS (user-only) ────────────────────────────── */}
-            {!isShop && vehicles.length > 0 ? (
-                <section className="section" style={{ padding: '56px 0', borderTop: '1px solid var(--line)' }}>
-                    <div className="container">
-                        <div className="eyebrow eyebrow-gold mb-4">／ RECENT BUILDS</div>
-                        <h2 style={{ marginBottom: 32 }}>GARAGE</h2>
-                        <div
-                            style={{
-                                display: 'grid',
-                                gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
-                                gap: 16,
-                            }}
-                        >
-                            {vehicles.map((v) => (
-                                <div key={v.id} className="feature-card corner-wrap" style={{ padding: 0, overflow: 'hidden' }}>
-                                    <span className="corner-bottom-left" />
-                                    <span className="corner-bottom-right" />
-                                    <div
-                                        style={{
-                                            width: '100%',
-                                            aspectRatio: '4 / 3',
-                                            background: v.hero_image_url
-                                                ? `url(${v.hero_image_url}) center/cover no-repeat`
-                                                : 'var(--bg-3)',
-                                        }}
+                        <div className="gd-sp-rest">
+                            {products.length > 0 ? (
+                                <Card as="section" aria-labelledby="shop-store">
+                                    <CardHead
+                                        id="shop-store"
+                                        title="Store"
+                                        action={
+                                            <Link href={storeHref} className="g-link">
+                                                All products
+                                                <ArrowRight size={15} strokeWidth={2} aria-hidden="true" />
+                                            </Link>
+                                        }
                                     />
-                                    <div style={{ padding: '18px 20px' }}>
-                                        <div className="eyebrow" style={{ marginBottom: 6 }}>
-                                            GARAGE #{v.garage_number ?? '—'}
-                                        </div>
-                                        <h3 style={{ fontSize: 16, letterSpacing: 0.8, margin: 0 }}>
-                                            {[v.year, v.make, v.model].filter(Boolean).join(' ') || 'Unknown build'}
-                                        </h3>
+                                    <ul className="gd-prods">
+                                        {products.map((p) => (
+                                            <li key={p.id}>
+                                                <ProductTile product={p} />
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </Card>
+                            ) : null}
+
+                            <Card as="section" aria-labelledby="shop-reviews">
+                                <CardHead id="shop-reviews" title="Reviews" />
+                                {ratingCount > 0 ? (
+                                    <div className="gd-rev-sum">
+                                        <span className="big">{ratingAvg.toFixed(1)}</span>
+                                        <span>
+                                            <StarRow rating={ratingAvg} size={17} />
+                                            <small>
+                                                {ratingCount} {plural(ratingCount, 'review', 'reviews')} on Rollout
+                                            </small>
+                                        </span>
                                     </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </section>
-            ) : null}
-
-            {/* ── RECENT POSTS ─────────────────────────────────────────── */}
-            <section className="section" style={{ padding: '56px 0', borderTop: '1px solid var(--line)' }}>
-                <div className="container">
-                    <div className="eyebrow eyebrow-gold mb-4">／ RECENT POSTS</div>
-                    <h2 style={{ marginBottom: 32 }}>FEED</h2>
-
-                    {posts.length === 0 ? (
-                        <p className="text-dim">No posts yet.</p>
-                    ) : (
-                        <div
-                            style={{
-                                display: 'grid',
-                                gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
-                                gap: 16,
-                            }}
-                        >
-                            {posts.map((post) => (
-                                <Link
-                                    key={post.id}
-                                    href={`/post/${post.id}`}
-                                    style={{ textDecoration: 'none' }}
-                                >
-                                    <div className="feature-card corner-wrap" style={{ height: '100%' }}>
-                                        <span className="corner-bottom-left" />
-                                        <span className="corner-bottom-right" />
-                                        {post.hero_image_url ? (
-                                            <div style={{ position: 'relative', aspectRatio: '16 / 9', marginBottom: 14, border: '1px solid var(--line)', overflow: 'hidden' }}>
-                                                {/* unoptimized: the bucket host is not in next.config remotePatterns; still a real <img> with alt + lazy */}
-                                                <Image
-                                                    src={post.hero_image_url}
-                                                    alt={truncate(post.body, 80) || 'Post image'}
-                                                    fill
-                                                    unoptimized
-                                                    loading="lazy"
-                                                    sizes="(max-width: 600px) 100vw, 400px"
-                                                    style={{ objectFit: 'cover' }}
-                                                />
-                                            </div>
-                                        ) : null}
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
-                                            <span
-                                                style={{
-                                                    fontFamily: 'var(--font-display)',
-                                                    fontSize: 10,
-                                                    fontWeight: 700,
-                                                    letterSpacing: 'var(--track-wider)',
-                                                    padding: '4px 8px',
-                                                    border: '1px solid var(--gold)',
-                                                    color: 'var(--gold)',
-                                                }}
-                                            >
-                                                {(post.type || 'POST').toUpperCase()}
-                                            </span>
-                                        </div>
-                                        <p style={{ color: 'var(--text-2)', fontSize: 14, lineHeight: 1.55, marginBottom: 14 }}>
-                                            {truncate(post.body, 240) || 'Untitled post'}
-                                        </p>
-                                        <div className="mono-row" style={{ fontSize: 10 }}>
-                                            <span>@{post.author_handle || cleanHandle}</span>
-                                            <span className="sep" />
-                                            <span><span className="accent"><Heart fill="currentColor" /></span> {post.like_count ?? 0}</span>
-                                            <span className="sep" />
-                                            <span><span className="accent"><Pencil /></span> {post.comment_count ?? 0}</span>
-                                        </div>
+                                ) : null}
+                                {reviews.length === 0 ? (
+                                    <div className="gd-card-body">
+                                        <p>No reviews yet. Book an appointment and be the first.</p>
                                     </div>
-                                </Link>
-                            ))}
-                        </div>
-                    )}
-                </div>
-            </section>
-
-            {/* ── UPCOMING EVENTS (shop only) ──────────────────────────── */}
-            {isShop ? (
-                <section className="section" style={{ padding: '56px 0', borderTop: '1px solid var(--line)' }}>
-                    <div className="container">
-                        <div className="eyebrow eyebrow-gold mb-4">／ UPCOMING</div>
-                        <h2 style={{ marginBottom: 32 }}>EVENTS</h2>
-
-                        {events.length === 0 ? (
-                            <p className="text-dim">No upcoming events.</p>
-                        ) : (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                                {events.map((ev) => (
-                                    <Link
-                                        key={ev.id}
-                                        href={`/event/${ev.id}`}
-                                        style={{ textDecoration: 'none' }}
-                                    >
-                                        <div
-                                            style={{
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'space-between',
-                                                padding: '16px 24px 16px 16px',
-                                                background: 'var(--bg-2)',
-                                                border: '1px solid var(--line)',
-                                                gap: 16,
-                                                flexWrap: 'wrap',
-                                            }}
-                                        >
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: 16, minWidth: 0 }}>
-                                                <div
-                                                    aria-hidden
-                                                    style={{
-                                                        flex: 'none',
-                                                        width: 88,
-                                                        height: 56,
-                                                        borderRadius: 4,
-                                                        border: '1px solid var(--line)',
-                                                        background: `url(${resolveCover(ev.hero_image_url, ev.type, ev.id)}) ${coverFocus(ev.hero_image_url)}/cover no-repeat`,
-                                                    }}
-                                                />
-                                                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, minWidth: 0 }}>
-                                                    <div className="mono-row" style={{ fontSize: 10 }}>
-                                                        <span className="accent">{ev.code || 'EVENT'}</span>
-                                                        <span className="sep" />
-                                                        <span>{formatEventDate(ev.start_at, ev.time_zone)}</span>
-                                                    </div>
-                                                    <h3 style={{ fontSize: 17, margin: 0, color: 'var(--text)', letterSpacing: 0.8 }}>
-                                                        {(ev.title || 'Untitled event').toUpperCase()}
-                                                    </h3>
-                                                    {ev.location_name ? (
-                                                        <span className="text-dim" style={{ fontSize: 13 }}>{ev.location_name}</span>
+                                ) : (
+                                    <ul className="gd-revs">
+                                        {reviews.map((rev) => (
+                                            <li key={rev.id}>
+                                                <div className="gd-rev-h">
+                                                    <StarRow rating={rev.rating} size={15} />
+                                                    <b>{rev.reviewer_name || 'Someone'}</b>
+                                                    {rev.verified_purchase ? (
+                                                        <Chip tint icon={<BadgeCheck size={13} strokeWidth={2} aria-hidden="true" />}>
+                                                            Verified visit
+                                                        </Chip>
                                                     ) : null}
+                                                    <time dateTime={rev.created_at ?? undefined}>{reviewAge(rev.created_at)}</time>
                                                 </div>
-                                            </div>
-                                            <span className="accent" style={{ fontSize: 18 }}><ArrowRight /></span>
-                                        </div>
-                                    </Link>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                </section>
-            ) : null}
+                                                {rev.body ? <p>{rev.body}</p> : null}
+                                                {rev.owner_reply ? (
+                                                    <div className="gd-reply">
+                                                        <b>
+                                                            <Reply size={14} strokeWidth={2} aria-hidden="true" />
+                                                            Reply from {displayName}
+                                                        </b>
+                                                        <p>{rev.owner_reply}</p>
+                                                    </div>
+                                                ) : null}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                )}
+                            </Card>
 
-            {/* ── REVIEWS (shop only) ──────────────────────────────────── */}
-            {isShop ? (
-                <section className="section" style={{ padding: '56px 0', borderTop: '1px solid var(--line)' }}>
-                    <div className="container">
-                        <div className="eyebrow eyebrow-gold mb-4">／ REVIEWS</div>
-                        <div style={{ display: 'flex', alignItems: 'baseline', gap: 16, marginBottom: 32, flexWrap: 'wrap' }}>
-                            <h2 style={{ margin: 0 }}>RATINGS</h2>
-                            {ratingCount > 0 ? (
-                                <div className="mono-row" style={{ fontSize: 13 }}>
-                                    <span className="accent" style={{ fontSize: 18, letterSpacing: 2 }}>{stars(ratingAvg)}</span>
-                                    <span className="sep" />
-                                    <span style={{ color: 'var(--text)' }}>{ratingAvg.toFixed(1)}</span>
-                                    <span className="sep" />
-                                    <span>{ratingCount} {ratingCount === 1 ? 'REVIEW' : 'REVIEWS'}</span>
-                                </div>
+                            <Card as="section" aria-labelledby="shop-events">
+                                <CardHead id="shop-events" title="Upcoming events" />
+                                {events.length === 0 ? (
+                                    <div className="gd-card-body">
+                                        <p>No upcoming events.</p>
+                                    </div>
+                                ) : (
+                                    <ul className="gd-evrows">
+                                        {events.map((ev) => {
+                                            const when = eventDateParts(ev.start_at, ev.time_zone);
+                                            return (
+                                                <li key={ev.id}>
+                                                    <Link href={`/event/${ev.id}`} className="gd-evrow">
+                                                        {when ? <DateRoundel top={when.dow} day={when.day} rings={false} /> : null}
+                                                        <span className="g-row-t">
+                                                            <b>{ev.title || 'Untitled event'}</b>
+                                                            <small>
+                                                                {[when ? `${when.dayLabel} · ${when.clock}` : formatEventDate(ev.start_at, ev.time_zone), placeName(ev.location_name)]
+                                                                    .filter(Boolean)
+                                                                    .join(' · ')}
+                                                            </small>
+                                                        </span>
+                                                        <ChevronRight size={18} strokeWidth={2} className="g-row-ch" aria-hidden="true" />
+                                                    </Link>
+                                                </li>
+                                            );
+                                        })}
+                                    </ul>
+                                )}
+                            </Card>
+
+                            {postsCard}
+
+                            {showFindUs ? (
+                                <Card as="section" aria-labelledby="shop-findus">
+                                    <CardHead
+                                        id="shop-findus"
+                                        title="Find us"
+                                        sub={findUsLine || undefined}
+                                        action={
+                                            <a className="g-link" href={directions!} target="_blank" rel="noopener noreferrer">
+                                                Directions
+                                                <ExternalLink size={15} strokeWidth={2} aria-hidden="true" />
+                                            </a>
+                                        }
+                                    />
+                                    <div className="gd-findus" style={{ marginBottom: 14 }}>
+                                        <iframe
+                                            src={`https://www.openstreetmap.org/export/embed.html?bbox=${shop!.lng! - 0.006},${shop!.lat! - 0.006},${shop!.lng! + 0.006},${shop!.lat! + 0.006}&layer=mapnik&marker=${shop!.lat},${shop!.lng}`}
+                                            title="Shop location map"
+                                            loading="lazy"
+                                            referrerPolicy="no-referrer-when-downgrade"
+                                        />
+                                    </div>
+                                </Card>
                             ) : null}
                         </div>
+                    </div>
 
-                        {reviews.length === 0 ? (
-                            <p className="text-dim">No reviews yet. Book an appointment in the app to be the first.</p>
-                        ) : (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                                {reviews.map((rev) => (
-                                    <div
-                                        key={rev.id}
-                                        style={{
-                                            padding: '20px 24px',
-                                            background: 'var(--bg-2)',
-                                            border: '1px solid var(--line)',
-                                        }}
-                                    >
-                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-                                            <span className="accent" style={{ fontSize: 16, letterSpacing: 2 }}>{stars(rev.rating)}</span>
-                                            <span className="text-dim" style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: 'var(--track-wider)' }}>
-                                                {reviewAge(rev.created_at)}
-                                            </span>
-                                        </div>
-                                        <div className="mono-row" style={{ fontSize: 11, marginTop: 8 }}>
-                                            <span style={{ color: 'var(--text)' }}>{rev.reviewer_name || 'Someone'}</span>
-                                            {rev.verified_purchase ? (
-                                                <>
-                                                    <span className="sep" />
-                                                    <span className="accent"><Check /> VERIFIED</span>
-                                                </>
-                                            ) : null}
-                                        </div>
-                                        {rev.body ? (
-                                            <p style={{ color: 'var(--text-2)', fontSize: 14, lineHeight: 1.55, marginTop: 12, marginBottom: 0 }}>
-                                                {rev.body}
-                                            </p>
-                                        ) : null}
-                                        {rev.owner_reply ? (
-                                            <div style={{ marginTop: 14, marginLeft: 12, paddingLeft: 14, borderLeft: '2px solid var(--line-mid)' }}>
-                                                <div className="eyebrow" style={{ marginBottom: 6 }}>SHOP REPLY</div>
-                                                <p style={{ color: 'var(--text-2)', fontSize: 13, lineHeight: 1.5, margin: 0 }}>
-                                                    {rev.owner_reply}
-                                                </p>
-                                            </div>
-                                        ) : null}
-                                    </div>
-                                ))}
+                    <aside className="gd-sp-side">
+                        <Card edge className="gd-book" aria-labelledby="shop-book">
+                            <h2 id="shop-book">Book an appointment</h2>
+                            <p>Tell {displayName} what you need and when suits you. They confirm a time from their console.</p>
+                            <ul className="g-rows">
+                                <Row icon={<Wrench size={20} strokeWidth={1.75} aria-hidden="true" />} label="Pick a service" sub="Wrap, PPF, tint, ceramic, parts or something else" />
+                                <Row icon={<CalendarDays size={20} strokeWidth={1.75} aria-hidden="true" />} label="Suggest a day and time" sub="Optional. The shop confirms the slot" />
+                                <Row icon={<Car size={20} strokeWidth={1.75} aria-hidden="true" />} label="Add a car and notes" sub="Optional, from your garage" />
+                            </ul>
+                            <div className="gd-book-act">
+                                <GlideButton href={bookHref} block>
+                                    Book online
+                                </GlideButton>
+                                <p className="gd-book-note">
+                                    {viewer === 'anon' ? 'Sign in with your email to send the request. No app needed.' : 'Your request shows under Account, Appointments.'}
+                                </p>
                             </div>
-                        )}
-                    </div>
-                </section>
-            ) : null}
-
-            {/* ── LOCATION (shop only, with coords + opted in) ─────────── */}
-            {isShop && !isOperator && shop?.lat != null && shop?.lng != null && shop?.show_on_map !== false ? (
-                <section className="section" style={{ padding: '56px 0', borderTop: '1px solid var(--line)' }}>
-                    <div className="container">
-                        <div className="eyebrow eyebrow-gold mb-4">／ LOCATION</div>
-                        <h2 style={{ marginBottom: 8 }}>FIND US</h2>
-                        <p className="text-dim" style={{ fontSize: 15, margin: '0 0 18px' }}>
-                            {findUsLine || 'Tap through for directions.'}
-                        </p>
-                        <div
-                            className="corner-wrap"
-                            style={{
-                                position: 'relative',
-                                aspectRatio: '16 / 7',
-                                background: 'var(--bg-2)',
-                                border: '1px solid var(--line)',
-                                overflow: 'hidden',
-                            }}
-                        >
-                            <span className="corner-bottom-left" />
-                            <span className="corner-bottom-right" />
-                            <iframe
-                                src={`https://www.openstreetmap.org/export/embed.html?bbox=${shop.lng - 0.006},${shop.lat - 0.006},${shop.lng + 0.006},${shop.lat + 0.006}&layer=mapnik&marker=${shop.lat},${shop.lng}`}
-                                title="Shop location map"
-                                style={{ width: '100%', height: '100%', border: 0, filter: 'grayscale(0.6) sepia(0.3) saturate(1.4) brightness(0.85)' }}
-                                loading="lazy"
-                                referrerPolicy="no-referrer-when-downgrade"
-                            />
-                        </div>
-                        <div style={{ marginTop: 16 }}>
-                            <a
-                                className="text-link"
-                                href={`https://www.google.com/maps?q=${shop.lat},${shop.lng}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                style={{
-                                    fontSize: 12,
-                                    fontFamily: 'var(--font-display)',
-                                    letterSpacing: 'var(--track-wider)',
-                                    textDecoration: 'none',
-                                    borderBottom: '1px solid var(--line-mid)',
-                                    paddingBottom: 2,
-                                }}
-                            >
-                                GET DIRECTIONS <ChevronRight />
-                            </a>
-                        </div>
-                    </div>
-                </section>
-            ) : null}
-
-            {/* ── ABOUT ────────────────────────────────────────────────── */}
-            <section className="section" style={{ padding: '56px 0', borderTop: '1px solid var(--line)', background: 'var(--bg-1)' }}>
-                <div className="container container-narrow">
-                    <div className="eyebrow eyebrow-gold mb-4">／ ABOUT</div>
-                    <h2 style={{ marginBottom: 24 }}>{displayName.toUpperCase()}</h2>
-
-                    {profile.bio ? (
-                        <p className="text-dim" style={{ fontSize: 16, lineHeight: 1.7, marginBottom: 24 }}>
-                            {profile.bio}
-                        </p>
-                    ) : (
-                        <p className="text-dim" style={{ fontSize: 16, lineHeight: 1.7, marginBottom: 24 }}>
-                            No bio yet.
-                        </p>
-                    )}
-
-                    <div className="stat-band" style={{ gridTemplateColumns: profile.sector_code ? 'repeat(2, 1fr)' : '1fr' }}>
-                        <div className="stat-cell">
-                            <div className="lbl">Location</div>
-                            <div className="val" style={{ fontSize: 14 }}>{profile.location || '—'}</div>
-                        </div>
-                        {profile.sector_code ? (
-                            <div className="stat-cell">
-                                <div className="lbl">Sector</div>
-                                <div className="val accent" style={{ fontSize: 14 }}>{profile.sector_code}</div>
-                            </div>
-                        ) : null}
-                    </div>
+                        </Card>
+                        {aboutCard}
+                    </aside>
                 </div>
-            </section>
+            </div>
             {/* Structured data LAST: Next picks the segment's FIRST element to decide
                 whether to scroll to the top on navigation, and an invisible <script>
                 always reads as "already in view", so the page kept the previous scroll. */}
             {shopLd ? <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdHtml(shopLd) }} /> : null}
-        </>
+        </div>
     );
 }
