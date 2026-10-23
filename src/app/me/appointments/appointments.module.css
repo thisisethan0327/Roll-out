@@ -1,0 +1,157 @@
+/* /me/appointments in Glide. */
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+  align-items: start;
+}
+.appt {
+  padding: 22px 24px 30px;
+}
+.top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.title {
+  margin: 0;
+  font-family: var(--disp);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  font-size: 21px;
+  line-height: 1.1;
+  color: var(--title);
+  overflow-wrap: anywhere;
+}
+.meta {
+  margin: 6px 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  font-size: 14px;
+  color: var(--ink-2);
+}
+.meta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.meta svg {
+  color: var(--icon);
+  flex: none;
+}
+
+/* Three-step track */
+.steps {
+  list-style: none;
+  margin: 20px 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  counter-reset: step;
+}
+.steps li {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+.steps li::before {
+  content: '';
+  position: absolute;
+  left: 26px;
+  right: 4px;
+  top: 10px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--line-strong);
+}
+.steps li:last-child::before {
+  display: none;
+}
+.dot {
+  position: relative;
+  z-index: 1;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--card);
+  box-shadow: inset 0 0 0 2px var(--line-strong);
+}
+.done {
+  color: var(--ink);
+}
+.done::before {
+  background: var(--stripe-1) !important;
+}
+.done .dot {
+  background: var(--accent);
+  color: var(--on-accent);
+  box-shadow: none;
+}
+.now {
+  color: var(--ink);
+}
+.now .dot {
+  background: var(--nav-on);
+  box-shadow: 0 0 0 2px var(--card), 0 0 0 3.5px var(--stripe-1), 0 0 0 4.5px var(--card), 0 0 0 5.5px var(--stripe-3);
+}
+.next {
+  color: var(--ink-2);
+}
+
+.reason {
+  margin: 16px 0 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 16px;
+  border-radius: 18px;
+  background: var(--surface);
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--ink-2);
+}
+.reason b {
+  font-weight: 600;
+  color: var(--ink);
+  margin-right: 4px;
+}
+.reason svg {
+  color: var(--icon);
+  flex: none;
+  margin-top: 1px;
+}
+.notes {
+  margin: 16px 0 0;
+  font-size: 14.5px;
+  line-height: 1.5;
+  color: var(--ink-2);
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+.foot {
+  margin-top: 18px;
+}
+
+@media (max-width: 1100px) {
+  .list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 900px) {
+  .appt {
+    padding: 20px 20px 28px;
+  }
+}

@@ -1,25 +1,23 @@
 /**
  * /me/events — a verified host's own events (no-shop community events).
  * Gated by requireVerifiedHost (non-hosts bounce to /me host onboarding).
+ *
+ * Glide (board: G3 web host console, "Your events"): the events table with the
+ * All · Upcoming · Past filter. Same query.
  */
-import Link from 'next/link';
-import { EmptyRow } from '../ui';
+import { Plus } from 'lucide-react';
 import { formatEventTime } from '@/lib/event-time';
 import { requireVerifiedHost } from '@/lib/me-guard';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { resolveCover, coverFocus } from '@/lib/event-covers';
-import { ChevronLeft, Dot } from '@/components/icons';
+import { eventDateParts, eventTypeLabel, placeName } from '@/lib/glide-format';
+import { Card, GlideButton } from '@/components/glide/primitives';
+import { ConsoleHead } from '@/components/glide-console/parts';
+import s from '@/components/glide-console/console.module.css';
+import { EventsTable, type HostEventRow } from './EventsTable';
 
 export const metadata = { title: 'My Events' };
 export const dynamic = 'force-dynamic';
-
-const TYPE_LABEL: Record<string, string> = {
-    NIGHT_RUN: 'Night Run',
-    CAR_MEET: 'Car Meet',
-    TRACK_DAY: 'Track Day',
-    CRUISE: 'Cruise',
-    SHOW: 'Show',
-};
 
 function fmt(iso: string | null, tz?: string | null): string {
     if (!iso) return 'TBA';
@@ -29,6 +27,8 @@ function fmt(iso: string | null, tz?: string | null): string {
         return 'TBA';
     }
 }
+
+const VIS_LABEL: Record<string, string> = { public: 'Public', followers: 'Followers', private: 'Private' };
 
 export default async function MyEventsPage() {
     const profile = await requireVerifiedHost('/me/events');
@@ -42,61 +42,40 @@ export default async function MyEventsPage() {
     if (error) console.error('[me/events] load failed:', error.message);
     const events = (data as any[]) ?? [];
 
-    return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-                <div>
-                    <div style={{ fontFamily: 'var(--font-display)', fontSize: 20, letterSpacing: 1, color: 'var(--text)' }}>
-                        MY EVENTS
-                    </div>
-                    <div className="text-dim" style={{ fontSize: 12 }}>
-                        Events you host on Rollout (no shop attached)
-                    </div>
-                </div>
-                <div style={{ display: 'flex', gap: 8 }}>
-                    <Link href="/me" className="admin-action-btn muted" style={{ textDecoration: 'none' }}><ChevronLeft /> MY ROLLOUT</Link>
-                    <Link href="/me/events/new" className="admin-action-btn" style={{ textDecoration: 'none' }}>+ HOST EVENT</Link>
-                </div>
-            </div>
+    const now = Date.now();
+    const rows: HostEventRow[] = events.map((e) => {
+        const d = eventDateParts(e.start_at, e.time_zone);
+        const past = e.start_at ? new Date(e.start_at).getTime() < now : false;
+        const status: HostEventRow['status'] = e.cancelled_at ? 'cancelled' : past ? 'past' : 'live';
+        return {
+            id: e.id,
+            title: e.title ?? 'Event',
+            sub: [placeName(e.location_name) ?? 'TBA', eventTypeLabel(e.type)].join(' · '),
+            cover: resolveCover(e.hero_image_url, e.type, e.id),
+            coverPos: coverFocus(e.hero_image_url),
+            date: d ? d.dayLabel : 'TBA',
+            dateTitle: fmt(e.start_at, e.time_zone),
+            status,
+            statusLabel: status === 'cancelled' ? 'Cancelled' : status === 'past' ? 'Ended' : VIS_LABEL[e.visibility ?? 'public'] ?? 'Public',
+            going: e.attending_count ?? 0,
+            upcoming: !past && !e.cancelled_at,
+        };
+    });
 
-            {events.length === 0 ? (
-                <EmptyRow text="You haven’t hosted any events yet. Create your first one." art="empty-meets" />
-            ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 14 }}>
-                    {events.map((e) => (
-                        <Link
-                            key={e.id}
-                            href={`/me/events/${e.id}`}
-                            className="feature-card"
-                            style={{ padding: 0, overflow: 'hidden', textDecoration: 'none', display: 'flex', flexDirection: 'column' }}
-                        >
-                            <div
-                                style={{
-                                    width: '100%',
-                                    aspectRatio: '16 / 9',
-                                    background: `url(${resolveCover(e.hero_image_url, e.type, e.id)}) ${coverFocus(e.hero_image_url)}/cover no-repeat`,
-                                    borderBottom: '1px solid var(--line)',
-                                    filter: e.cancelled_at ? 'grayscale(0.6)' : undefined,
-                                    opacity: e.cancelled_at ? 0.6 : 1,
-                                }}
-                            />
-                            <div style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                <div className="mono-row" style={{ fontSize: 10 }}>
-                                    <span className="accent">{TYPE_LABEL[e.type] ?? e.type}</span>
-                                    <span className="sep" />
-                                    <span>{(e.visibility ?? 'public').toUpperCase()}</span>
-                                    {e.cancelled_at ? (<><span className="sep" /><span style={{ color: 'var(--danger,#d33)' }}>CANCELLED</span></>) : null}
-                                </div>
-                                <div style={{ fontSize: 16, letterSpacing: 0.4, color: 'var(--text)' }}>{e.title}</div>
-                                <div className="text-dim" style={{ fontSize: 12 }}>{fmt(e.start_at, e.time_zone)} · {e.location_name ?? 'TBA'}</div>
-                                <div className="mono-row" style={{ fontSize: 10, marginTop: 4 }}>
-                                    <span><span className="accent"><Dot /></span> {e.attending_count ?? 0} GOING</span>
-                                </div>
-                            </div>
-                        </Link>
-                    ))}
-                </div>
-            )}
+    return (
+        <div className={s.scope}>
+            <ConsoleHead
+                title="My events"
+                sub="Events you host on Rollout (no shop attached)."
+                actions={
+                    <GlideButton href="/me/events/new" size="sm" icon={<Plus size={18} strokeWidth={2} />}>
+                        Host an event
+                    </GlideButton>
+                }
+            />
+            <Card as="section" aria-labelledby="ev-h" style={{ paddingBottom: rows.length ? 6 : 0 }}>
+                <EventsTable rows={rows} />
+            </Card>
         </div>
     );
 }

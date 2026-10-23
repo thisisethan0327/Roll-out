@@ -20,6 +20,10 @@ import { RoutePlanEditor } from './RoutePlanEditor';
 import { parseRoutePlan } from '@/lib/route-plan';
 import { CancelAndRefundAllButton } from '@/components/CancelAndRefundAllButton';
 import { Check } from '@/components/icons';
+import { CircleAlert, CircleX, Globe, LoaderCircle, Lock, RotateCcw, Users } from 'lucide-react';
+import { GlideButton } from '@/components/glide/primitives';
+import { FormSection } from '@/components/glide-console/parts';
+import s from '@/components/glide-console/console.module.css';
 
 const VISIBILITY: { value: string; label: string }[] = [
     { value: 'public', label: 'PUBLIC' },
@@ -45,10 +49,14 @@ export function HostEventEditForm({
     event,
     isPaidEvent,
     actions = HOST_ACTIONS,
+    glide = false,
 }: {
     event: any;
     isPaidEvent: boolean;
     actions?: HostEventFormActions;
+    /** Glide markup for the /me host console. The admin event page keeps the
+     *  legacy markup (no prop). Same fields, names, state and actions. */
+    glide?: boolean;
 }) {
     const router = useRouter();
     const [pending, start] = useTransition();
@@ -106,6 +114,162 @@ export function HostEventEditForm({
             }
         });
     };
+
+    if (glide) {
+        return (
+            <form action={onSubmit} className={s.col} aria-busy={pending}>
+                {err ? (
+                    <p className="g-note" role="alert">
+                        <CircleAlert size={20} strokeWidth={2} aria-hidden="true" />
+                        {err}
+                    </p>
+                ) : null}
+
+                <FormSection id="details" title="Details">
+                    <div className={s.field}>
+                        <label className={s.label} htmlFor="ev-title-in">
+                            Title
+                        </label>
+                        <input id="ev-title-in" name="title" className={s.input} minLength={4} required defaultValue={event.title ?? ''} disabled={pending} />
+                    </div>
+                    <div className={s.field}>
+                        <label className={s.label} htmlFor="ev-desc-in">
+                            Description
+                        </label>
+                        <textarea id="ev-desc-in" name="description" className={s.input} rows={4} maxLength={400} defaultValue={event.description ?? ''} disabled={pending} />
+                    </div>
+                </FormSection>
+
+                <FormSection id="location" title="Location">
+                    <div className={s.field}>
+                        <label className={s.label} htmlFor="ev-loc-in">
+                            Location name
+                        </label>
+                        <input id="ev-loc-in" name="location_name" className={s.input} defaultValue={event.location_name ?? ''} disabled={pending} required minLength={2} />
+                    </div>
+                    <div className={s.field}>
+                        <label className={s.label} htmlFor="ev-locd-in">
+                            Location detail
+                        </label>
+                        <input id="ev-locd-in" name="location_detail" className={s.input} defaultValue={event.location_detail ?? ''} disabled={pending} />
+                    </div>
+                    <div className={s.field}>
+                        <label className={s.label} htmlFor="ev-area-in">
+                            General area, shown on private listings
+                        </label>
+                        <input
+                            id="ev-area-in"
+                            name="area_label"
+                            className={s.input}
+                            maxLength={60}
+                            placeholder="e.g. Edmonds, WA"
+                            defaultValue={event.area_label ?? ''}
+                            disabled={pending}
+                            aria-describedby="ev-area-h"
+                        />
+                        <p className={s.hint} id="ev-area-h">
+                            Shown instead of the venue when the event is private or followers-only. Leave blank to show &ldquo;Location shared with invitees&rdquo;.
+                        </p>
+                    </div>
+                    <div className={s.grid2f}>
+                        <div className={s.field}>
+                            <label className={s.label} htmlFor="ev-lat-in">
+                                Latitude
+                            </label>
+                            <input id="ev-lat-in" type="number" step="any" name="lat" className={s.input} defaultValue={event.lat ?? ''} disabled={pending} />
+                        </div>
+                        <div className={s.field}>
+                            <label className={s.label} htmlFor="ev-lng-in">
+                                Longitude
+                            </label>
+                            <input id="ev-lng-in" type="number" step="any" name="lng" className={s.input} defaultValue={event.lng ?? ''} disabled={pending} />
+                        </div>
+                    </div>
+                </FormSection>
+
+                <FormSection id="when" title="When & capacity">
+                    <div className={s.grid2f}>
+                        <label className={s.field}>
+                            <span className={s.label}>Start</span>
+                            <EventStartAtField valueIso={event.start_at} disabled={pending} className={s.input} />
+                        </label>
+                        <div className={s.field}>
+                            <label className={s.label} htmlFor="ev-cap-in">
+                                Capacity
+                            </label>
+                            <input id="ev-cap-in" type="number" min={1} name="capacity" className={s.input} defaultValue={event.capacity ?? ''} disabled={pending} />
+                        </div>
+                    </div>
+                </FormSection>
+
+                <FormSection id="visibility" title="Visibility & tags">
+                    <fieldset className={s.radioSeg}>
+                        <legend>Who can see it</legend>
+                        {VISIBILITY.map((v) => (
+                            <label key={v.value}>
+                                <input type="radio" name="visibility" value={v.value} defaultChecked={event.visibility === v.value} required disabled={pending} />
+                                {v.value === 'public' ? <Globe size={16} strokeWidth={2} aria-hidden="true" /> : v.value === 'followers' ? <Users size={16} strokeWidth={2} aria-hidden="true" /> : <Lock size={16} strokeWidth={2} aria-hidden="true" />}
+                                {v.label.charAt(0) + v.label.slice(1).toLowerCase()}
+                            </label>
+                        ))}
+                    </fieldset>
+                    <div className={s.field}>
+                        <label className={s.label} htmlFor="ev-tags-in">
+                            Tags, comma-separated
+                        </label>
+                        <input id="ev-tags-in" name="tags" className={s.input} defaultValue={tagsString} disabled={pending} />
+                    </div>
+                </FormSection>
+
+                <FormSection id="cover" title="Cover" sub="The type is fixed after creation. Leave the cover on Auto to follow it.">
+                    <EventCoverPicker mode="edit" initialType={event.type} initialUrl={event.hero_image_url} disabled={pending} />
+                </FormSection>
+
+                <RoutePlanEditor
+                    glide
+                    eventId={event.id}
+                    startLat={event.lat ?? null}
+                    startLng={event.lng ?? null}
+                    startName={event.location_name ?? null}
+                    destinationName={destinationName}
+                    destinationLat={destinationLat}
+                    destinationLng={destinationLng}
+                    onDestinationChange={(next) => {
+                        if (next.name !== undefined) setDestinationName(next.name);
+                        if (next.lat !== undefined) setDestinationLat(next.lat);
+                        if (next.lng !== undefined) setDestinationLng(next.lng);
+                    }}
+                    initialStops={initialStops}
+                    disabled={pending}
+                    saveAction={actions.routePlan}
+                />
+
+                <div className={`g-fp ${s.saveBar}`}>
+                    <GlideButton
+                        type="submit"
+                        disabled={pending}
+                        aria-busy={pending}
+                        icon={savedFlash ? <Check /> : pending ? <LoaderCircle size={20} strokeWidth={2} className="g-spin" /> : undefined}
+                    >
+                        {savedFlash ? 'Saved' : 'Save changes'}
+                    </GlideButton>
+                    {!event.cancelled_at && isPaidEvent ? (
+                        <CancelAndRefundAllButton eventId={event.id} eventTitle={event.title ?? ''} onDone={() => router.refresh()} className={`g-sec ${s.danger}`} />
+                    ) : !event.cancelled_at ? (
+                        <button type="button" className={`g-sec ${s.danger}`} onClick={onCancel} disabled={pending}>
+                            <CircleX size={17} strokeWidth={2} aria-hidden="true" />
+                            Cancel event
+                        </button>
+                    ) : (
+                        <button type="button" className="g-sec" onClick={onUncancel} disabled={pending}>
+                            <RotateCcw size={17} strokeWidth={2} aria-hidden="true" />
+                            Uncancel event
+                        </button>
+                    )}
+                </div>
+            </form>
+        );
+    }
 
     return (
         <form className="admin-form" action={onSubmit} style={{ maxWidth: 720 }}>

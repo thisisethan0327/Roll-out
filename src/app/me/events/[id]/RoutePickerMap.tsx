@@ -18,6 +18,15 @@ import { svgIcon } from '@/lib/icon-svg';
 const MAPLIBRE_CSS = 'https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css';
 const MAPLIBRE_JS = 'https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js';
 const BASEMAP_STYLE = 'https://tiles.openfreemap.org/styles/dark';
+/** Glide (the /me host console): light basemap in the light theme. */
+const BASEMAP_STYLE_LIGHT = 'https://tiles.openfreemap.org/styles/positron';
+
+function resolvedLight(): boolean {
+    const t = document.documentElement.getAttribute('data-theme');
+    if (t === 'light') return true;
+    if (t === 'dark') return false;
+    return window.matchMedia('(prefers-color-scheme: light)').matches;
+}
 const BASEMAP_ATTRIBUTION =
     '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap contributors</a> &middot; <a href="https://openfreemap.org/" target="_blank" rel="noopener noreferrer">OpenFreeMap</a>';
 
@@ -61,6 +70,18 @@ async function loadMapLibre(): Promise<any> {
     return (window as any).maplibregl;
 }
 
+/** The picked-point marker: the legacy gold drop pin, or the Glide roundel. */
+function makePin(glide: boolean): HTMLDivElement {
+    const el = document.createElement('div');
+    if (glide) {
+        el.className = 'g-map-pin g-map-pin--meet';
+    } else {
+        el.className = 'rl-route-pin rl-route-pin-pick';
+        el.innerHTML = svgIcon('map-pin');
+    }
+    return el;
+}
+
 /** Seattle — same "reasonable default center" every other picker in this repo
  * falls back to when there is no coordinate yet (shop location pickers etc). */
 const FALLBACK_CENTER: [number, number] = [-122.3321, 47.6062];
@@ -74,6 +95,7 @@ export default function RoutePickerMap({
     fallbackLng,
     onPick,
     label = 'CLICK THE MAP TO SET A PIN',
+    glide = false,
 }: {
     lat: number | null;
     lng: number | null;
@@ -81,6 +103,8 @@ export default function RoutePickerMap({
     fallbackLng?: number | null;
     onPick: (lat: number, lng: number) => void;
     label?: string;
+    /** Glide styling: theme-aware basemap, roundel pin, floating label pill. */
+    glide?: boolean;
 }) {
     const containerRef = useRef<HTMLDivElement>(null);
     const mapRef = useRef<any>(null);
@@ -109,7 +133,7 @@ export default function RoutePickerMap({
 
                 const map = new maplibregl.Map({
                     container: containerRef.current,
-                    style: BASEMAP_STYLE,
+                    style: glide && resolvedLight() ? BASEMAP_STYLE_LIGHT : BASEMAP_STYLE,
                     center,
                     zoom: lat != null && lng != null ? 13 : 10,
                     attributionControl: { compact: true, customAttribution: BASEMAP_ATTRIBUTION },
@@ -128,10 +152,7 @@ export default function RoutePickerMap({
                 }, 2500);
 
                 if (lat != null && lng != null) {
-                    const el = document.createElement('div');
-                    el.className = 'rl-route-pin rl-route-pin-pick';
-                    el.innerHTML = svgIcon('map-pin');
-                    markerRef.current = new maplibregl.Marker({ element: el, anchor: 'bottom' })
+                    markerRef.current = new maplibregl.Marker({ element: makePin(glide), anchor: glide ? 'center' : 'bottom' })
                         .setLngLat([lng, lat])
                         .addTo(map);
                 }
@@ -171,10 +192,7 @@ export default function RoutePickerMap({
         }
         if (!markerRef.current) {
             const maplibregl = (window as any).maplibregl;
-            const el = document.createElement('div');
-            el.className = 'rl-route-pin rl-route-pin-pick';
-            el.innerHTML = svgIcon('map-pin');
-            markerRef.current = new maplibregl.Marker({ element: el, anchor: 'bottom' }).setLngLat([lng, lat]).addTo(map);
+            markerRef.current = new maplibregl.Marker({ element: makePin(glide), anchor: glide ? 'center' : 'bottom' }).setLngLat([lng, lat]).addTo(map);
         } else {
             markerRef.current.setLngLat([lng, lat]);
         }
@@ -186,25 +204,45 @@ export default function RoutePickerMap({
         <div style={{ position: 'relative', width: '100%', height: '100%', background: 'var(--bg-2)' }}>
             <div ref={containerRef} style={{ position: 'absolute', inset: 0, zIndex: 1, cursor: 'crosshair' }} />
             {!failed ? (
-                <div
-                    style={{
-                        position: 'absolute',
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        zIndex: 2,
-                        padding: '6px 10px',
-                        background: 'rgba(0,0,0,0.6)',
-                        fontFamily: 'var(--font-display)',
-                        fontSize: 9,
-                        letterSpacing: 'var(--track-wider)',
-                        color: 'var(--gold)',
-                        textAlign: 'center',
-                        pointerEvents: 'none',
-                    }}
-                >
-                    {label}
-                </div>
+                glide ? (
+                    <div
+                        className="g-fp"
+                        style={{
+                            position: 'absolute',
+                            left: 12,
+                            bottom: 12,
+                            zIndex: 2,
+                            maxWidth: 'calc(100% - 24px)',
+                            padding: '8px 14px',
+                            borderRadius: 18,
+                            fontSize: 13,
+                            fontWeight: 600,
+                            pointerEvents: 'none',
+                        }}
+                    >
+                        {label}
+                    </div>
+                ) : (
+                    <div
+                        style={{
+                            position: 'absolute',
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            zIndex: 2,
+                            padding: '6px 10px',
+                            background: 'rgba(0,0,0,0.6)',
+                            fontFamily: 'var(--font-display)',
+                            fontSize: 9,
+                            letterSpacing: 'var(--track-wider)',
+                            color: 'var(--gold)',
+                            textAlign: 'center',
+                            pointerEvents: 'none',
+                        }}
+                    >
+                        {label}
+                    </div>
+                )
             ) : null}
             {!ready && !failed ? (
                 <div className="rl-map-loading">

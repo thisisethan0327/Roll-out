@@ -4,18 +4,26 @@
  * returns { ok: false, error } on failure (see actions.ts) — useActionState
  * gives us that failure back as render state instead of a thrown, redacted
  * Error message.
+ *
+ * Glide (board: G3 create event): the same fields, grouped into section cards
+ * with a sticky save bar. Every input keeps its name, so the form posts exactly
+ * what it did before. The cover picker is the shared shop-console component,
+ * restyled by the console scope.
  */
 import Link from 'next/link';
 import { useActionState } from 'react';
+import { CircleAlert, Globe, LoaderCircle, Lock, Plus, Users } from 'lucide-react';
 import { createHostEvent } from '../actions';
 import { EventCoverPicker } from '@/app/shop/[slug]/events/EventCoverPicker';
 import { EventStartAtField } from '@/components/EventStartAtField';
-import { ArrowRight, ChevronRight } from '@/components/icons';
+import { GlideButton } from '@/components/glide/primitives';
+import { FormSection } from '@/components/glide-console/parts';
+import s from '@/components/glide-console/console.module.css';
 
-const VISIBILITY: { value: string; label: string }[] = [
-    { value: 'public', label: 'PUBLIC' },
-    { value: 'followers', label: 'FOLLOWERS' },
-    { value: 'private', label: 'PRIVATE' },
+const VISIBILITY: { value: string; label: string; icon: React.ReactNode }[] = [
+    { value: 'public', label: 'Public', icon: <Globe size={16} strokeWidth={2} aria-hidden="true" /> },
+    { value: 'followers', label: 'Followers', icon: <Users size={16} strokeWidth={2} aria-hidden="true" /> },
+    { value: 'private', label: 'Private', icon: <Lock size={16} strokeWidth={2} aria-hidden="true" /> },
 ];
 
 type FormState = { ok: false; error: string } | null;
@@ -32,99 +40,142 @@ export function NewHostEventForm() {
     const [state, formAction, pending] = useActionState(submitCreateHostEvent, null);
 
     return (
-        <form className="admin-form" action={formAction} style={{ maxWidth: 720 }}>
-            {state && !state.ok ? <div className="admin-form-error" style={{ marginBottom: 12 }}>{state.error}</div> : null}
+        <form action={formAction} className={s.col} aria-busy={pending}>
+            {state && !state.ok ? (
+                <p className="g-note" role="alert">
+                    <CircleAlert size={20} strokeWidth={2} aria-hidden="true" />
+                    {state.error}
+                </p>
+            ) : null}
 
-            <SectionHeading>TYPE & COVER</SectionHeading>
-            <EventCoverPicker mode="create" />
+            <FormSection id="type" title="Type & cover" sub="The type picks the default covers. Leave the cover on Auto to follow it.">
+                <EventCoverPicker mode="create" />
+            </FormSection>
 
-            <SectionHeading>DETAILS</SectionHeading>
-            <label className="admin-form-label">TITLE</label>
-            <input name="title" className="admin-form-input" minLength={4} required placeholder="Sunday Canyon Run" disabled={pending} />
-
-            <label className="admin-form-label">DESCRIPTION</label>
-            <textarea name="description" className="admin-form-input" rows={4} maxLength={400} placeholder="What's the vibe? Who should come? (max 400 chars)" disabled={pending} />
-
-            <SectionHeading>LOCATION</SectionHeading>
-            <label className="admin-form-label">LOCATION NAME *</label>
-            <input name="location_name" className="admin-form-input" placeholder="Cars & Coffee Lot" required minLength={2} disabled={pending} />
-
-            <label className="admin-form-label">LOCATION DETAIL (OPTIONAL)</label>
-            <input name="location_detail" className="admin-form-input" placeholder="North lot by the coffee stand" disabled={pending} />
-
-            <label className="admin-form-label">GENERAL AREA (SHOWN ON PRIVATE LISTINGS)</label>
-            <input name="area_label" className="admin-form-input" maxLength={60} placeholder="e.g. Edmonds, WA" disabled={pending} />
-            <div className="admin-form-hint" style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 4 }}>
-                Shown instead of the venue when the event is private or followers-only. Leave blank to show &ldquo;Location shared with invitees&rdquo;.
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <div>
-                    <label className="admin-form-label">LAT (OPTIONAL)</label>
-                    <input type="number" step="any" name="lat" className="admin-form-input" placeholder="47.6062" disabled={pending} />
-                </div>
-                <div>
-                    <label className="admin-form-label">LNG (OPTIONAL)</label>
-                    <input type="number" step="any" name="lng" className="admin-form-input" placeholder="-122.3321" disabled={pending} />
-                </div>
-            </div>
-            <div className="admin-form-hint" style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 4 }}>
-                Add lat/lng to pin your meet on the Meets map. Look them up on Google Maps (right-click <ArrowRight /> coordinates).
-            </div>
-
-            <SectionHeading>／ ROUTE DESTINATION (OPTIONAL)</SectionHeading>
-            <label className="admin-form-label">DESTINATION NAME</label>
-            <input name="destination_name" className="admin-form-input" maxLength={80} placeholder="e.g. Chuckanut Manor Seafood & Grill" disabled={pending} />
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <div>
-                    <label className="admin-form-label">DESTINATION LAT</label>
-                    <input type="number" step="any" name="destination_lat" className="admin-form-input" placeholder="47.7300" disabled={pending} />
-                </div>
-                <div>
-                    <label className="admin-form-label">DESTINATION LNG</label>
-                    <input type="number" step="any" name="destination_lng" className="admin-form-input" placeholder="-122.4800" disabled={pending} />
-                </div>
-            </div>
-            <div className="admin-form-hint" style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 4 }}>
-                You can also plan stops and pick coordinates on a map right after creating the event.
-            </div>
-
-            <SectionHeading>WHEN & CAPACITY</SectionHeading>
-            <label className="admin-form-label">START AT</label>
-            <EventStartAtField disabled={pending} />
-
-            <label className="admin-form-label">CAPACITY (OPTIONAL)</label>
-            <input type="number" min={1} name="capacity" className="admin-form-input" placeholder="30" disabled={pending} />
-
-            <SectionHeading>VISIBILITY</SectionHeading>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                {VISIBILITY.map((v) => (
-                    <label key={v.value} className="admin-form-label" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
-                        <input type="radio" name="visibility" value={v.value} defaultChecked={v.value === 'public'} required disabled={pending} />
-                        {v.label}
+            <FormSection id="details" title="Details">
+                <div className={s.field}>
+                    <label className={s.label} htmlFor="ne-title">
+                        Title
                     </label>
-                ))}
-            </div>
+                    <input id="ne-title" name="title" className={s.input} minLength={4} required placeholder="Sunday Canyon Run" disabled={pending} />
+                </div>
+                <div className={s.field}>
+                    <label className={s.label} htmlFor="ne-desc">
+                        Description
+                    </label>
+                    <textarea id="ne-desc" name="description" className={s.input} rows={4} maxLength={400} placeholder="What's the vibe? Who should come? (max 400 chars)" disabled={pending} />
+                </div>
+            </FormSection>
 
-            <SectionHeading>TAGS</SectionHeading>
-            <label className="admin-form-label">TAGS (COMMA-SEPARATED)</label>
-            <input name="tags" className="admin-form-input" placeholder="jdm, canyon, sunday" disabled={pending} />
+            <FormSection id="location" title="Location">
+                <div className={s.field}>
+                    <label className={s.label} htmlFor="ne-loc">
+                        Location name
+                    </label>
+                    <input id="ne-loc" name="location_name" className={s.input} placeholder="Cars & Coffee Lot" required minLength={2} disabled={pending} />
+                </div>
+                <div className={s.field}>
+                    <label className={s.label} htmlFor="ne-locd">
+                        Location detail <span style={{ fontWeight: 500 }}>(optional)</span>
+                    </label>
+                    <input id="ne-locd" name="location_detail" className={s.input} placeholder="North lot by the coffee stand" disabled={pending} />
+                </div>
+                <div className={s.field}>
+                    <label className={s.label} htmlFor="ne-area">
+                        General area, shown on private listings
+                    </label>
+                    <input id="ne-area" name="area_label" className={s.input} maxLength={60} placeholder="e.g. Edmonds, WA" disabled={pending} aria-describedby="ne-area-h" />
+                    <p className={s.hint} id="ne-area-h">
+                        Shown instead of the venue when the event is private or followers-only. Leave blank to show &ldquo;Location shared with invitees&rdquo;.
+                    </p>
+                </div>
+                <div className={s.grid2f}>
+                    <div className={s.field}>
+                        <label className={s.label} htmlFor="ne-lat">
+                            Latitude <span style={{ fontWeight: 500 }}>(optional)</span>
+                        </label>
+                        <input id="ne-lat" type="number" step="any" name="lat" className={s.input} placeholder="47.6062" disabled={pending} />
+                    </div>
+                    <div className={s.field}>
+                        <label className={s.label} htmlFor="ne-lng">
+                            Longitude <span style={{ fontWeight: 500 }}>(optional)</span>
+                        </label>
+                        <input id="ne-lng" type="number" step="any" name="lng" className={s.input} placeholder="-122.3321" disabled={pending} />
+                    </div>
+                </div>
+                <p className={s.hint}>Add lat/lng to pin your meet on the Meets map. Look them up on Google Maps (right-click → coordinates).</p>
+            </FormSection>
 
-            <div style={{ marginTop: 18, display: 'flex', gap: 8 }}>
-                <button type="submit" className="admin-form-btn" disabled={pending}>
-                    {pending ? 'HOSTING…' : <>HOST EVENT <ChevronRight /></>}
-                </button>
-                <Link href="/me/events" className="admin-action-btn muted" style={{ textDecoration: 'none' }}>CANCEL</Link>
+            <FormSection id="route" title="Route destination" sub="Optional. You can plan stops and pick points on a map right after creating the event.">
+                <div className={s.field}>
+                    <label className={s.label} htmlFor="ne-dest">
+                        Destination name
+                    </label>
+                    <input id="ne-dest" name="destination_name" className={s.input} maxLength={80} placeholder="e.g. Chuckanut Manor Seafood & Grill" disabled={pending} />
+                </div>
+                <div className={s.grid2f}>
+                    <div className={s.field}>
+                        <label className={s.label} htmlFor="ne-dlat">
+                            Destination latitude
+                        </label>
+                        <input id="ne-dlat" type="number" step="any" name="destination_lat" className={s.input} placeholder="47.7300" disabled={pending} />
+                    </div>
+                    <div className={s.field}>
+                        <label className={s.label} htmlFor="ne-dlng">
+                            Destination longitude
+                        </label>
+                        <input id="ne-dlng" type="number" step="any" name="destination_lng" className={s.input} placeholder="-122.4800" disabled={pending} />
+                    </div>
+                </div>
+            </FormSection>
+
+            <FormSection id="when" title="When & capacity">
+                <div className={s.grid2f}>
+                    <label className={s.field}>
+                        <span className={s.label}>Start</span>
+                        <EventStartAtField disabled={pending} className={s.input} />
+                    </label>
+                    <div className={s.field}>
+                        <label className={s.label} htmlFor="ne-cap">
+                            Capacity <span style={{ fontWeight: 500 }}>(optional)</span>
+                        </label>
+                        <input id="ne-cap" type="number" min={1} name="capacity" className={s.input} placeholder="30" disabled={pending} />
+                    </div>
+                </div>
+            </FormSection>
+
+            <FormSection id="visibility" title="Visibility & tags">
+                <fieldset className={s.radioSeg}>
+                    <legend>Who can see it</legend>
+                    {VISIBILITY.map((v) => (
+                        <label key={v.value}>
+                            <input type="radio" name="visibility" value={v.value} defaultChecked={v.value === 'public'} required disabled={pending} />
+                            {v.icon}
+                            {v.label}
+                        </label>
+                    ))}
+                </fieldset>
+                <div className={s.field}>
+                    <label className={s.label} htmlFor="ne-tags">
+                        Tags, comma-separated
+                    </label>
+                    <input id="ne-tags" name="tags" className={s.input} placeholder="jdm, canyon, sunday" disabled={pending} />
+                </div>
+            </FormSection>
+
+            <div className={`g-fp ${s.saveBar}`}>
+                <GlideButton
+                    type="submit"
+                    disabled={pending}
+                    aria-busy={pending}
+                    icon={pending ? <LoaderCircle size={20} strokeWidth={2} className="g-spin" /> : <Plus size={20} strokeWidth={2} />}
+                >
+                    {pending ? 'Hosting…' : 'Host event'}
+                </GlideButton>
+                <Link href="/me/events" className="g-sec g-sec--ink">
+                    Cancel
+                </Link>
             </div>
         </form>
-    );
-}
-
-function SectionHeading({ children }: { children: React.ReactNode }) {
-    return (
-        <div style={{ marginTop: 14, marginBottom: 6, fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: 'var(--track-wider)', color: 'var(--gold)', borderTop: '1px solid var(--rule)', paddingTop: 10 }}>
-            {children}
-        </div>
     );
 }

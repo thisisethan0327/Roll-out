@@ -3,16 +3,26 @@
  * status timeline (pending → accepted / reschedule / declined / converted) and
  * the linked shop name. Sourced from rollout.appointment_requests, scoped to the
  * caller's profile id.
+ *
+ * Glide: each request is a card with its status chip, a three-step track and
+ * the ticket link once the shop opens one. Same loader.
  */
-import Link from 'next/link';
+import { CalendarClock, Car, Check, CircleCheck, MessageSquareText, Store, Wrench } from 'lucide-react';
 import { requireConsumer } from '@/lib/me-guard';
 import { loadMyAppointments } from '@/lib/me-data';
-import { fmtDate, StatusPill, EmptyRow } from '../ui';
-import { ChevronRight } from '@/components/icons';
+import { fmtDate } from '../ui';
+import { Card, GlideButton, SecButton } from '@/components/glide/primitives';
+import { ConsoleHead, Empty, StatusChip } from '@/components/glide-console/parts';
+import s from '@/components/glide-console/console.module.css';
+import a from './appointments.module.css';
 
 export const dynamic = 'force-dynamic';
 
-const STAGES = ['pending', 'accepted', 'converted'] as const;
+const STAGES = [
+    { key: 'pending', label: 'Requested' },
+    { key: 'accepted', label: 'Accepted' },
+    { key: 'converted', label: 'Ticket opened' },
+] as const;
 
 function stageIndex(status: string | null): number {
     const s = (status ?? '').toLowerCase();
@@ -28,115 +38,100 @@ export default async function AppointmentsPage({ searchParams }: { searchParams:
     const { requested } = await searchParams;
     const requestedHandle = requested ? requested.replace(/[^a-z0-9_-]/gi, '').slice(0, 40) : '';
     const appts = await loadMyAppointments(profile.profileId);
+    const ic = { size: 16, strokeWidth: 2, 'aria-hidden': true } as const;
 
     return (
-        <div>
+        <div className={s.scope}>
             {requestedHandle ? (
-                <div className="admin-login-error" role="status" style={{ marginBottom: 16, borderColor: 'var(--gold)', background: 'rgba(255, 183, 51, 0.08)', color: 'var(--text)' }}>
+                <p className={`g-note ${s.note}`} role="status">
+                    <CircleCheck size={20} strokeWidth={2} aria-hidden="true" />
                     Request sent to @{requestedHandle} — they&apos;ll confirm a time from their console.
-                </div>
+                </p>
             ) : null}
-            <div className="admin-page-head">
-                <div>
-                    <div className="admin-page-title">APPOINTMENTS</div>
-                    <div className="admin-page-sub text-dim">
-                        Your booking requests across every Rollout shop.
-                    </div>
-                </div>
-            </div>
+            <ConsoleHead title="Appointments" sub="Your booking requests across every Rollout shop." />
 
             {appts.length === 0 ? (
-                <EmptyRow text="NO APPOINTMENT REQUESTS YET" />
+                <Card>
+                    <Empty
+                        icon={<CalendarClock size={22} strokeWidth={1.75} />}
+                        title="No appointment requests yet"
+                        body="Pick a shop, choose a service and a time that suits you. The request and the shop’s answer show up here."
+                        action={<GlideButton href="/shops" size="sm">Find a shop</GlideButton>}
+                    />
+                </Card>
             ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                    {appts.map((a) => {
-                        const active = stageIndex(a.status);
+                <ul className={a.list}>
+                    {appts.map((ap, i) => {
+                        const active = stageIndex(ap.status);
                         const offPath = active < 0;
                         return (
-                            <section
-                                key={a.id}
-                                style={{ border: '1px solid var(--line)', background: 'var(--bg-1)', padding: 16 }}
-                            >
-                                <div
-                                    style={{
-                                        display: 'flex',
-                                        alignItems: 'flex-start',
-                                        justifyContent: 'space-between',
-                                        gap: 12,
-                                        flexWrap: 'wrap',
-                                    }}
-                                >
-                                    <div>
-                                        <div style={{ color: 'var(--text)', fontSize: 15 }}>
-                                            {a.service_type ?? 'Service request'}
+                            <li key={ap.id}>
+                                <Card as="article" edge={i === 0 && !offPath} className={a.appt} aria-labelledby={`ap-${ap.id}`}>
+                                    <div className={a.top}>
+                                        <div style={{ minWidth: 0 }}>
+                                            <h2 id={`ap-${ap.id}`} className={a.title}>
+                                                {ap.service_type ?? 'Service request'}
+                                            </h2>
+                                            <p className={a.meta}>
+                                                <span>
+                                                    <Store {...ic} />
+                                                    {ap.shop?.name ?? 'Shop'}
+                                                </span>
+                                                {ap.vehicle ? (
+                                                    <span>
+                                                        <Car {...ic} />
+                                                        {ap.vehicle}
+                                                    </span>
+                                                ) : null}
+                                            </p>
+                                            <p className={a.meta}>
+                                                <span>
+                                                    <CalendarClock {...ic} />
+                                                    Preferred: {fmtDate(ap.preferred_at)}
+                                                </span>
+                                            </p>
                                         </div>
-                                        <div className="text-dim" style={{ fontSize: 12, marginTop: 2 }}>
-                                            {a.shop?.name ?? 'Shop'}
-                                            {a.vehicle ? ` · ${a.vehicle}` : ''}
-                                        </div>
-                                        <div className="text-dim" style={{ fontSize: 11, marginTop: 2 }}>
-                                            Preferred: {fmtDate(a.preferred_at)}
-                                        </div>
+                                        <StatusChip status={ap.status} />
                                     </div>
-                                    <StatusPill status={a.status} />
-                                </div>
 
-                                {/* Stage timeline */}
-                                {!offPath ? (
-                                    <div style={{ display: 'flex', gap: 8, marginTop: 14, flexWrap: 'wrap' }}>
-                                        {STAGES.map((stage, i) => (
-                                            <div
-                                                key={stage}
-                                                style={{
-                                                    flex: '1 1 90px',
-                                                    padding: '6px 8px',
-                                                    border: '1px solid var(--line)',
-                                                    background: i <= active ? 'rgba(232,168,69,0.12)' : 'var(--bg-2)',
-                                                    borderLeft:
-                                                        i <= active ? '2px solid var(--gold)' : '1px solid var(--line)',
-                                                    fontFamily: 'var(--font-display)',
-                                                    fontSize: 9,
-                                                    letterSpacing: 'var(--track-wider)',
-                                                    color: i <= active ? 'var(--gold)' : 'var(--text-3)',
-                                                    textTransform: 'uppercase',
-                                                }}
-                                            >
-                                                {stage}
-                                            </div>
-                                        ))}
-                                    </div>
-                                ) : (
-                                    a.decline_reason && (
-                                        <div
-                                            className="text-dim"
-                                            style={{ fontSize: 12, marginTop: 12, color: 'var(--warn, var(--text-2))' }}
-                                        >
-                                            Reason: {a.decline_reason}
+                                    {!offPath ? (
+                                        <ol className={a.steps} aria-label="Progress">
+                                            {STAGES.map((stage, si) => {
+                                                const state = si < active ? 'done' : si === active ? 'now' : 'next';
+                                                return (
+                                                    <li key={stage.key} className={a[state]} aria-current={state === 'now' ? 'step' : undefined}>
+                                                        <span className={a.dot} aria-hidden="true">
+                                                            {state === 'done' ? <Check size={13} strokeWidth={3} /> : null}
+                                                        </span>
+                                                        {stage.label}
+                                                    </li>
+                                                );
+                                            })}
+                                        </ol>
+                                    ) : ap.decline_reason ? (
+                                        <p className={a.reason}>
+                                            <MessageSquareText size={17} strokeWidth={2} aria-hidden="true" />
+                                            <span>
+                                                <b>Reason</b> {ap.decline_reason}
+                                            </span>
+                                        </p>
+                                    ) : null}
+
+                                    {ap.notes ? <p className={a.notes}>{ap.notes}</p> : null}
+
+                                    {ap.ticket_id ? (
+                                        <div className={a.foot}>
+                                            <SecButton href={`/me/tickets/${ap.ticket_id}`}>
+                                                <Wrench size={17} strokeWidth={2} aria-hidden="true" />
+                                                View ticket
+                                            </SecButton>
                                         </div>
-                                    )
-                                )}
-
-                                {a.notes && (
-                                    <div className="text-dim" style={{ fontSize: 12, marginTop: 12 }}>
-                                        {a.notes}
-                                    </div>
-                                )}
-
-                                {a.ticket_id && (
-                                    <div style={{ marginTop: 12 }}>
-                                        <Link
-                                            href={`/me/tickets/${a.ticket_id}`}
-                                            className="admin-action-btn"
-                                            style={{ textDecoration: 'none' }}
-                                        >
-                                            VIEW TICKET <ChevronRight />
-                                        </Link>
-                                    </div>
-                                )}
-                            </section>
+                                    ) : null}
+                                </Card>
+                            </li>
                         );
                     })}
-                </div>
+                </ul>
             )}
         </div>
     );
