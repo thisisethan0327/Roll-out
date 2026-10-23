@@ -5,6 +5,7 @@
 import type { Metadata } from 'next';
 import { getCart } from '@/lib/medusa-cart';
 import { CartClient } from './CartClient';
+import { PageHead } from '@/components/glide-tickets/parts';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,13 +16,17 @@ export const metadata: Metadata = {
 
 export default async function CartPage() {
     const cart = await getCart();
+    const n = cart?.itemCount ?? 0;
     return (
-        <section className="section" style={{ padding: '40px 0 72px' }}>
-            <div className="container">
-                <div className="eyebrow eyebrow-gold mb-4">／ CART</div>
-                <h1 style={{ letterSpacing: 1, margin: '0 0 28px' }}>YOUR BAG</h1>
+        <div className="glide glide-page">
+            <div className="g-wrap gt-page">
+                <PageHead
+                    back={{ href: '/store', label: 'Store' }}
+                    title="Cart"
+                    meta={n > 0 ? <span><span className="g-w">{n}</span> {n === 1 ? 'item' : 'items'}</span> : undefined}
+                />
                 <CartClient initialCart={cart} />
             </div>
-        </section>
+        </div>
     );
 }

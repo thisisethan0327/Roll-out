@@ -3,12 +3,15 @@
 /**
  * PDP gallery — clickable, keyboard-accessible thumbnails that swap the main
  * image. Renders through next/image so the optimizer serves resized WebP/AVIF
- * instead of the raw multi-MB catalog PNGs. Preserves the corner-wrap framing,
- * paused grayscale + COMING SOON veil, and thumbnail-strip layout of the
- * original static gallery.
+ * instead of the raw multi-MB catalog PNGs. A paused product keeps its
+ * greyed photo and a "Coming soon" pill over it.
+ *
+ * Glide: the photo on a rounded tile inside a card, thumbnails as rounded
+ * tiles with an accent ring on the one shown.
  */
 import { useRef, useState } from 'react';
 import Image from 'next/image';
+import { Clock, Package } from 'lucide-react';
 
 type Props = {
     images: string[];
@@ -20,7 +23,6 @@ export function ProductGallery({ images, title, paused }: Props) {
     const [active, setActive] = useState(0);
     const thumbRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
-    const pausedFilter = paused ? 'grayscale(0.85) brightness(0.6)' : 'none';
     const main = images[active] ?? images[0] ?? null;
     const hasThumbs = images.length > 1;
 
@@ -39,18 +41,9 @@ export function ProductGallery({ images, title, paused }: Props) {
     };
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div className="g-card gt-gal">
             {/* MAIN IMAGE */}
-            <div
-                className="corner-wrap"
-                style={{
-                    position: 'relative',
-                    aspectRatio: '1 / 1',
-                    background: 'var(--bg-3)',
-                    border: '1px solid var(--line)',
-                    overflow: 'hidden',
-                }}
-            >
+            <div className={`gt-gal-main${paused ? ' is-paused' : ''}`}>
                 {main ? (
                     <Image
                         key={main}
@@ -59,38 +52,23 @@ export function ProductGallery({ images, title, paused }: Props) {
                         fill
                         priority
                         sizes="(max-width: 900px) 100vw, 50vw"
-                        style={{ objectFit: 'cover', filter: pausedFilter }}
                     />
-                ) : null}
-                <span className="corner-bottom-left" />
-                <span className="corner-bottom-right" />
+                ) : (
+                    <span className="gt-pc-ph" aria-hidden="true">
+                        <Package size={56} strokeWidth={1.2} />
+                    </span>
+                )}
                 {paused ? (
-                    <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <span
-                            style={{
-                                fontFamily: 'var(--font-display)',
-                                fontSize: 13,
-                                fontWeight: 700,
-                                letterSpacing: 'var(--track-wider)',
-                                padding: '8px 18px',
-                                border: '1px solid var(--gold)',
-                                background: 'rgba(0,0,0,0.72)',
-                                color: 'var(--gold)',
-                            }}
-                        >
-                            COMING SOON
-                        </span>
-                    </div>
+                    <span className="gt-gal-veil g-fp">
+                        <Clock size={18} strokeWidth={2} aria-hidden="true" />
+                        Coming soon
+                    </span>
                 ) : null}
             </div>
 
             {/* THUMBNAILS */}
             {hasThumbs ? (
-                <div
-                    role="group"
-                    aria-label="Product image thumbnails"
-                    style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(72px, 1fr))', gap: 8 }}
-                >
+                <div role="group" aria-label="Product image thumbnails" className="gt-gal-thumbs">
                     {images.map((img, i) => {
                         const isActive = i === active;
                         return (
@@ -104,18 +82,6 @@ export function ProductGallery({ images, title, paused }: Props) {
                                 onKeyDown={(e) => onThumbKeyDown(e, i)}
                                 aria-label={`View image ${i + 1} of ${images.length}`}
                                 aria-pressed={isActive}
-                                style={{
-                                    position: 'relative',
-                                    aspectRatio: '1 / 1',
-                                    padding: 0,
-                                    cursor: 'pointer',
-                                    overflow: 'hidden',
-                                    background: 'var(--bg-3)',
-                                    border: `1px solid ${isActive ? 'var(--gold)' : 'var(--line)'}`,
-                                    boxShadow: isActive ? '0 0 0 1px var(--gold)' : 'none',
-                                    opacity: isActive ? 1 : 0.78,
-                                    transition: 'opacity 120ms ease, border-color 120ms ease',
-                                }}
                             >
                                 <Image
                                     src={img}
@@ -123,7 +89,7 @@ export function ProductGallery({ images, title, paused }: Props) {
                                     fill
                                     loading="lazy"
                                     sizes="72px"
-                                    style={{ objectFit: 'cover', filter: pausedFilter }}
+                                    style={paused ? { filter: 'grayscale(0.85) brightness(0.75)' } : undefined}
                                 />
                             </button>
                         );

@@ -13,6 +13,8 @@ import { getCart } from '@/lib/medusa-cart';
 import { STRIPE_PUBLISHABLE_KEY } from '@/lib/medusa';
 import { getSupabaseServer } from '@/lib/supabase/server';
 import { CheckoutClient } from './CheckoutClient';
+import { CreditCard } from 'lucide-react';
+import { PageHead } from '@/components/glide-tickets/parts';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,16 +31,15 @@ export default async function CheckoutPage() {
     // fallback would silently take fake payments if the env var went missing.
     if (!STRIPE_PUBLISHABLE_KEY) {
         return (
-            <section className="section" style={{ padding: '40px 0 72px' }}>
-                <div className="container">
-                    <div className="eyebrow eyebrow-gold mb-4">／ CHECKOUT</div>
-                    <h1 style={{ letterSpacing: 1, margin: '0 0 28px' }}>CHECKOUT</h1>
-                    <p>
-                        Checkout is temporarily unavailable — payments are not
-                        configured. Please try again shortly.
+            <div className="glide glide-page">
+                <div className="g-wrap gt-page">
+                    <PageHead back={{ href: '/store/cart', label: 'Cart' }} title="Checkout" />
+                    <p className="g-note" role="status">
+                        <CreditCard size={20} strokeWidth={2} aria-hidden="true" />
+                        Checkout is temporarily unavailable: payments are not configured. Please try again shortly.
                     </p>
                 </div>
-            </section>
+            </div>
         );
     }
 
@@ -55,10 +56,9 @@ export default async function CheckoutPage() {
     const savedAddress = user && !cart!.shippingAddress?.address1 ? await loadDefaultShippingAddress() : null;
 
     return (
-        <section className="section" style={{ padding: '40px 0 72px' }}>
-            <div className="container">
-                <div className="eyebrow eyebrow-gold mb-4">／ CHECKOUT</div>
-                <h1 style={{ letterSpacing: 1, margin: '0 0 28px' }}>CHECKOUT</h1>
+        <div className="glide glide-page">
+            <div className="g-wrap gt-page">
+                <PageHead back={{ href: '/store/cart', label: 'Cart' }} title="Checkout" />
                 <CheckoutClient
                     initialCart={cart!}
                     stripeKey={STRIPE_PUBLISHABLE_KEY}
@@ -66,6 +66,6 @@ export default async function CheckoutPage() {
                     initialAddress={savedAddress}
                 />
             </div>
-        </section>
+        </div>
     );
 }

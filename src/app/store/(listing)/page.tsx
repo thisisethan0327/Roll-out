@@ -7,14 +7,13 @@
  * products render with a COMING SOON veil (founder's coming-soon gate).
  */
 import type { Metadata } from 'next';
-import { EmptyRow } from '@/app/me/ui';
 import Link from 'next/link';
-import { BandReveal } from '@/components/motion/BandReveal';
+import { ArrowRight, Package, Store } from 'lucide-react';
 import { getSellingShops } from '@/lib/store-shops';
 import { fetchCatalogByHandles, type MedusaProduct } from '@/lib/medusa';
-import { ProductCard } from '@/components/ProductCard';
+import { StoreProductCard } from '@/components/glide-tickets/StoreProductCard';
+import { EmptyState, ErrorLine, PageHead } from '@/components/glide-tickets/parts';
 import { CartLink } from '../CartLink';
-import { ArrowRight } from '@/components/icons';
 
 export const dynamic = 'force-dynamic';
 
@@ -48,79 +47,51 @@ export default async function StoreIndexPage({
     );
 
     return (
-        <>
-            {/* HERO */}
-            <BandReveal>
-            <section className="hero-band" data-band="store">
-                <div className="container" style={{ paddingTop: 56, paddingBottom: 40 }}>
-                    <div className="eyebrow eyebrow-gold mb-4">／ STORE</div>
-                    <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
-                        <div>
-                            <h1 data-band-title style={{ fontSize: 'clamp(32px, 5vw, 56px)', letterSpacing: 1, margin: 0 }}>
-                                THE STORE
-                            </h1>
-                            <p data-band-copy style={{ fontSize: 16, marginTop: 12, maxWidth: 560 }}>
-                                Gear from the brands on Rollout. One checkout — each order ships from
-                                the shop that made it.
-                            </p>
-                        </div>
-                        <CartLink />
-                    </div>
+        <div className="glide glide-page">
+            <div className="g-wrap gt-page">
+                <PageHead
+                    title="Store"
+                    sub="Gear from the brands on Rollout. One checkout, and each order ships from the shop that made it."
+                    actions={<CartLink />}
+                />
 
-                    {/* Shop filter chips */}
-                    <div style={{ display: 'flex', gap: 10, marginTop: 24, flexWrap: 'wrap' }}>
-                        <FilterChip label="ALL SHOPS" href="/store" active={!shopFilter} />
-                        {shops.map((s) => (
-                            <FilterChip
-                                key={s.slug}
-                                label={s.name}
-                                href={`/store?shop=${s.slug}`}
-                                active={shopFilter === s.slug}
-                            />
-                        ))}
-                    </div>
-                </div>
-            </section>
-            </BandReveal>
+                {/* Shop filter chips */}
+                <nav className="gt-fchips" aria-label="Filter by shop">
+                    <FilterChip label="All shops" href="/store" active={!shopFilter} />
+                    {shops.map((s) => (
+                        <FilterChip
+                            key={s.slug}
+                            label={s.name}
+                            href={`/store?shop=${s.slug}`}
+                            active={shopFilter === s.slug}
+                        />
+                    ))}
+                </nav>
 
-            {/* CATALOGS */}
-            <section className="section" style={{ padding: '40px 0 64px' }}>
-                <div className="container">
-                    {catalogs.length === 0 ? (
-                        <div className="admin-empty">No shops selling yet. Check back soon.</div>
-                    ) : (
-                        catalogs.map(({ shop, products, error }) => (
-                            <ShopBlock
-                                key={shop.slug}
-                                shopName={shop.name}
-                                shopHandle={shop.handle}
-                                products={products}
-                                error={error}
-                            />
-                        ))
-                    )}
-                </div>
-            </section>
-        </>
+                {/* CATALOGS */}
+                {catalogs.length === 0 ? (
+                    <EmptyState icon={<Store size={28} strokeWidth={1.5} />} title="No shops selling yet">
+                        Check back soon.
+                    </EmptyState>
+                ) : (
+                    catalogs.map(({ shop, products, error }) => (
+                        <ShopBlock
+                            key={shop.slug}
+                            shopName={shop.name}
+                            shopHandle={shop.handle}
+                            products={products}
+                            error={error}
+                        />
+                    ))
+                )}
+            </div>
+        </div>
     );
 }
 
 function FilterChip({ label, href, active }: { label: string; href: string; active: boolean }) {
     return (
-        <Link
-            href={href}
-            className="font-display"
-            style={{
-                fontSize: 11,
-                letterSpacing: 'var(--track-wider)',
-                textTransform: 'uppercase',
-                padding: '8px 14px',
-                border: `1px solid ${active ? 'var(--gold)' : 'var(--line)'}`,
-                background: active ? 'var(--gold-dim)' : 'transparent',
-                color: active ? 'var(--gold)' : 'var(--text-2)',
-                textDecoration: 'none',
-            }}
-        >
+        <Link href={href} className="gt-fchip" aria-current={active ? 'true' : undefined}>
             {label}
         </Link>
     );
@@ -137,50 +108,32 @@ function ShopBlock({
     products: MedusaProduct[];
     error: string | null;
 }) {
+    const id = `shop-${shopHandle}`;
     return (
-        <div style={{ marginBottom: 56 }}>
-            <div
-                style={{
-                    display: 'flex',
-                    alignItems: 'baseline',
-                    justifyContent: 'space-between',
-                    gap: 12,
-                    marginBottom: 24,
-                    flexWrap: 'wrap',
-                }}
-            >
-                <h2 style={{ margin: 0, letterSpacing: 1 }}>{shopName.toUpperCase()}</h2>
-                <Link
-                    href={`/u/${shopHandle}`}
-                    className="font-display"
-                    style={{
-                        fontSize: 11,
-                        letterSpacing: 'var(--track-wider)',
-                        color: 'var(--gold)',
-                        textDecoration: 'none',
-                    }}
-                >
-                    VISIT SHOP <ArrowRight />
+        <section className="gt-shopblock" aria-labelledby={id}>
+            <div className="gt-sh">
+                <h2 id={id}>{shopName}</h2>
+                <Link href={`/u/${shopHandle}`} className="g-link">
+                    Visit shop
+                    <ArrowRight size={16} strokeWidth={2} aria-hidden="true" />
                 </Link>
             </div>
 
             {error ? (
-                <div className="admin-empty">Catalog unavailable right now. {error}</div>
+                <ErrorLine live={false}>Catalog unavailable right now. {error}</ErrorLine>
             ) : products.length === 0 ? (
-                <EmptyRow text="No products listed yet." art="empty-orders" />
+                <EmptyState icon={<Package size={28} strokeWidth={1.5} />} title="No products yet">
+                    {shopName} has not listed anything here yet.
+                </EmptyState>
             ) : (
-                <div
-                    style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
-                        gap: 16,
-                    }}
-                >
-                    {products.map((p, i) => (
-                        <ProductCard key={p.id} product={p} groundIndex={i} />
+                <ul className="gt-grid">
+                    {products.map((p) => (
+                        <li key={p.id}>
+                            <StoreProductCard product={p} />
+                        </li>
                     ))}
-                </div>
+                </ul>
             )}
-        </div>
+        </section>
     );
 }
