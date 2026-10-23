@@ -6,7 +6,10 @@
  */
 import { useState, useTransition } from 'react';
 import { createDirectThreadWithCustomer } from './actions';
-import { ChevronRight } from '@/components/icons';
+import { CircleAlert, MessageSquarePlus } from 'lucide-react';
+import { Sheet } from '@/components/glide/Sheet';
+import { GlideButton } from '@/components/glide/primitives';
+import { shopStyles as sh } from '@/components/glide-shop/parts';
 
 export function NewMessageDialog({ shopId }: { shopId: number }) {
     const [open, setOpen] = useState(false);
@@ -27,73 +30,32 @@ export function NewMessageDialog({ shopId }: { shopId: number }) {
         });
     };
 
-    if (!open) {
-        return (
+    return (
+        <>
             <button
                 type="button"
-                className="admin-action-btn"
+                className={`g-sec ${sh.sec}`}
                 onClick={() => {
                     setHandle('');
                     setError(null);
                     setOpen(true);
                 }}
+                aria-haspopup="dialog"
             >
-                NEW MESSAGE <ChevronRight />
+                <MessageSquarePlus size={18} strokeWidth={2} aria-hidden="true" />
+                New message
             </button>
-        );
-    }
-
-    return (
-        <>
-            <button type="button" className="admin-action-btn" onClick={() => setOpen(false)}>
-                NEW MESSAGE <ChevronRight />
-            </button>
-            <div
-                role="dialog"
-                aria-modal="true"
-                onClick={() => !isPending && setOpen(false)}
-                style={{
-                    position: 'fixed',
-                    inset: 0,
-                    background: 'rgba(0,0,0,0.65)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    zIndex: 200,
-                }}
-            >
-                <div
-                    onClick={(e) => e.stopPropagation()}
-                    style={{
-                        background: 'var(--bg-1)',
-                        border: '1px solid var(--line-mid)',
-                        padding: 24,
-                        width: 'min(420px, 92vw)',
-                        boxShadow: '0 0 0 1px var(--gold-glow)',
-                    }}
-                >
-                    <div
-                        style={{
-                            fontFamily: 'var(--font-display)',
-                            fontSize: 14,
-                            letterSpacing: 'var(--track-wider)',
-                            color: 'var(--gold)',
-                            marginBottom: 12,
-                        }}
-                    >
-                        NEW MESSAGE
-                    </div>
-                    <div
-                        style={{
-                            fontSize: 12,
-                            color: 'var(--text-2)',
-                            marginBottom: 16,
-                        }}
-                    >
-                        Enter the customer&apos;s @handle. We&apos;ll open or create a
-                        direct thread between them and the shop.
-                    </div>
+            <Sheet open={open} onClose={() => !isPending && setOpen(false)} title="New message">
+                <div className={sh.sheetBody}>
+                    <p>
+                        Enter the customer&apos;s @handle. We&apos;ll open or create a direct thread between them
+                        and the shop.
+                    </p>
+                    <label className={sh.label} htmlFor="new-message-handle">
+                        Customer handle
+                    </label>
                     <input
+                        id="new-message-handle"
                         autoFocus
                         value={handle}
                         onChange={(e) => setHandle(e.target.value)}
@@ -101,46 +63,32 @@ export function NewMessageDialog({ shopId }: { shopId: number }) {
                             if (e.key === 'Enter' && handle.trim() && !isPending) {
                                 submit();
                             }
-                            if (e.key === 'Escape' && !isPending) setOpen(false);
                         }}
                         placeholder="@handle"
-                        className="admin-search-input"
-                        style={{ width: '100%', marginBottom: 12 }}
+                        className={sh.field}
                         disabled={isPending}
                     />
                     {error && (
-                        <div
-                            style={{
-                                fontSize: 11,
-                                color: 'var(--warn)',
-                                marginBottom: 12,
-                                fontFamily: 'var(--font-display)',
-                                letterSpacing: 'var(--track-wider)',
-                            }}
-                        >
+                        <p className={sh.err} role="alert">
+                            <CircleAlert size={16} strokeWidth={2} aria-hidden="true" />
                             {error}
-                        </div>
+                        </p>
                     )}
-                    <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                    <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
                         <button
                             type="button"
-                            className="admin-action-btn muted"
+                            className={`g-sec g-sec--ink ${sh.sec}`}
                             onClick={() => setOpen(false)}
                             disabled={isPending}
                         >
-                            CANCEL
+                            Cancel
                         </button>
-                        <button
-                            type="button"
-                            className="admin-action-btn"
-                            onClick={submit}
-                            disabled={isPending || !handle.trim()}
-                        >
-                            {isPending ? 'STARTING…' : <>START <ChevronRight /></>}
-                        </button>
+                        <GlideButton size="sm" onClick={submit} disabled={isPending || !handle.trim()}>
+                            {isPending ? 'Starting…' : 'Start'}
+                        </GlideButton>
                     </div>
                 </div>
-            </div>
+            </Sheet>
         </>
     );
 }

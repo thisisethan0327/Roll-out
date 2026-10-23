@@ -20,7 +20,9 @@ import Link from 'next/link';
 import { requireShopMemberBySlug } from '@/lib/auth-guard';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { NewMessageDialog } from './NewMessageDialog';
-import { ChevronRight } from '@/components/icons';
+import { CircleAlert, MessagesSquare } from 'lucide-react';
+import { ConsoleHead } from '@/components/glide-console/parts';
+import { FilterTabs, SearchBar, shopStyles as sh } from '@/components/glide-shop/parts';
 
 export const metadata = { title: 'Messages' };
 
@@ -244,17 +246,17 @@ function relativeTime(iso: string | null | undefined): string {
     const d = new Date(iso);
     if (Number.isNaN(d.getTime())) return '—';
     const diffMin = Math.floor((Date.now() - d.getTime()) / 60_000);
-    if (diffMin < 1) return 'NOW';
-    if (diffMin < 60) return `${diffMin}M`;
+    if (diffMin < 1) return 'Now';
+    if (diffMin < 60) return `${diffMin}m`;
     const diffH = Math.floor(diffMin / 60);
-    if (diffH < 24) return `${diffH}H`;
+    if (diffH < 24) return `${diffH}h`;
     const diffD = Math.floor(diffH / 24);
-    if (diffD < 7) return `${diffD}D`;
-    return d.toISOString().slice(0, 10);
+    if (diffD < 7) return `${diffD}d`;
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
 }
 
 function truncate(s: string | null | undefined, n: number): string {
-    if (!s) return '(NO MESSAGES YET)';
+    if (!s) return 'No messages yet';
     if (s.length <= n) return s;
     return s.slice(0, n).trimEnd() + '…';
 }
@@ -305,139 +307,110 @@ export default async function ShopMessagesPage({
     };
 
     return (
-        <>
-            <div className="admin-page-head">
-                <div>
-                    <div className="admin-page-title">MESSAGES</div>
-                    <div className="admin-page-sub">
-                        {shop.name.toUpperCase()} · {allThreads.length} THREADS
-                        {unreadTotal > 0 ? ` · ${unreadTotal} UNREAD` : ''}
-                    </div>
-                </div>
-                {tab === 'shop-page' && isManager && <NewMessageDialog shopId={shop.shopId} />}
-            </div>
+        <div className={sh.stack}>
+            <ConsoleHead
+                title="Messages"
+                sub={`${shop.name} · ${allThreads.length} thread${allThreads.length === 1 ? '' : 's'}${
+                    unreadTotal > 0 ? ` · ${unreadTotal} unread` : ''
+                }`}
+                actions={tab === 'shop-page' && isManager ? <NewMessageDialog shopId={shop.shopId} /> : null}
+            />
 
-            {/* Tab switcher — console pill convention (see inbox status pills). */}
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', margin: '4px 0 12px' }}>
-                <Link
-                    href={tabHref('direct')}
-                    className={`admin-action-btn ${tab === 'direct' ? '' : 'muted'}`}
-                    style={{ textDecoration: 'none' }}
-                >
-                    DIRECT
-                </Link>
-                <Link
-                    href={tabHref('shop-page')}
-                    className={`admin-action-btn ${tab === 'shop-page' ? '' : 'muted'}`}
-                    style={{ textDecoration: 'none' }}
-                >
-                    SHOP PAGE
-                </Link>
-            </div>
-
-            <form className="admin-search" action={`/shop/${slug}/messages`}>
-                {tab !== 'direct' && <input type="hidden" name="tab" value={tab} />}
-                <input
-                    name="q"
-                    defaultValue={q ?? ''}
-                    className="admin-search-input"
-                    placeholder="SEARCH HANDLE OR NAME"
+            <div className={sh.toolbar}>
+                <FilterTabs
+                    label="Message inbox"
+                    items={[
+                        { href: tabHref('direct'), label: 'Direct', active: tab === 'direct' },
+                        { href: tabHref('shop-page'), label: 'Shop page', active: tab === 'shop-page' },
+                    ]}
                 />
-                <button type="submit" className="admin-action-btn">
-                    SEARCH <ChevronRight />
-                </button>
-            </form>
+                <SearchBar
+                    action={`/shop/${slug}/messages`}
+                    defaultValue={q ?? ''}
+                    label="Search messages"
+                    placeholder="Search handle or name"
+                    hidden={{ tab: tab !== 'direct' ? tab : undefined }}
+                    clearHref={q ? tabHref(tab) : null}
+                />
+            </div>
 
             {shopPageMissing ? (
-                <div className="admin-empty">NO SHOP PAGE PROFILE FOUND — CONTACT SUPPORT.</div>
-            ) : (
-                <div className="admin-table-wrap">
-                    <table className="admin-table">
-                        <thead>
-                            <tr>
-                                <th style={{ width: 40 }}></th>
-                                <th>CUSTOMER</th>
-                                <th>LAST MESSAGE</th>
-                                <th style={{ width: 90 }}>WHEN</th>
-                                <th style={{ width: 80, textAlign: 'right' }}>UNREAD</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {threads.length === 0 ? (
-                                <tr>
-                                    <td colSpan={5}>
-                                        <div className="admin-empty">
-                                            {needle
-                                                ? 'NO THREADS MATCH YOUR SEARCH.'
-                                                : tab === 'direct'
-                                                  ? 'NO DIRECT MESSAGES YET. CUSTOMERS WHO DM YOUR SHOP WILL APPEAR HERE.'
-                                                  : 'NO SHOP-PAGE THREADS.'}
-                                        </div>
-                                    </td>
-                                </tr>
-                            ) : (
-                                threads.map((t) => {
-                                    const href = `/shop/${slug}/messages/${t.id}`;
-                                    const displayName =
-                                        t.otherProfile?.displayName ?? t.name ?? 'DIRECT THREAD';
-                                    const handle = t.otherProfile?.handle;
-                                    const prefix = t.lastIsOutbound ? 'YOU: ' : '';
-                                    return (
-                                        <tr key={t.id}>
-                                            <td>
-                                                <div
-                                                    style={{
-                                                        width: 32,
-                                                        height: 32,
-                                                        border: '1px solid var(--line-mid)',
-                                                        background: 'var(--bg-2)',
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        justifyContent: 'center',
-                                                        fontFamily: 'var(--font-display)',
-                                                        fontSize: 11,
-                                                        letterSpacing: 1,
-                                                        color: 'var(--gold)',
-                                                    }}
-                                                >
-                                                    {initialsOf(displayName)}
-                                                </div>
-                                            </td>
-                                            <td>
-                                                <Link href={href} className="text-link">
-                                                    {displayName}
-                                                </Link>
-                                                {handle && <div className="admin-handle">@{handle}</div>}
-                                            </td>
-                                            <td style={{ maxWidth: 360 }}>
-                                                <Link
-                                                    href={href}
-                                                    style={{ color: 'var(--text-2)', textDecoration: 'none' }}
-                                                >
-                                                    {prefix}
-                                                    {truncate(t.lastMessage, 80)}
-                                                </Link>
-                                            </td>
-                                            <td>
-                                                <span className="admin-handle">
-                                                    {relativeTime(t.lastMessageAt ?? t.created_at)}
-                                                </span>
-                                            </td>
-                                            <td style={{ textAlign: 'right' }}>
-                                                {t.unreadCount > 0 ? (
-                                                    <span className="admin-pill gold">{t.unreadCount}</span>
-                                                ) : (
-                                                    <span style={{ color: 'var(--text-2)', fontSize: 11 }}>—</span>
-                                                )}
-                                            </td>
-                                        </tr>
-                                    );
-                                })
-                            )}
-                        </tbody>
-                    </table>
+                <div className={sh.note} role="note">
+                    <CircleAlert size={20} strokeWidth={2} aria-hidden="true" />
+                    <span className={sh.noteText}>
+                        No shop page profile found
+                        <small>Contact support to set up your shop page.</small>
+                    </span>
                 </div>
+            ) : (
+                <section className="g-card" aria-label="Threads">
+                    {threads.length === 0 ? (
+                        <div className={sh.tblEmpty}>
+                            <span className="g-ic g-ic--sm" aria-hidden="true">
+                                <MessagesSquare size={18} strokeWidth={2} />
+                            </span>
+                            <span>
+                                <b>
+                                    {needle
+                                        ? 'No threads match your search'
+                                        : tab === 'direct'
+                                          ? 'No direct messages yet'
+                                          : 'No shop page threads'}
+                                </b>
+                                <small>
+                                    {needle
+                                        ? 'Try a handle or a name.'
+                                        : tab === 'direct'
+                                          ? 'Customers who message your shop appear here.'
+                                          : 'Threads your shop page is part of appear here.'}
+                                </small>
+                            </span>
+                        </div>
+                    ) : (
+                        <ul className={sh.threads}>
+                            {threads.map((t) => {
+                                const href = `/shop/${slug}/messages/${t.id}`;
+                                const displayName = t.otherProfile?.displayName ?? t.name ?? 'Direct thread';
+                                const handle = t.otherProfile?.handle;
+                                const unread = t.unreadCount > 0;
+                                return (
+                                    <li key={t.id}>
+                                        <Link href={href} className={sh.thread}>
+                                            <span className={sh.threadAv} aria-hidden="true">
+                                                {initialsOf(displayName)}
+                                            </span>
+                                            <span className={sh.threadT}>
+                                                <span className={sh.threadTop}>
+                                                    <b>
+                                                        {displayName}
+                                                        {handle ? (
+                                                            <span style={{ fontWeight: 500, color: 'var(--ink-2)' }}> @{handle}</span>
+                                                        ) : null}
+                                                    </b>
+                                                    <time className={unread ? sh.on : undefined}>
+                                                        {relativeTime(t.lastMessageAt ?? t.created_at)}
+                                                    </time>
+                                                </span>
+                                                <span className={sh.threadBot}>
+                                                    <span className={unread ? sh.on : undefined}>
+                                                        {t.lastIsOutbound ? 'You: ' : ''}
+                                                        {truncate(t.lastMessage, 120)}
+                                                    </span>
+                                                    {unread ? (
+                                                        <span className={sh.unread} aria-label={`${t.unreadCount} unread`}>
+                                                            {t.unreadCount}
+                                                        </span>
+                                                    ) : null}
+                                                </span>
+                                            </span>
+                                        </Link>
+                                    </li>
+                                );
+                            })}
+                        </ul>
+                    )}
+                </section>
             )}
-        </>
+        </div>
     );
 }

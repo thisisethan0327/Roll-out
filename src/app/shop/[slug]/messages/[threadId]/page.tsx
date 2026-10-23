@@ -23,7 +23,9 @@ import { RealtimeRefresh } from './RealtimeRefresh';
 import { MessageComposer } from './MessageComposer';
 import { ShopThreadComposer } from './ShopThreadComposer';
 import { markThreadRead } from '../actions';
-import { ChevronLeft, ChevronRight } from '@/components/icons';
+import { MessagesSquare, UserRound } from 'lucide-react';
+import { ConsoleHead } from '@/components/glide-console/parts';
+import { cx, shopStyles as sh } from '@/components/glide-shop/parts';
 
 export const metadata = { title: 'Thread' };
 
@@ -41,12 +43,6 @@ async function fetchShopPageProfileId(shopId: number): Promise<string | null> {
         .maybeSingle();
     if (error) console.error('[shop/messages/[threadId]] fetchShopPageProfileId failed:', error.message);
     return (data as any)?.id ?? null;
-}
-
-function initialsOf(name: string | null | undefined): string {
-    const parts = (name ?? '').trim().split(/\s+/);
-    if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
-    return (parts[0] || '??').slice(0, 2).toUpperCase();
 }
 
 function fmtTime(iso: string | null | undefined): string {
@@ -95,7 +91,7 @@ export default async function ShopThreadPage({
     const kind = (thread as any).kind as string;
     const isShopThread = kind === 'shop';
 
-    let displayName = (thread as any).name ?? 'DIRECT THREAD';
+    let displayName = (thread as any).name ?? 'Direct thread';
     let handle: string | null = null;
     let bubbles: MessageBubble[] = [];
     let canSend = false;
@@ -192,147 +188,56 @@ export default async function ShopThreadPage({
     }
 
     return (
-        <>
+        <div className={sh.stack}>
             <RealtimeRefresh threadId={threadId} />
-            <div className="admin-page-head">
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <div
-                        style={{
-                            width: 44,
-                            height: 44,
-                            border: '1px solid var(--line-mid)',
-                            background: 'var(--bg-2)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontFamily: 'var(--font-display)',
-                            fontSize: 14,
-                            letterSpacing: 1,
-                            color: 'var(--gold)',
-                        }}
-                    >
-                        {initialsOf(displayName)}
-                    </div>
-                    <div>
-                        <div className="admin-page-title">{displayName.toUpperCase()}</div>
-                        <div className="admin-page-sub">
-                            {handle ? `@${handle} · ` : ''}
-                            {isShopThread ? 'DIRECT' : 'CUSTOMER'}
-                        </div>
-                    </div>
-                </div>
-                <div style={{ display: 'flex', gap: 8 }}>
-                    {handle && (
-                        <Link
-                            href={`/admin/users?q=${encodeURIComponent(handle)}`}
-                            className="admin-action-btn muted"
-                            style={{ textDecoration: 'none' }}
-                        >
-                            VIEW USER <ChevronRight />
+            <ConsoleHead
+                back={{ href: `/shop/${slug}/messages${isShopThread ? '' : '?tab=shop-page'}`, label: 'Messages' }}
+                title={displayName}
+                sub={`${handle ? `@${handle} · ` : ''}${isShopThread ? 'Direct message' : 'Shop page thread'}`}
+                actions={
+                    handle ? (
+                        <Link href={`/admin/users?q=${encodeURIComponent(handle)}`} className={cx('g-sec g-sec--ink', sh.secSm)}>
+                            <UserRound size={17} strokeWidth={2} aria-hidden="true" />
+                            View user
                         </Link>
-                    )}
-                    <Link
-                        href={`/shop/${slug}/messages${isShopThread ? '' : '?tab=shop-page'}`}
-                        className="admin-action-btn muted"
-                        style={{ textDecoration: 'none' }}
-                    >
-                        <ChevronLeft /> BACK
-                    </Link>
-                </div>
-            </div>
+                    ) : null
+                }
+            />
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 16 }}>
-                <div
-                    style={{
-                        border: '1px solid var(--line-mid)',
-                        background: 'var(--bg-0)',
-                        padding: 16,
-                        minHeight: 420,
-                        maxHeight: '60vh',
-                        overflowY: 'auto',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: 8,
-                    }}
-                >
+            <section className="g-card" aria-label={`Conversation with ${displayName}`}>
+                <div className={sh.chat} style={{ minHeight: 380, maxHeight: '62vh', overflowY: 'auto' }}>
                     {bubbles.length === 0 ? (
-                        <div className="admin-empty" style={{ margin: 'auto' }}>
-                            NO MESSAGES YET.{canSend ? ' SEND ONE BELOW.' : ''}
+                        <div className={sh.tblEmpty} style={{ margin: 'auto' }}>
+                            <span className="g-ic g-ic--sm" aria-hidden="true">
+                                <MessagesSquare size={18} strokeWidth={2} />
+                            </span>
+                            <span>
+                                <b>No messages yet</b>
+                                {canSend ? <small>Send the first one below.</small> : null}
+                            </span>
                         </div>
                     ) : (
                         bubbles.map((m) => (
-                            <div
-                                key={m.id}
-                                style={{
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    alignItems: m.isOutbound ? 'flex-end' : 'flex-start',
-                                    gap: 2,
-                                }}
-                            >
-                                {!m.isOutbound && (
-                                    <div
-                                        style={{
-                                            fontSize: 10,
-                                            color: 'var(--text-2)',
-                                            fontFamily: 'var(--font-display)',
-                                            letterSpacing: 'var(--track-wider)',
-                                            marginBottom: 2,
-                                        }}
-                                    >
-                                        {m.senderName.toUpperCase()}
-                                    </div>
-                                )}
-                                {m.isOutbound && isShopThread && (
-                                    <div
-                                        style={{
-                                            fontSize: 10,
-                                            color: 'var(--text-2)',
-                                            fontFamily: 'var(--font-display)',
-                                            letterSpacing: 'var(--track-wider)',
-                                            marginBottom: 2,
-                                        }}
-                                    >
-                                        {m.senderName.toUpperCase()}
-                                    </div>
-                                )}
-                                <div
-                                    style={{
-                                        maxWidth: '70%',
-                                        padding: '8px 12px',
-                                        background: m.isOutbound ? 'var(--gold)' : 'var(--bg-2)',
-                                        color: m.isOutbound ? 'var(--on-gold)' : 'var(--text)',
-                                        border: m.isOutbound ? '1px solid var(--gold)' : '1px solid var(--line-mid)',
-                                        fontSize: 14,
-                                        lineHeight: 1.4,
-                                        whiteSpace: 'pre-wrap',
-                                        wordBreak: 'break-word',
-                                    }}
-                                >
-                                    {m.body ?? ''}
-                                </div>
-                                <div
-                                    style={{
-                                        fontSize: 10,
-                                        color: 'var(--text-2)',
-                                        fontFamily: 'var(--font-display)',
-                                        letterSpacing: 'var(--track-wider)',
-                                        marginTop: 2,
-                                    }}
-                                >
-                                    {fmtTime(m.created_at)}
-                                </div>
+                            <div key={m.id} className={cx(sh.msg, m.isOutbound ? sh.msgOut : sh.msgIn)}>
+                                {!m.isOutbound || isShopThread ? (
+                                    <span className={sh.msgMeta}>
+                                        <b>{m.senderName === 'SHOP' ? 'Shop' : m.senderName}</b>
+                                    </span>
+                                ) : null}
+                                <div className={sh.bubble}>{m.body ?? ''}</div>
+                                <span className={sh.msgMeta}>{fmtTime(m.created_at)}</span>
                             </div>
                         ))
                     )}
                 </div>
-
-                {isShopThread ? (
-                    <ShopThreadComposer threadId={threadId} shopId={shop.shopId} canSend={canSend} />
-                ) : (
-                    <MessageComposer threadId={threadId} shopId={shop.shopId} canSend={canSend} />
-                )}
-            </div>
-        </>
+                <div style={{ padding: '4px 16px 16px' }}>
+                    {isShopThread ? (
+                        <ShopThreadComposer threadId={threadId} shopId={shop.shopId} canSend={canSend} />
+                    ) : (
+                        <MessageComposer threadId={threadId} shopId={shop.shopId} canSend={canSend} />
+                    )}
+                </div>
+            </section>
+        </div>
     );
 }
