@@ -876,7 +876,7 @@ a.g-hero-chip:hover { box-shadow: 0 0 0 1.5px var(--link), 0 8px 20px -8px rgba(
 .g-sh {
   display: flex;
   justify-content: space-between;
-  align-items: flex-end;
+  align-items: baseline;
   gap: 16px;
   padding: 0 4px;
 }
