@@ -78,6 +78,19 @@ body:has(.glide-page) :focus-visible {
   outline: 2px solid var(--link);
   outline-offset: 3px;
 }
+/* Headings. globals.css gives every h1-h4 the old HUD voice: weight 700,
+   mixed case and wide fixed tracking (4px on h1, 2px on h2, 1.5px on h3).
+   Inside a Glide scope a bare heading is Glide display type instead. The
+   selector weighs the same as the legacy element rules (0,0,1) and loads
+   after them, so it beats them and loses to any class rule a page sets. */
+:where(.glide, body:has(.glide-page)) :is(h1, h2, h3, h4) {
+  font-family: var(--disp);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--title);
+}
+
 /* Legacy filled buttons nested in a Glide surface: ink on the accent fill and
    no hardcoded bright-gold hover. */
 .glide .btn {
@@ -263,8 +276,19 @@ body:has(.glide-page) :focus-visible {
 .g-btn--sm { height: 52px; font-size: 14px; padding-left: 22px; }
 .g-btn--sm .g-btn-k { width: 40px; height: 40px; }
 .g-btn--block { display: flex; width: 100%; }
+/* Off state: not a faded accent (that read as "loading"), a flat grey pill
+   with a quiet knob. Full opacity keeps the label legible; the missing accent
+   fill, lift and arrow nudge say it is off. */
 .g-btn:disabled,
-.g-btn[aria-disabled='true'] { opacity: 0.6; cursor: default; }
+.g-btn[aria-disabled='true'] {
+  background: var(--surface-2);
+  color: var(--ink-2);
+  box-shadow: none;
+  cursor: not-allowed;
+}
+.g-btn:disabled .g-btn-k,
+.g-btn[aria-disabled='true'] .g-btn-k { background: var(--card); color: var(--ink-3); transform: none; }
+.g-btn[aria-busy='true'] { cursor: progress; }
 
 /* Secondary: outlined pill. */
 .g-sec {
@@ -277,7 +301,8 @@ body:has(.glide-page) :focus-visible {
   border: 0;
   border-radius: 24px;
   background: var(--card);
-  box-shadow: inset 0 0 0 1.5px var(--line-strong);
+  /* field-line, not line-strong: a control's edge needs 3:1 (GLIDE.md). */
+  box-shadow: inset 0 0 0 1.5px var(--field-line);
   font-family: var(--ui);
   font-size: 15px;
   font-weight: 600;
@@ -289,7 +314,13 @@ body:has(.glide-page) :focus-visible {
 .g-sec:hover { background: var(--surface); }
 .g-sec[aria-pressed='true'] { background: var(--tint); color: var(--on-tint); box-shadow: none; }
 .g-sec--ink { color: var(--ink); }
-.g-sec:disabled { opacity: 0.6; cursor: default; }
+.g-sec:disabled,
+.g-sec[aria-disabled='true'] {
+  background: var(--surface-2);
+  color: var(--ink-2);
+  box-shadow: none;
+  cursor: not-allowed;
+}
 
 /* Text link with an icon. */
 .g-link {
@@ -413,6 +444,10 @@ body:has(.glide-page) :focus-visible {
   box-shadow: 0 0 0 1px var(--line), 0 14px 30px -22px rgba(var(--shadow), 0.6);
 }
 .g-card--pad { padding: 22px 24px 24px; }
+/* A whole-card link (<Card href>): ink, not link blue; a link-coloured ring on
+   hover. :where keeps it at one class so a page's own card class wins. */
+:where(a).g-card { display: block; color: var(--ink); }
+:where(a).g-card:hover { box-shadow: 0 0 0 1.5px var(--link), 0 14px 30px -22px rgba(var(--shadow), 0.6); }
 .g-card-h {
   margin: 0;
   padding: 22px 24px 0;
@@ -445,7 +480,11 @@ body:has(.glide-page) :focus-visible {
   height: 1px;
   background: var(--line);
 }
-.g-row:last-child::after { display: none; }
+/* No hairline under the last row. A linked row (<Row href>) is an <a> that is
+   always the last child of its <li>, so the test is on the <li>, not on the
+   row; a bare `li.g-row` (or a row outside a list) tests itself. */
+.g-row:where(:last-child:not(li > *))::after,
+.g-row:where(li:last-child > *)::after { display: none; }
 .g-row > svg:first-child { color: var(--icon); flex: none; }
 .g-row-t { flex: 1; min-width: 0; }
 .g-row-t b {
@@ -501,7 +540,7 @@ a.g-chip:hover { box-shadow: inset 0 0 0 1.5px var(--link); }
 }
 .g-seg button {
   flex: 1;
-  min-height: 40px;
+  min-height: 44px;
   padding: 0 12px;
   border: 0;
   border-radius: 20px;
@@ -613,6 +652,167 @@ a.g-chip:hover { box-shadow: inset 0 0 0 1.5px var(--link); }
 }
 .g-note svg { flex: none; color: var(--icon); }
 .g-note .g-live { color: var(--stripe-3); }
+
+/* ── Fields ────────────────────────────────────────────────────────────────
+   G3 `.fld`: a 16px-radius box on the card, a field-line edge (3:1 on card,
+   surface and surface-2 in every palette), a 2px accent edge on focus. The box
+   draws the focus state, so the control drops the global outline.
+   `.g-field` stacks a label, the control and a hint or error. */
+.g-field { display: flex; flex-direction: column; gap: 7px; min-width: 0; }
+.g-field-l { font-size: 13px; font-weight: 600; color: var(--ink-2); }
+.g-field-l small { font-weight: 500; }
+.g-field-h { margin: 0; font-size: 12.5px; line-height: 1.4; color: var(--ink-2); }
+.g-field-e { margin: 0; font-size: 13px; font-weight: 600; line-height: 1.4; color: var(--ink); }
+.g-in {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  min-height: 52px;
+  margin: 0;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 16px;
+  background: var(--card);
+  box-shadow: inset 0 0 0 1px var(--field-line);
+  font-family: var(--ui);
+  font-size: 16px;
+  font-weight: 500;
+  letter-spacing: 0;
+  color: var(--ink);
+  caret-color: var(--link);
+  outline: none;
+  transition: box-shadow 0.15s ease-out;
+}
+textarea.g-in { min-height: 96px; padding: 14px 16px; line-height: 1.45; resize: vertical; }
+select.g-in {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 40px;
+  cursor: pointer;
+  background-image: linear-gradient(45deg, transparent 50%, var(--ink-2) 50%), linear-gradient(135deg, var(--ink-2) 50%, transparent 50%);
+  background-position: calc(100% - 22px) 50%, calc(100% - 16px) 50%;
+  background-size: 6px 6px;
+  background-repeat: no-repeat;
+}
+.g-in::placeholder { color: var(--ink-2); opacity: 1; }
+.g-in:focus,
+.g-in:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--accent); }
+.g-in:disabled,
+.g-in[aria-readonly='true'],
+.g-in:read-only:not(select) { background: var(--surface); color: var(--ink-2); }
+.g-in[aria-invalid='true'] { box-shadow: inset 0 0 0 2px var(--ink); }
+/* Pill variant (G1 sign-in `.fl`): 56px, surface fill, fully round. */
+.g-in--pill { min-height: 56px; padding: 0 20px; border-radius: 28px; background: var(--surface); box-shadow: inset 0 0 0 1.5px var(--field-line); }
+textarea.g-in--pill { padding: 15px 20px; border-radius: 22px; }
+
+/* Pill field: the pill skin as a wrapper, for an input with an icon, a fixed
+   prefix ("@", "$") or a clear button. Focus shows on the wrapper. */
+.g-pf {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 56px;
+  padding: 0 6px 0 18px;
+  border-radius: 28px;
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1.5px var(--field-line);
+  color: var(--ink);
+  transition: box-shadow 0.15s ease-out;
+}
+.g-pf:focus-within,
+.g-pf[data-invalid='true'] { box-shadow: inset 0 0 0 2px var(--accent); }
+.g-pf > svg { flex: none; color: var(--icon); }
+.g-pf-pre { flex: none; font-size: 16px; font-weight: 600; color: var(--ink-2); }
+.g-pf input,
+.g-pf select {
+  flex: 1;
+  min-width: 0;
+  height: 54px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-family: var(--ui);
+  font-size: 16px;
+  color: var(--ink);
+  caret-color: var(--accent);
+  outline: none;
+}
+.g-pf input::placeholder { color: var(--ink-2); opacity: 1; }
+.g-pf input:disabled { opacity: 0.7; }
+.glide .g-pf input:focus-visible,
+body:has(.glide-page) .g-pf input:focus-visible { outline: none; }
+.g-pf-x {
+  width: 44px;
+  height: 44px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--ink-2);
+  cursor: pointer;
+}
+.g-pf-x:hover { color: var(--ink); background: var(--surface-2); }
+.glide .g-pf-x:focus-visible,
+body:has(.glide-page) .g-pf-x:focus-visible { outline-offset: -2px; }
+
+/* ── Toggle chip ───────────────────────────────────────────────────────────
+   G1/G5 `.fchip`: a 44px pill for filters and pickers. On = navy roundel
+   colours; set by aria-pressed (buttons), aria-current (links) or
+   aria-checked (radio-style groups). */
+.g-tchip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 22px;
+  background: var(--card);
+  box-shadow: inset 0 0 0 1px var(--field-line);
+  font-family: var(--ui);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--ink);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: box-shadow 0.15s ease-out, background 0.15s ease-out;
+}
+.g-tchip svg { flex: none; color: var(--icon); }
+.g-tchip:hover { box-shadow: inset 0 0 0 1.5px var(--link); }
+a.g-tchip,
+a.g-tchip:hover { color: var(--ink); text-decoration: none; }
+.g-tchip:is([aria-pressed='true'], [aria-checked='true'], [aria-current='page'], [aria-current='true']) {
+  background: var(--nav-on);
+  color: var(--on-nav-on);
+  box-shadow: none;
+}
+.g-tchip:is([aria-pressed='true'], [aria-checked='true'], [aria-current='page'], [aria-current='true']) svg { color: var(--on-nav-on); }
+.g-tchip:disabled,
+.g-tchip[aria-disabled='true'] { background: var(--surface-2); color: var(--ink-2); box-shadow: none; cursor: not-allowed; }
+.g-tchips { display: flex; flex-wrap: wrap; gap: 8px; }
+
+/* ── Map controls ──────────────────────────────────────────────────────────
+   MapLibre draws 29px zoom buttons. Every MapLibre map inside a Glide scope
+   (and anything marked `.g-mapctl`) gets 44px ones on a rounded group. */
+:is(.g-map, .g-mapctl, .glide .maplibregl-map, body:has(.glide-page) .maplibregl-map) .maplibregl-ctrl-group {
+  border-radius: 22px;
+  overflow: hidden;
+}
+:is(.g-map, .g-mapctl, .glide .maplibregl-map, body:has(.glide-page) .maplibregl-map) .maplibregl-ctrl-group button {
+  width: 44px;
+  height: 44px;
+}
+:is(.g-map, .g-mapctl, .glide .maplibregl-map, body:has(.glide-page) .maplibregl-map) .maplibregl-ctrl-group button:focus-visible {
+  outline: 2px solid var(--link);
+  outline-offset: -3px;
+  box-shadow: none;
+}
 
 /* ══════════════════════════════════════════════════════════════════════════
    SITE SHELL
@@ -759,7 +959,6 @@ a.g-chip:hover { box-shadow: inset 0 0 0 1.5px var(--link); }
   font-weight: 600;
   color: var(--ink-2);
 }
-.g-appear .g-seg button { min-height: 44px; }
 .g-appear-sw {
   width: 14px;
   height: 14px;
@@ -1144,7 +1343,6 @@ a.g-li:hover { box-shadow: 0 0 0 1.5px var(--link); }
   height: 22px;
   box-shadow: 0 0 0 2.5px var(--crew-ring), 0 0 0 5px var(--stripe-1), 0 0 0 6.5px var(--crew-ring), 0 0 0 8px var(--stripe-3);
 }
-.g-map .maplibregl-ctrl-group { border-radius: 22px; overflow: hidden; }
 .g-map-msg {
   position: absolute;
   inset: 0;

@@ -16,7 +16,7 @@ This file is the contract for the web (rollout.club) and mobile (iOS Expo) build
 
 - **Visual reference:** `glide/src/R5.src.html`, the core system. Its whole first `<style>` block is the component and token spec.
 - **Page boards:** `glide/G1-discover.html` to `glide/G7-appearance.html`, with sources in `glide/src/G*.src.html`. They are built only from R5's system plus small page-specific CSS.
-- **Machine-readable tokens:** `glide/glide-tokens.json`, three palettes (`light`, `midnight`, `graphite`) of the same 57 tokens.
+- **Machine-readable tokens:** `glide/glide-tokens.json`, three palettes (`light`, `midnight`, `graphite`) of the same 58 tokens.
 - **Published pickers:**
 
 | Version | Link |
@@ -57,7 +57,8 @@ Use the names exactly as in `glide-tokens.json`. The key roles:
 | `surface` / `surface-2` | page background and raised strips (segmented tracks, fields) |
 | `card` / `float` / `float-ink` / `float-line` | cards and sheets, floating pills over photos (always opaque) |
 | `ink` / `ink-2` / `ink-3` | text primary / secondary / tertiary-and-icons. `ink-3` is never for body text |
-| `line` / `line-strong` | dividers / field and chip borders |
+| `line` / `line-strong` | dividers / decorative edges: static chips, notices, the sheet grab handle. About 1.5:1, so never the only edge of a control |
+| `field-line` | the edge of a control: fields, the secondary pill, toggle chips. At least 3:1 on `card`, `surface` and `surface-2` in all three palettes (Light `#78859A`, Midnight `#66779A`, Graphite `#777777`) |
 | `title`, `icon`, `link` | headline colour, icon colour, link colour |
 | `stripe-1..3` | the tricolore: light blue `#4BA3D9`, navy (dark: `#2F6FC4`), red `#D7263D` |
 | `accent` / `on-accent` | primary pill (light: navy with white; dark: light blue with `#061224`) |
@@ -91,14 +92,28 @@ These are named the way R5's CSS names them. Match the shapes, radii and states.
 - **Floating pills over photos:** search pill with a filter button, title pills, round icon buttons. Opaque, with no decorative blur.
 - **Cards:** rounded 24–32 px, white (light) or `card` (dark). A tricolore edge stripe marks the lead or selected card. No card grids of icon + heading + text.
 - **Lists:** plain rows (icon roundel · label · sub-label · value · chevron), grouped by spacing, at least 44 pt tall.
-- **Chips and segmented controls:** pill chips, and the navy segmented control (light) / `seg` (dark).
+- **Chips and segmented controls:** pill chips, and the navy segmented control (light) / `seg` (dark). Segment buttons are 44 px tall.
+- **Toggle chip** (`.g-tchip`, `ToggleChip`): a 44 px pill for filters and pickers, `field-line` edge, navy (`nav-on`) when on. On is `aria-pressed` for buttons, `aria-current` for links, `aria-checked` in a radio group.
+- **Fields** (`src/components/glide/fields.tsx`):
+  - `.g-in` (`Input`, `TextArea`, `Select`): the G3 field box, 52 px, 16 px radius, `card` fill, 1 px `field-line` edge, 2 px `accent` edge on focus, `surface` fill when read-only or disabled.
+  - `.g-in--pill` (`pill`): the sign-in board's 56 px round field on `surface`, 1.5 px edge.
+  - `.g-pf` (`PillField`): the same pill as a wrapper for an icon, a fixed prefix (`.g-pf-pre`) and a 44 px trailing button (`.g-pf-x`).
+  - `.g-field` (`Field`): label (`.g-field-l`), control, then a hint (`.g-field-h`) or error (`.g-field-e`).
+- **Disabled:** a disabled primary (`.g-btn`) or secondary (`.g-sec`) pill is a flat `surface-2` pill with `ink-2` text and a quiet knob, at full opacity. No faded accent: that reads as loading.
 - **Roundels:** a date roundel (Michroma day number, month or day label above) with tricolore rings when selected.
 - **Sheets:** bottom sheets with a grab handle, 30 px top radius, a scrim at `rgba(var(--scrim),.45)`, and close by ×, scrim or Escape.
-- **Maps:** tokenised map palette, with the tricolore route (edge, light blue, navy, red bands) and crew dots.
+- **Maps:** tokenised map palette, with the tricolore route (edge, light blue, navy, red bands) and crew dots. MapLibre zoom buttons are 44 px in any Glide scope (`.g-mapctl` opts in anything else).
 - **Isometric Garage and Shop:**
   - Day and night diorama images with percentage-positioned 44 px hotspots that pulse.
   - The selected hotspot shows a roundel and label, and drives the sheet below.
   - Production needs real per-member garages: start with a fixed diorama and the member's car chibi, and open a separate design and asset round.
+
+## Web kit contracts
+
+- **Headings:** inside a Glide scope, a bare `h1`–`h4` is display type (Chakra Petch, uppercase, +0.02em, `title`). The legacy `globals.css` tracking (4 px on `h1`, 1.5 px on `h3`) never reaches a Glide page. Any class rule overrides the baseline.
+- **Rows:** `Row` with `href` keeps its hairline; only the last row in a list drops it.
+- **Card:** `as` takes `div`, `section`, `aside`, `article`, `li`, `form`, `header`, `footer`, `nav`, `fieldset`, `ul`, `ol` or `label`; `href` makes the whole card a link.
+- **SlideToAct:** the knob springs back when `onComplete` returns `false` or a Promise that rejects or resolves `false` (it shows busy while the Promise runs), or when `resetOn` changes. Remounting with a new `key` still works.
 
 ## Motion
 

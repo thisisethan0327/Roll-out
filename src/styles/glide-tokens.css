@@ -14,6 +14,7 @@
   --ink-3: #6F7C92;
   --line: #1E2C45;
   --line-strong: #2C3D5C;
+  --field-line: #66779A;
   --title: #EEF2F7;
   --icon: #8CC8EE;
   --link: #8CC8EE;
@@ -76,6 +77,7 @@
   --ink-3: #787878;
   --line: #2A2B2C;
   --line-strong: #404142;
+  --field-line: #777777;
   --title: #F2F2F2;
   --icon: #8CC8EE;
   --link: #8CC8EE;
@@ -139,6 +141,7 @@
   --ink-3: #7A8494;
   --line: #E1E6EC;
   --line-strong: #CBD3DD;
+  --field-line: #78859A;
   --title: #0B2545;
   --icon: #0B2545;
   --link: #1F5F94;
@@ -202,6 +205,7 @@
     --ink-3: #7A8494;
     --line: #E1E6EC;
     --line-strong: #CBD3DD;
+    --field-line: #78859A;
     --title: #0B2545;
     --icon: #0B2545;
     --link: #1F5F94;
