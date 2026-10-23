@@ -2,12 +2,17 @@
 /**
  * Vendor-scoped orders table with a status filter and unfulfilled-first sort.
  * Read-only here — row click navigates to the detail view where actions live.
+ * Glide: 44px filter chips and the G3 table, where the whole row is the link.
  */
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import type { VendorOrderListItem } from '@/lib/medusa-admin';
 import { LinkPending } from '@/components/feedback';
 import { fmtMoney, fmtDate, maskEmail, StatusChip } from './ui';
+import { Archive, Package } from 'lucide-react';
+import { CardEmpty, cx } from '@/components/glide-shopbiz/parts';
+import bz from '@/components/glide-shopbiz/biz.module.css';
+import cs from '@/components/glide-console/console.module.css';
 
 type Filter = 'all' | 'unfulfilled' | 'shipped' | 'canceled';
 
@@ -38,10 +43,10 @@ function matchesFilter(o: VendorOrderListItem, f: Filter): boolean {
 }
 
 const FILTERS: { key: Filter; label: string }[] = [
-    { key: 'all', label: 'ALL' },
-    { key: 'unfulfilled', label: 'UNFULFILLED' },
-    { key: 'shipped', label: 'SHIPPED' },
-    { key: 'canceled', label: 'CANCELED' },
+    { key: 'all', label: 'All' },
+    { key: 'unfulfilled', label: 'Unfulfilled' },
+    { key: 'shipped', label: 'Shipped' },
+    { key: 'canceled', label: 'Canceled' },
 ];
 
 export function OrdersList({
@@ -83,98 +88,113 @@ export function OrdersList({
     }, [orders, filter, showArchived]);
 
     return (
-        <div>
-            <div style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap' }}>
-                {FILTERS.map((f) => (
-                    <button
-                        key={f.key}
-                        type="button"
-                        className={`admin-action-btn ${filter === f.key ? '' : 'muted'}`}
-                        onClick={() => setFilter(f.key)}
-                    >
-                        {f.label}
-                    </button>
-                ))}
+        <>
+            <div className={bz.bar}>
+                <div className={bz.chips} role="group" aria-label="Filter orders">
+                    {FILTERS.map((f) => (
+                        <button
+                            key={f.key}
+                            type="button"
+                            className={bz.fchip}
+                            aria-pressed={filter === f.key}
+                            onClick={() => setFilter(f.key)}
+                        >
+                            {f.label}
+                        </button>
+                    ))}
+                </div>
                 {archivedCount > 0 && (
                     <button
                         type="button"
-                        className={`admin-action-btn ${showArchived ? '' : 'muted'}`}
+                        className={bz.fchip}
+                        aria-pressed={showArchived}
                         onClick={() => setShowArchived((v) => !v)}
-                        style={{ marginLeft: 'auto' }}
                     >
-                        {showArchived
-                            ? `HIDE ARCHIVED (${archivedCount})`
-                            : `SHOW ARCHIVED (${archivedCount})`}
+                        <Archive size={16} strokeWidth={2} aria-hidden="true" />
+                        {showArchived ? 'Hide archived' : 'Show archived'}
+                        <span className={bz.n}>{archivedCount}</span>
                     </button>
                 )}
             </div>
 
-            {rows.length === 0 ? (
-                <div className="admin-empty">
-                    {archivedCount > 0 && !showArchived
-                        ? `NO ORDERS — ${archivedCount} ARCHIVED, HIDDEN`
-                        : 'NO ORDERS'}
-                </div>
-            ) : (
-                <div className="admin-table-wrap">
-                    <table className="admin-table">
-                        <thead>
-                            <tr>
-                                <th>ORDER</th>
-                                <th>DATE</th>
-                                <th>CUSTOMER</th>
-                                <th>ITEMS</th>
-                                <th style={{ textAlign: 'right' }}>TOTAL</th>
-                                <th>PAYMENT</th>
-                                <th>FULFILLMENT</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {rows.map((o) => (
-                                <tr key={o.id} style={{ cursor: 'pointer' }}>
-                                    <td>
-                                        <Link
-                                            href={`/shop/${slug}/orders/${o.id}`}
-                                            className="text-link"
-                                            style={{
-                                                fontFamily: 'var(--font-mono, monospace)',
-                                                color: 'var(--gold)',
-                                                textDecoration: 'none',
-                                                display: 'inline-flex',
-                                                alignItems: 'center',
-                                                gap: 8,
-                                            }}
-                                        >
-                                            #{o.display_id ?? o.id.slice(-6)}
-                                            <LinkPending />
-                                        </Link>
-                                    </td>
-                                    <td style={{ whiteSpace: 'nowrap' }}>{fmtDate(o.created_at)}</td>
-                                    <td style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: 12 }}>
-                                        {maskEmail(o.email)}
-                                    </td>
-                                    <td style={{ maxWidth: 220 }}>
-                                        <span className="admin-handle">{o.itemsSummary}</span>
-                                    </td>
-                                    <td style={{ textAlign: 'right', fontFamily: 'var(--font-mono, monospace)' }}>
-                                        {fmtMoney(o.total, o.currency_code)}
-                                    </td>
-                                    <td>
-                                        <StatusChip status={o.payment_status} />
-                                    </td>
-                                    <td>
-                                        {o.status === 'canceled' ? (
-                                            <StatusChip status="canceled" />
-                                        ) : (
-                                            <StatusChip status={o.fulfillment_status} />
-                                        )}
-                                    </td>
+            <section className="g-card" aria-label="Orders">
+                {rows.length === 0 ? (
+                    <CardEmpty
+                        icon={<Package size={22} strokeWidth={1.75} />}
+                        title={orders.length === 0 ? 'No orders yet' : 'No orders match this filter'}
+                        body={
+                            archivedCount > 0 && !showArchived
+                                ? `${archivedCount} archived ${archivedCount === 1 ? 'order is' : 'orders are'} hidden. Show archived to see ${archivedCount === 1 ? 'it' : 'them'}.`
+                                : orders.length === 0
+                                  ? 'Orders for this shop’s products show up here, unfulfilled first.'
+                                  : 'Pick another filter to see the rest.'
+                        }
+                    />
+                ) : (
+                    <div className={cs.tblWrap}>
+                        <table className={cx(cs.tbl, cs.rowLink)}>
+                            <thead>
+                                <tr>
+                                    <th scope="col">Order</th>
+                                    <th scope="col" className={cs.mHide}>
+                                        Date
+                                    </th>
+                                    <th scope="col" className={cs.mHide}>
+                                        Customer
+                                    </th>
+                                    <th scope="col" style={{ textAlign: 'right' }}>
+                                        Total
+                                    </th>
+                                    <th scope="col">Payment</th>
+                                    <th scope="col">Fulfillment</th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-            )}
-        </div>
+                            </thead>
+                            <tbody>
+                                {rows.map((o) => (
+                                    <tr key={o.id}>
+                                        <td>
+                                            <div className={cs.cell}>
+                                                <span className="g-ic g-ic--sm" aria-hidden="true">
+                                                    <Package size={17} strokeWidth={2} />
+                                                </span>
+                                                <span style={{ minWidth: 0 }}>
+                                                    <Link href={`/shop/${slug}/orders/${o.id}`} className={cx(cs.stretch, bz.idLink)}>
+                                                        #{o.display_id ?? o.id.slice(-6)}
+                                                        <LinkPending />
+                                                    </Link>
+                                                    <small className={bz.clip}>{o.itemsSummary}</small>
+                                                    <small className={bz.mOnly}>
+                                                        {fmtDate(o.created_at)} · {maskEmail(o.email)}
+                                                    </small>
+                                                </span>
+                                            </div>
+                                        </td>
+                                        <td className={cs.mHide} style={{ whiteSpace: 'nowrap' }}>
+                                            {fmtDate(o.created_at)}
+                                        </td>
+                                        <td className={cs.mHide}>
+                                            <span className={bz.muted}>{maskEmail(o.email)}</span>
+                                        </td>
+                                        <td style={{ textAlign: 'right' }}>
+                                            <span className={cs.num}>{fmtMoney(o.total, o.currency_code)}</span>
+                                        </td>
+                                        <td>
+                                            <StatusChip status={o.payment_status} />
+                                        </td>
+                                        <td>
+                                            {o.status === 'canceled' ? (
+                                                <StatusChip status="canceled" />
+                                            ) : (
+                                                <StatusChip status={o.fulfillment_status} />
+                                            )}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+            </section>
+        </>
     );
 }

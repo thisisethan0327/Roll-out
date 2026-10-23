@@ -1,3 +1,4 @@
+import { ExternalLink, Lock } from 'lucide-react';
 /**
  * "This shop manages X in its own admin" — the pointer shown wherever a page
  * has gone read-only because the shop runs its own console elsewhere.
@@ -16,32 +17,17 @@ export function ManagedElsewhereNotice({
     /** What is managed there, lowercase: 'orders', 'the catalogue'. */
     what: string;
 }) {
+    // Glide notice: the read-only state says where the actions went. The
+    // link is the way out, so it is a real 44px target.
     return (
-        <div
-            style={{
-                border: '1px solid var(--line)',
-                background: 'var(--bg-2)',
-                padding: '10px 12px',
-                marginBottom: 14,
-                fontSize: 12,
-                color: 'var(--text-2)',
-                display: 'flex',
-                flexWrap: 'wrap',
-                gap: 8,
-                alignItems: 'center',
-                justifyContent: 'space-between',
-            }}
-        >
-            <span>
-                This shop manages {what} in its own admin. This view is read-only.
+        <div className="g-note" style={{ flexWrap: 'wrap', justifyContent: 'space-between', fontWeight: 500 }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+                <Lock size={20} strokeWidth={2} aria-hidden="true" />
+                <span>This shop manages {what} in its own admin. This view is read-only.</span>
             </span>
-            <a
-                href={adminUrl}
-                target="_blank"
-                rel="noreferrer"
-                style={{ textDecoration: 'underline', color: 'var(--text)', whiteSpace: 'nowrap' }}
-            >
+            <a href={adminUrl} target="_blank" rel="noreferrer" className="g-link" style={{ textDecoration: 'underline', textUnderlineOffset: 3 }}>
                 Open the admin
+                <ExternalLink size={16} strokeWidth={2} aria-hidden="true" />
             </a>
         </div>
     );

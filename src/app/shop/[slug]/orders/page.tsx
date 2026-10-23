@@ -14,6 +14,9 @@ import { listVendorOrders } from '@/lib/medusa-admin';
 import { OrdersList } from './OrdersList';
 import { SHOPS_WITH_OWN_ADMIN } from '@/lib/tenant-hosts';
 import { ManagedElsewhereNotice } from '../ManagedElsewhereNotice';
+import { BizPage } from '@/components/glide-shopbiz/BizPage';
+import { Notice } from '@/components/glide-shopbiz/parts';
+import { ConsoleHead } from '@/components/glide-console/parts';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Orders' };
@@ -52,31 +55,27 @@ export default async function OrdersPage({
     // the actions quietly absent.
     const managedElsewhere = SHOPS_WITH_OWN_ADMIN[slug] ?? null;
 
+    const sub = hasMore
+        ? `Newest ${orders.length} of ${count} orders`
+        : archivedCount > 0
+          ? `${openCount} open · ${archivedCount} archived`
+          : `${orders.length} order${orders.length === 1 ? '' : 's'}`;
+
     return (
-        <>
-            <div className="admin-page-head">
-                <div>
-                    <div className="admin-page-title">ORDERS</div>
-                    <div className="admin-page-sub">
-                        {shop.name.toUpperCase()} ·{' '}
-                        {hasMore
-                            ? `NEWEST ${orders.length} OF ${count} ORDERS`
-                            : archivedCount > 0
-                              ? `${openCount} OPEN · ${archivedCount} ARCHIVED`
-                              : `${orders.length} ORDER${orders.length === 1 ? '' : 'S'}`}
-                    </div>
-                </div>
-            </div>
+        <BizPage slug={slug}>
+            <ConsoleHead title="Orders" sub={`${shop.name} · ${sub}`} />
 
             {managedElsewhere ? (
                 <ManagedElsewhereNotice adminUrl={managedElsewhere} what="orders" />
             ) : null}
 
             {error ? (
-                <div className="admin-empty">ORDERS UNAVAILABLE — {error.toUpperCase()}</div>
+                <Notice tone="bad">
+                    <b>Orders are unavailable right now.</b> {error}
+                </Notice>
             ) : (
                 <OrdersList slug={slug} orders={orders} callerRole={role} />
             )}
-        </>
+        </BizPage>
     );
 }
