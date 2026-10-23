@@ -341,12 +341,12 @@ a.gd-meet:hover,
 .gd-popup .leaflet-popup-content { margin: 0; padding: 0; width: auto !important; line-height: 1.4; }
 .gd-popup .leaflet-popup-tip { background: var(--card); border: 0; box-shadow: 0 0 0 1px var(--line-strong); }
 .gd-popup a.leaflet-popup-close-button {
-  width: 36px;
-  height: 36px;
-  top: 6px;
-  right: 6px;
+  width: 44px;
+  height: 44px;
+  top: 2px;
+  right: 2px;
   border-radius: 50%;
-  font: 500 20px/34px var(--ui);
+  font: 500 22px/42px var(--ui);
   color: var(--ink-2);
   text-align: center;
 }
@@ -399,9 +399,9 @@ a.gd-meet:hover,
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  min-height: 40px;
-  padding: 0 6px 0 16px;
-  border-radius: 20px;
+  min-height: 44px;
+  padding: 0 7px 0 16px;
+  border-radius: 22px;
   background: var(--accent);
   color: var(--on-accent) !important;
   font-family: var(--disp);
@@ -709,7 +709,6 @@ a.gd-shop:hover { box-shadow: 0 0 0 2px var(--link), 0 14px 30px -22px rgba(var(
   color: var(--title);
 }
 .gd-card-hd small { font-size: 13.5px; color: var(--ink-2); }
-.gd-card-hd .g-link { min-height: 0; }
 .gd-card-body { padding: 14px 24px 24px; }
 .gd-card-body > p { margin: 0; font-size: 15px; line-height: 1.55; color: var(--ink-2); white-space: pre-line; overflow-wrap: anywhere; }
 .gd-rows-top { margin-top: 12px; border-top: 1px solid var(--line); }
@@ -1177,12 +1176,12 @@ a.gd-orig:hover { box-shadow: inset 0 0 0 2px var(--link); }
 }
 .gd-day small { font-size: 11px; font-weight: 700; letter-spacing: 0.04em; color: var(--ink-2); }
 .gd-day b { font-family: var(--wide); font-weight: 400; font-size: 16px; }
-.gd-day[aria-checked='true'] {
+.gd-day[aria-pressed='true'] {
   background: var(--nav-on);
   color: var(--on-nav-on);
   box-shadow: 0 0 0 2px var(--card), 0 0 0 4.5px var(--stripe-1), 0 0 0 6px var(--card), 0 0 0 7.5px var(--stripe-3);
 }
-.gd-day[aria-checked='true'] small { color: var(--on-nav-on); }
+.gd-day[aria-pressed='true'] small { color: var(--on-nav-on); }
 .gd-day--any { width: auto; padding: 0 14px; flex-direction: row; font-size: 13.5px; font-weight: 700; }
 .gd-day:focus-visible { outline: 2px solid var(--link); outline-offset: 9px; }
 .gd-when { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; padding: 6px 24px 0; }
@@ -1270,3 +1269,8 @@ textarea.gd-field { min-height: 104px; padding: 13px 16px; border-radius: 20px; 
   .gd-book-act { padding: 16px 16px 0; }
 }
 .gd-when-lab { display: block; margin: 0 0 6px 4px; font-size: 13px; font-weight: 600; color: var(--ink-2); }
+
+@media (max-width: 760px) {
+  .gd-shop-im { height: 124px; }
+  .gd-logo { width: 76px; height: 76px; font-size: 22px; }
+}

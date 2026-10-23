@@ -127,8 +127,7 @@ export function BookForm({
         <button
             key={value || 'none'}
             type="button"
-            role="radio"
-            aria-checked={day === value}
+            aria-pressed={day === value}
             aria-label={label}
             className={`gd-day${extra}`}
             onClick={() => setDay(value)}
@@ -174,7 +173,7 @@ export function BookForm({
                 <b id="bk-day">Preferred day</b>
                 <small>Optional · the shop confirms</small>
             </div>
-            <div className="gd-days" role="radiogroup" aria-labelledby="bk-day">
+            <div className="gd-days" role="group" aria-labelledby="bk-day">
                 {dayButton(
                     '',
                     <CircleSlash size={16} strokeWidth={2} aria-hidden="true" />,
