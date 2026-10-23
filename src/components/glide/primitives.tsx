@@ -8,7 +8,7 @@
  * correctly inside a Glide scope (`.glide` or a `.glide-page`).
  */
 import Link from 'next/link';
-import type { ComponentProps, ReactNode } from 'react';
+import type { ComponentProps, ElementType, ReactElement, ReactNode } from 'react';
 import { ArrowRight } from 'lucide-react';
 
 function cx(...parts: (string | false | null | undefined)[]): string {
@@ -103,23 +103,44 @@ export function SecButton({
     );
 }
 
-/** A card: rounded 28px, white (light) or `card` (dark). `edge` adds the tricolore edge stripe. */
+type CardOwn = {
+    edge?: boolean;
+    pad?: boolean;
+    className?: string;
+    children: ReactNode;
+};
+/** Elements a card may render as. */
+export type CardTag = 'div' | 'section' | 'aside' | 'article' | 'li' | 'form' | 'header' | 'footer' | 'nav' | 'fieldset' | 'ul' | 'ol' | 'label';
+
+/**
+ * A card: rounded 28px, white (light) or `card` (dark). `edge` adds the
+ * tricolore edge stripe. `as` picks the element (`section`, `li`, `form`, ...;
+ * the props follow the element). With `href` the whole card is a Next <Link>.
+ */
+export function Card<T extends CardTag = 'div'>(
+    props: CardOwn & { as?: T; href?: undefined } & Omit<ComponentProps<T>, keyof CardOwn | 'as' | 'ref'>,
+): ReactElement;
+export function Card(props: CardOwn & { as?: never; href: string } & Omit<ComponentProps<typeof Link>, keyof CardOwn | 'href'>): ReactElement;
 export function Card({
-    as: Tag = 'div',
+    as,
+    href,
     edge,
     pad,
     className,
     children,
     ...rest
-}: {
-    as?: 'div' | 'section' | 'aside' | 'article';
-    edge?: boolean;
-    pad?: boolean;
-    className?: string;
-    children: ReactNode;
-} & Omit<ComponentProps<'div'>, 'className' | 'children'>) {
+}: CardOwn & { as?: CardTag; href?: string } & Record<string, unknown>): ReactElement {
+    const cls = cx('g-card', edge && 'g-edge', pad && 'g-card--pad', className);
+    if (href) {
+        return (
+            <Link href={href} className={cls} {...(rest as Omit<ComponentProps<typeof Link>, 'href'>)}>
+                {children}
+            </Link>
+        );
+    }
+    const Tag = (as ?? 'div') as ElementType;
     return (
-        <Tag className={cx('g-card', edge && 'g-edge', pad && 'g-card--pad', className)} {...rest}>
+        <Tag className={cls} {...rest}>
             {children}
         </Tag>
     );
@@ -166,6 +187,47 @@ export function Chip({
             {icon}
             {children}
         </span>
+    );
+}
+
+/**
+ * Toggle chip (G1/G5 `.fchip`): a 44px pill for filters and pickers.
+ *  - As a button (default): pass `pressed` and `onClick`; it sets aria-pressed.
+ *  - As a link: pass `href` and `current`; it sets aria-current="page".
+ * For a single-choice group with radio semantics, render buttons with
+ * role="radio" and aria-checked yourself and give them `g-tchip`: the CSS
+ * draws aria-checked the same way.
+ */
+export function ToggleChip({
+    pressed,
+    current,
+    href,
+    icon,
+    className,
+    children,
+    ...rest
+}: {
+    pressed?: boolean;
+    current?: boolean;
+    href?: string;
+    icon?: ReactNode;
+    className?: string;
+    children: ReactNode;
+} & Omit<ComponentProps<'button'>, 'className' | 'children'>) {
+    const cls = cx('g-tchip', className);
+    if (href) {
+        return (
+            <Link href={href} className={cls} aria-current={current ? 'page' : undefined}>
+                {icon}
+                {children}
+            </Link>
+        );
+    }
+    return (
+        <button type="button" className={cls} aria-pressed={pressed ?? false} {...rest}>
+            {icon}
+            {children}
+        </button>
     );
 }
 

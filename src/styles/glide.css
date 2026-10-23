@@ -444,6 +444,10 @@ body:has(.glide-page) :focus-visible {
   box-shadow: 0 0 0 1px var(--line), 0 14px 30px -22px rgba(var(--shadow), 0.6);
 }
 .g-card--pad { padding: 22px 24px 24px; }
+/* A whole-card link (<Card href>): ink, not link blue; a link-coloured ring on
+   hover. :where keeps it at one class so a page's own card class wins. */
+:where(a).g-card { display: block; color: var(--ink); }
+:where(a).g-card:hover { box-shadow: 0 0 0 1.5px var(--link), 0 14px 30px -22px rgba(var(--shadow), 0.6); }
 .g-card-h {
   margin: 0;
   padding: 22px 24px 0;
@@ -649,6 +653,149 @@ a.g-chip:hover { box-shadow: inset 0 0 0 1.5px var(--link); }
 .g-note svg { flex: none; color: var(--icon); }
 .g-note .g-live { color: var(--stripe-3); }
 
+/* ── Fields ────────────────────────────────────────────────────────────────
+   G3 `.fld`: a 16px-radius box on the card, a field-line edge (3:1 on card,
+   surface and surface-2 in every palette), a 2px accent edge on focus. The box
+   draws the focus state, so the control drops the global outline.
+   `.g-field` stacks a label, the control and a hint or error. */
+.g-field { display: flex; flex-direction: column; gap: 7px; min-width: 0; }
+.g-field-l { font-size: 13px; font-weight: 600; color: var(--ink-2); }
+.g-field-l small { font-weight: 500; }
+.g-field-h { margin: 0; font-size: 12.5px; line-height: 1.4; color: var(--ink-2); }
+.g-field-e { margin: 0; font-size: 13px; font-weight: 600; line-height: 1.4; color: var(--ink); }
+.g-in {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  min-height: 52px;
+  margin: 0;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 16px;
+  background: var(--card);
+  box-shadow: inset 0 0 0 1px var(--field-line);
+  font-family: var(--ui);
+  font-size: 16px;
+  font-weight: 500;
+  letter-spacing: 0;
+  color: var(--ink);
+  caret-color: var(--link);
+  outline: none;
+  transition: box-shadow 0.15s ease-out;
+}
+textarea.g-in { min-height: 96px; padding: 14px 16px; line-height: 1.45; resize: vertical; }
+select.g-in {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 40px;
+  cursor: pointer;
+  background-image: linear-gradient(45deg, transparent 50%, var(--ink-2) 50%), linear-gradient(135deg, var(--ink-2) 50%, transparent 50%);
+  background-position: calc(100% - 22px) 50%, calc(100% - 16px) 50%;
+  background-size: 6px 6px;
+  background-repeat: no-repeat;
+}
+.g-in::placeholder { color: var(--ink-2); opacity: 1; }
+.g-in:focus,
+.g-in:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--accent); }
+.g-in:disabled,
+.g-in[aria-readonly='true'],
+.g-in:read-only:not(select) { background: var(--surface); color: var(--ink-2); }
+.g-in[aria-invalid='true'] { box-shadow: inset 0 0 0 2px var(--ink); }
+/* Pill variant (G1 sign-in `.fl`): 56px, surface fill, fully round. */
+.g-in--pill { min-height: 56px; padding: 0 20px; border-radius: 28px; background: var(--surface); box-shadow: inset 0 0 0 1.5px var(--field-line); }
+textarea.g-in--pill { padding: 15px 20px; border-radius: 22px; }
+
+/* Pill field: the pill skin as a wrapper, for an input with an icon, a fixed
+   prefix ("@", "$") or a clear button. Focus shows on the wrapper. */
+.g-pf {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 56px;
+  padding: 0 6px 0 18px;
+  border-radius: 28px;
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1.5px var(--field-line);
+  color: var(--ink);
+  transition: box-shadow 0.15s ease-out;
+}
+.g-pf:focus-within,
+.g-pf[data-invalid='true'] { box-shadow: inset 0 0 0 2px var(--accent); }
+.g-pf > svg { flex: none; color: var(--icon); }
+.g-pf-pre { flex: none; font-size: 16px; font-weight: 600; color: var(--ink-2); }
+.g-pf input,
+.g-pf select {
+  flex: 1;
+  min-width: 0;
+  height: 54px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-family: var(--ui);
+  font-size: 16px;
+  color: var(--ink);
+  caret-color: var(--accent);
+  outline: none;
+}
+.g-pf input::placeholder { color: var(--ink-2); opacity: 1; }
+.g-pf input:disabled { opacity: 0.7; }
+.glide .g-pf input:focus-visible,
+body:has(.glide-page) .g-pf input:focus-visible { outline: none; }
+.g-pf-x {
+  width: 44px;
+  height: 44px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--ink-2);
+  cursor: pointer;
+}
+.g-pf-x:hover { color: var(--ink); background: var(--surface-2); }
+.glide .g-pf-x:focus-visible,
+body:has(.glide-page) .g-pf-x:focus-visible { outline-offset: -2px; }
+
+/* ── Toggle chip ───────────────────────────────────────────────────────────
+   G1/G5 `.fchip`: a 44px pill for filters and pickers. On = navy roundel
+   colours; set by aria-pressed (buttons), aria-current (links) or
+   aria-checked (radio-style groups). */
+.g-tchip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 22px;
+  background: var(--card);
+  box-shadow: inset 0 0 0 1px var(--field-line);
+  font-family: var(--ui);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--ink);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: box-shadow 0.15s ease-out, background 0.15s ease-out;
+}
+.g-tchip svg { flex: none; color: var(--icon); }
+.g-tchip:hover { box-shadow: inset 0 0 0 1.5px var(--link); }
+a.g-tchip,
+a.g-tchip:hover { color: var(--ink); text-decoration: none; }
+.g-tchip:is([aria-pressed='true'], [aria-checked='true'], [aria-current='page'], [aria-current='true']) {
+  background: var(--nav-on);
+  color: var(--on-nav-on);
+  box-shadow: none;
+}
+.g-tchip:is([aria-pressed='true'], [aria-checked='true'], [aria-current='page'], [aria-current='true']) svg { color: var(--on-nav-on); }
+.g-tchip:disabled,
+.g-tchip[aria-disabled='true'] { background: var(--surface-2); color: var(--ink-2); box-shadow: none; cursor: not-allowed; }
+.g-tchips { display: flex; flex-wrap: wrap; gap: 8px; }
 /* ══════════════════════════════════════════════════════════════════════════
    SITE SHELL
    ══════════════════════════════════════════════════════════════════════════ */
