@@ -45,6 +45,7 @@ export function EventsTable({ rows }: { rows: HostEventRow[] }) {
                     rows.length > 0 ? (
                         <Segmented<Filter>
                             label="Show events"
+                            className={s.seg44}
                             value={filter}
                             onChange={setFilter}
                             options={[

@@ -23,7 +23,7 @@ export function HostPanel({ hostStatus, nominated }: { hostStatus: HostStatus; n
     const [state, formAction, pending] = useActionState(becomeHostAction, null);
 
     return (
-        <Card as="section" aria-labelledby="host-h" edge={hostStatus === 'verified'}>
+        <Card as="section" aria-labelledby="host-h">
             <CardHead id="host-h" title="Host on Rollout" action={<StatusBadge status={hostStatus} />} />
             <div className={s.cardBody} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 {hostStatus === 'verified' ? (
