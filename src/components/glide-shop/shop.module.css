@@ -48,6 +48,25 @@
   caret-color: var(--link);
   outline: none;
 }
+textarea.field {
+  padding: 14px 16px;
+  min-height: 96px;
+  line-height: 1.45;
+  resize: vertical;
+}
+select.field {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 40px;
+  background-image: linear-gradient(45deg, transparent 50%, var(--ink-2) 50%), linear-gradient(135deg, var(--ink-2) 50%, transparent 50%);
+  background-position: calc(100% - 22px) 50%, calc(100% - 16px) 50%;
+  background-size: 6px 6px;
+  background-repeat: no-repeat;
+}
+.field:disabled {
+  background: var(--surface);
+  color: var(--ink-2);
+}
 .field::placeholder {
   color: var(--ink-2);
   opacity: 1;
@@ -204,6 +223,32 @@
   outline: 2px solid var(--link);
   outline-offset: -2px;
 }
+.tabs button {
+  flex: none;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 22px;
+  background: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--ui);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--seg-ink);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.15s ease-out, color 0.15s ease-out;
+}
+.tabs button[aria-pressed='true'] {
+  background: var(--seg-on);
+  color: var(--seg-on-ink);
+}
+.tabs button:focus-visible {
+  outline: 2px solid var(--link);
+  outline-offset: -2px;
+}
 .tabs a span {
   font-family: var(--wide);
   font-size: 11px;
@@ -304,6 +349,13 @@
 }
 .danger svg {
   color: var(--stripe-3);
+}
+
+.codeTitle {
+  font-family: var(--wide);
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  font-size: 0.8em;
 }
 
 /* ── Panels ────────────────────────────────────────────────────────────── */
@@ -646,6 +698,42 @@ a.note:hover {
   color: var(--title);
 }
 
+/* ── Identity card (customer detail) ───────────────────────────────────── */
+.idTop {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 22px 24px 16px;
+}
+.idAv {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  flex: none;
+  display: grid;
+  place-items: center;
+  background: var(--nav-on) center / cover no-repeat;
+  color: var(--on-nav-on);
+  font-family: var(--wide);
+  font-size: 16px;
+}
+.idName {
+  margin: 0;
+  font-family: var(--disp);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  font-size: 22px;
+  line-height: 1.05;
+  color: var(--title);
+  overflow-wrap: anywhere;
+}
+.idSub {
+  margin: 4px 0 0;
+  font-size: 14px;
+  color: var(--ink-2);
+}
+
 /* ── Pre-formatted notes ───────────────────────────────────────────────── */
 .pre {
   margin: 0;
@@ -875,6 +963,42 @@ a.note:hover {
   color: var(--ink);
 }
 
+/* The ticket chat: filter, scrolling thread, send-as and composer. */
+.chatBox {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.chatScroll {
+  max-height: 380px;
+  min-height: 160px;
+  overflow-y: auto;
+  padding: 14px 16px;
+  border-radius: 20px;
+  background: var(--surface);
+}
+.chatScroll .bubble {
+  background: var(--card);
+}
+.chatScroll .msgOut .bubble {
+  background: var(--nav-on);
+}
+.chatScroll .msgInternal .bubble {
+  background: var(--card);
+}
+.att {
+  display: block;
+  width: 160px;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 0 0 1px var(--line);
+}
+.att img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
 /* ── Week calendar ─────────────────────────────────────────────────────── */
 .week {
   display: grid;
@@ -961,10 +1085,23 @@ a.note:hover {
 .evtTicket .evtTime {
   color: var(--on-tint);
 }
+.evtTicket .evtTime {
+  font-family: var(--ui);
+  font-size: 12px;
+  font-weight: 600;
+}
 .dayEmpty {
   padding: 4px;
   font-size: 13px;
   color: var(--ink-2);
+}
+.navBtn {
+  width: 48px;
+  height: 48px;
+  color: var(--ink);
+}
+.navBtn:hover {
+  background: var(--line-strong);
 }
 .legend {
   display: flex;
@@ -986,6 +1123,19 @@ a.note:hover {
 }
 
 /* ── Forms (new customer, new event, kiosk) ────────────────────────────── */
+.grid2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 14px;
+}
+@media (max-width: 600px) {
+  .grid2 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.full {
+  grid-column: 1 / -1;
+}
 .formCard {
   max-width: 760px;
 }

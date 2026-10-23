@@ -443,6 +443,29 @@
   box-shadow: none;
 }
 
+/* The invoice and work-order bodies are print documents with their own
+   explicit light palette: keep the site's original body face inside them. */
+.shell :global(:is(.invoice-doc, .workorder-doc)) {
+  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+  font-variant-numeric: normal;
+  -webkit-font-smoothing: auto;
+}
+
+/* Printing a document (invoice, work order): only the page content prints. */
+@media print {
+  .side,
+  .bar {
+    display: none !important;
+  }
+  .shell:global(.shop-layout) {
+    display: block;
+    background: #fff;
+  }
+  .main {
+    padding: 0;
+  }
+}
+
 /* ══════════════════════════════════════════════════════════════════════════
    LEGACY BRIDGE — the shared console classes inside the Glide shop console
    ══════════════════════════════════════════════════════════════════════════ */
@@ -811,6 +834,17 @@
   padding: 18px 0;
 }
 
+/* A legacy table inside a Glide card: no card in a card. */
+.shell :global(.g-card) :global(.admin-table-wrap) {
+  border-radius: 18px;
+  box-shadow: inset 0 0 0 1px var(--line);
+  background: none;
+}
+/* Legacy sub-section heads that shrink the page title inline. */
+.shell :global(.admin-page-title)[style*='font-size'] {
+  font-size: 19px !important;
+}
+
 /* Needs-attention items */
 .shell :global(.admin-attention-derived) {
   display: flex;
@@ -883,6 +917,40 @@
 }
 .shell :global(.eyebrow) {
   display: none;
+}
+
+/* Legacy inline micro-type (9–12px HUD labels set in style attributes on the
+   older client components): lift to readable Glide sizes. */
+.shell [style*='font-size:9px']:not(:is(:global(.invoice-doc), :global(.workorder-doc)) *),
+.shell [style*='font-size:10px']:not(:is(:global(.invoice-doc), :global(.workorder-doc)) *),
+.shell [style*='font-size:11px']:not(:is(:global(.invoice-doc), :global(.workorder-doc)) *) {
+  font-size: 12.5px !important;
+}
+.shell [style*='font-size:12px']:not(:is(:global(.invoice-doc), :global(.workorder-doc)) *) {
+  font-size: 13.5px !important;
+}
+
+/* Legacy inline section frames (a 1px line, the bg-1 fill, square corners) on
+   the older components become Glide cards; their tracked micro titles become
+   card heads. */
+.shell [style*='border:1px solid var(--line)'][style*='background:var(--bg-1)']:not(:is(:global(.invoice-doc), :global(.workorder-doc)) *) {
+  border: 0 !important;
+  border-radius: 24px;
+  box-shadow: 0 0 0 1px var(--line), 0 14px 30px -22px rgba(var(--shadow), 0.6);
+  padding: 20px 22px !important;
+}
+.shell [style*='border:1px solid var(--line)'][style*='background:var(--bg-2)']:not(:is(:global(.invoice-doc), :global(.workorder-doc)) *) {
+  border: 0 !important;
+  border-radius: 18px;
+  background: var(--surface) !important;
+}
+.shell [style*='letter-spacing:var(--track-widest)']:not(:is(:global(.invoice-doc), :global(.workorder-doc)) *) {
+  font-family: var(--disp) !important;
+  font-weight: 600;
+  font-size: 17px !important;
+  letter-spacing: 0.02em !important;
+  text-transform: uppercase;
+  color: var(--title) !important;
 }
 
 /* Skeletons follow the palette. */

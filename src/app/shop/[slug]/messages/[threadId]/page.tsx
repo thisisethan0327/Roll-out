@@ -129,7 +129,7 @@ export default async function ShopThreadPage({
                     body: m.body ?? '',
                     created_at: m.created_at,
                     isOutbound: outbound,
-                    senderName: outbound ? m.sender?.display_name ?? 'STAFF' : m.sender?.display_name ?? '?',
+                    senderName: outbound ? m.sender?.display_name ?? 'Staff' : m.sender?.display_name ?? '?',
                 };
             });
 
