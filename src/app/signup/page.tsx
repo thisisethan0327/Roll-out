@@ -17,6 +17,7 @@
  */
 import Link from 'next/link';
 import { OtpLoginForm } from '@/components/auth/OtpLoginForm';
+import { AuthShell } from '@/components/glide-auth/AuthShell';
 
 // A sign-in / application door: crawlable, never a search result (no ?next= duplicates).
 export const metadata = { title: 'Sign Up', robots: { index: false, follow: true } };
@@ -51,41 +52,32 @@ export default async function ConsumerSignupPage({
         : '/login';
 
     return (
-        <div className="admin-login-wrap">
-            <div className="admin-login-card">
-                <div className="admin-login-stamp">
-                    <span className="accent">ROLLOUT</span>
-                    <span>CREATE YOUR ACCOUNT</span>
-                </div>
-                <h1 className="admin-login-title">SIGN UP</h1>
-                <p className="admin-login-sub">
-                    Enter your email — we&apos;ll send a 6-digit code. No password.
-                </p>
-
-                <OtpLoginForm
-                    successPath={onboardingPath}
-                    redirectSuffix="/signup"
-                    allowSignup
-                    initialEmail={email ?? ''}
-                    startAtCode={startAtCode}
-                    notice={notice}
-                />
-
-
-                <p
-                    style={{
-                        marginTop: 14,
-                        fontSize: 12,
-                        color: 'var(--text-2, var(--text-3))',
-                        textAlign: 'center',
-                    }}
-                >
+        <AuthShell
+            title="Create your account"
+            sub="Enter your email and we'll send a 6-digit code. No password."
+            foot={
+                <>
                     Already have an account?{' '}
-                    <Link href={loginHref} style={{ color: 'var(--gold)', textDecoration: 'none' }}>
+                    <Link href={loginHref} className="ga-inline">
                         Sign in
                     </Link>
-                </p>
-            </div>
-        </div>
+                </>
+            }
+            terms={
+                <>
+                    By continuing you agree to the <Link href="/terms">Terms</Link> and <Link href="/privacy">Privacy Policy</Link>.
+                </>
+            }
+        >
+            <OtpLoginForm
+                successPath={onboardingPath}
+                redirectSuffix="/signup"
+                allowSignup
+                initialEmail={email ?? ''}
+                startAtCode={startAtCode}
+                notice={notice}
+                look="glide"
+            />
+        </AuthShell>
     );
 }

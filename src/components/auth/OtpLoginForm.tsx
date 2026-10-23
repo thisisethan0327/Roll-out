@@ -8,7 +8,7 @@
  * the send-auth-email Auth Hook (anything containing rollout.club routes to
  * the Rollout branding).
  */
-import { useRef, useState } from 'react';
+import { useId, useRef, useState } from 'react';
 
 /**
  * Supabase's throttle message is written for a developer reading a log, not a
@@ -44,6 +44,21 @@ import { useRouter } from 'next/navigation';
 import { getSupabaseBrowser, isSupabaseConfigured } from '@/lib/supabase/browser';
 import { PendingButton } from '@/components/feedback';
 import { ArrowLeft, ChevronRight } from '@/components/icons';
+import {
+    ArrowLeft as GArrowLeft,
+    ArrowRight as GArrowRight,
+    CircleAlert,
+    CircleX,
+    Info,
+    LoaderCircle,
+    Mail,
+    MailCheck,
+    RotateCw,
+} from 'lucide-react';
+import { IconRoundel } from '@/components/glide/primitives';
+
+/** Loose shape check before asking Supabase for a code (Glide look only). */
+const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 type Phase = 'email' | 'otp';
 
@@ -71,6 +86,10 @@ export type OtpLoginFormProps = {
     /** Optional friendly banner shown above the form (e.g. "link expired — enter
      *  the code from your email instead"). */
     notice?: string;
+    /** Presentation only. 'glide' renders the Glide sign-in sheet (board G1);
+     *  the default keeps the console look (/admin/login). The auth calls,
+     *  redirects and cookies are identical in both. */
+    look?: 'legacy' | 'glide';
 };
 
 export function OtpLoginForm({
@@ -80,8 +99,11 @@ export function OtpLoginForm({
     initialEmail = '',
     startAtCode = false,
     notice,
+    look = 'legacy',
 }: OtpLoginFormProps) {
     const router = useRouter();
+    const uid = useId();
+    const emailInputRef = useRef<HTMLInputElement>(null);
     const [phase, setPhase] = useState<Phase>(
         startAtCode && initialEmail ? 'otp' : 'email',
     );
@@ -111,6 +133,17 @@ export function OtpLoginForm({
     };
 
     if (!isSupabaseConfigured()) {
+        if (look === 'glide') {
+            return (
+                <p className="ga-msg" role="alert">
+                    <CircleAlert size={18} strokeWidth={2} aria-hidden="true" />
+                    <span>
+                        Sign-in is not configured on this deploy: set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY as
+                        build-time variables, then redeploy.
+                    </span>
+                </p>
+            );
+        }
         return (
             <div className="admin-login-error" style={{ whiteSpace: 'pre-wrap' }}>
                 Deploy config missing. Set
@@ -269,6 +302,182 @@ export function OtpLoginForm({
                 : notice}
         </div>
     ) : null;
+
+    if (look === 'glide') {
+        const noticeText = notice
+            ? notice === 'link_expired'
+                ? 'That sign-in link expired or was already used. Enter the 6-digit code from your email below.'
+                : notice
+            : null;
+        const glideNotice = noticeText ? (
+            <div className="ga-note">
+                <p className="g-note" role="status">
+                    <Info size={18} strokeWidth={2} aria-hidden="true" />
+                    <span>{noticeText}</span>
+                </p>
+            </div>
+        ) : null;
+        const errId = `${uid}-err`;
+        const errLine = err ? (
+            <p className="ga-msg" role="alert" id={errId}>
+                <CircleAlert size={18} strokeWidth={2} aria-hidden="true" />
+                <span>{err}</span>
+            </p>
+        ) : null;
+
+        if (phase === 'email') {
+            // Same send as the console look; the only addition is a shape check
+            // so an empty or malformed address gets a line, not a browser bubble.
+            const glideSend = (e: React.FormEvent) => {
+                e.preventDefault();
+                const v = email.trim();
+                if (!EMAIL_SHAPE.test(v)) {
+                    setErr(
+                        v
+                            ? 'That does not look like an email address. Check it and try again.'
+                            : 'Enter your email address, like you@example.com.',
+                    );
+                    emailInputRef.current?.focus();
+                    return;
+                }
+                void sendCode();
+            };
+            return (
+                <form onSubmit={glideSend} className="ga-form" noValidate>
+                    {glideNotice}
+                    <label className="ga-label" htmlFor={`${uid}-email`}>
+                        Email
+                    </label>
+                    <div className="ga-fld" data-invalid={err ? 'true' : undefined}>
+                        <Mail size={20} strokeWidth={1.75} aria-hidden="true" />
+                        <input
+                            ref={emailInputRef}
+                            id={`${uid}-email`}
+                            type="email"
+                            name="email"
+                            autoComplete="email"
+                            inputMode="email"
+                            value={email}
+                            onChange={(e) => {
+                                setEmail(e.target.value);
+                                if (err) setErr(null);
+                            }}
+                            placeholder="you@example.com"
+                            aria-invalid={err ? true : undefined}
+                            aria-describedby={err ? errId : undefined}
+                            required
+                        />
+                        {email ? (
+                            <button
+                                type="button"
+                                className="ga-clr"
+                                aria-label="Clear email"
+                                onClick={() => {
+                                    setEmail('');
+                                    setErr(null);
+                                    emailInputRef.current?.focus();
+                                }}
+                            >
+                                <CircleX size={18} strokeWidth={2} aria-hidden="true" />
+                            </button>
+                        ) : null}
+                    </div>
+                    {errLine}
+                    <button type="submit" className="g-btn g-btn--block" disabled={busy} aria-busy={busy}>
+                        <span className="ga-btn-lead">
+                            <Mail size={20} strokeWidth={1.75} aria-hidden="true" />
+                            {busy ? 'Sending code' : 'Send code'}
+                        </span>
+                        <span className="g-btn-k" aria-hidden="true">
+                            {busy ? (
+                                <LoaderCircle size={20} strokeWidth={2} className="g-spin" />
+                            ) : (
+                                <GArrowRight size={20} strokeWidth={2} />
+                            )}
+                        </span>
+                    </button>
+                </form>
+            );
+        }
+
+        return (
+            <form onSubmit={verify} className="ga-form">
+                {glideNotice}
+                <div className="ga-sent">
+                    <IconRoundel small>
+                        <MailCheck size={18} strokeWidth={1.75} />
+                    </IconRoundel>
+                    <span>
+                        <b>Code sent to {email.trim().toLowerCase()}</b>
+                        <small>Enter the 6 digits from the email.</small>
+                    </span>
+                </div>
+                <label className="ga-label" htmlFor={`${uid}-code`}>
+                    6-digit code
+                </label>
+                <div className="ga-fld ga-code" data-invalid={err ? 'true' : undefined}>
+                    <input
+                        ref={otpInputRef}
+                        id={`${uid}-code`}
+                        inputMode="numeric"
+                        autoComplete="one-time-code"
+                        value={otp}
+                        onChange={(e) => handleOtpChange(e.target.value)}
+                        placeholder="000000"
+                        maxLength={6}
+                        disabled={busy}
+                        aria-invalid={err ? true : undefined}
+                        aria-describedby={err ? errId : undefined}
+                        autoFocus
+                        required
+                    />
+                </div>
+                {errLine}
+                <button
+                    type="submit"
+                    className="g-btn g-btn--block"
+                    disabled={busy || otp.length !== 6}
+                    aria-busy={busy}
+                >
+                    <span>{busy ? 'Verifying' : 'Verify'}</span>
+                    <span className="g-btn-k" aria-hidden="true">
+                        {busy ? (
+                            <LoaderCircle size={20} strokeWidth={2} className="g-spin" />
+                        ) : (
+                            <GArrowRight size={20} strokeWidth={2} />
+                        )}
+                    </span>
+                </button>
+                <div className="ga-acts">
+                    <button
+                        type="button"
+                        className="g-link"
+                        disabled={busy || resendIn > 0}
+                        onClick={() => {
+                            setOtp('');
+                            setErr(null);
+                            void sendCode();
+                        }}
+                    >
+                        <RotateCw size={16} strokeWidth={2} aria-hidden="true" />
+                        {resendIn > 0 ? `Resend code in ${resendIn}s` : 'Resend code'}
+                    </button>
+                    <button
+                        type="button"
+                        className="g-link"
+                        onClick={() => {
+                            setPhase('email');
+                            setOtp('');
+                            setErr(null);
+                        }}
+                    >
+                        <GArrowLeft size={16} strokeWidth={2} aria-hidden="true" />
+                        Use a different email
+                    </button>
+                </div>
+            </form>
+        );
+    }
 
     if (phase === 'email') {
         return (

@@ -1,168 +1,185 @@
 'use client';
 
 import { useActionState } from 'react';
+import { ArrowRight, ChevronDown, CircleAlert, Info, LoaderCircle } from 'lucide-react';
 import { submitShopApplication } from './actions';
 import { APPLY_INITIAL, SHOP_CATEGORIES } from './types';
-import { ChevronRight } from '@/components/icons';
+import { Card } from '@/components/glide/primitives';
 
 export function ApplyForm({ withCommerce }: { withCommerce: boolean }) {
     const [state, action, pending] = useActionState(submitShopApplication, APPLY_INITIAL);
 
     return (
-        <form action={action} className="apply-form" style={{ display: 'grid', gap: 22 }}>
-            {withCommerce ? <input type="hidden" name="with_commerce" value="1" /> : null}
+        <Card as="section" className="ga-apply-form" aria-label="Shop application">
+            <form action={action} className="ga-form">
+                {withCommerce ? <input type="hidden" name="with_commerce" value="1" /> : null}
 
-            {state.error ? (
-                <div
-                    role="alert"
-                    style={{
-                        border: '1px solid var(--danger, #d33)',
-                        color: 'var(--danger, #d33)',
-                        background: 'color-mix(in srgb, var(--danger, #d33) 8%, transparent)',
-                        padding: '12px 14px',
-                        fontSize: 13,
-                    }}
-                >
-                    {state.error}
-                </div>
-            ) : null}
+                {state.error ? (
+                    <div className="ga-note" style={{ margin: '18px 20px 0' }}>
+                        <p className="g-note" role="alert">
+                            <CircleAlert size={18} strokeWidth={2} aria-hidden="true" />
+                            <span>{state.error}</span>
+                        </p>
+                    </div>
+                ) : null}
 
-            {/* ── SHOP BASICS ── */}
-            <div style={{ display: 'grid', gap: 14 }}>
-                <SectionHeading>SHOP BASICS</SectionHeading>
+                {/* ── Shop basics ── */}
+                <div className="ga-section">
+                    <h2>Shop basics</h2>
 
-                <Field label="SHOP NAME *">
-                    <input className="admin-form-input" name="name" required maxLength={60} placeholder="Apex Auto Styling" />
-                </Field>
-
-                <Field label="URL HANDLE *" hint="rollout.club/u/your-handle">
-                    <input className="admin-form-input" name="slug" required placeholder="apex-auto" pattern="[a-z0-9][a-z0-9\-]{2,29}" />
-                </Field>
-
-                <Field label="CATEGORY *">
-                    <select className="admin-form-input" name="category" required defaultValue="">
-                        <option value="" disabled>Select…</option>
-                        {SHOP_CATEGORIES.map((c) => (
-                            <option key={c} value={c}>{c}</option>
-                        ))}
-                    </select>
-                </Field>
-
-                <Field label="DESCRIPTION">
-                    <textarea className="admin-form-input" name="description" rows={4} maxLength={600} placeholder="What you do, brands you run, what makes you you." style={{ resize: 'vertical' }} />
-                </Field>
-            </div>
-
-            {/* ── LOCATION & CONTACT ── */}
-            <div style={{ display: 'grid', gap: 14 }}>
-                <SectionHeading>LOCATION &amp; CONTACT</SectionHeading>
-
-                <Field label="ADDRESS">
-                    <input className="admin-form-input" name="address_line" placeholder="123 Main St" />
-                </Field>
-
-                <div className="apply-row apply-row-3">
-                    <Field label="CITY"><input className="admin-form-input" name="city" placeholder="Your City" /></Field>
-                    <Field label="STATE"><input className="admin-form-input" name="state_region" placeholder="CA" /></Field>
-                    <Field label="ZIP"><input className="admin-form-input" name="postal" placeholder="90210" /></Field>
-                </div>
-
-                <Field label="REGION">
-                    <input className="admin-form-input" name="region" placeholder="SoCal" />
-                </Field>
-
-                <div className="apply-row apply-row-2">
-                    <Field label="PHONE"><input className="admin-form-input" name="contact_phone" type="tel" placeholder="(555) 555-0100" /></Field>
-                    <Field label="SUPPORT EMAIL"><input className="admin-form-input" name="support_email" type="email" placeholder="hello@yourshop.com" /></Field>
-                </div>
-
-                <Field label="WEBSITE">
-                    <input className="admin-form-input" name="website_url" type="url" placeholder="https://yourshop.com" />
-                </Field>
-
-                <div className="apply-row apply-row-2">
-                    <Field label="INSTAGRAM"><input className="admin-form-input" name="social_instagram" placeholder="@yourshop" /></Field>
-                    <Field label="TIKTOK"><input className="admin-form-input" name="social_tiktok" placeholder="@yourshop" /></Field>
-                </div>
-            </div>
-
-            {/* ── SELL ON NEFERSTOCK (bordered card) ── */}
-            {withCommerce ? (
-                <div
-                    style={{
-                        border: '1px solid var(--gold)',
-                        background: 'var(--bg-1)',
-                        padding: 20,
-                        display: 'grid',
-                        gap: 14,
-                    }}
-                >
-                    <SectionHeading noRule>SELL ON NEFERSTOCK</SectionHeading>
-                    <p style={{ color: 'var(--text-2)', fontSize: 13, margin: 0, lineHeight: 1.6 }}>
-                        To sell products you’ll complete a short KYC. Enter your UBI now; we’ll request
-                        your business license and reseller certificate after you submit.
-                    </p>
-                    <Field label="LEGAL BUSINESS NAME">
-                        <input className="admin-form-input" name="legal_name" placeholder="Apex Auto Styling LLC" />
+                    <Field id="ap-name" label="Shop name" required>
+                        <input id="ap-name" className="ga-in" name="name" required maxLength={60} placeholder="Apex Auto Styling" />
                     </Field>
-                    <Field label="UBI (9 DIGITS)">
-                        <input className="admin-form-input" name="ubi" inputMode="numeric" pattern="\d{9}" placeholder="601123456" />
+
+                    <Field id="ap-slug" label="URL handle" required hint="rollout.club/u/your-handle">
+                        <input
+                            id="ap-slug"
+                            className="ga-in"
+                            name="slug"
+                            required
+                            placeholder="apex-auto"
+                            pattern="[a-z0-9][a-z0-9\-]{2,29}"
+                            autoCapitalize="none"
+                            spellCheck={false}
+                        />
                     </Field>
-                    <div style={{ border: '1px dashed var(--line)', padding: '10px 12px', fontSize: 12, color: 'var(--text-2)', lineHeight: 1.6 }}>
-                        Payouts setup (Stripe) — <b style={{ color: 'var(--text)' }}>coming soon</b>. You can be approved to sell
-                        on interim settlement before payouts are connected.
+
+                    <Field id="ap-category" label="Category" required>
+                        <span className="ga-sel">
+                            <select id="ap-category" className="ga-in" name="category" required defaultValue="">
+                                <option value="" disabled>
+                                    Select…
+                                </option>
+                                {SHOP_CATEGORIES.map((c) => (
+                                    <option key={c} value={c}>
+                                        {c}
+                                    </option>
+                                ))}
+                            </select>
+                            <ChevronDown size={18} strokeWidth={2} aria-hidden="true" />
+                        </span>
+                    </Field>
+
+                    <Field id="ap-description" label="Description">
+                        <textarea
+                            id="ap-description"
+                            className="ga-in"
+                            name="description"
+                            rows={4}
+                            maxLength={600}
+                            placeholder="What you do, brands you run, what makes you you."
+                        />
+                    </Field>
+                </div>
+
+                {/* ── Location & contact ── */}
+                <div className="ga-section">
+                    <h2>Location &amp; contact</h2>
+
+                    <Field id="ap-address" label="Address">
+                        <input id="ap-address" className="ga-in" name="address_line" placeholder="123 Main St" autoComplete="street-address" />
+                    </Field>
+
+                    <div className="ga-grid ga-grid-3">
+                        <Field id="ap-city" label="City">
+                            <input id="ap-city" className="ga-in" name="city" placeholder="Your City" autoComplete="address-level2" />
+                        </Field>
+                        <Field id="ap-state" label="State">
+                            <input id="ap-state" className="ga-in" name="state_region" placeholder="CA" autoComplete="address-level1" />
+                        </Field>
+                        <Field id="ap-zip" label="ZIP">
+                            <input id="ap-zip" className="ga-in" name="postal" placeholder="90210" autoComplete="postal-code" />
+                        </Field>
+                    </div>
+
+                    <Field id="ap-region" label="Region">
+                        <input id="ap-region" className="ga-in" name="region" placeholder="SoCal" />
+                    </Field>
+
+                    <div className="ga-grid ga-grid-2">
+                        <Field id="ap-phone" label="Phone">
+                            <input id="ap-phone" className="ga-in" name="contact_phone" type="tel" placeholder="(555) 555-0100" autoComplete="tel" />
+                        </Field>
+                        <Field id="ap-support" label="Support email">
+                            <input id="ap-support" className="ga-in" name="support_email" type="email" placeholder="hello@yourshop.com" />
+                        </Field>
+                    </div>
+
+                    <Field id="ap-web" label="Website">
+                        <input id="ap-web" className="ga-in" name="website_url" type="url" placeholder="https://yourshop.com" autoComplete="url" />
+                    </Field>
+
+                    <div className="ga-grid ga-grid-2">
+                        <Field id="ap-ig" label="Instagram">
+                            <input id="ap-ig" className="ga-in" name="social_instagram" placeholder="@yourshop" />
+                        </Field>
+                        <Field id="ap-tt" label="TikTok">
+                            <input id="ap-tt" className="ga-in" name="social_tiktok" placeholder="@yourshop" />
+                        </Field>
                     </div>
                 </div>
-            ) : null}
 
-            <div>
-                <button type="submit" className="admin-form-btn" disabled={pending} style={{ justifySelf: 'start' }}>
-                    {pending ? 'SUBMITTING…' : <>SUBMIT APPLICATION <ChevronRight /></>}
-                </button>
-            </div>
-            <p style={{ color: 'var(--text-2)', fontSize: 12, margin: 0, lineHeight: 1.6 }}>
-                You’ll become the owner immediately. Your shop stays hidden until a Rollout admin verifies it.
-            </p>
+                {/* ── Sell on NeferStock ── */}
+                {withCommerce ? (
+                    <div className="ga-sell">
+                        <div className="ga-section" style={{ margin: 0, padding: 0, border: 0 }}>
+                            <h2>Sell on NeferStock</h2>
+                            <p>
+                                To sell products you’ll complete a short KYC. Enter your UBI now; we’ll request your business license and
+                                reseller certificate after you submit.
+                            </p>
+                        </div>
+                        <Field id="ap-legal" label="Legal business name">
+                            <input id="ap-legal" className="ga-in" name="legal_name" placeholder="Apex Auto Styling LLC" />
+                        </Field>
+                        <Field id="ap-ubi" label="UBI (9 digits)">
+                            <input id="ap-ubi" className="ga-in" name="ubi" inputMode="numeric" pattern="\d{9}" placeholder="601123456" />
+                        </Field>
+                        <p className="ga-msg is-quiet" style={{ marginTop: 14 }}>
+                            <Info size={18} strokeWidth={2} aria-hidden="true" />
+                            <span>
+                                Payouts setup (Stripe) — <b>coming soon</b>. You can be approved to sell on interim settlement before payouts
+                                are connected.
+                            </span>
+                        </p>
+                    </div>
+                ) : null}
 
-            <style>{`
-                .apply-form .admin-form-input { width: 100%; box-sizing: border-box; }
-                .apply-form select.admin-form-input { appearance: none; -webkit-appearance: none; cursor: pointer; }
-                .apply-row { display: grid; gap: 12px; }
-                .apply-row-2 { grid-template-columns: 1fr 1fr; }
-                .apply-row-3 { grid-template-columns: 2fr 1fr 1fr; }
-                @media (max-width: 560px) {
-                    .apply-row-2, .apply-row-3 { grid-template-columns: 1fr; }
-                }
-            `}</style>
-        </form>
+                <div className="ga-apply-submit">
+                    <button type="submit" className="g-btn g-btn--block" disabled={pending} aria-busy={pending}>
+                        <span>{pending ? 'Submitting' : 'Submit application'}</span>
+                        <span className="g-btn-k" aria-hidden="true">
+                            {pending ? <LoaderCircle size={20} strokeWidth={2} className="g-spin" /> : <ArrowRight size={20} strokeWidth={2} />}
+                        </span>
+                    </button>
+                    <p>You’ll become the owner immediately. Your shop stays hidden until a Rollout admin verifies it.</p>
+                </div>
+            </form>
+        </Card>
     );
 }
 
-function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
+function Field({
+    id,
+    label,
+    hint,
+    required,
+    children,
+}: {
+    id: string;
+    label: string;
+    hint?: string;
+    required?: boolean;
+    children: React.ReactNode;
+}) {
     return (
-        <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <span className="admin-form-label" style={{ textTransform: 'uppercase' }}>
+        <div>
+            <label className="ga-label" htmlFor={id}>
                 {label}
-                {hint ? <span style={{ color: 'var(--text-3)', textTransform: 'none', marginLeft: 6 }}>· {hint}</span> : null}
-            </span>
+                {required ? <span aria-hidden="true"> *</span> : null}
+                {hint ? <small> · {hint}</small> : null}
+            </label>
             {children}
-        </label>
-    );
-}
-
-function SectionHeading({ children, noRule = false }: { children: React.ReactNode; noRule?: boolean }) {
-    return (
-        <div
-            style={{
-                fontFamily: 'var(--font-display)',
-                fontSize: 11,
-                letterSpacing: 'var(--track-wider)',
-                color: 'var(--gold)',
-                borderTop: noRule ? 'none' : '1px solid var(--rule, var(--line))',
-                paddingTop: noRule ? 0 : 12,
-            }}
-        >
-            ／ {children}
         </div>
     );
 }

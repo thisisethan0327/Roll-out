@@ -23,6 +23,7 @@
  * to type the 6-digit code from the same email (never re-type his address).
  */
 import { useEffect, useRef, useState } from 'react';
+import { CircleAlert } from 'lucide-react';
 import { getSupabaseBrowser, isSupabaseConfigured } from '@/lib/supabase/browser';
 
 /** Same-origin relative paths only — never protocol-relative (`//evil`). */
@@ -137,7 +138,12 @@ export function AuthCallbackClient() {
     }, []);
 
     if (fatal) {
-        return <div className="admin-login-error">{fatal}</div>;
+        return (
+            <p className="ga-msg" role="alert">
+                <CircleAlert size={18} strokeWidth={2} aria-hidden="true" />
+                <span>{fatal}</span>
+            </p>
+        );
     }
     return null;
 }

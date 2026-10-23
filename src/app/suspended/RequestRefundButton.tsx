@@ -2,6 +2,7 @@
 /** "Request a refund" for one ticket on a temporary suspension. An admin decides. */
 import { useState, useTransition } from 'react';
 import { requestBanRefundAction } from './actions';
+import { LoaderCircle } from 'lucide-react';
 
 export function RequestRefundButton({ orderId, ticketId }: { orderId: string | null; ticketId: string | null }) {
     const [pending, start] = useTransition();
@@ -9,11 +10,12 @@ export function RequestRefundButton({ orderId, ticketId }: { orderId: string | n
     const [err, setErr] = useState<string | null>(null);
 
     return (
-        <span style={{ display: 'inline-grid', gap: 4, justifyItems: 'end' }}>
+        <span className="ga-ticket-act">
             <button
                 type="button"
-                className="btn btn-ghost"
+                className="g-sec"
                 disabled={pending}
+                aria-busy={pending}
                 onClick={() => {
                     setErr(null);
                     setMsg(null);
@@ -24,10 +26,11 @@ export function RequestRefundButton({ orderId, ticketId }: { orderId: string | n
                     });
                 }}
             >
-                {pending ? 'Requesting…' : 'Request a refund'}
+                {pending ? <LoaderCircle size={16} strokeWidth={2} className="g-spin" aria-hidden="true" /> : null}
+                {pending ? 'Requesting' : 'Request a refund'}
             </button>
-            {msg ? <span style={{ fontSize: 12 }}>{msg}</span> : null}
-            {err ? <span style={{ fontSize: 12, color: 'var(--warn)' }}>{err}</span> : null}
+            {msg ? <small role="status">{msg}</small> : null}
+            {err ? <small role="alert">{err}</small> : null}
         </span>
     );
 }

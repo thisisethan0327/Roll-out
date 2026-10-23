@@ -6,50 +6,66 @@
 import { useActionState, useState } from 'react';
 import { submitBanAppealAction, type AppealResult } from './actions';
 import { APPEAL_MAX, APPEAL_MIN } from '@/lib/ban';
+import { ArrowRight, CircleAlert, CircleCheck, LoaderCircle, Mail } from 'lucide-react';
 
 export function AppealForm({ defaultEmail }: { defaultEmail: string | null }) {
     const [state, formAction, pending] = useActionState<AppealResult | null, FormData>(submitBanAppealAction, null);
     const [text, setText] = useState('');
 
     return (
-        <form action={formAction} style={{ display: 'grid', gap: 12, textAlign: 'left' }}>
-            <label style={{ display: 'grid', gap: 6 }}>
-                <span className="admin-form-label">WHY SHOULD THIS BE REVERSED?</span>
-                <textarea
-                    name="text"
-                    className="admin-form-input"
-                    rows={6}
-                    minLength={APPEAL_MIN}
-                    maxLength={APPEAL_MAX}
-                    required
-                    value={text}
-                    onChange={(e) => setText(e.target.value)}
-                    disabled={pending}
-                    style={{ resize: 'vertical' }}
-                />
-                <span style={{ fontSize: 12, color: 'var(--text-3)' }}>
-                    {text.trim().length}/{APPEAL_MAX} · at least {APPEAL_MIN} characters
-                </span>
+        <form action={formAction} className="ga-form">
+            <label className="ga-label" htmlFor="appeal-text" style={{ marginTop: 4 }}>
+                Why should this be reversed?
             </label>
-            <label style={{ display: 'grid', gap: 6 }}>
-                <span className="admin-form-label">CONTACT EMAIL (OPTIONAL)</span>
+            <textarea
+                id="appeal-text"
+                name="text"
+                className="ga-in"
+                rows={6}
+                minLength={APPEAL_MIN}
+                maxLength={APPEAL_MAX}
+                required
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                disabled={pending}
+                aria-describedby="appeal-count"
+            />
+            <span className="ga-count" id="appeal-count">
+                <span className="g-w">{text.trim().length}</span>/<span className="g-w">{APPEAL_MAX}</span> · at least {APPEAL_MIN} characters
+            </span>
+            <label className="ga-label" htmlFor="appeal-contact">
+                Contact email <small>· optional</small>
+            </label>
+            <div className="ga-fld">
+                <Mail size={20} strokeWidth={1.75} aria-hidden="true" />
                 <input
+                    id="appeal-contact"
                     name="contact"
                     type="email"
-                    className="admin-form-input"
                     maxLength={254}
                     defaultValue={defaultEmail ?? ''}
                     disabled={pending}
                     autoComplete="email"
                 />
-            </label>
-            {state && !state.ok && state.error ? <div className="admin-login-error">{state.error}</div> : null}
-            {state?.ok && state.message ? <div style={{ fontSize: 14 }}>{state.message}</div> : null}
-            <div>
-                <button type="submit" className="btn" disabled={pending || text.trim().length < APPEAL_MIN}>
-                    {pending ? 'Sending…' : 'Send appeal'}
-                </button>
             </div>
+            {state && !state.ok && state.error ? (
+                <p className="ga-msg" role="alert">
+                    <CircleAlert size={18} strokeWidth={2} aria-hidden="true" />
+                    <span>{state.error}</span>
+                </p>
+            ) : null}
+            {state?.ok && state.message ? (
+                <p className="ga-msg" role="status">
+                    <CircleCheck size={18} strokeWidth={2} aria-hidden="true" />
+                    <span>{state.message}</span>
+                </p>
+            ) : null}
+            <button type="submit" className="g-btn g-btn--block" disabled={pending || text.trim().length < APPEAL_MIN} aria-busy={pending}>
+                <span>{pending ? 'Sending' : 'Send appeal'}</span>
+                <span className="g-btn-k" aria-hidden="true">
+                    {pending ? <LoaderCircle size={20} strokeWidth={2} className="g-spin" /> : <ArrowRight size={20} strokeWidth={2} />}
+                </span>
+            </button>
         </form>
     );
 }

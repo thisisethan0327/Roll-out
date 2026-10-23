@@ -10,8 +10,7 @@
  */
 import { useEffect, useRef, useState, useTransition } from 'react';
 import { checkHandleAction, claimProfileAction, type OnboardingAddress } from './actions';
-import { PendingButton } from '@/components/feedback';
-import { Check, ChevronRight } from '@/components/icons';
+import { ArrowRight, AtSign, Check, ChevronDown, CircleAlert, Info, LoaderCircle, UserRound } from 'lucide-react';
 
 type HandleState =
     | { kind: 'idle' }
@@ -143,13 +142,17 @@ export function OnboardingForm({
     const hint = (() => {
         switch (handleState.kind) {
             case 'checking':
-                return { text: 'CHECKING…', color: 'var(--text-3)' };
+                return { cls: 'ga-hint', icon: <LoaderCircle size={15} strokeWidth={2} className="g-spin" aria-hidden="true" />, text: 'Checking…' };
             case 'ok':
-                return { text: <><Check /> {handleTouched ? 'AVAILABLE' : 'AVAILABLE · FROM YOUR NAME — EDIT IF YOU LIKE'}</>, color: 'var(--gold)' };
+                return {
+                    cls: 'ga-hint is-ok',
+                    icon: <Check size={15} strokeWidth={2.25} aria-hidden="true" />,
+                    text: handleTouched ? 'Available' : 'Available, from your name. Edit it if you like.',
+                };
             case 'bad':
-                return { text: handleState.reason.toUpperCase(), color: '#e5484d' };
+                return { cls: 'ga-hint is-bad', icon: <CircleAlert size={15} strokeWidth={2} aria-hidden="true" />, text: handleState.reason };
             default:
-                return { text: 'LETTERS, NUMBERS, UNDERSCORES · 3–20 CHARS', color: 'var(--text-3)' };
+                return { cls: 'ga-hint', icon: null, text: 'Letters, numbers and underscores, 3 to 20 characters.' };
         }
     })();
 
@@ -159,27 +162,36 @@ export function OnboardingForm({
         'aria-label': label,
         value: (address[key] ?? '') as string,
         onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setAddress((a) => ({ ...a, [key]: e.target.value })),
-        className: 'admin-login-input',
+        className: 'ga-in',
     });
 
     return (
-        <form onSubmit={submit} className="admin-login-form">
-            <label className="admin-login-label">DISPLAY NAME</label>
-            <input
-                type="text"
-                value={displayName}
-                onChange={(e) => onNameChange(e.target.value)}
-                placeholder="What people call you"
-                className="admin-login-input"
-                maxLength={60}
-                autoFocus
-                required
-            />
-
-            <label className="admin-login-label">HANDLE</label>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ color: 'var(--text-3)', fontFamily: 'var(--font-mono, monospace)' }}>@</span>
+        <form onSubmit={submit} className="ga-form">
+            <label className="ga-label" htmlFor="onb-name">
+                Display name
+            </label>
+            <div className="ga-fld">
+                <UserRound size={20} strokeWidth={1.75} aria-hidden="true" />
                 <input
+                    id="onb-name"
+                    type="text"
+                    value={displayName}
+                    onChange={(e) => onNameChange(e.target.value)}
+                    placeholder="What people call you"
+                    maxLength={60}
+                    autoComplete="nickname"
+                    autoFocus
+                    required
+                />
+            </div>
+
+            <label className="ga-label" htmlFor="onb-handle">
+                Handle
+            </label>
+            <div className="ga-fld" data-invalid={handleState.kind === 'bad' ? 'true' : undefined}>
+                <AtSign size={20} strokeWidth={1.75} aria-hidden="true" />
+                <input
+                    id="onb-handle"
                     type="text"
                     value={handle}
                     onChange={(e) => {
@@ -187,72 +199,92 @@ export function OnboardingForm({
                         setHandle(e.target.value);
                     }}
                     placeholder="your_handle"
-                    className="admin-login-input"
                     autoCapitalize="none"
                     autoCorrect="off"
                     autoComplete="off"
                     spellCheck={false}
-                    style={{ flex: 1 }}
+                    aria-describedby="onb-handle-hint"
+                    aria-invalid={handleState.kind === 'bad' ? true : undefined}
                     required
                 />
             </div>
-            <div style={{ fontSize: 10, letterSpacing: 'var(--track-wider)', color: hint.color, fontFamily: 'var(--font-display)', minHeight: 14 }}>
-                {hint.text}
-            </div>
+            <p className={hint.cls} id="onb-handle-hint" aria-live="polite">
+                {hint.icon}
+                <span>{hint.text}</span>
+            </p>
 
-            <label className="admin-login-label">BIO · OPTIONAL</label>
+            <label className="ga-label" htmlFor="onb-bio">
+                Bio <small>· optional</small>
+            </label>
             <textarea
+                id="onb-bio"
                 value={bio}
                 onChange={(e) => setBio(e.target.value)}
                 placeholder="Your builds, your lane… (optional)"
-                className="admin-login-input"
+                className="ga-in"
                 maxLength={280}
                 rows={3}
-                style={{ resize: 'vertical', fontFamily: 'inherit' }}
             />
 
-            <div style={{ borderTop: '1px solid var(--line)', marginTop: 8, paddingTop: 16 }}>
-                <label className="admin-login-label">SHIPPING ADDRESS · OPTIONAL</label>
-                <div style={{ fontSize: 12, color: 'var(--text-2)', lineHeight: 1.5, marginBottom: 12 }}>
-                    Used when you shop on Rollout — you can skip this and add it at checkout.
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 10 }}>
-                    <input type="text" placeholder="First name" autoComplete="given-name" {...field('firstName', 'First name')} />
-                    <input type="text" placeholder="Last name" autoComplete="family-name" {...field('lastName', 'Last name')} />
-                </div>
-                <input type="text" placeholder="Street address" autoComplete="address-line1" style={{ marginTop: 10, width: '100%' }} {...field('address1', 'Street address')} />
-                <input type="text" placeholder="Apt, suite, unit (optional)" autoComplete="address-line2" style={{ marginTop: 10, width: '100%' }} {...field('address2', 'Apt, suite, unit')} />
-                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr)', gap: 10, marginTop: 10 }}>
-                    <input type="text" placeholder="City" autoComplete="address-level2" {...field('city', 'City')} />
-                    <select autoComplete="address-level1" {...field('province', 'State')}>
-                        <option value="">State</option>
-                        {US_STATES.map((s) => (
-                            <option key={s} value={s}>
-                                {s}
-                            </option>
-                        ))}
-                    </select>
-                    <input type="text" placeholder="ZIP" inputMode="numeric" autoComplete="postal-code" {...field('postalCode', 'ZIP')} />
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 10, marginTop: 10 }}>
-                    <select autoComplete="country" {...field('countryCode', 'Country')}>
-                        <option value="us">United States</option>
-                        <option value="ca">Canada</option>
-                    </select>
-                    <input type="tel" placeholder="Phone (optional)" autoComplete="tel" {...field('phone', 'Phone')} />
+            <div className="ga-section">
+                <h2>
+                    Shipping address <small className="ga-opt">optional</small>
+                </h2>
+                <p>Used when you shop on Rollout. You can skip this and add it at checkout.</p>
+                <div className="ga-stack" style={{ marginTop: 16 }}>
+                    <div className="ga-grid ga-grid-2 keep">
+                        <input type="text" placeholder="First name" autoComplete="given-name" {...field('firstName', 'First name')} />
+                        <input type="text" placeholder="Last name" autoComplete="family-name" {...field('lastName', 'Last name')} />
+                    </div>
+                    <input type="text" placeholder="Street address" autoComplete="address-line1" {...field('address1', 'Street address')} />
+                    <input type="text" placeholder="Apt, suite, unit (optional)" autoComplete="address-line2" {...field('address2', 'Apt, suite, unit')} />
+                    <div className="ga-grid ga-grid-3">
+                        <input type="text" placeholder="City" autoComplete="address-level2" {...field('city', 'City')} />
+                        <span className="ga-sel">
+                            <select autoComplete="address-level1" {...field('province', 'State')}>
+                                <option value="">State</option>
+                                {US_STATES.map((s) => (
+                                    <option key={s} value={s}>
+                                        {s}
+                                    </option>
+                                ))}
+                            </select>
+                            <ChevronDown size={18} strokeWidth={2} aria-hidden="true" />
+                        </span>
+                        <input type="text" placeholder="ZIP" inputMode="numeric" autoComplete="postal-code" {...field('postalCode', 'ZIP')} />
+                    </div>
+                    <div className="ga-grid ga-grid-2">
+                        <span className="ga-sel">
+                            <select autoComplete="country" {...field('countryCode', 'Country')}>
+                                <option value="us">United States</option>
+                                <option value="ca">Canada</option>
+                            </select>
+                            <ChevronDown size={18} strokeWidth={2} aria-hidden="true" />
+                        </span>
+                        <input type="tel" placeholder="Phone (optional)" autoComplete="tel" {...field('phone', 'Phone')} />
+                    </div>
                 </div>
             </div>
 
             {addressStarted && !addressComplete && !formErr ? (
-                <div style={{ fontSize: 10, color: '#e5484d', fontFamily: 'var(--font-display)', letterSpacing: 'var(--track-wider)' }} role="status">
-                    FINISH THE SHIPPING ADDRESS — NAME, STREET, CITY, STATE, ZIP — OR CLEAR IT
-                </div>
+                <p className="ga-msg" role="status">
+                    <Info size={18} strokeWidth={2} aria-hidden="true" />
+                    <span>Finish the shipping address (name, street, city, state, ZIP) or clear it.</span>
+                </p>
             ) : null}
-            {formErr && <div className="admin-login-error">{formErr}</div>}
+            {formErr ? (
+                <p className="ga-msg" role="alert">
+                    <CircleAlert size={18} strokeWidth={2} aria-hidden="true" />
+                    <span>{formErr}</span>
+                </p>
+            ) : null}
 
-            <PendingButton type="submit" pending={pending} pendingLabel="SETTING UP" disabled={!canSubmit} className="admin-login-btn">
-                ENTER ROLLOUT <ChevronRight />
-            </PendingButton>
+            <button type="submit" className="g-btn g-btn--block" disabled={!canSubmit} aria-busy={pending}>
+                <span>{pending ? 'Setting up' : 'Enter Rollout'}</span>
+                <span className="g-btn-k" aria-hidden="true">
+                    {pending ? <LoaderCircle size={20} strokeWidth={2} className="g-spin" /> : <ArrowRight size={20} strokeWidth={2} />}
+                </span>
+            </button>
         </form>
     );
 }
