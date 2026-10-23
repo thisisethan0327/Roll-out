@@ -15,7 +15,7 @@ export function Countdown({
     startAt: string;
     /** 'sticker' = the Cover Story hero's "T-MINUS — ON THE STANDS IN" box.
      *  Presentation only; the timing logic below is shared and unchanged. */
-    variant?: 'boxes' | 'sticker';
+    variant?: 'boxes' | 'sticker' | 'glide';
 }) {
     const [now, setNow] = useState<number>(() => new Date(startAt).getTime() - 1000);
     useEffect(() => {
@@ -49,6 +49,21 @@ export function Countdown({
             { value: String(s).padStart(2, '0'), label: 'SEC' },
         ];
         label = 'T-MINUS';
+    }
+
+    if (variant === 'glide') {
+        // The first paint (server) has no real clock: hold the space, then fill.
+        if (now === start - 1000) return <span style={{ visibility: 'hidden' }}>Leaves in <span className="g-w">0d 0h</span></span>;
+        // Glide ticket panel: "1d 14h", then "3h 20m", then "12m" — Michroma
+        // numerals in a sentence, no boxes. Same timing logic as above.
+        if (cells.length === 0) return <span>{label === 'LIVE NOW' ? 'Happening now' : label === 'PAST EVENT' ? 'Ended' : 'Date TBA'}</span>;
+        const [d, h, m] = cells.map((c) => Number(c.value));
+        const text = d > 0 ? `${d}d ${h}h` : h > 0 ? `${h}h ${m}m` : `${Math.max(m, 1)}m`;
+        return (
+            <span>
+                Leaves in <span className="g-w">{text}</span>
+            </span>
+        );
     }
 
     if (variant === 'sticker') {

@@ -33,10 +33,13 @@ export default function RouteMapLoader({
     points,
     polyline,
     meetOnly,
+    glide,
 }: {
     meetOnly?: boolean;
+    /** Glide styling (theme-aware basemap, tricolore route, roundel pins). */
+    glide?: boolean;
     points: RoutePoint[];
     polyline: [number, number][];
 }) {
-    return <RouteMap points={points} polyline={polyline} meetOnly={meetOnly} />;
+    return <RouteMap points={points} polyline={polyline} meetOnly={meetOnly} glide={glide} />;
 }

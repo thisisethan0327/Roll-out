@@ -24,6 +24,20 @@ const MAPLIBRE_JS = 'https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js';
  * light 'positron' style fought the black/gold palette, so both themes here
  * resolve to the same dark style rather than branching for no visual gain. */
 const BASEMAP_STYLE = 'https://tiles.openfreemap.org/styles/dark';
+/** Glide: a light basemap in the light theme, the dark one in Midnight/Graphite. */
+const BASEMAP_STYLE_LIGHT = 'https://tiles.openfreemap.org/styles/positron';
+
+function resolvedLight(): boolean {
+    const t = document.documentElement.getAttribute('data-theme');
+    if (t === 'light') return true;
+    if (t === 'dark') return false;
+    return window.matchMedia('(prefers-color-scheme: light)').matches;
+}
+
+/** Read Glide tokens off the map's own container (it sits inside a .glide scope). */
+function token(el: Element, name: string, fallback: string): string {
+    return getComputedStyle(el).getPropertyValue(name).trim() || fallback;
+}
 const BASEMAP_ATTRIBUTION =
     '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap contributors</a> &middot; <a href="https://openfreemap.org/" target="_blank" rel="noopener noreferrer">OpenFreeMap</a>';
 
@@ -79,7 +93,10 @@ export default function RouteMap({
     points,
     polyline,
     meetOnly = false,
+    glide = false,
 }: {
+    /** Glide styling: theme-aware basemap, the tricolore route, roundel pins. */
+    glide?: boolean;
     /** LOCATION map: one plain gold meet pin (no S/F lettering), closer zoom. */
     meetOnly?: boolean;
     points: RoutePoint[];
@@ -91,9 +108,18 @@ export default function RouteMap({
     const mapRef = useRef<any>(null);
     const [ready, setReady] = useState(false);
     const [failed, setFailed] = useState(false);
+    // Bumped when Appearance changes, so a Glide map rebuilds in the new palette.
+    const [themeRev, setThemeRev] = useState(0);
+    useEffect(() => {
+        if (!glide) return;
+        const on = () => setThemeRev((n) => n + 1);
+        window.addEventListener('rollout:appearance', on);
+        return () => window.removeEventListener('rollout:appearance', on);
+    }, [glide]);
 
     useEffect(() => {
         let cancelled = false;
+        setReady(false);
 
         loadMapLibre()
             .then((maplibregl) => {
@@ -101,7 +127,7 @@ export default function RouteMap({
 
                 const map = new maplibregl.Map({
                     container: containerRef.current,
-                    style: BASEMAP_STYLE,
+                    style: glide && resolvedLight() ? BASEMAP_STYLE_LIGHT : BASEMAP_STYLE,
                     // Built-in control (not a manually addControl()'d one) so
                     // its resize listener wires up through the control's own
                     // onAdd lifecycle.
@@ -150,20 +176,48 @@ export default function RouteMap({
                                 },
                             },
                         });
-                        map.addLayer({
-                            id: 'route-line-glow',
-                            type: 'line',
-                            source: 'route-line',
-                            layout: { 'line-join': 'round', 'line-cap': 'round' },
-                            paint: { 'line-color': '#ffb733', 'line-width': 9, 'line-opacity': 0.16 },
-                        });
-                        map.addLayer({
-                            id: 'route-line',
-                            type: 'line',
-                            source: 'route-line',
-                            layout: { 'line-join': 'round', 'line-cap': 'round' },
-                            paint: { 'line-color': '#ffb733', 'line-width': 3 },
-                        });
+                        if (glide) {
+                            // The tricolore route (GLIDE.md, Maps): an edge, then
+                            // light blue, navy and red bands side by side.
+                            const host = containerRef.current ?? document.body;
+                            const edge = token(host, '--route-edge', '#ffffff');
+                            const bands: [string, number][] = [
+                                [token(host, '--stripe-1', '#4BA3D9'), -3],
+                                [token(host, '--stripe-2', '#0B2545'), 0],
+                                [token(host, '--stripe-3', '#D7263D'), 3],
+                            ];
+                            map.addLayer({
+                                id: 'route-line-edge',
+                                type: 'line',
+                                source: 'route-line',
+                                layout: { 'line-join': 'round', 'line-cap': 'round' },
+                                paint: { 'line-color': edge, 'line-width': 13 },
+                            });
+                            bands.forEach(([color, offset], i) =>
+                                map.addLayer({
+                                    id: `route-line-${i}`,
+                                    type: 'line',
+                                    source: 'route-line',
+                                    layout: { 'line-join': 'round', 'line-cap': 'round' },
+                                    paint: { 'line-color': color, 'line-width': 3, 'line-offset': offset },
+                                }),
+                            );
+                        } else {
+                            map.addLayer({
+                                id: 'route-line-glow',
+                                type: 'line',
+                                source: 'route-line',
+                                layout: { 'line-join': 'round', 'line-cap': 'round' },
+                                paint: { 'line-color': '#ffb733', 'line-width': 9, 'line-opacity': 0.16 },
+                            });
+                            map.addLayer({
+                                id: 'route-line',
+                                type: 'line',
+                                source: 'route-line',
+                                layout: { 'line-join': 'round', 'line-cap': 'round' },
+                                paint: { 'line-color': '#ffb733', 'line-width': 3 },
+                            });
+                        }
                     }
                 };
 
@@ -181,7 +235,13 @@ export default function RouteMap({
                 const bounds = new maplibregl.LngLatBounds();
                 for (const p of points) {
                     const el = document.createElement('div');
-                    el.className = meetOnly ? "rl-route-pin rl-route-pin-pick" : `rl-route-pin rl-route-pin-${p.kind}`;
+                    el.className = glide
+                        ? meetOnly
+                            ? 'g-map-pin g-map-pin--meet'
+                            : `g-map-pin g-map-pin-${p.kind}`
+                        : meetOnly
+                          ? 'rl-route-pin rl-route-pin-pick'
+                          : `rl-route-pin rl-route-pin-${p.kind}`;
                     el.textContent = meetOnly ? "" : pinLabel(p);
                     el.title = p.name;
                     new maplibregl.Marker({ element: el, anchor: 'center' }).setLngLat([p.lng, p.lat]).addTo(map);
@@ -212,7 +272,7 @@ export default function RouteMap({
                 mapRef.current = null;
             }
         };
-    }, [points, polyline, meetOnly]);
+    }, [points, polyline, meetOnly, glide, themeRev]);
 
     return (
         <div style={{ position: 'relative', width: '100%', height: '100%', background: 'var(--bg-2)' }}>

@@ -7,11 +7,15 @@
  * (with a position in line) — never a silent oversell. The strip stays one-tap;
  * the status line reflects the atomic outcome.
  *
- * Styling is inline to match the hand-rolled HUD look of the event page.
+ * Glide: "going" is the slide-to-act control (drag, tap or Enter); its done
+ * state is the confirmed / waitlisted RSVP and a tap on the knob removes it,
+ * exactly as tapping GOING again did. Maybe / Can't go are secondary pills.
  */
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { setRsvp, type RsvpChoice, type RsvpError, type RsvpState } from './actions';
+import { GlideButton } from '@/components/glide/primitives';
+import { SlideToAct } from '@/components/glide/SlideToAct';
 
 type Props = {
     eventId: string;
@@ -26,9 +30,9 @@ type Props = {
 };
 
 const CHOICES: { key: RsvpChoice; label: string }[] = [
-    { key: 'going', label: 'GOING' },
-    { key: 'maybe', label: 'MAYBE' },
-    { key: 'declined', label: "CAN'T GO" },
+    { key: 'going', label: 'Going' },
+    { key: 'maybe', label: 'Maybe' },
+    { key: 'declined', label: "Can't go" },
 ];
 
 const ERROR_COPY: Record<RsvpError, string> = {
@@ -70,25 +74,12 @@ export function RsvpControls({
 
     if (!isLoggedIn) {
         return (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
-                <a
-                    className="btn btn-lg"
-                    href={`/login?next=${encodeURIComponent(nextPath)}&error=rsvp`}
-                >
-                    Sign In to RSVP
-                </a>
-                <p
-                    className="text-muted"
-                    style={{
-                        fontSize: 11,
-                        margin: 0,
-                        fontFamily: 'var(--font-display)',
-                        letterSpacing: 'var(--track-wider)',
-                    }}
-                >
-                    RSVP RIGHT HERE ON THE WEB · NO APP NEEDED
-                </p>
-            </div>
+            <>
+                <GlideButton href={`/login?next=${encodeURIComponent(nextPath)}&error=rsvp`} plain block>
+                    Sign in to RSVP
+                </GlideButton>
+                <p className="g-panel-line">RSVP right here on the web. No app needed.</p>
+            </>
         );
     }
 
@@ -131,74 +122,60 @@ export function RsvpControls({
     };
 
     const statusLine = msg
-        ? msg.toUpperCase()
+        ? msg
         : state === 'confirmed'
             ? spotNo != null
-                ? `YOU'RE IN · SPOT #${String(spotNo).padStart(3, '0')} · TAP GOING TO REMOVE`
-                : "YOU'RE ON THE CONVOY · TAP GOING TO REMOVE"
+                ? `You're in, spot ${String(spotNo).padStart(3, '0')}. Tap the knob to remove your RSVP.`
+                : "You're on the convoy. Tap the knob to remove your RSVP."
             : state === 'waitlisted'
                 ? waitPos != null
-                    ? `WAITLISTED · #${waitPos} IN LINE · TAP GOING TO LEAVE`
-                    : 'WAITLISTED · TAP GOING TO LEAVE'
+                    ? `Waitlisted, number ${waitPos} in line. Tap the knob to leave.`
+                    : 'Waitlisted. Tap the knob to leave.'
                 : state === 'maybe'
-                    ? 'MARKED AS MAYBE'
+                    ? 'Marked as maybe.'
                     : state === 'declined'
-                        ? "MARKED AS CAN'T GO"
-                        : 'TAP TO RSVP';
+                        ? "Marked as can't go."
+                        : 'Slide, tap or press Enter to RSVP.';
+
+    const going = isGoingState(state);
+    const doneLabel =
+        state === 'waitlisted'
+            ? waitPos != null
+                ? <>Waitlisted <small className="g-w">#{waitPos}</small></>
+                : 'Waitlisted'
+            : spotNo != null
+                ? <>You&apos;re in <small className="g-w">#{String(spotNo).padStart(3, '0')}</small></>
+                : "You're in";
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
-            <div
-                role="group"
-                aria-label="RSVP"
-                style={{ display: 'inline-flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}
-            >
-                {CHOICES.map((c) => {
-                    const active = activeKey === c.key;
-                    // The Going button reads "WAITLIST" once the meet is full and
-                    // you're queued, so the label matches your real state.
-                    const label =
-                        c.key === 'going' && state === 'waitlisted' ? 'WAITLISTED' : c.label;
-                    return (
-                        <button
-                            key={c.key}
-                            type="button"
-                            disabled={pending}
-                            onClick={() => choose(c.key)}
-                            aria-pressed={active}
-                            style={{
-                                minWidth: 116,
-                                padding: '13px 20px',
-                                border: `1px solid ${active ? 'var(--gold)' : 'var(--line-mid)'}`,
-                                background: active ? 'var(--gold)' : 'transparent',
-                                color: active ? 'var(--bg-0, #000)' : 'var(--text)',
-                                fontFamily: 'var(--font-display)',
-                                fontSize: 12,
-                                fontWeight: 700,
-                                letterSpacing: 'var(--track-wider)',
-                                cursor: pending ? 'wait' : 'pointer',
-                                opacity: pending ? 0.7 : 1,
-                                transition: 'background 120ms, border-color 120ms, color 120ms',
-                            }}
-                        >
-                            {label}
-                        </button>
-                    );
-                })}
+        <>
+            <SlideToAct
+                label="Slide to RSVP"
+                ariaLabel="RSVP: going"
+                doneLabel={doneLabel}
+                doneAriaLabel={state === 'waitlisted' ? 'Leave the waitlist' : 'Remove your RSVP'}
+                done={going}
+                busy={pending}
+                onComplete={() => choose('going')}
+                onUndo={() => choose('going')}
+            />
+            <div className="g-panel-sub" role="group" aria-label="Other answers">
+                {CHOICES.filter((c) => c.key !== 'going').map((c) => (
+                    <button
+                        key={c.key}
+                        type="button"
+                        className="g-sec g-sec--ink"
+                        disabled={pending}
+                        onClick={() => choose(c.key)}
+                        aria-pressed={activeKey === c.key}
+                    >
+                        {c.label}
+                    </button>
+                ))}
             </div>
-            <p
-                className="text-muted"
-                style={{
-                    fontSize: 11,
-                    margin: 0,
-                    minHeight: 14,
-                    fontFamily: 'var(--font-display)',
-                    letterSpacing: 'var(--track-wider)',
-                    color: msg ? 'var(--gold)' : 'var(--text-3)',
-                }}
-            >
+            <p className={`g-panel-status${msg ? ' is-error' : ''}`} role="status" aria-live="polite">
                 {statusLine}
             </p>
-        </div>
+        </>
     );
 }

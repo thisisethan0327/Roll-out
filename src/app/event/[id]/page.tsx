@@ -23,11 +23,26 @@
  * meets indexable + rich-previewable.
  */
 import type { Metadata } from 'next';
-import { StylisedMap } from '@/components/map/StylisedMap';
-import { hasDrawnRoute } from '@/lib/map-sites';
 import { formatEventTime } from '@/lib/event-time';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import {
+    BadgeCheck,
+    CalendarDays,
+    CircleDot,
+    CircleX,
+    Download,
+    Flag,
+    Lock,
+    Map as MapIcon,
+    MapPin,
+    Navigation,
+    Route,
+    Settings2,
+    Ticket,
+    UserRound,
+    Users,
+} from 'lucide-react';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { getConsumerProfile } from '@/lib/consumer';
 import { resolveEventAccess } from '@/lib/event-viewer';
@@ -43,16 +58,9 @@ import { multiTicketsEnabled, myTicketsForEvent } from '@/lib/event-tickets';
 import { isDeadTicketStatus } from '@/lib/event-tickets-shared';
 import { parseRoutePlan, buildRoutePoints, buildGoogleMapsDirUrl } from '@/lib/route-plan';
 import { fetchDrivingPolyline, type LatLng } from './route-osrm';
-import { EventCoverHero } from './EventCoverHero';
-import { StatBand } from './StatBand';
-import { CoverStoryBrief } from './CoverStoryBrief';
-import { TicketCard } from './TicketCard';
-import { RouteSection } from './RouteSection';
 import RouteMapLoader from './RouteMapLoader';
 import { SponsorsSection } from './SponsorsSection';
-import { HostBlock } from './HostBlock';
-import { ActionsToolbar } from './ActionsToolbar';
-import { ConvoySection } from './ConvoySection';
+import { Countdown } from './Countdown';
 import { LockedEvent } from './LockedEvent';
 import { ROLLOUT_ORIGIN } from '@/lib/tenant-hosts';
 import { absoluteUrl, jsonLdHtml, postalAddressFromText } from '@/lib/structured-data';
@@ -60,8 +68,8 @@ import { isSeedEvent } from '@/lib/seed-content';
 import { AnnouncementBar } from '@/components/AnnouncementBar';
 import { getEventAnnouncements, getSiteAnnouncements } from '@/lib/announcements';
 import { sortAnnouncements } from '@/lib/announcements-core';
-import styles from './cover-story.module.css';
-import { ChevronRight, Dot, X } from '@/components/icons';
+import { eventDateParts, eventTypeLabel, placeName } from '@/lib/glide-format';
+import { Card, Chip, DateRoundel, Row, SecButton, SpotsBar } from '@/components/glide/primitives';
 
 type EventRow = {
     id: string;
@@ -657,7 +665,6 @@ export default async function PublicEventPage({
     // still falls back to full-bleed on the client if it turns out landscape.
     const pinnedHero = ev.hero_image_url?.trim() || null;
     const posterUrl = pinnedHero && !isDefaultCoverUrl(pinnedHero) ? pinnedHero : null;
-    const heroBg = `linear-gradient(180deg, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.92) 100%), url(${coverUrl}) center/cover no-repeat`;
 
     const mapsUrl = ev.lat != null && ev.lng != null ? `https://www.google.com/maps?q=${ev.lat},${ev.lng}` : null;
 
@@ -665,41 +672,6 @@ export default async function PublicEventPage({
     const remaining = attendees.length < (ev.attending_count ?? 0) ? (ev.attending_count ?? 0) - attendees.length : 0;
     const shareUrl = `https://rollout.club/event/${ev.id}`;
     const shareTitle = ev.title ?? 'Car meet on Rollout';
-
-    // Cover Story B masthead "issue bar" — both lines derived from event data:
-    //   "VOL. 01 · NO. <month> — <MON YYYY> ISSUE"  (event month, in its zone)
-    //   "ROLLOUT.CLUB / EVENTS / <title slug, or short id>"
-    const issueMonth = (() => {
-        if (!ev.start_at) return null;
-        try {
-            const parts = new Intl.DateTimeFormat('en-US', {
-                timeZone: ev.time_zone ?? undefined,
-                month: 'numeric',
-                year: 'numeric',
-            }).formatToParts(new Date(ev.start_at));
-            const month = Number(parts.find((p) => p.type === 'month')?.value);
-            const year = parts.find((p) => p.type === 'year')?.value;
-            if (!month || !year) return null;
-            const mon = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'][month - 1];
-            return { no: String(month).padStart(2, '0'), label: `${mon} ${year}` };
-        } catch {
-            return null;
-        }
-    })();
-    const issueLine = issueMonth
-        ? `VOL. 01 · NO. ${issueMonth.no} — ${issueMonth.label} ISSUE`
-        : 'VOL. 01 · SPECIAL ISSUE';
-    // Whole words only, up to ~28 chars (never cut mid-word).
-    const titleSlug = (() => {
-        let slug = '';
-        for (const w of (ev.title ?? '').toUpperCase().split(/[^A-Z0-9]+/).filter(Boolean)) {
-            const next = slug ? `${slug}-${w}` : w;
-            if (next.length > 28) break;
-            slug = next;
-        }
-        return slug;
-    })();
-    const issuePath = `ROLLOUT.CLUB / EVENTS / ${titleSlug || ev.id.slice(0, 8).toUpperCase()}`;
 
     // Hero ADDRESS shows only the address itself: location_detail often
     // carries notes after it ("… — parking lot. Meet 9:00 …"), so cut at the
@@ -769,283 +741,418 @@ export default async function PublicEventPage({
               }
             : null;
 
+    // Glide layout (docs/design/GLIDE.md; board G2 "Web event page"): the cover
+    // with a floating title card, Details + Route cards below it, and a sticky
+    // ticket panel + host card on the right. Every value is the row's own.
+    const when = eventDateParts(ev.start_at, ev.time_zone);
+    const place = placeName(ev.location_name);
+    const attending = ev.attending_count ?? 0;
+    const hasMeetPoint = ev.lat != null && ev.lng != null;
+    const hasMapCard = hasRoutePlan || hasMeetPoint;
+    const destinationLabel = routePoints.some((p) => p.kind === 'destination') ? (ev.destination_name ?? 'Destination') : null;
+    // Start → finish only: stop names often carry notes, and the Route card
+    // lists every stop anyway.
+    const routeLine = hasRoutePlan
+        ? [place ?? 'Start', destinationLabel ?? routeStops[routeStops.length - 1]?.name].filter(Boolean).join(' → ')
+        : null;
+    const manageHref = shopSlug && canManageThisEvent ? `/shop/${shopSlug}/events/${ev.id}` : null;
+    const ic = { size: 22, strokeWidth: 1.5, 'aria-hidden': true } as const;
+    const chipIc = { size: 15, strokeWidth: 2, 'aria-hidden': true } as const;
+
     return (
-        <>
-            {/* STATUS BANNER — cancelled or past */}
-            {isCancelled ? (
-                <div
-                    style={{
-                        background: 'rgba(200,60,60,0.14)',
-                        borderBottom: '1px solid rgba(220,80,80,0.5)',
-                        color: '#ff8f8f',
-                        textAlign: 'center',
-                        padding: '12px 16px',
-                        fontFamily: 'var(--font-display)',
-                        fontSize: 12,
-                        letterSpacing: 'var(--track-wider)',
-                    }}
-                >
-                    <X /> THIS MEET HAS BEEN CANCELLED
-                </div>
-            ) : isPast ? (
-                <div
-                    style={{
-                        background: 'var(--bg-2)',
-                        borderBottom: '1px solid var(--line)',
-                        color: 'var(--text-2)',
-                        textAlign: 'center',
-                        padding: '12px 16px',
-                        fontFamily: 'var(--font-display)',
-                        fontSize: 12,
-                        letterSpacing: 'var(--track-wider)',
-                    }}
-                >
-                    <Dot /> THIS MEET HAS ENDED · RSVPS ARE CLOSED
-                </div>
-            ) : null}
-
-
-            {/* ANNOUNCEMENTS — above the hero so a postponement is the first thing read */}
-            <AnnouncementBar announcements={notices} />
-
-            {/* COVER HERO */}
-            <EventCoverHero
-                title={(ev.title ?? 'Car meet').toUpperCase()}
-                code={ev.code}
-                isOfficial={!!ev.is_official}
-                coverUrl={coverUrl}
-                isCancelled={isCancelled}
-                dateLabel={formatDate(ev.start_at, ev.time_zone)}
-                locationName={ev.location_name ?? 'Location TBA'}
-                address={heroAddress}
-                hostName={hostName}
-                hostHandle={hostHandle}
-                hostVerified={hostVerified}
-                coHostChips={coHostChips}
-                tags={ev.tags ?? []}
-                startAt={ev.start_at}
-                rsvpOpen={rsvpOpen}
-                issueLine={issueLine}
-                issuePath={issuePath}
-                posterUrl={posterUrl}
-            />
-
-            <div className={styles.page}>
-                {/* STATS */}
-                <section style={{ background: 'var(--bg-1)', borderBottom: '1px solid var(--line)', padding: '32px 0' }}>
-                    <div className="container">
-                        <StatBand attending={ev.attending_count ?? 0} capacity={ev.capacity} spotsLeft={spotsLeft} />
+        <div className="glide glide-page">
+            <div className="g-wrap">
+                {/* STATUS — cancelled or past */}
+                {isCancelled || isPast ? (
+                    <div className="g-ev-notes">
+                        <p className="g-note" role="status">
+                            {isCancelled ? <CircleX size={20} strokeWidth={2} aria-hidden="true" /> : <CircleDot size={20} strokeWidth={2} aria-hidden="true" />}
+                            {isCancelled ? 'This meet has been cancelled.' : 'This meet has ended. RSVPs are closed.'}
+                        </p>
                     </div>
-                </section>
-
-                {/* SPONSORS */}
-                {sponsors.length > 0 ? (
-                    <section className={`section ${styles.section}`}>
-                        <div className="container">
-                            <div className={styles.sectionEyebrow}>／ SPONSORS</div>
-                            <SponsorsSection sponsors={sponsors} />
-                        </div>
-                    </section>
                 ) : null}
 
-                {/* RSVP / TICKET CARD */}
-                <section className={`section ${styles.section}`} style={{ textAlign: 'center' }}>
-                    <div className="container" style={{ display: 'flex', flexDirection: 'column', gap: 26, alignItems: 'center' }}>
-                        <div className={styles.sectionEyebrow} style={{ width: '100%', maxWidth: isTiered ? undefined : 760 }}>
-                            ／ {isTiered ? 'RESERVE' : 'RSVP'}
+                {/* ANNOUNCEMENTS — above the cover so a postponement is the first thing read */}
+                <AnnouncementBar announcements={notices} variant="card" />
+
+                <div className="g-ev">
+                    <div className="g-ev-main">
+                        {/* COVER */}
+                        <div className="g-ev-hero-wrap">
+                            <section
+                                className={`g-ev-hero${posterUrl ? ' is-poster' : ''}${isCancelled ? ' is-cancelled' : ''}`}
+                                aria-labelledby="ev-title"
+                            >
+                                {/* eslint-disable-next-line @next/next/no-img-element -- same plain-<img> approach the page always used */}
+                                <img src={posterUrl ?? coverUrl} alt={posterUrl ? `${ev.title ?? 'Event'} poster` : ''} fetchPriority="high" />
+                                <div className="g-ev-hl g-fp g-edge">
+                                    <h1 id="ev-title">{ev.title ?? 'Car meet'}</h1>
+                                    {hostName ? (
+                                        <p className="g-host">
+                                            {hostHandle ? <Link href={`/u/${hostHandle}`}>{hostName}</Link> : hostName}
+                                            {hostVerified ? <BadgeCheck size={17} strokeWidth={2} role="img" aria-label="Verified host" /> : null}
+                                            {hostHandle ? <span>@{hostHandle}</span> : null}
+                                            {coHostChips.map((c) => (
+                                                <span key={c.name}>
+                                                    {' '}
+                                                    with {c.handle ? <Link href={`/u/${c.handle}`}>@{c.handle}</Link> : c.name}
+                                                </span>
+                                            ))}
+                                        </p>
+                                    ) : null}
+                                    <div className="g-chips">
+                                        {when ? (
+                                            <Chip large icon={<CalendarDays {...chipIc} />}>
+                                                {when.dow.charAt(0) + when.dow.slice(1).toLowerCase()} {when.mon} <span className="g-w">{when.day}</span>
+                                            </Chip>
+                                        ) : null}
+                                        {hasRoutePlan ? (
+                                            <Chip large icon={<Route {...chipIc} />}>
+                                                <span className="g-w">{routeStops.length}</span> {routeStops.length === 1 ? 'stop' : 'stops'}
+                                            </Chip>
+                                        ) : null}
+                                        {attending > 0 ? (
+                                            <Chip large icon={<Users {...chipIc} />}>
+                                                <span className="g-w">{attending}</span> going
+                                            </Chip>
+                                        ) : null}
+                                    </div>
+                                </div>
+                                <span className="g-ev-tag g-fp">
+                                    <Flag size={18} strokeWidth={1.75} aria-hidden="true" />
+                                    <span>
+                                        {eventTypeLabel(ev.type)}
+                                        {place ? ` · ${place}` : ''}
+                                    </span>
+                                </span>
+                            </section>
                         </div>
-                        {rsvpOpen && isTiered && tiers.length > 0 ? (
-                            // Tier events: each tier card IS the coupon (see TiersSection /
-                            // .tierCard) — no outer TicketCard frame, so no double border.
-                            <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 20, alignItems: 'center' }}>
-                                    <TiersSection
+
+                        <div className={`g-ev-low${hasMapCard ? '' : ' is-single'}`}>
+                            {/* DETAILS */}
+                            <Card as="section" aria-labelledby="ev-details">
+                                <h2 className="g-card-h" id="ev-details">
+                                    Details
+                                </h2>
+                                <ul className="g-rows">
+                                    <Row
+                                        icon={<CalendarDays {...ic} />}
+                                        label={when?.long ?? 'Date TBA'}
+                                        sub={when ? `${when.clock} ${when.zone}` : undefined}
+                                        trailing={
+                                            calUrl ? (
+                                                <a className="g-link" href={calUrl} target="_blank" rel="noopener noreferrer">
+                                                    Add to calendar
+                                                </a>
+                                            ) : null
+                                        }
+                                    />
+                                    <Row
+                                        icon={<MapPin {...ic} />}
+                                        label={place ?? 'Location TBA'}
+                                        sub={ev.location_detail ?? undefined}
+                                        trailing={
+                                            mapsUrl ? (
+                                                <a className="g-link" href={mapsUrl} target="_blank" rel="noopener noreferrer">
+                                                    Directions
+                                                </a>
+                                            ) : null
+                                        }
+                                    />
+                                    {routeLine ? (
+                                        <Row
+                                            icon={<Route {...ic} />}
+                                            label={`${routeStops.length} planned ${routeStops.length === 1 ? 'stop' : 'stops'}`}
+                                            sub={routeLine}
+                                        />
+                                    ) : null}
+                                    {ev.capacity != null ? (
+                                        <Row
+                                            icon={<Ticket {...ic} />}
+                                            label={`${attending} of ${ev.capacity} spots`}
+                                            trailing={
+                                                <SpotsBar value={ev.capacity ? attending / ev.capacity : 0} label={`${attending} of ${ev.capacity} spots taken`} />
+                                            }
+                                        />
+                                    ) : null}
+                                </ul>
+                                {ev.description ? <p className="g-about">{ev.description}</p> : null}
+                                {(ev.tags ?? []).length > 0 ? (
+                                    <div className="g-chips g-tags" role="list" aria-label="Event tags">
+                                        {(ev.tags ?? []).slice(0, 8).map((tag) => (
+                                            <span key={tag} role="listitem">
+                                                <Chip>{tag}</Chip>
+                                            </span>
+                                        ))}
+                                    </div>
+                                ) : null}
+                                <div className="g-card-foot">
+                                    {rsvpOpen ? (
+                                        <a className="g-link" href={`/event/${ev.id}/ics`}>
+                                            <Download size={16} strokeWidth={2} aria-hidden="true" />
+                                            Download .ics
+                                        </a>
+                                    ) : null}
+                                    {manageHref ? (
+                                        <Link className="g-link" href={manageHref}>
+                                            <Settings2 size={16} strokeWidth={2} aria-hidden="true" />
+                                            Manage this event
+                                        </Link>
+                                    ) : null}
+                                </div>
+                            </Card>
+
+                            {/* ROUTE (host-planned itinerary) or MEET POINT */}
+                            {hasMapCard ? (
+                                <Card as="section" aria-labelledby="ev-route">
+                                    <h2 className="g-card-h" id="ev-route">
+                                        {hasRoutePlan ? 'Route' : 'Meet point'}
+                                    </h2>
+                                    <div className="g-map">
+                                        {hasRoutePlan ? (
+                                            <RouteMapLoader
+                                                glide
+                                                points={routePoints}
+                                                polyline={routePolyline?.coords ?? routePoints.map((p) => [p.lat, p.lng] as [number, number])}
+                                            />
+                                        ) : (
+                                            <RouteMapLoader
+                                                glide
+                                                meetOnly
+                                                points={[
+                                                    {
+                                                        kind: 'start',
+                                                        label: '',
+                                                        name: ev.location_name ?? 'Meet point',
+                                                        lat: ev.lat as number,
+                                                        lng: ev.lng as number,
+                                                    },
+                                                ]}
+                                                polyline={[]}
+                                            />
+                                        )}
+                                    </div>
+                                    {hasRoutePlan ? (
+                                        <ol className="g-legs" aria-label="Stops">
+                                            <li>
+                                                <span className="g-n" aria-hidden="true">
+                                                    S
+                                                </span>
+                                                <span style={{ minWidth: 0 }}>
+                                                    <b>{place ?? 'Start'}</b>
+                                                    <small>Meet{when ? ` · ${when.clock}` : ''}</small>
+                                                </span>
+                                            </li>
+                                            {routeStops.map((st, i) => (
+                                                <li key={`${st.seq}-${i}`}>
+                                                    <span className="g-n" aria-hidden="true">
+                                                        {i + 1}
+                                                    </span>
+                                                    <span style={{ minWidth: 0 }}>
+                                                        <b>{st.name}</b>
+                                                        <small>
+                                                            {st.etaLocal ?? `Stop ${i + 1}`}
+                                                            {st.dwellMin != null ? ` · ${st.dwellMin} min` : ''}
+                                                        </small>
+                                                    </span>
+                                                </li>
+                                            ))}
+                                            {destinationLabel ? (
+                                                <li>
+                                                    <span className="g-n" aria-hidden="true">
+                                                        F
+                                                    </span>
+                                                    <span style={{ minWidth: 0 }}>
+                                                        <b>{destinationLabel}</b>
+                                                        <small>Finish</small>
+                                                    </span>
+                                                </li>
+                                            ) : null}
+                                        </ol>
+                                    ) : null}
+                                    <div className="g-card-foot">
+                                        {routeGoogleMaps?.url ? (
+                                            <a className="g-link" href={routeGoogleMaps.url} target="_blank" rel="noopener noreferrer">
+                                                <Navigation size={16} strokeWidth={2} aria-hidden="true" />
+                                                Open the route in Google Maps
+                                            </a>
+                                        ) : null}
+                                        <Link className="g-link" href="/meets/map">
+                                            <MapIcon size={16} strokeWidth={2} aria-hidden="true" />
+                                            Meets map
+                                        </Link>
+                                    </div>
+                                </Card>
+                            ) : null}
+                        </div>
+
+                        {attendees.length > 0 || attending > 0 || sponsors.length > 0 ? (
+                            <div className="g-ev-more">
+                                {/* WHO'S GOING */}
+                                {attendees.length > 0 || attending > 0 ? (
+                                    <Card as="section" aria-labelledby="ev-going">
+                                        <h2 className="g-card-h" id="ev-going">
+                                            Who&apos;s going
+                                        </h2>
+                                        <div className="g-crew">
+                                            {attendees.map((a) => (
+                                                <Link key={a.profile_id} href={`/u/${a.handle}`}>
+                                                    <span
+                                                        className="g-av"
+                                                        aria-hidden="true"
+                                                        style={a.avatar_url ? { backgroundImage: `url(${a.avatar_url})` } : undefined}
+                                                    >
+                                                        {a.avatar_url ? null : initials(a.display_name, a.handle)}
+                                                    </span>
+                                                    @{a.handle}
+                                                </Link>
+                                            ))}
+                                            {remaining > 0 ? <span className="g-more">+{remaining} more</span> : null}
+                                            {attendees.length === 0 ? <span className="g-more">{attending} going</span> : null}
+                                        </div>
+                                    </Card>
+                                ) : null}
+
+                                {/* SPONSORS */}
+                                {sponsors.length > 0 ? (
+                                    <Card as="section" aria-labelledby="ev-sponsors">
+                                        <h2 className="g-card-h" id="ev-sponsors">
+                                            Sponsors
+                                        </h2>
+                                        <div style={{ padding: '14px 20px 20px' }}>
+                                            <SponsorsSection sponsors={sponsors} />
+                                        </div>
+                                    </Card>
+                                ) : null}
+                            </div>
+                        ) : null}
+                    </div>
+
+                    <aside className="g-ev-side" aria-label="Tickets and host">
+                        {/* TICKET PANEL */}
+                        <Card as="section" className="g-panel" aria-labelledby="ev-panel">
+                            <div className="g-panel-h">
+                                {when ? <DateRoundel top={when.dow} day={when.day} label={when.long} /> : null}
+                                <span className="g-t">
+                                    <b id="ev-panel">
+                                        {rsvpOpen ? (isTiered ? 'Get your ticket' : 'Get your spot') : isCancelled ? 'Cancelled' : 'RSVPs closed'}
+                                    </b>
+                                    {rsvpOpen ? (
+                                        <small>
+                                            {ev.start_at ? <Countdown startAt={ev.start_at} variant="glide" /> : null}
+                                            {spotsLeft != null ? (
+                                                <>
+                                                    {ev.start_at ? ' · ' : ''}
+                                                    <span className="g-w">{spotsLeft}</span> {spotsLeft === 1 ? 'spot' : 'spots'} left
+                                                </>
+                                            ) : null}
+                                        </small>
+                                    ) : null}
+                                </span>
+                            </div>
+                            <div className="g-panel-body">
+                                {rsvpOpen && isTiered && tiers.length > 0 ? (
+                                    // The tier picker keeps its own (pre-Glide) markup for now;
+                                    // the legacy bridge in glide.css gives it the palette.
+                                    <div className="g-panel-legacy">
+                                        <TiersSection
+                                            eventId={ev.id}
+                                            tiers={tiers}
+                                            eventStartAt={ev.start_at}
+                                            eventTimeZone={ev.time_zone}
+                                            reservationPolicy={ev.reservation_policy}
+                                            isLoggedIn={isLoggedIn}
+                                            initialState={myState}
+                                            initialTierId={myRsvp.tierId}
+                                            initialSpotNo={mySpotNo}
+                                            initialWaitlistPosition={myWaitPos}
+                                            initialHoldExpiresAt={myRsvp.holdExpiresAt}
+                                            nextPath={rsvpReturnPath}
+                                            inviteToken={inviteToken}
+                                            ticketsEnabled={ticketsEnabled}
+                                            hasTicketOrder={myTickets.some((t) => !isDeadTicketStatus(t.status))}
+                                        />
+                                        {myTickets.length > 0 ? (
+                                            <MyTicketsPanel
+                                                eventId={ev.id}
+                                                tickets={myTickets}
+                                                reservationPolicy={ev.reservation_policy}
+                                                eventStartAt={ev.start_at}
+                                                eventTimeZone={ev.time_zone}
+                                            />
+                                        ) : null}
+                                    </div>
+                                ) : rsvpOpen ? (
+                                    <RsvpControls
                                         eventId={ev.id}
-                                        tiers={tiers}
-                                        eventStartAt={ev.start_at}
-                                        eventTimeZone={ev.time_zone}
-                                        reservationPolicy={ev.reservation_policy}
                                         isLoggedIn={isLoggedIn}
                                         initialState={myState}
-                                        initialTierId={myRsvp.tierId}
                                         initialSpotNo={mySpotNo}
                                         initialWaitlistPosition={myWaitPos}
-                                        initialHoldExpiresAt={myRsvp.holdExpiresAt}
                                         nextPath={rsvpReturnPath}
                                         inviteToken={inviteToken}
-                                        ticketsEnabled={ticketsEnabled}
-                                        hasTicketOrder={myTickets.some((t) => !isDeadTicketStatus(t.status))}
                                     />
-                                    {myTickets.length > 0 ? (
-                                        <MyTicketsPanel eventId={ev.id} tickets={myTickets} reservationPolicy={ev.reservation_policy} eventStartAt={ev.start_at} eventTimeZone={ev.time_zone} />
-                                    ) : null}
+                                ) : (
+                                    <p className="g-panel-closed">{isCancelled ? 'This meet was cancelled.' : 'This meet has already happened.'}</p>
+                                )}
+                                {rsvpOpen && isTiered ? (
+                                    <p className="g-panel-line">
+                                        <Lock size={16} strokeWidth={1.75} aria-hidden="true" />
+                                        No app needed. Payments by Stripe.
+                                    </p>
+                                ) : null}
                             </div>
-                        ) : rsvpOpen ? (
-                            <TicketCard>
-                                <RsvpControls
-                                    eventId={ev.id}
-                                    isLoggedIn={isLoggedIn}
-                                    initialState={myState}
-                                    initialSpotNo={mySpotNo}
-                                    initialWaitlistPosition={myWaitPos}
-                                    nextPath={rsvpReturnPath}
-                                    inviteToken={inviteToken}
-                                />
-                            </TicketCard>
-                        ) : (
-                            <p
-                                className="text-muted"
-                                style={{ fontSize: 12, fontFamily: 'var(--font-display)', letterSpacing: 'var(--track-wider)', margin: 0 }}
-                            >
-                                {isCancelled ? 'THIS MEET WAS CANCELLED' : 'THIS MEET HAS ALREADY HAPPENED'}
-                            </p>
-                        )}
+                            <ShareBar url={shareUrl} title={shareTitle} />
+                        </Card>
 
-                        <ShareBar url={shareUrl} title={shareTitle} />
-                    </div>
-                </section>
-
-                {/* THE COVER STORY — event brief */}
-                {ev.description ? (
-                    <section className={`section ${styles.section}`}>
-                        <div className="container container-narrow">
-                            <div className={styles.sectionEyebrow}>／ THE COVER STORY</div>
-                            <CoverStoryBrief description={ev.description} />
-                        </div>
-                    </section>
-                ) : null}
-
-                {/* CONVOY — attendee preview (existing feature, not in the mockup's
-                    section list; placed right after the ticket card) */}
-                {attendees.length > 0 || (ev.attending_count ?? 0) > 0 ? (
-                    <section className={`section ${styles.section}`} style={{ background: 'var(--bg-1)' }}>
-                        <div className="container">
-                            <div className={styles.sectionEyebrow}>／ CONVOY</div>
-                            <h2 className={styles.sectionTitle}>WHO&apos;S GOING</h2>
-                            <ConvoySection attendees={attendees} attendingCount={ev.attending_count ?? 0} remaining={remaining} />
-                        </div>
-                    </section>
-                ) : null}
-
-                {/* LOCATION — meet-point map (existing feature; kept ahead of the
-                    planned-itinerary ROUTE section below, which only renders when
-                    the host actually planned stops) */}
-                <section className={`section ${styles.section}`}>
-                    <div className="container">
-                        <div className={styles.sectionEyebrow}>／ LOCATION</div>
-                        <h2 className={styles.sectionTitle}>{(ev.location_name ?? 'TBA').toUpperCase()}</h2>
-                        {ev.location_detail ? <p className="text-dim" style={{ fontSize: 14, margin: '0 0 18px' }}>{ev.location_detail}</p> : null}
-
-                        {/* One map style everywhere: a planned route already shows the
-                            meet point (S) on the ROUTE map below, so no second map here;
-                            otherwise the same dark MapLibre map with one gold meet pin. */}
-                        {ev.lat != null && ev.lng != null && !hasRoutePlan ? (
-                            <div className="corner-wrap" style={{ position: "relative", marginTop: 12, aspectRatio: "16 / 7", minHeight: 260, maxWidth: "100%", background: "var(--bg-2)", border: "1px solid var(--line)", overflow: "hidden" }}>
-                                <span className="corner-bottom-left" />
-                                <span className="corner-bottom-right" />
-                                <RouteMapLoader
-                                    meetOnly
-                                    points={[{ kind: "start", label: "", name: ev.location_name ?? "Meet point", lat: ev.lat, lng: ev.lng }]}
-                                    polyline={[]}
-                                />
-                            </div>
-                        ) : null}
-                        {hasRoutePlan && ev.lat != null && ev.lng != null ? (
-                            <p className="text-dim" style={{ fontSize: 12, margin: "4px 0 0", fontFamily: "var(--font-display)", letterSpacing: "var(--track-wider)" }}>
-                                MEET POINT = S ON THE ROUTE MAP BELOW
-                            </p>
-                        ) : null}
-
-                        {hasDrawnRoute(ev) ? (
-                            <div className="map-stage map-stage-loc corner-wrap" style={{ marginTop: 20 }}>
-                                <span className="corner-bottom-left" />
-                                <span className="corner-bottom-right" />
-                                <StylisedMap crop="loc" route pins={[{ x: 940, y: 462, hi: true }]} className="map-stage-desktop" />
-                                <StylisedMap crop="loc-p" route pins={[{ x: 940, y: 462, hi: true }]} className="map-stage-phone" />
-                                <div className="map-key mono-row">
-                                    <i>
-                                        <u />
-                                        MEET POINT
-                                    </i>
-                                    <i className="k-rt">
-                                        <u />
-                                        ROUTE
-                                    </i>
+                        {/* HOST */}
+                        {hostName ? (
+                            <Card as="section" edge className="g-hostcard" aria-labelledby="ev-host">
+                                <div className="g-hostcard-h">
+                                    <span className="g-av g-av--lg" aria-hidden="true">
+                                        {initials(hostName, hostHandle)}
+                                    </span>
+                                    <span style={{ minWidth: 0 }}>
+                                        <b id="ev-host">
+                                            {hostName}
+                                            {hostVerified ? <BadgeCheck size={18} strokeWidth={2} role="img" aria-label="Verified host" /> : null}
+                                        </b>
+                                        <small>
+                                            {hostHandle ? `@${hostHandle}` : 'Host'}
+                                            {hostVerified ? ' · verified host' : ''}
+                                        </small>
+                                    </span>
                                 </div>
-                            </div>
+                                {coHostChips.length > 0 ? (
+                                    <div className="g-chips">
+                                        {coHostChips.map((c) =>
+                                            c.handle ? (
+                                                <Chip key={c.name} href={`/u/${c.handle}`}>
+                                                    With {c.name}
+                                                </Chip>
+                                            ) : (
+                                                <Chip key={c.name}>With {c.name}</Chip>
+                                            ),
+                                        )}
+                                    </div>
+                                ) : null}
+                                {hostHandle ? (
+                                    <div className="g-hostcard-act">
+                                        <SecButton href={`/u/${hostHandle}`}>
+                                            <UserRound size={18} strokeWidth={1.75} aria-hidden="true" />
+                                            View profile
+                                        </SecButton>
+                                    </div>
+                                ) : null}
+                            </Card>
                         ) : null}
-
-                        {mapsUrl ? (
-                            <div style={{ marginTop: 16, display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-                                <a
-                                    className="text-link"
-                                    href={mapsUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    style={{ fontSize: 12, fontFamily: 'var(--font-display)', letterSpacing: 'var(--track-wider)', textDecoration: 'none', borderBottom: '1px solid var(--line-mid)', paddingBottom: 2 }}
-                                >
-                                    OPEN IN GOOGLE MAPS <ChevronRight />
-                                </a>
-                                <Link
-                                    className="text-link"
-                                    href="/meets/map"
-                                    style={{ fontSize: 12, fontFamily: 'var(--font-display)', letterSpacing: 'var(--track-wider)', textDecoration: 'none', borderBottom: '1px solid var(--line-mid)', paddingBottom: 2 }}
-                                >
-                                    VIEW MEETS MAP <ChevronRight />
-                                </Link>
-                            </div>
-                        ) : null}
-                    </div>
-                </section>
-
-                {/* ROUTE — host-planned itinerary (mockup's "feature story" route spread) */}
-                {hasRoutePlan ? (
-                    <section className={`section ${styles.section}`}>
-                        <div className="container">
-                            <div className={styles.sectionEyebrow}>／ ROUTE</div>
-                            <h2 className={styles.sectionTitle}>PLANNED ITINERARY</h2>
-                            <RouteSection
-                                routeStops={routeStops}
-                                routePoints={routePoints}
-                                polyline={routePolyline?.coords ?? routePoints.map((p) => [p.lat, p.lng] as [number, number])}
-                                startLabel={formatDate(ev.start_at, ev.time_zone)}
-                                startName={ev.location_name ?? 'Start'}
-                                destinationName={ev.destination_name}
-                                hasDestination={routePoints.some((p) => p.kind === 'destination')}
-                                googleMapsUrl={routeGoogleMaps?.url ?? null}
-                            />
-                        </div>
-                    </section>
-                ) : null}
-
-                {/* HOST */}
-                {hostName ? (
-                    <section className={`section ${styles.section}`} style={{ background: 'var(--bg-1)' }}>
-                        <div className="container container-narrow">
-                            <div className={styles.sectionEyebrow}>／ HOSTED BY</div>
-                            <HostBlock hostName={hostName} hostHandle={hostHandle} hostVerified={hostVerified} />
-                        </div>
-                    </section>
-                ) : null}
-
-                {/* CALENDAR / SHARE ACTIONS */}
-                <section className={`section ${styles.section}`} style={{ textAlign: 'center' }}>
-                    <div className="container" style={{ display: 'flex', flexDirection: 'column', gap: 18, alignItems: 'center' }}>
-                        <div className={styles.sectionEyebrow} style={{ justifyContent: 'center', width: '100%', maxWidth: 500 }}>
-                            ／ SAVE THE DATE
-                        </div>
-                        <ActionsToolbar
-                            calUrl={calUrl}
-                            icsUrl={rsvpOpen ? `/event/${ev.id}/ics` : null}
-                            manageHref={shopSlug && canManageThisEvent ? `/shop/${shopSlug}/events/${ev.id}` : null}
-                        />
-                    </div>
-                </section>
+                    </aside>
+                </div>
             </div>
             {/* Structured data LAST: Next picks the segment's FIRST element to decide
                 whether to scroll to the top on navigation, and an invisible <script>
                 always reads as "already in view", so the page kept the previous scroll. */}
             {jsonLd ? <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdHtml(jsonLd) }} /> : null}
-
-        </>
+        </div>
     );
 }
