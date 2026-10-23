@@ -276,8 +276,19 @@ body:has(.glide-page) :focus-visible {
 .g-btn--sm { height: 52px; font-size: 14px; padding-left: 22px; }
 .g-btn--sm .g-btn-k { width: 40px; height: 40px; }
 .g-btn--block { display: flex; width: 100%; }
+/* Off state: not a faded accent (that read as "loading"), a flat grey pill
+   with a quiet knob. Full opacity keeps the label legible; the missing accent
+   fill, lift and arrow nudge say it is off. */
 .g-btn:disabled,
-.g-btn[aria-disabled='true'] { opacity: 0.6; cursor: default; }
+.g-btn[aria-disabled='true'] {
+  background: var(--surface-2);
+  color: var(--ink-2);
+  box-shadow: none;
+  cursor: not-allowed;
+}
+.g-btn:disabled .g-btn-k,
+.g-btn[aria-disabled='true'] .g-btn-k { background: var(--card); color: var(--ink-3); transform: none; }
+.g-btn[aria-busy='true'] { cursor: progress; }
 
 /* Secondary: outlined pill. */
 .g-sec {
@@ -303,7 +314,13 @@ body:has(.glide-page) :focus-visible {
 .g-sec:hover { background: var(--surface); }
 .g-sec[aria-pressed='true'] { background: var(--tint); color: var(--on-tint); box-shadow: none; }
 .g-sec--ink { color: var(--ink); }
-.g-sec:disabled { opacity: 0.6; cursor: default; }
+.g-sec:disabled,
+.g-sec[aria-disabled='true'] {
+  background: var(--surface-2);
+  color: var(--ink-2);
+  box-shadow: none;
+  cursor: not-allowed;
+}
 
 /* Text link with an icon. */
 .g-link {
