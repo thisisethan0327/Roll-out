@@ -41,6 +41,7 @@
 .shell:global(.shop-layout) {
   display: grid;
   grid-template-columns: var(--sh-side) minmax(0, 1fr);
+  align-content: start;
   min-height: 100dvh;
   background: var(--surface);
 }
@@ -944,7 +945,7 @@
   border-radius: 18px;
   background: var(--surface) !important;
 }
-.shell [style*='letter-spacing:var(--track-widest)']:not(:is(:global(.invoice-doc), :global(.workorder-doc)) *) {
+.shell [style*='letter-spacing:var(--track-widest)']:not(:is(:global(.invoice-doc), :global(.workorder-doc), :global(.g-card)) *) {
   font-family: var(--disp) !important;
   font-weight: 600;
   font-size: 17px !important;

@@ -14,6 +14,7 @@ import { AdminShell } from '@/app/admin/AdminShell';
 import { brandForSlug, brandStyle, ROLLOUT_BRAND } from '@/lib/tenant-brand';
 import { ROLLOUT_ORIGIN, tenantForHost } from '@/lib/tenant-hosts';
 import { AuthHashGuard } from '@/components/auth/AuthHashGuard';
+import { LEGACY_THEME_COOKIE, THEME_COOKIE } from '@/lib/theme';
 import { ArrowLeftRight, CircleX, Clock, ShieldCheck } from 'lucide-react';
 import shell from '@/components/glide-shop/shell.module.css';
 
@@ -140,10 +141,22 @@ export default async function ShopLayout({
         }
     }
 
-    // The legacy console theme cookie. Glide follows the site Appearance
-    // (stamped on <html>), so only the admin shell's own chrome still reads it.
-    const shopTheme =
-        cookieStore.get('rollout_shop_theme')?.value === 'light' ? 'light' : 'dark';
+    // Glide follows the site Appearance (rollout-theme / rollout-dark, stamped
+    // on <html> before first paint by the root layout). The console's own
+    // pre-Glide cookie is read only as a fallback: when somebody has never made
+    // a site-wide choice but did pick light or dark here, the console keeps it
+    // (the same way the root layout falls back to the old rollout_theme).
+    const legacyShopCookie = cookieStore.get('rollout_shop_theme')?.value;
+    const shopTheme = legacyShopCookie === 'light' ? 'light' : 'dark';
+    const hasSiteChoice = !!(cookieStore.get(THEME_COOKIE)?.value || cookieStore.get(LEGACY_THEME_COOKIE)?.value);
+    const legacyThemeScript =
+        !hasSiteChoice && (legacyShopCookie === 'light' || legacyShopCookie === 'dark') ? (
+            <script
+                dangerouslySetInnerHTML={{
+                    __html: `document.documentElement.setAttribute('data-theme','${legacyShopCookie}')`,
+                }}
+            />
+        ) : null;
 
     const brand = brandForSlug(shop.slug);
     const brandCss = brandStyle(brand);
@@ -228,6 +241,7 @@ export default async function ShopLayout({
             className={`shop-layout glide ${shell.shell}`}
             data-tenant={isTenantBrand ? brand.house : undefined}
         >
+            {legacyThemeScript}
             {tenantStyle}
             {/* Strip an auth fragment wherever the broker drops somebody who was
                 already signed in — they never pass the login page, so nothing
