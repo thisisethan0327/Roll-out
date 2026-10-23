@@ -6,6 +6,7 @@ export function LoginForm() {
         <OtpLoginForm
             successPath="/admin/overview"
             redirectSuffix="/admin/login"
+            look="glide"
         />
     );
 }

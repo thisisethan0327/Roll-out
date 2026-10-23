@@ -14,6 +14,10 @@ import {
     adminRefundTicketQuoteAction,
     adminRemoveRsvpAction,
 } from './host-actions';
+import { Undo2, UserMinus } from 'lucide-react';
+import { adminStyles as a } from '@/components/glide-admin/parts';
+
+const ic = { size: 15, strokeWidth: 2, 'aria-hidden': true } as const;
 
 function usd(cents: number): string {
     return `$${(cents / 100).toFixed(2)}`;
@@ -43,7 +47,8 @@ export function TicketRefundButton({ eventId, ticketId }: { eventId: string; tic
 
     return (
         <button className="admin-action-btn danger" disabled={pending} onClick={onClick}>
-            {pending ? '…' : 'REFUND'}
+            <Undo2 {...ic} className={a.dangerIc} />
+            {pending ? 'Working…' : 'Refund'}
         </button>
     );
 }
@@ -94,11 +99,13 @@ export function RsvpRowActions({
 
     return paid ? (
         <button className="admin-action-btn danger" disabled={pending} onClick={refund}>
-            {pending ? '…' : 'REFUND'}
+            <Undo2 {...ic} className={a.dangerIc} />
+            {pending ? 'Working…' : 'Refund'}
         </button>
     ) : (
         <button className="admin-action-btn muted" disabled={pending} onClick={remove}>
-            {pending ? '…' : 'REMOVE'}
+            <UserMinus {...ic} />
+            {pending ? 'Working…' : 'Remove'}
         </button>
     );
 }
