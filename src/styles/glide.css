@@ -668,6 +668,10 @@ a.g-chip:hover { box-shadow: inset 0 0 0 1.5px var(--link); }
   font-weight: 700;
   font-size: 19px;
   line-height: 1.3;
+  /* Sentence case: the title is a question naming an amount and a @handle,
+     which must read exactly as written (bare Glide headings are uppercase). */
+  text-transform: none;
+  letter-spacing: 0;
   color: var(--title);
   overflow-wrap: anywhere;
 }

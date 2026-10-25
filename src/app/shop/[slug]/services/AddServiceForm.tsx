@@ -120,7 +120,13 @@ export function AddServiceForm({ shopId }: { shopId: number }) {
                     }
                 />
                 <form
-                    action={onSubmit}
+                    // onSubmit, not action=: React resets an action form after
+                    // every submit, so a failed save used to wipe what was typed.
+                    onSubmit={(e) => {
+                        e.preventDefault();
+                        if (live.current.pending) return;
+                        onSubmit(new FormData(e.currentTarget));
+                    }}
                     className={cs.cardBody}
                     onInput={() => setDirty(true)}
                     onChange={() => setDirty(true)}
