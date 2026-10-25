@@ -247,6 +247,7 @@ export default async function ShopInboxPage({
                                                 appointmentId={a.id}
                                                 shopId={shop.shopId}
                                                 status={a.status}
+                                                handle={a.requester?.handle ?? null}
                                             />
                                         </td>
                                     </tr>
