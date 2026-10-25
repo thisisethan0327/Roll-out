@@ -77,7 +77,6 @@ export default async function StaffPage({
                         <CardEmpty
                             icon={<Users size={22} strokeWidth={1.75} />}
                             title="No staff yet"
-                            body="Add your team by email. They sign in with that address and see the console for their role."
                         />
                     ) : (
                         <div className={cs.tblWrap}>

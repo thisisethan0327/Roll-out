@@ -7,6 +7,7 @@ import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { CircleAlert, CircleCheck, Info } from 'lucide-react';
 import cs from '@/components/glide-console/console.module.css';
+import { EmptyState, type EmptyStateProps } from '@/components/glide/EmptyState';
 import b from './biz.module.css';
 
 export { b as bizStyles };
@@ -69,16 +70,7 @@ export function FilterLink({ href, on, children }: { href: string; on: boolean; 
     );
 }
 
-/** An empty table / list body inside a card. */
-export function CardEmpty({ icon, title, body, action }: { icon: ReactNode; title: string; body?: ReactNode; action?: ReactNode }) {
-    return (
-        <div className={cs.empty}>
-            <span className="g-ic" aria-hidden="true">
-                {icon}
-            </span>
-            <b>{title}</b>
-            {body ? <p>{body}</p> : null}
-            {action ? <div className={cs.emptyAct}>{action}</div> : null}
-        </div>
-    );
+/** An empty table / list body inside a card: the kit EmptyState (no body prop). */
+export function CardEmpty(props: EmptyStateProps) {
+    return <EmptyState {...props} look={{ root: cs.empty, act: cs.emptyAct }} />;
 }

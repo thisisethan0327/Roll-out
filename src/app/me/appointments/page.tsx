@@ -55,7 +55,6 @@ export default async function AppointmentsPage({ searchParams }: { searchParams:
                     <Empty
                         icon={<CalendarClock size={22} strokeWidth={1.75} />}
                         title="No appointment requests yet"
-                        body="Pick a shop, choose a service and a time that suits you. The request and the shop’s answer show up here."
                         action={<GlideButton href="/shops" size="sm">Find a shop</GlideButton>}
                     />
                 </Card>

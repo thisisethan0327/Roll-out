@@ -50,7 +50,6 @@ export default async function GaragePage() {
                         <Empty
                             icon={<Car size={22} strokeWidth={1.75} />}
                             title="No cars in your garage yet"
-                            body="Add your car in the Rollout app: photos, specs and build sheet. It shows up here and on your public page."
                         />
                     </Card>
                 ) : (
@@ -102,7 +101,6 @@ export default async function GaragePage() {
                     <Empty
                         icon={<Smartphone size={22} strokeWidth={1.75} />}
                         title="No posts yet"
-                        body="Posts you share from the app show up here, newest first."
                     />
                 ) : (
                     <ul className={`g-rows ${s.cardRows}`}>

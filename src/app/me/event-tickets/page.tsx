@@ -43,9 +43,7 @@ export default async function EventTicketsPage() {
                             Find a meet
                         </Link>
                     }
-                >
-                    Tickets you buy, or that someone buys for you, show up here.
-                </EmptyState>
+                />
             ) : (
                 <ul className="gt-list">
                     {tickets.map((t) => (

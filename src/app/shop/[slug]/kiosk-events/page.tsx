@@ -124,7 +124,6 @@ export default async function KioskEventsPage({
                                     colSpan={6}
                                     icon={<MonitorSmartphone size={18} strokeWidth={2} />}
                                     title={filter === 'ALL' ? 'No kiosk events yet' : `No ${FILTER_LABEL[filter].toLowerCase()} kiosk events`}
-                                    body="Promotions and events you publish here play on the shop's lobby kiosk."
                                 />
                             ) : (
                                 rows.map((e: any) => {

@@ -127,7 +127,6 @@ async function MedusaCatalog({
                     <CardEmpty
                         icon={<Package size={22} strokeWidth={1.75} />}
                         title="No products in this catalog yet"
-                        body="Products added to this shop’s store categories show up here, drafts and paused items included."
                     />
                 </section>
             ) : (

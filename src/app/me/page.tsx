@@ -125,7 +125,6 @@ export default async function MeOverview({ searchParams }: { searchParams: Promi
                             <Empty
                                 icon={<CalendarDays size={22} strokeWidth={1.75} />}
                                 title="Nothing on your calendar"
-                                body="Meets you RSVP to show up here, soonest first."
                                 action={<SecButton href="/meets">Find a meet</SecButton>}
                             />
                         ) : (
@@ -174,7 +173,6 @@ export default async function MeOverview({ searchParams }: { searchParams: Promi
                                 <Empty
                                     icon={<Wrench size={22} strokeWidth={1.75} />}
                                     title="No tickets yet"
-                                    body="When a shop opens a job for your car, it shows up here with its status."
                                 />
                             ) : (
                                 <ul className={`g-rows ${s.cardRows}`}>
@@ -211,7 +209,6 @@ export default async function MeOverview({ searchParams }: { searchParams: Promi
                                 <Empty
                                     icon={<CalendarClock size={22} strokeWidth={1.75} />}
                                     title="No appointments yet"
-                                    body="Book a shop from its page and your request lands here."
                                     action={<SecButton href="/shops">Browse shops</SecButton>}
                                 />
                             ) : (

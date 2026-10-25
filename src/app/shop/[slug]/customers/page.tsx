@@ -281,7 +281,6 @@ export default async function ShopCustomersPage({
                                         colSpan={4}
                                         icon={<Users size={18} strokeWidth={2} />}
                                         title="No Rollout members match"
-                                        body="Members appear here once they request an appointment at your shop."
                                     />
                                 ) : (
                                     rolloutVisible.map((p: any) => (
@@ -353,7 +352,6 @@ export default async function ShopCustomersPage({
                                         colSpan={5}
                                         icon={<Users size={18} strokeWidth={2} />}
                                         title="No legacy customers match"
-                                        body="Customers from tickets at this shop appear here."
                                     />
                                 ) : (
                                     legacyVisible.map((c: any) => (

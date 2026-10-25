@@ -9,6 +9,7 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { CircleCheck, CircleDashed, CircleX, Clock, Search } from 'lucide-react';
+import { EmptyState, type EmptyStateProps } from '@/components/glide/EmptyState';
 import s from './shop.module.css';
 
 export { s as shopStyles };
@@ -200,20 +201,12 @@ export function StatusChip({ status, label }: { status: string | null | undefine
     );
 }
 
-/** A full-width empty row inside a quiet table. */
-export function EmptyRow({ colSpan, icon, title, body }: { colSpan: number; icon: ReactNode; title: string; body?: ReactNode }) {
+/** A full-width empty row inside a quiet table: the kit EmptyState (no body prop). */
+export function EmptyRow({ colSpan, ...rest }: EmptyStateProps & { colSpan: number }) {
     return (
         <tr className={s.emptyRow}>
             <td colSpan={colSpan}>
-                <div className={s.tblEmpty}>
-                    <span className="g-ic g-ic--sm" aria-hidden="true">
-                        {icon}
-                    </span>
-                    <span>
-                        <b>{title}</b>
-                        {body ? <small>{body}</small> : null}
-                    </span>
-                </div>
+                <EmptyState {...rest} look={{ root: s.tblEmpty, smallIcon: true, inline: true }} />
             </td>
         </tr>
     );

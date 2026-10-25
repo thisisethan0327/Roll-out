@@ -360,7 +360,6 @@ export default async function ShopOverviewPage({
                                     colSpan={6}
                                     icon={<CircleCheck size={18} strokeWidth={2} />}
                                     title="No pending requests"
-                                    body="Everything is caught up. New booking requests land here first."
                                 />
                             ) : (
                                 s.recentPending.map((a: any) => (

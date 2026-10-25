@@ -45,7 +45,7 @@ export default async function ShopPageEditorPage({
                     <CardEmpty
                         icon={<Store size={22} strokeWidth={1.75} />}
                         title="This shop has no page profile yet"
-                        body={
+                        blocker={
                             <>
                                 Contact <a href="mailto:team@rollout.club">team@rollout.club</a> and we’ll set it up.
                             </>

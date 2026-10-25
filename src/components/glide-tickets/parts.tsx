@@ -7,6 +7,7 @@ import './tickets.css';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { Check, ChevronLeft, CircleAlert, CircleX, Clock, Minus, Plus, ShoppingBag } from 'lucide-react';
+import { EmptyState as KitEmptyState, type EmptyStateProps } from '@/components/glide/EmptyState';
 
 function cx(...parts: (string | false | null | undefined)[]): string {
     return parts.filter(Boolean).join(' ');
@@ -151,18 +152,9 @@ export function CartPill({ count }: { count: number }) {
     );
 }
 
-/** Empty state: icon roundel, heading, line, optional action. */
-export function EmptyState({ icon, title, children, action }: { icon: ReactNode; title: string; children?: ReactNode; action?: ReactNode }) {
-    return (
-        <div className="g-card gt-empty">
-            <span className="g-ic" aria-hidden="true">
-                {icon}
-            </span>
-            <h2>{title}</h2>
-            {children ? <p>{children}</p> : null}
-            {action}
-        </div>
-    );
+/** Page-level empty state (a card with a heading): the kit EmptyState, no body. */
+export function EmptyState(props: EmptyStateProps) {
+    return <KitEmptyState {...props} look={{ root: 'g-card gt-empty', title: 'h2', act: false }} />;
 }
 
 /** A shimmering block for loading.tsx skeletons. */

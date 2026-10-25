@@ -70,9 +70,7 @@ export default async function StoreIndexPage({
 
                 {/* CATALOGS */}
                 {catalogs.length === 0 ? (
-                    <EmptyState icon={<Store size={28} strokeWidth={1.5} />} title="No shops selling yet">
-                        Check back soon.
-                    </EmptyState>
+                    <EmptyState icon={<Store size={28} strokeWidth={1.5} />} title="No shops selling yet" />
                 ) : (
                     catalogs.map(({ shop, products, error }, bi) => (
                         <ShopBlock
@@ -125,9 +123,7 @@ function ShopBlock({
             {error ? (
                 <ErrorLine live={false}>Catalog unavailable right now. {error}</ErrorLine>
             ) : products.length === 0 ? (
-                <EmptyState icon={<Package size={28} strokeWidth={1.5} />} title="No products yet">
-                    {shopName} has not listed anything here yet.
-                </EmptyState>
+                <EmptyState icon={<Package size={28} strokeWidth={1.5} />} title="No products yet" />
             ) : (
                 <ul className="gt-grid">
                     {products.map((p, i) => (

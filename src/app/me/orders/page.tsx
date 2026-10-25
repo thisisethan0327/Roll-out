@@ -31,9 +31,9 @@ export default async function OrdersPage() {
                     icon={exchanged ? <Package size={28} strokeWidth={1.5} /> : <Unplug size={28} strokeWidth={1.5} />}
                     title={exchanged ? 'No orders yet' : 'Store account not connected'}
                     action={exchanged && !note ? <GlideButton href="/store">Browse the store</GlideButton> : undefined}
-                >
-                    {note ? note : exchanged ? 'When you order from a Rollout shop, it shows up here.' : null}
-                </EmptyState>
+                    // The server's note says why the store account is unavailable.
+                    blocker={note ?? undefined}
+                />
             ) : (
                 <ul className="gt-list">
                     {orders.map((o) => (

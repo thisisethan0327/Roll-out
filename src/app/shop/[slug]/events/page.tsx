@@ -278,7 +278,6 @@ export default async function ShopEventsPage({
                                     colSpan={6}
                                     icon={<Flag size={18} strokeWidth={2} />}
                                     title={`No ${filter === 'ALL' ? '' : filter.toLowerCase() + ' '}events`}
-                                    body="Host a meet, cruise or run from your shop. It appears on your shop page and the map."
                                 />
                             ) : (
                                 data.rows.map((e: any) => (

@@ -122,13 +122,6 @@ export function OrdersList({
                     <CardEmpty
                         icon={<Package size={22} strokeWidth={1.75} />}
                         title={orders.length === 0 ? 'No orders yet' : 'No orders match this filter'}
-                        body={
-                            archivedCount > 0 && !showArchived
-                                ? `${archivedCount} archived ${archivedCount === 1 ? 'order is' : 'orders are'} hidden. Show archived to see ${archivedCount === 1 ? 'it' : 'them'}.`
-                                : orders.length === 0
-                                  ? 'Orders for this shop’s products show up here, unfulfilled first.'
-                                  : 'Pick another filter to see the rest.'
-                        }
                     />
                 ) : (
                     <div className={cs.tblWrap}>

@@ -275,7 +275,6 @@ async function RolloutBranch({
                                             colSpan={3}
                                             icon={<Car size={18} strokeWidth={2} />}
                                             title="No vehicles on file"
-                                            body="Cars in this member's garage appear here."
                                         />
                                     ) : (
                                         vehicles.map((v: any) => (

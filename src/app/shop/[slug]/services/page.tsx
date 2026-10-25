@@ -105,8 +105,8 @@ export default async function ShopServicesPage({
                     {q ? (
                         <CardEmpty
                             icon={<SearchX size={22} strokeWidth={1.75} />}
-                            title={`No matches for “${q}”`}
-                            body="Try a shorter word, or clear the search to see every service."
+                            title="No services match"
+                            search={q}
                             action={
                                 <a href={`/shop/${slug}/services`} className={bz.act}>
                                     Clear search
@@ -117,7 +117,6 @@ export default async function ShopServicesPage({
                         <CardEmpty
                             icon={<Wrench size={22} strokeWidth={1.75} />}
                             title="No services yet"
-                            body="Add your first service: what you do, a base price or quote-on-request, and how long it takes."
                         />
                     )}
                 </section>

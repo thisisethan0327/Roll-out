@@ -45,9 +45,7 @@ export function CartClient({ initialCart }: { initialCart: Cart | null }) {
                 icon={<ShoppingBag size={28} strokeWidth={1.5} />}
                 title="Your cart is empty"
                 action={<GlideButton href="/store">Browse the store</GlideButton>}
-            >
-                Gear from the brands on Rollout lands here.
-            </EmptyState>
+            />
         );
     }
 

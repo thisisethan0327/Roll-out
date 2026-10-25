@@ -71,9 +71,7 @@ export default async function OrderDetailPage({
         return (
             <div className="glide glide-page gt-page--me">
                 <PageHead back={BACK} title="Order" />
-                <EmptyState icon={<Unplug size={28} strokeWidth={1.5} />} title="Order unavailable">
-                    {result.note}
-                </EmptyState>
+                <EmptyState icon={<Unplug size={28} strokeWidth={1.5} />} title="Order unavailable" blocker={result.note ?? undefined} />
             </div>
         );
     }

@@ -185,11 +185,7 @@ export default async function TicketsListPage({
                                     colSpan={7}
                                     icon={<Wrench size={18} strokeWidth={2} />}
                                     title={q || status !== 'all' ? 'No tickets match' : 'No tickets yet'}
-                                    body={
-                                        q || status !== 'all'
-                                            ? 'Try another status or clear the search.'
-                                            : 'Open a ticket for each job: customer, vehicle, services and the day it is in.'
-                                    }
+                                    search={q || undefined}
                                 />
                             ) : (
                                 tickets.map((t: any) => {

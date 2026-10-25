@@ -722,6 +722,23 @@ a.g-chip:hover { box-shadow: inset 0 0 0 1.5px var(--link); }
   .g-dlg-acts > * { width: 100%; }
 }
 
+/* ── Empty state (glide/EmptyState.tsx) ──────────────────────────────────
+   Icon, one-line title, optional action. No body: the only second lines are
+   a search miss and a blocker that names who fixes it. */
+.g-empty { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding: 18px 24px 24px; }
+.g-empty > b {
+  margin-top: 8px;
+  font-family: var(--disp);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  font-size: 17px;
+  color: var(--title);
+}
+.g-empty > p { margin: 0; font-size: 14.5px; line-height: 1.5; color: var(--ink-2); max-width: 52ch; }
+.g-empty-act { margin-top: 10px; }
+.g-empty--center { align-items: center; text-align: center; padding: 40px 24px; }
+
 /* ── Overlays: Modal, Drawer, Lightbox, Toast, InfoTip, draft bar ──────────
    Overlay plan Phase 1 (docs/design/GLIDE.md "Overlays"). Sheet, Modal,
    Drawer and Lightbox share z-index 200, so the one opened last (later in

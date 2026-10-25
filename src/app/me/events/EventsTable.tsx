@@ -61,7 +61,6 @@ export function EventsTable({ rows }: { rows: HostEventRow[] }) {
                 <Empty
                     icon={<CalendarPlus size={22} strokeWidth={1.75} />}
                     title="You haven’t hosted any events yet"
-                    body="Create your first one: a meet, cruise, run or show. It goes on the Meets directory and map, and you can invite people by email."
                     action={
                         <GlideButton href="/me/events/new" size="sm" icon={<Plus size={18} strokeWidth={2} />}>
                             Host an event
@@ -72,7 +71,6 @@ export function EventsTable({ rows }: { rows: HostEventRow[] }) {
                 <Empty
                     icon={<CalendarPlus size={22} strokeWidth={1.75} />}
                     title={filter === 'up' ? 'Nothing coming up' : 'No past events'}
-                    body={filter === 'up' ? 'Your next event shows up here once you create it.' : 'Events move here after their start time.'}
                 />
             ) : (
                 <div className={s.tblWrap} style={{ marginTop: 12 }}>

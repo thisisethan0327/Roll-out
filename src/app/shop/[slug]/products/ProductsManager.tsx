@@ -181,7 +181,6 @@ export function ProductsManager({
                     <CardEmpty
                         icon={<Package size={22} strokeWidth={1.75} />}
                         title="No products yet"
-                        body={canManage ? 'Add the film, vinyl and parts you stock to track price, cost and reorder points.' : 'Products this shop stocks show up here.'}
                     />
                 ) : (
                     <div className={cs.tblWrap}>

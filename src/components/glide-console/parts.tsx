@@ -10,6 +10,7 @@ import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { ChevronLeft, CircleCheck, CircleDashed, CircleX, Clock } from 'lucide-react';
 import { statusVariant } from '@/app/me/ui';
+import { EmptyState, type EmptyStateProps } from '@/components/glide/EmptyState';
 import s from './console.module.css';
 
 export { s as consoleStyles };
@@ -105,30 +106,12 @@ export function StatusChip({ status }: { status: string | null | undefined }) {
     );
 }
 
-/** An empty state that says what goes here and how to get it. */
-export function Empty({
-    icon,
-    title,
-    body,
-    action,
-    center,
-}: {
-    icon: ReactNode;
-    title: string;
-    body?: ReactNode;
-    action?: ReactNode;
-    center?: boolean;
-}) {
-    return (
-        <div className={cx(s.empty, center && s.emptyCenter)}>
-            <span className="g-ic" aria-hidden="true">
-                {icon}
-            </span>
-            <b>{title}</b>
-            {body ? <p>{body}</p> : null}
-            {action ? <div className={s.emptyAct}>{action}</div> : null}
-        </div>
-    );
+/**
+ * A card's empty state: the kit EmptyState (title, optional action, no body;
+ * `search` / `blocker` are the only second lines) in the console layout.
+ */
+export function Empty({ center, ...rest }: EmptyStateProps & { center?: boolean }) {
+    return <EmptyState {...rest} look={{ root: cx(s.empty, center && s.emptyCenter), act: s.emptyAct }} />;
 }
 
 /** Label + control + hint, stacked. Pass the control as children. */

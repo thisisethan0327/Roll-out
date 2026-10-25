@@ -131,7 +131,7 @@ export default async function ShopPostsPage({
                     <CardEmpty
                         icon={<Newspaper size={22} strokeWidth={1.75} />}
                         title="No shop page profile found"
-                        body="Posts are published from the shop’s page profile, and this shop doesn’t have one yet. Contact support to set it up."
+                        blocker="Posts come from the shop’s page profile. Contact support to set one up."
                     />
                 </section>
             </BizPage>
@@ -200,7 +200,7 @@ export default async function ShopPostsPage({
                     <CardEmpty
                         icon={<Newspaper size={22} strokeWidth={1.75} />}
                         title={showDeleted ? 'No deleted posts' : type === 'ALL' ? 'No posts' : `No ${label(type).toLowerCase()} posts`}
-                        body={q ? `Nothing matches “${q}”.` : showDeleted ? 'Posts you delete land here and can be restored.' : 'Posts from the shop’s page show up here.'}
+                        search={q || undefined}
                     />
                 ) : (
                     <div className={cs.tblWrap}>

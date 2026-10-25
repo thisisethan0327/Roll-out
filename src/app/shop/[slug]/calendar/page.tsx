@@ -304,7 +304,6 @@ export default async function ShopCalendarPage({
                                     colSpan={4}
                                     icon={<CalendarDays size={18} strokeWidth={2} />}
                                     title="Nothing on the books yet"
-                                    body="Accepted appointments for next week show up here."
                                 />
                             ) : (
                                 upcomingNext.map((a: any) => (

@@ -31,7 +31,6 @@ export function AddressBook({ initial, connected }: { initial: CustomerAddress[]
                 <Empty
                     icon={<MapPin size={22} strokeWidth={1.75} />}
                     title="Store account not connected"
-                    body="Add an address at checkout and it is saved here for next time."
                 />
             ) : list.length === 0 && !draft ? (
                 <p className={s.small}>No saved addresses yet.</p>

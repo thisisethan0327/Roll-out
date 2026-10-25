@@ -203,7 +203,6 @@ export default async function ShopInboxPage({
                                     colSpan={7}
                                     icon={<Inbox size={18} strokeWidth={2} />}
                                     title={status === 'ALL' ? 'No requests yet' : `No ${TAB_LABEL[status].toLowerCase()} requests`}
-                                    body="Booking requests from your shop page land here. New ones appear without a reload."
                                 />
                             ) : (
                                 data.rows.map((a: any) => (

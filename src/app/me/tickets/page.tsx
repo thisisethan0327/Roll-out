@@ -24,9 +24,7 @@ export default async function TicketsPage() {
             <PageHead title="Tickets" sub="Your jobs across every Rollout shop." />
 
             {tickets.length === 0 ? (
-                <EmptyState icon={<Wrench size={28} strokeWidth={1.5} />} title="No tickets yet">
-                    When a shop opens a job for your car, it shows up here.
-                </EmptyState>
+                <EmptyState icon={<Wrench size={28} strokeWidth={1.5} />} title="No tickets yet" />
             ) : (
                 <ul className="gt-list">
                     {tickets.map((t) => (

@@ -90,7 +90,6 @@ export default async function ShopReviewsPage({
                     <CardEmpty
                         icon={<MessageSquareText size={22} strokeWidth={1.75} />}
                         title="No reviews yet"
-                        body="When customers review the shop, their ratings show up here and you can reply in public."
                     />
                 </section>
             ) : (
