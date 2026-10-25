@@ -37,6 +37,23 @@ export const metadata = { title: 'Order' };
 const MANAGE_ROLES = new Set(['owner', 'admin', 'manager', 'installer', 'staff']);
 const MONEY_ROLES = new Set(['owner', 'admin', 'manager']);
 
+/**
+ * The figures the money confirms name. Same payment the server actions pick
+ * (lib/medusa-admin.ts refundVendorOrder / captureOrderPayment): the first
+ * captured, uncanceled payment for a refund; the first uncaptured,
+ * uncanceled one for a capture.
+ */
+type PayLite = { amount: number | null; refunded_amount?: number | null; captured_at?: string | null; canceled_at?: string | null };
+function refundableOn(payments: PayLite[]): number | null {
+    const p = payments.find((x) => x.captured_at && !x.canceled_at);
+    if (!p) return null;
+    return Math.max(0, Number(p.amount ?? 0) - Number(p.refunded_amount ?? 0));
+}
+function authorizedOn(payments: PayLite[]): number | null {
+    const p = payments.find((x) => !x.captured_at && !x.canceled_at);
+    return p && p.amount != null ? Number(p.amount) : null;
+}
+
 export default async function OrderDetailPage({
     params,
 }: {
@@ -138,6 +155,10 @@ export default async function OrderDetailPage({
                             )}
                             canMoney={canMoney}
                             role={role}
+                            orderNumber={String(o.display_id ?? o.id.slice(-8))}
+                            currency={cur}
+                            refundable={refundableOn(o.payments)}
+                            authorizedAmount={authorizedOn(o.payments)}
                         />
                     ) : (
                         <Notice icon={<Eye {...ic} />}>Viewing only — your role has no order actions on this shop.</Notice>

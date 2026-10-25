@@ -10,8 +10,12 @@
  *          caller's role server-side in ../actions.ts, because a server action
  *          is a public endpoint and hidden is not forbidden.
  *
- * Cancel and refund both use the two-click "armed" pattern rather than
- * window.confirm, which is unreliable here. Every action re-derives the vendor
+ * Cancel uses the two-click "armed" pattern rather than window.confirm, which
+ * is unreliable here. Refund, Capture and Complete ask through the Glide
+ * confirmDialog, whose title names the dollar figure and the order number
+ * (overlay plan Phase 0 #4): a blank refund amount is resolved to the
+ * refundable remainder BEFORE the dialog, so nobody refunds an unseen
+ * figure. Every action re-derives the vendor
  * from the slug and re-verifies the order's vendor before touching Medusa; this
  * component only drives UX.
  */
@@ -22,6 +26,7 @@ import { CircleCheck, CircleX, CreditCard, PackageCheck, Truck, Undo2 } from 'lu
 import { CardHead } from '@/components/glide-console/parts';
 import cs from '@/components/glide-console/console.module.css';
 import { Notice, cx } from '@/components/glide-shopbiz/parts';
+import { confirmDialog } from '@/components/glide/confirm';
 import bz from '@/components/glide-shopbiz/biz.module.css';
 import {
     shipOrderAction,
@@ -54,7 +59,19 @@ type Props = {
     /** Owner/admin/manager: may move money and end the order. */
     canMoney: boolean;
     role: string;
+    /** Order number as staff see it (display_id), for the confirm titles. */
+    orderNumber: string;
+    currency: string | null;
+    /** Captured minus refunded on the captured payment, in currency units; null if there is none. */
+    refundable: number | null;
+    /** Amount on the still-authorized (legacy) payment, in currency units. */
+    authorizedAmount: number | null;
 };
+
+function money(amount: number, currency: string | null): string {
+    const cur = (currency ?? 'usd').toUpperCase();
+    return `${cur === 'USD' ? '$' : cur + ' '}${amount.toFixed(2)}`;
+}
 
 export function OrderActions({
     slug,
@@ -67,6 +84,10 @@ export function OrderActions({
     hasUnshippedFulfillment,
     canMoney,
     role,
+    orderNumber,
+    currency,
+    refundable,
+    authorizedAmount,
 }: Props) {
     const router = useRouter();
     const [pending, start] = useTransition();
@@ -74,7 +95,6 @@ export function OrderActions({
     const [trackingNumber, setTrackingNumber] = useState('');
     const [carrier, setCarrier] = useState('ups');
     const [armed, setArmed] = useState(false);
-    const [refundArmed, setRefundArmed] = useState(false);
     const [refundAmount, setRefundAmount] = useState('');
 
     /**
@@ -164,6 +184,43 @@ export function OrderActions({
             'Fulfillment created and marked shipped with tracking.',
             'fulfil',
         );
+    };
+
+    /**
+     * Refund: settle the figure first (typed amount, or the refundable
+     * remainder when blank), refuse what the server would refuse, then ask
+     * with that figure in the title. A blank box still sends "all" (null) so
+     * the server refunds the exact remainder, which is the figure shown.
+     */
+    const askRefund = async () => {
+        setMsg(null);
+        if (refundAmount.trim() && parsedRefundCents == null) {
+            setMsg({ kind: 'err', text: 'Enter a refund amount like 24.99, or leave it blank to refund everything.' });
+            return;
+        }
+        if (refundable != null && refundable <= 0.005) {
+            setMsg({ kind: 'err', text: 'This payment has already been fully refunded.' });
+            return;
+        }
+        if (parsedRefundCents != null && refundable != null && parsedRefundCents / 100 > refundable + 0.005) {
+            setMsg({ kind: 'err', text: `That is more than the ${money(refundable, currency)} still refundable on this payment.` });
+            return;
+        }
+        const amount = parsedRefundCents != null ? parsedRefundCents / 100 : refundable;
+        const all = parsedRefundCents == null || (refundable != null && parsedRefundCents / 100 >= refundable - 0.005);
+        const ok = await confirmDialog({
+            title:
+                amount != null
+                    ? `Refund ${money(amount, currency)} on order #${orderNumber}?`
+                    : `Refund everything still refundable on order #${orderNumber}?`,
+            message: all
+                ? "That is everything still refundable on this payment. It goes back to the customer's original payment method."
+                : `A partial refund${refundable != null ? ` (of ${money(refundable, currency)} still refundable)` : ''}. It goes back to the customer's original payment method.`,
+            confirmLabel: 'Refund',
+            danger: true,
+        });
+        if (!ok) return;
+        run(() => refundOrderAction(slug, orderId, parsedRefundCents), 'Refund issued.', 'refund');
     };
 
     const ic = { size: 17, strokeWidth: 2, 'aria-hidden': true } as const;
@@ -304,7 +361,17 @@ export function OrderActions({
                                 className={bz.act}
                                 pending={busyOn('capture')}
                                 pendingLabel="Capturing"
-                                onClick={() => run(() => capturePaymentAction(slug, orderId), 'Payment captured.', 'capture')}
+                                onClick={async () => {
+                                    const ok = await confirmDialog({
+                                        title:
+                                            authorizedAmount != null
+                                                ? `Capture ${money(authorizedAmount, currency)} on order #${orderNumber}?`
+                                                : `Capture the authorized payment on order #${orderNumber}?`,
+                                        message: "The customer's card is charged.",
+                                        confirmLabel: 'Capture',
+                                    });
+                                    if (ok) run(() => capturePaymentAction(slug, orderId), 'Payment captured.', 'capture');
+                                }}
                             >
                                 <CreditCard {...ic} />
                                 Capture payment
@@ -376,46 +443,23 @@ export function OrderActions({
                                     />
                                 </div>
                                 <p className={cs.hint} id="oa-refund-hint">
-                                    Leave blank to refund everything still refundable.
+                                    {refundable != null && refundable > 0
+                                        ? `Leave blank to refund all ${money(refundable, currency)} still refundable.`
+                                        : 'Leave blank to refund everything still refundable.'}
                                 </p>
                             </div>
                             <div className={bz.acts}>
-                                {refundArmed ? (
-                                    <>
-                                        <PendingButton
-                                            type="button"
-                                            className={cx(bz.act, bz.actArmed)}
-                                            pending={busyOn('refund')}
-                                            pendingLabel="Refunding"
-                                            onClick={() => {
-                                                setRefundArmed(false);
-                                                run(() => refundOrderAction(slug, orderId, parsedRefundCents), 'Refund issued.', 'refund');
-                                            }}
-                                        >
-                                            <Undo2 {...ic} />
-                                            Confirm refund
-                                        </PendingButton>
-                                        <button type="button" className={cx(bz.act, bz.actInk)} onClick={() => setRefundArmed(false)} disabled={pending}>
-                                            Keep payment
-                                        </button>
-                                    </>
-                                ) : (
-                                    <button
-                                        type="button"
-                                        className={cx(bz.act, bz.actInk)}
-                                        onClick={() => {
-                                            if (refundAmount.trim() && parsedRefundCents == null) {
-                                                setMsg({ kind: 'err', text: 'Enter a refund amount like 24.99, or leave it blank to refund everything.' });
-                                                return;
-                                            }
-                                            setRefundArmed(true);
-                                        }}
-                                        disabled={pending}
-                                    >
-                                        <Undo2 {...ic} />
-                                        Refund
-                                    </button>
-                                )}
+                                <PendingButton
+                                    type="button"
+                                    className={cx(bz.act, bz.actInk)}
+                                    pending={busyOn('refund')}
+                                    pendingLabel="Refunding"
+                                    onClick={askRefund}
+                                    disabled={pending}
+                                >
+                                    <Undo2 {...ic} />
+                                    Refund
+                                </PendingButton>
                             </div>
                         </div>
 
@@ -430,7 +474,15 @@ export function OrderActions({
                                         className={bz.act}
                                         pending={busyOn('complete')}
                                         pendingLabel="Completing"
-                                        onClick={() => run(() => completeOrderAction(slug, orderId), 'Order completed.', 'complete')}
+                                        onClick={async () => {
+                                            const ok = await confirmDialog({
+                                                title: `Complete order #${orderNumber}? It can't be reopened.`,
+                                                message: 'Completing closes the order for good. Custom goods are not returnable: if money is owed back, refund first.',
+                                                confirmLabel: 'Complete',
+                                                danger: true,
+                                            });
+                                            if (ok) run(() => completeOrderAction(slug, orderId), 'Order completed.', 'complete');
+                                        }}
                                     >
                                         <CircleCheck {...ic} />
                                         Complete order
