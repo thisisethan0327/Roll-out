@@ -148,6 +148,15 @@ Rules that always hold:
 
 Ported from emwraps-tickets origin/master 7df9702 (overlay plan, Documents/ui-audits/rollout-web/overlay-redesign-plan.md).
 
+## UI copy in the kit
+
+Owner rule, 2026-10-24 (Documents/CLAUDE.md §12, "UI copy: let the layout explain"). The kit makes the restating line hard to write:
+
+- **Empty states:** `EmptyState` (`glide/EmptyState.tsx`) takes an icon, a one-line title and an optional action. It has **no body prop**. The only second lines: `search` (renders "Nothing matches “q”. Try a shorter word.") and `blocker` (a state that names who fixes it, or a server error). The console `Empty`, shop `EmptyRow`, shop-business `CardEmpty` and tickets `EmptyState` are wrappers over it.
+- **Heading subs:** the `sub` of AdminHead, SectionHead, ConsoleHead, CardHead, FormSection, PageHead and Panel is a `HeadSub` (`glide/head.ts`): data only (a count, a date, a handle, the shop's name, a status). Never a description of the page; a sub a sighted person could guess from the title is noise.
+- **Standing rules:** an `InfoTip` beside the label or title, not a paragraph under the field. Never for an error, a money, privacy or security warning, or "this is sent to someone"; those stay on the page.
+- No `(optional)` tags, no placeholder that repeats its label, no `title=` that repeats a button's text.
+
 ## Motion
 
 Short ease-out transitions (150–250 ms). Hotspots pulse. Slide controls spring back on a short drag. Respect Reduce Motion: no pulses, no springs, instant states.
