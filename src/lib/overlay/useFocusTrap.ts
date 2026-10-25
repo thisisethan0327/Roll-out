@@ -9,6 +9,24 @@ import { useEffect, useRef, type RefObject } from 'react';
 export const FOCUSABLE =
     'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
+/**
+ * Where a Modal / Drawer puts focus on open: the `selector` when given;
+ * otherwise, with a mouse, the first field in the body (`.g-ov-body`), and
+ * on a touch screen the panel itself, so the on-screen keyboard doesn't jump
+ * over the form before the person has read it.
+ */
+export function overlayInitialFocus(panel: HTMLElement | null, selector?: string): HTMLElement | null {
+    if (!panel) return null;
+    if (selector) return panel.querySelector<HTMLElement>(selector);
+    const fine = typeof window !== 'undefined' && window.matchMedia?.('(pointer: fine)').matches;
+    if (!fine) return panel;
+    // A field first (not an (i) tip or a link above it), then any control.
+    return (
+        panel.querySelector<HTMLElement>('.g-ov-body :is(input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]))') ??
+        panel.querySelector<HTMLElement>(`.g-ov-body :is(${FOCUSABLE})`)
+    );
+}
+
 export function useFocusTrap(
     panelRef: RefObject<HTMLElement | null>,
     active: boolean,

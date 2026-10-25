@@ -11,8 +11,9 @@
  *                    Escape and the scrim do nothing
  *   closeOnBackdrop  opt-in; a click outside never closes a form by default
  *   onDiscard        runs after "Discard" (e.g. clear a local draft)
- *   initialFocus     CSS selector of the control to focus on open (default:
- *                    the first focusable one)
+ *   initialFocus     CSS selector of the control to focus on open. Default:
+ *                    the first field of the body with a mouse; the panel
+ *                    itself on a touch screen (no keyboard popping up)
  *
  * Escape reaches only the topmost overlay, and the page scroll lock is
  * counted (src/lib/overlay). Rendered into document.body inside `.glide`.
@@ -21,7 +22,7 @@ import { useId, useRef, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { useOverlayLayer, useRequestClose, useScrollLock } from '@/lib/overlay/stack';
-import { useFocusTrap } from '@/lib/overlay/useFocusTrap';
+import { overlayInitialFocus, useFocusTrap } from '@/lib/overlay/useFocusTrap';
 
 export type OverlayFormProps = {
     open: boolean;
@@ -65,7 +66,7 @@ export function Modal({
     const requestClose = useRequestClose({ onClose, onDiscard, dirty, closable, discardTitle, discardMessage });
     useOverlayLayer(open, () => void requestClose());
     useScrollLock(open);
-    useFocusTrap(panelRef, open, () => (initialFocus ? panelRef.current?.querySelector<HTMLElement>(initialFocus) : null));
+    useFocusTrap(panelRef, open, () => overlayInitialFocus(panelRef.current, initialFocus));
 
     if (!open || typeof document === 'undefined') return null;
 

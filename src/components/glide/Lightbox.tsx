@@ -113,14 +113,19 @@ export function Lightbox({
                     </button>
                 </>
             ) : null}
-            <div className="g-lb-stage" onClick={stop} {...swipe}>
+            {/* The empty space around the photo is backdrop: a tap there closes. */}
+            <div className="g-lb-stage" {...swipe}>
                 {isVideo ? (
-                    <video key={item.url} src={item.url} className="g-lb-media" controls autoPlay playsInline />
+                    <video key={item.url} src={item.url} className="g-lb-media" controls autoPlay playsInline onClick={stop} />
                 ) : (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img key={item.url} src={item.url} alt={item.name || ''} className="g-lb-media" />
+                    <img key={item.url} src={item.url} alt={item.name || ''} className="g-lb-media" onClick={stop} />
                 )}
-                {caption ? <div className="g-lb-cap">{caption(item, idx)}</div> : null}
+                {caption ? (
+                    <div className="g-lb-cap" onClick={stop}>
+                        {caption(item, idx)}
+                    </div>
+                ) : null}
             </div>
         </div>,
         document.body,

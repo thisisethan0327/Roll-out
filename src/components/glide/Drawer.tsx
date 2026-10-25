@@ -15,7 +15,7 @@ import { useId, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { useOverlayLayer, useRequestClose, useScrollLock } from '@/lib/overlay/stack';
-import { useFocusTrap } from '@/lib/overlay/useFocusTrap';
+import { overlayInitialFocus, useFocusTrap } from '@/lib/overlay/useFocusTrap';
 import type { OverlayFormProps } from './Modal';
 
 export function Drawer({
@@ -41,7 +41,7 @@ export function Drawer({
     const requestClose = useRequestClose({ onClose, onDiscard, dirty, closable, discardTitle, discardMessage });
     useOverlayLayer(open, () => void requestClose());
     useScrollLock(open);
-    useFocusTrap(panelRef, open, () => (initialFocus ? panelRef.current?.querySelector<HTMLElement>(initialFocus) : null));
+    useFocusTrap(panelRef, open, () => overlayInitialFocus(panelRef.current, initialFocus));
 
     if (!open || typeof document === 'undefined') return null;
 
