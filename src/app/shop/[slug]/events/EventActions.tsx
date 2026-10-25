@@ -2,6 +2,7 @@
 import { useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { cancelEvent, uncancelEvent } from './actions';
+import { confirmDialog } from '@/components/glide/confirm';
 
 const MANAGER_ROLES = new Set(['owner', 'admin', 'manager']);
 
@@ -11,12 +12,15 @@ export function EventActions({
     slug,
     cancelled,
     callerRole,
+    title,
 }: {
     eventId: string;
     shopId: number;
     slug: string;
     cancelled: boolean;
     callerRole: string;
+    /** Named in the cancel confirm. */
+    title?: string | null;
 }) {
     const [pending, start] = useTransition();
     const router = useRouter();
@@ -45,9 +49,14 @@ export function EventActions({
                 <button
                     className="admin-action-btn danger"
                     disabled={pending}
-                    onClick={() => {
-                        if (!confirm('Cancel this event? RSVPs will see it as cancelled.')) return;
-                        run(() => cancelEvent(eventId, shopId));
+                    onClick={async () => {
+                        const ok = await confirmDialog({
+                            title: `Cancel ${title ? `"${title}"` : 'this event'}?`,
+                            message: "People who RSVP'd see it as cancelled. You can uncancel it later.",
+                            confirmLabel: 'Cancel event',
+                            cancelLabel: 'Keep event',
+                        });
+                        if (ok) run(() => cancelEvent(eventId, shopId));
                     }}
                 >
                     Cancel

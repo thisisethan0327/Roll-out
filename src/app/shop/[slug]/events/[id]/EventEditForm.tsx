@@ -7,6 +7,7 @@ import { TierRowsEditor, type TierDraft } from '../TierRowsEditor';
 import { EventStartAtField } from '@/components/EventStartAtField';
 import { CancelAndRefundAllButton } from '@/components/CancelAndRefundAllButton';
 import { Check } from '@/components/icons';
+import { confirmDialog } from '@/components/glide/confirm';
 
 const VISIBILITY: { value: string; label: string }[] = [
     { value: 'public', label: 'Public' },
@@ -65,8 +66,16 @@ export function EventEditForm({
         });
     };
 
-    const onCancel = () => {
-        if (!confirm('Cancel this event? RSVPs will see it as cancelled.')) return;
+    const eventName = event.title ? `"${event.title}"` : 'this event';
+
+    const onCancel = async () => {
+        const ok = await confirmDialog({
+            title: `Cancel ${eventName}?`,
+            message: "People who RSVP'd see it as cancelled. You can uncancel it later.",
+            confirmLabel: 'Cancel event',
+            cancelLabel: 'Keep event',
+        });
+        if (!ok) return;
         start(async () => {
             try {
                 await cancelEvent(event.id, shopId);
@@ -88,8 +97,15 @@ export function EventEditForm({
         });
     };
 
-    const onDelete = () => {
-        if (!confirm('DELETE this event permanently? This also drops all RSVPs and cannot be undone.')) return;
+    const onDelete = async () => {
+        const going = Number(event.attending_count ?? 0);
+        const ok = await confirmDialog({
+            title: `Delete ${eventName}?`,
+            message: `This also removes every RSVP${going > 0 ? ` (${going} going)` : ''}. This can't be undone.`,
+            confirmLabel: 'Delete',
+            danger: true,
+        });
+        if (!ok) return;
         start(async () => {
             try {
                 await deleteEvent(event.id, shopId);

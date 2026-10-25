@@ -338,6 +338,7 @@ export default async function ShopEventsPage({
                                                 slug={slug}
                                                 cancelled={!!e.cancelled_at}
                                                 callerRole={role}
+                                                title={e.title}
                                             />
                                         </td>
                                     </tr>

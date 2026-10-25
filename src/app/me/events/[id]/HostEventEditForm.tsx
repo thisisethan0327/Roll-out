@@ -22,6 +22,7 @@ import { CancelAndRefundAllButton } from '@/components/CancelAndRefundAllButton'
 import { Check } from '@/components/icons';
 import { CircleAlert, CircleX, Globe, LoaderCircle, Lock, RotateCcw, Users } from 'lucide-react';
 import { GlideButton } from '@/components/glide/primitives';
+import { confirmDialog } from '@/components/glide/confirm';
 import { FormSection } from '@/components/glide-console/parts';
 import s from '@/components/glide-console/console.module.css';
 
@@ -92,8 +93,14 @@ export function HostEventEditForm({
         });
     };
 
-    const onCancel = () => {
-        if (!confirm('Cancel this event? People who RSVP’d will see it as cancelled.')) return;
+    const onCancel = async () => {
+        const ok = await confirmDialog({
+            title: `Cancel ${event.title ? `"${event.title}"` : 'this event'}?`,
+            message: "People who RSVP'd see it as cancelled. You can uncancel it later.",
+            confirmLabel: 'Cancel event',
+            cancelLabel: 'Keep event',
+        });
+        if (!ok) return;
         start(async () => {
             try {
                 await actions.cancel(event.id, true);
