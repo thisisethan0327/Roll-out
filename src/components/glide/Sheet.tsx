@@ -20,11 +20,14 @@ export function Sheet({
     onClose,
     title,
     children,
+    closeOnBackdrop = true,
 }: {
     open: boolean;
     onClose: () => void;
     title: string;
     children: ReactNode;
+    /** False once the sheet holds typed input: a stray tap on the scrim must not discard it. */
+    closeOnBackdrop?: boolean;
 }) {
     const panelRef = useRef<HTMLDivElement>(null);
     const returnTo = useRef<HTMLElement | null>(null);
@@ -75,7 +78,7 @@ export function Sheet({
 
     return createPortal(
         <div className="glide g-sheet-root">
-            <div className="g-sheet-scrim" onClick={onClose} aria-hidden="true" />
+            <div className="g-sheet-scrim" onClick={closeOnBackdrop ? onClose : undefined} aria-hidden="true" />
             <div ref={panelRef} className="g-sheet" role="dialog" aria-modal="true" aria-labelledby={titleId}>
                 <div className="g-sheet-grab" aria-hidden="true" />
                 <div className="g-sheet-h">

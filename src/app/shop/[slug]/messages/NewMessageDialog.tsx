@@ -45,7 +45,13 @@ export function NewMessageDialog({ shopId }: { shopId: number }) {
                 <MessageSquarePlus size={18} strokeWidth={2} aria-hidden="true" />
                 New message
             </button>
-            <Sheet open={open} onClose={() => !isPending && setOpen(false)} title="New message">
+            <Sheet
+                open={open}
+                onClose={() => !isPending && setOpen(false)}
+                title="New message"
+                // Once a handle is typed, a scrim tap no longer throws it away.
+                closeOnBackdrop={!handle.trim()}
+            >
                 <div className={sh.sheetBody}>
                     <p>
                         Enter the customer&apos;s @handle. We&apos;ll open or create a direct thread between them
