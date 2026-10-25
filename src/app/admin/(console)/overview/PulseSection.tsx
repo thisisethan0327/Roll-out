@@ -1,5 +1,6 @@
 import { getPulse } from '@/lib/pulse';
 import { SectionHead } from '@/components/glide-admin/parts';
+import { InfoTip } from '@/components/glide/InfoTip';
 
 /** $1,234 with cents only when the amount has them. */
 function money(n: number): string {
@@ -24,7 +25,13 @@ export default async function PulseSection() {
 
     return (
         <>
-            <SectionHead title="Pulse" sub="Cross-ecosystem numbers over 7 and 30 days, cached for 5 minutes." />
+            <SectionHead
+                title={
+                    <>
+                        Pulse <InfoTip label="About Pulse" text="Numbers across the ecosystem over 7 and 30 days, cached for 5 minutes." />
+                    </>
+                }
+            />
 
             <div className="admin-stat-grid">
                 {/* 1 · REVENUE (EMWRAPS) */}

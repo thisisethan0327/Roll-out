@@ -1,5 +1,7 @@
 import Link from 'next/link';
 import { ConsoleHead } from '@/components/glide-console/parts';
+import { InfoTip } from '@/components/glide/InfoTip';
+import { AREA_LABEL_TIP } from '@/lib/event-area-label';
 import { redirect } from 'next/navigation';
 import { requireShopMemberBySlug } from '@/lib/auth-guard';
 import { createEvent } from '../actions';
@@ -83,16 +85,15 @@ export default async function NewEventPage({
                     placeholder="Back lot, gate 3"
                 />
 
-                <label className="admin-form-label">General area (shown on private listings)</label>
+                <label className="admin-form-label">
+                    General area <InfoTip text={AREA_LABEL_TIP} label="About General area" />
+                </label>
                 <input
                     name="area_label"
                     className="admin-form-input"
                     maxLength={60}
                     placeholder="e.g. Edmonds, WA"
                 />
-                <div className="admin-form-hint" style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 4 }}>
-                    Shown instead of the venue when the event is private or followers-only. Leave blank to show &ldquo;Location shared with invitees&rdquo;.
-                </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 12 }}>
                     <div>

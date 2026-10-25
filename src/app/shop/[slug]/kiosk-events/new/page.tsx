@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { ConsoleHead } from '@/components/glide-console/parts';
+import { InfoTip } from '@/components/glide/InfoTip';
 import { redirect } from 'next/navigation';
 import { requireShopMemberBySlug } from '@/lib/auth-guard';
 import { createKioskEvent } from '../actions';
@@ -33,7 +34,9 @@ export default async function NewKioskEventPage({
 
             <form className="admin-form" action={createBound} style={{ maxWidth: 720 }}>
                 <SectionHeading>Details</SectionHeading>
-                <label className="admin-form-label">Title *</label>
+                <label className="admin-form-label">
+                    Title * <InfoTip label="About the kiosk title" text="The kiosk splits the title at “ with ” into a headline and an accent line." />
+                </label>
                 <input
                     name="title"
                     className="admin-form-input"
@@ -41,9 +44,6 @@ export default async function NewKioskEventPage({
                     required
                     placeholder="RWB Live Builds with Nakai-San"
                 />
-                <div className="admin-handle" style={{ margin: '4px 0 8px' }}>
-                    TIP: THE KIOSK SPLITS THE TITLE AT &quot; WITH &quot; INTO A HEADLINE + ACCENT LINE.
-                </div>
 
                 <label className="admin-form-label">Tagline</label>
                 <input

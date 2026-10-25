@@ -17,6 +17,8 @@ import { createHostEvent } from '../actions';
 import { EventCoverPicker } from '@/app/shop/[slug]/events/EventCoverPicker';
 import { EventStartAtField } from '@/components/EventStartAtField';
 import { GlideButton } from '@/components/glide/primitives';
+import { InfoTip } from '@/components/glide/InfoTip';
+import { AREA_LABEL_TIP } from '@/lib/event-area-label';
 import { FormSection } from '@/components/glide-console/parts';
 import s from '@/components/glide-console/console.module.css';
 
@@ -48,7 +50,7 @@ export function NewHostEventForm() {
                 </p>
             ) : null}
 
-            <FormSection id="type" title="Type & cover" sub="The type picks the default covers. Leave the cover on Auto to follow it.">
+            <FormSection id="type" title="Type & cover">
                 <EventCoverPicker mode="create" />
             </FormSection>
 
@@ -82,12 +84,9 @@ export function NewHostEventForm() {
                 </div>
                 <div className={s.field}>
                     <label className={s.label} htmlFor="ne-area">
-                        General area, shown on private listings
+                        General area <InfoTip text={AREA_LABEL_TIP} label="About General area" />
                     </label>
-                    <input id="ne-area" name="area_label" className={s.input} maxLength={60} placeholder="e.g. Edmonds, WA" disabled={pending} aria-describedby="ne-area-h" />
-                    <p className={s.hint} id="ne-area-h">
-                        Shown instead of the venue when the event is private or followers-only. Leave blank to show &ldquo;Location shared with invitees&rdquo;.
-                    </p>
+                    <input id="ne-area" name="area_label" className={s.input} maxLength={60} placeholder="e.g. Edmonds, WA" disabled={pending} />
                 </div>
                 <div className={s.grid2f}>
                     <div className={s.field}>

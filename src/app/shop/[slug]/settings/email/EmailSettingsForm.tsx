@@ -3,6 +3,7 @@ import { useState, useTransition } from 'react';
 import { updateShopEmail } from './actions';
 import { Eye, Globe, Mail } from 'lucide-react';
 import { GlideButton } from '@/components/glide/primitives';
+import { InfoTip } from '@/components/glide/InfoTip';
 import { CardHead, Field, FormSection } from '@/components/glide-console/parts';
 import cs from '@/components/glide-console/console.module.css';
 import { Notice, cx } from '@/components/glide-shopbiz/parts';
@@ -54,7 +55,14 @@ export function EmailSettingsForm({
         <div className={cx(bz.split, bz.splitWide)}>
             <form onSubmit={submit} className={cs.col}>
                 <FormSection id="em-sender" title="Sender" edge>
-                    <Field label="From name" htmlFor="em-from" hint="Defaults to the shop name when blank.">
+                    <Field
+                        label={
+                            <>
+                                From name <InfoTip label="About From name" text="Defaults to the shop name when blank." />
+                            </>
+                        }
+                        htmlFor="em-from"
+                    >
                         <input id="em-from" type="text" value={fromName} onChange={(e) => setFromName(e.target.value)} className={inp} placeholder={shopName} />
                     </Field>
                     <Field label="Support email (reply-to)" htmlFor="em-support">
@@ -69,7 +77,14 @@ export function EmailSettingsForm({
                             autoCorrect="off"
                         />
                     </Field>
-                    <Field label="Email logo URL" htmlFor="em-logo" hint="64 px tall works best.">
+                    <Field
+                        label={
+                            <>
+                                Email logo URL <InfoTip label="About the email logo" text="64 px tall works best." />
+                            </>
+                        }
+                        htmlFor="em-logo"
+                    >
                         <input id="em-logo" type="text" value={logoUrl} onChange={(e) => setLogoUrl(e.target.value)} className={inp} placeholder="https://…" />
                     </Field>
                     <Field label="Email signature" htmlFor="em-sig">

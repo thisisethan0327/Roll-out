@@ -23,6 +23,8 @@ import { Check } from '@/components/icons';
 import { CircleAlert, CircleX, Globe, LoaderCircle, Lock, RotateCcw, Users } from 'lucide-react';
 import { GlideButton } from '@/components/glide/primitives';
 import { confirmDialog } from '@/components/glide/confirm';
+import { InfoTip } from '@/components/glide/InfoTip';
+import { AREA_LABEL_TIP } from '@/lib/event-area-label';
 import { FormSection } from '@/components/glide-console/parts';
 import s from '@/components/glide-console/console.module.css';
 
@@ -162,7 +164,7 @@ export function HostEventEditForm({
                     </div>
                     <div className={s.field}>
                         <label className={s.label} htmlFor="ev-area-in">
-                            General area, shown on private listings
+                            General area <InfoTip text={AREA_LABEL_TIP} label="About General area" />
                         </label>
                         <input
                             id="ev-area-in"
@@ -172,11 +174,7 @@ export function HostEventEditForm({
                             placeholder="e.g. Edmonds, WA"
                             defaultValue={event.area_label ?? ''}
                             disabled={pending}
-                            aria-describedby="ev-area-h"
                         />
-                        <p className={s.hint} id="ev-area-h">
-                            Shown instead of the venue when the event is private or followers-only. Leave blank to show &ldquo;Location shared with invitees&rdquo;.
-                        </p>
                     </div>
                     <div className={s.grid2f}>
                         <div className={s.field}>
@@ -228,7 +226,7 @@ export function HostEventEditForm({
                     </div>
                 </FormSection>
 
-                <FormSection id="cover" title="Cover" sub="The type is fixed after creation. Leave the cover on Auto to follow it.">
+                <FormSection id="cover" title="Cover">
                     <EventCoverPicker mode="edit" initialType={event.type} initialUrl={event.hero_image_url} disabled={pending} />
                 </FormSection>
 
@@ -296,11 +294,10 @@ export function HostEventEditForm({
             <label className="admin-form-label">LOCATION DETAIL</label>
             <input name="location_detail" className="admin-form-input" defaultValue={event.location_detail ?? ''} disabled={pending} />
 
-            <label className="admin-form-label">GENERAL AREA (SHOWN ON PRIVATE LISTINGS)</label>
+            <label className="admin-form-label">
+                GENERAL AREA <InfoTip text={AREA_LABEL_TIP} label="About General area" />
+            </label>
             <input name="area_label" className="admin-form-input" maxLength={60} placeholder="e.g. Edmonds, WA" defaultValue={event.area_label ?? ''} disabled={pending} />
-            <div className="admin-form-hint" style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 4 }}>
-                Shown instead of the venue when the event is private or followers-only. Leave blank to show &ldquo;Location shared with invitees&rdquo;.
-            </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <div>

@@ -14,6 +14,7 @@ import { APPEAL_BUSINESS_DAYS, addBusinessDays, describeBanEnd, isBanSchemaMissi
 import { relativeTime } from '@/lib/admin-user-facts';
 import { AppealActions } from './AppealActions';
 import { AdminHead, Tabs, adminStyles as st, sentence } from '@/components/glide-admin/parts';
+import { InfoTip } from '@/components/glide/InfoTip';
 
 export const metadata = { title: 'Appeals' };
 export const dynamic = 'force-dynamic';
@@ -143,7 +144,12 @@ export default async function AppealsPage({ searchParams }: { searchParams: Prom
         <>
             <AdminHead
                 title="Appeals"
-                sub={`Ban appeals: one per ban, decided within ${APPEAL_BUSINESS_DAYS} business days. ${appeals.length} shown${appeals.length >= LIMIT ? ` (newest ${LIMIT})` : ''}.`}
+                sub={
+                    <>
+                        {`${appeals.length} shown${appeals.length >= LIMIT ? ` · newest ${LIMIT}` : ''}`}
+                        <InfoTip label="About appeals" text={`One appeal per ban, decided within ${APPEAL_BUSINESS_DAYS} business days.`} />
+                    </>
+                }
             />
 
             <Tabs

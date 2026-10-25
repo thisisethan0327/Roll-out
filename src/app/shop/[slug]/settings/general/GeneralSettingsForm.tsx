@@ -3,6 +3,7 @@ import { useState, useTransition } from 'react';
 import { updateShopGeneral } from './actions';
 import { MapPin } from 'lucide-react';
 import { GlideButton } from '@/components/glide/primitives';
+import { InfoTip } from '@/components/glide/InfoTip';
 import { Field, FormSection } from '@/components/glide-console/parts';
 import cs from '@/components/glide-console/console.module.css';
 import { Notice, cx } from '@/components/glide-shopbiz/parts';
@@ -95,8 +96,15 @@ export function GeneralSettingsForm({
 
             <FormSection
                 id="gen-map"
-                title="Location and map"
-                sub="Choose how your shop appears on the Rollout map, then give us an address. We look up the coordinates for you automatically when you save — no need to find lat/lng yourself."
+                title={
+                    <>
+                        Location and map{' '}
+                        <InfoTip
+                            label="About the map listing"
+                            text="Pick how the shop shows on the Rollout map, then add the address. The coordinates are looked up when you save."
+                        />
+                    </>
+                }
             >
                 <PrecisionSelector value={precision} onChange={setPrecision} />
 

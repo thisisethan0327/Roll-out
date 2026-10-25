@@ -15,6 +15,7 @@
 import { useMemo, useState } from 'react';
 import { DEFAULT_EVENT_COVERS, EVENT_COVER_TYPES, EVENT_COVER_TYPE_LABELS, defaultsForType, isEventCoverType, type EventCoverType, publicCoverUrl } from '@/lib/event-covers';
 import { Check, ChevronDown, ChevronRight } from '@/components/icons';
+import { InfoTip } from '@/components/glide/InfoTip';
 
 const TYPE_OPTIONS: { value: EventCoverType; label: string }[] = EVENT_COVER_TYPES.map((v) => ({
     value: v,
@@ -84,7 +85,11 @@ export function EventCoverPicker({
             <input type="hidden" name="hero_image_url" value={isAuto ? '' : selected} />
 
             <label className="admin-form-label">
-                COVER · {EVENT_COVER_TYPE_LABELS[type].toUpperCase()} DEFAULTS
+                COVER · {EVENT_COVER_TYPE_LABELS[type].toUpperCase()} DEFAULTS{' '}
+                <InfoTip
+                    label="About covers"
+                    text="Leave the cover on Auto to follow the type's default. Future re-brands then apply automatically."
+                />
             </label>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 10, marginBottom: 10 }}>
                 <Tile
@@ -149,9 +154,6 @@ export function EventCoverPicker({
                     else if (isCustom) setSelected('');
                 }}
             />
-            <div className="admin-form-hint" style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 4 }}>
-                Leave on AUTO to inherit the type default — future re-brands then apply automatically.
-            </div>
         </div>
     );
 }

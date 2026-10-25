@@ -3,6 +3,7 @@ import { useState, useTransition } from 'react';
 import { updateShopPage } from './actions';
 import { BadgeCheck, Eye, MapPin, TriangleAlert } from 'lucide-react';
 import { GlideButton } from '@/components/glide/primitives';
+import { InfoTip } from '@/components/glide/InfoTip';
 import { Field, FormSection } from '@/components/glide-console/parts';
 import cs from '@/components/glide-console/console.module.css';
 import { Notice, cx } from '@/components/glide-shopbiz/parts';
@@ -105,7 +106,14 @@ export function ShopPageForm({
                     </div>
                 </FormSection>
 
-                <FormSection id="sp-img" title="Images" sub="Paste an image link. Square works best for the avatar, 3:1 for the banner.">
+                <FormSection
+                    id="sp-img"
+                    title={
+                        <>
+                            Images <InfoTip label="About images" text="Paste an image link. Square works best for the avatar, 3:1 for the banner." />
+                        </>
+                    }
+                >
                     <Field label="Avatar URL" htmlFor="sp-avatar">
                         <input id="sp-avatar" type="text" value={avatarUrl} onChange={(e) => setAvatarUrl(e.target.value)} className={inp} placeholder="https://…" />
                     </Field>

@@ -16,6 +16,7 @@ import { ReportActions } from './ReportActions';
 import type { ReportStatus } from './actions';
 import { ChevronRight } from 'lucide-react';
 import { AdminHead, Tabs, adminStyles as a, sentence } from '@/components/glide-admin/parts';
+import { InfoTip } from '@/components/glide/InfoTip';
 
 export const metadata = { title: 'Reports' };
 export const dynamic = 'force-dynamic';
@@ -260,7 +261,12 @@ export default async function ReportsPage({
         <>
             <AdminHead
                 title="Reports"
-                sub={`User-submitted content reports, with a 24-hour response target. ${reports.length} shown${reports.length >= LIMIT ? ` (newest ${LIMIT})` : ''}.`}
+                sub={
+                    <>
+                        {`${reports.length} shown${reports.length >= LIMIT ? ` · newest ${LIMIT}` : ''}`}
+                        <InfoTip label="About reports" text="User-submitted content reports. Response target: 24 hours." />
+                    </>
+                }
             />
 
             <Tabs

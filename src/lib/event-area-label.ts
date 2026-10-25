@@ -13,6 +13,9 @@
 export const AREA_LABEL_MAX = 60;
 export const AREA_LABEL_FIELD = 'area_label';
 
+/** The standing rule for the General area field, shown in an InfoTip on its label. */
+export const AREA_LABEL_TIP = 'Shown instead of the venue when the event is private or followers-only. Leave blank to show “Location shared with invitees”.';
+
 export type AreaLabelParse = { ok: true; value: string | null } | { ok: false; error: string };
 
 /** Trimmed (inner whitespace collapsed), null when empty, error when > 60. */

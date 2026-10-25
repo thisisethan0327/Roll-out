@@ -34,6 +34,7 @@ import { setEventRoutePlan, type RoutePlanStopInput, type SetRoutePlanResult } f
 import { ArrowDown, ArrowUp, Check, MapPin } from '@/components/icons';
 import { CircleAlert, LoaderCircle, MapPinned, Plus, Route as RouteIcon, Trash2, X } from 'lucide-react';
 import { GlideButton } from '@/components/glide/primitives';
+import { InfoTip } from '@/components/glide/InfoTip';
 import { FormSection } from '@/components/glide-console/parts';
 import s from '@/components/glide-console/console.module.css';
 import r from './host-event.module.css';
@@ -253,7 +254,7 @@ export function RoutePlanEditor({
             </select>
         );
         return (
-            <FormSection id="route" title="Route" sub="Destination and stops for the convoy. The stop list saves on its own with Save route.">
+            <FormSection id="route" title="Route">
                 <div className={s.field}>
                     <label className={s.label} htmlFor="rt-dest">
                         Destination name
@@ -502,6 +503,10 @@ export function RoutePlanEditor({
                     >
                         {savedFlash ? 'Route saved' : saving ? 'Saving…' : 'Save route'}
                     </GlideButton>
+                    <InfoTip
+                        label="What Save route saves"
+                        text="Save route writes the stop list only. The destination and the other details save with Save changes."
+                    />
                     {dirty && !saving && !savedFlash ? <span className={s.saveNote}>Unsaved stop changes</span> : null}
                     {saveError && errorStopIndex === null ? (
                         <span className={`${s.hint} ${s.hintBad}`} role="alert">
@@ -510,7 +515,6 @@ export function RoutePlanEditor({
                         </span>
                     ) : null}
                 </div>
-                <p className={s.hint}>Save route writes the stop list only. The destination and the other details save with Save changes.</p>
             </FormSection>
         );
     }

@@ -6,6 +6,8 @@ import { EventCoverPicker } from '../EventCoverPicker';
 import { TierRowsEditor, type TierDraft } from '../TierRowsEditor';
 import { EventStartAtField } from '@/components/EventStartAtField';
 import { CancelAndRefundAllButton } from '@/components/CancelAndRefundAllButton';
+import { InfoTip } from '@/components/glide/InfoTip';
+import { AREA_LABEL_TIP } from '@/lib/event-area-label';
 import { Check } from '@/components/icons';
 import { confirmDialog } from '@/components/glide/confirm';
 
@@ -158,7 +160,9 @@ export function EventEditForm({
                 disabled={!canManage || pending}
             />
 
-            <label className="admin-form-label">General area (shown on private listings)</label>
+            <label className="admin-form-label">
+                General area <InfoTip text={AREA_LABEL_TIP} label="About General area" />
+            </label>
             <input
                 name="area_label"
                 className="admin-form-input"
@@ -167,9 +171,6 @@ export function EventEditForm({
                 defaultValue={event.area_label ?? ''}
                 disabled={!canManage || pending}
             />
-            <div className="admin-form-hint" style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 4 }}>
-                Shown instead of the venue when the event is private or followers-only. Leave blank to show &ldquo;Location shared with invitees&rdquo;.
-            </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 12 }}>
                 <div>

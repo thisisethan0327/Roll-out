@@ -1,6 +1,7 @@
 import { getSystemHealth, type HealthStatus } from '@/lib/system-health';
 import { ArrowUpRight, CircleAlert, CircleCheck, CircleDashed, CircleX } from 'lucide-react';
 import { SectionHead, adminStyles as a } from '@/components/glide-admin/parts';
+import { InfoTip } from '@/components/glide/InfoTip';
 
 /**
  * LAUNCHER + HEALTH ROW (Console Phase C3) — one card per system in the
@@ -40,8 +41,12 @@ export default async function LauncherSection() {
     return (
         <>
             <SectionHead
-                title="Launcher"
-                sub={`Systems, health pinged server-side and cached for 2 minutes. ${coolifyChecked ? 'Coolify linked.' : 'Coolify offline.'}`}
+                title={
+                    <>
+                        Launcher <InfoTip label="About health checks" text="Health is pinged server-side and cached for 2 minutes." />
+                    </>
+                }
+                sub={coolifyChecked ? 'Coolify linked' : 'Coolify offline'}
             />
 
             <div className={a.launch}>
