@@ -7,7 +7,7 @@ import a from './appointments.module.css';
 export default function MyAppointmentsLoading() {
     return (
         <div className={s.scope} aria-busy="true" aria-label="Loading your appointments">
-            <ConsoleHead title="Appointments" sub="Your booking requests across every Rollout shop." />
+            <ConsoleHead title="Appointments" />
             <ul className={a.list}>
                 {Array.from({ length: 4 }).map((_, i) => (
                     <li key={i}>

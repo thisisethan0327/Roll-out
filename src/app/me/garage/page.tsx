@@ -32,7 +32,6 @@ export default async function GaragePage() {
         <div className={s.scope}>
             <ConsoleHead
                 title="Garage"
-                sub="Your builds and posts. Editing lives in the Rollout app."
                 actions={
                     <SecButton href={`/u/${profile.handle}`}>
                         <UserRound size={17} strokeWidth={2} aria-hidden="true" />

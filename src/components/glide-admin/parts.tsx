@@ -6,6 +6,7 @@
  */
 import Link from 'next/link';
 import type { ReactNode } from 'react';
+import type { HeadSub } from '@/components/glide/head';
 import { ChevronLeft } from 'lucide-react';
 import s from './admin.module.css';
 
@@ -29,7 +30,7 @@ export function AdminHead({
     actions,
 }: {
     title: ReactNode;
-    sub?: ReactNode;
+    sub?: HeadSub;
     back?: { href: string; label: string };
     actions?: ReactNode;
 }) {
@@ -59,7 +60,7 @@ export function SectionHead({
 }: {
     id?: string;
     title: ReactNode;
-    sub?: ReactNode;
+    sub?: HeadSub;
     action?: ReactNode;
 }) {
     return (

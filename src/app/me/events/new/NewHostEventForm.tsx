@@ -106,7 +106,7 @@ export function NewHostEventForm() {
                 <p className={s.hint}>Add lat/lng to pin your meet on the Meets map. Look them up on Google Maps (right-click → coordinates).</p>
             </FormSection>
 
-            <FormSection id="route" title="Route destination" sub="Optional. You can plan stops and pick points on a map right after creating the event.">
+            <FormSection id="route" title="Route destination">
                 <div className={s.field}>
                     <label className={s.label} htmlFor="ne-dest">
                         Destination name

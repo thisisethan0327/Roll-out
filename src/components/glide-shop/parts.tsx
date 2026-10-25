@@ -8,6 +8,7 @@
  */
 import Link from 'next/link';
 import type { ReactNode } from 'react';
+import type { HeadSub } from '@/components/glide/head';
 import { CircleCheck, CircleDashed, CircleX, Clock, Search } from 'lucide-react';
 import { EmptyState, type EmptyStateProps } from '@/components/glide/EmptyState';
 import s from './shop.module.css';
@@ -108,7 +109,7 @@ export function Panel({
 }: {
     id?: string;
     title: ReactNode;
-    sub?: ReactNode;
+    sub?: HeadSub;
     count?: number;
     action?: ReactNode;
     flush?: boolean;

@@ -51,7 +51,7 @@ export default async function AppointmentsPage({
         <>
             <AdminHead
                 title="Appointments"
-                sub={`Booking requests across all shops. ${items.length} shown${current === 'all' ? '' : `, ${current}`}.`}
+                sub={`${items.length} shown${current === 'all' ? '' : ` · ${current}`}`}
             />
 
             <Tabs

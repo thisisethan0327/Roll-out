@@ -21,7 +21,7 @@ export default async function TicketsPage() {
 
     return (
         <div className="glide glide-page gt-page--me">
-            <PageHead title="Tickets" sub="Your jobs across every Rollout shop." />
+            <PageHead title="Tickets" />
 
             {tickets.length === 0 ? (
                 <EmptyState icon={<Wrench size={28} strokeWidth={1.5} />} title="No tickets yet" />

@@ -236,7 +236,7 @@ export default async function ShopOverviewPage({
         <div className={sh.stack}>
             <ConsoleHead
                 title="Overview"
-                sub={`${shop.name} · what's happening at the shop`}
+                sub={shop.name}
                 actions={
                     <Link href={`/shop/${slug}/inbox`} className={cx('g-sec', sh.sec)}>
                         <Inbox size={18} strokeWidth={2} aria-hidden="true" />
@@ -246,7 +246,7 @@ export default async function ShopOverviewPage({
             />
 
             {/* NEEDS ATTENTION: derived live signals + stored shop_owner alerts */}
-            <Panel id="attention" title="Needs attention" sub="What's waiting on this shop" count={attentionCount}>
+            <Panel id="attention" title="Needs attention" count={attentionCount}>
                 {attn.unfulfilledOrders > 0 && (
                     <Link href={`/shop/${slug}/orders`} className={sh.note}>
                         <Package size={20} strokeWidth={2} aria-hidden="true" />
@@ -331,7 +331,6 @@ export default async function ShopOverviewPage({
             <Panel
                 id="queue"
                 title="Priority queue"
-                sub="The 5 most recent pending requests"
                 flush
                 action={
                     <Link href={`/shop/${slug}/inbox`} className="g-link" style={{ paddingRight: 8 }}>

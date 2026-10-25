@@ -24,7 +24,7 @@ export default async function OrdersPage() {
 
     return (
         <div className="glide glide-page gt-page--me">
-            <PageHead title="Orders" sub="Your purchases: store orders and event packages." />
+            <PageHead title="Orders" />
 
             {orders.length === 0 ? (
                 <EmptyState

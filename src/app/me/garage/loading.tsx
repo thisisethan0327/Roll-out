@@ -7,7 +7,7 @@ import g from './garage.module.css';
 export default function MyGarageLoading() {
     return (
         <div className={s.scope} aria-busy="true" aria-label="Loading your garage">
-            <ConsoleHead title="Garage" sub="Your builds and posts. Editing lives in the Rollout app." />
+            <ConsoleHead title="Garage" />
             <ul className={g.cars}>
                 {Array.from({ length: 3 }).map((_, i) => (
                     <li key={i}>

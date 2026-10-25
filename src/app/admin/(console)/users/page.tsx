@@ -52,7 +52,7 @@ export default async function UsersPage({
 
     return (
         <>
-            <AdminHead title="Users" sub={`All profiles, newest first. ${users.length} shown.`} />
+            <AdminHead title="Users" sub={`${users.length} shown`} />
 
             <form className="admin-search" action="/admin/users">
                 <input

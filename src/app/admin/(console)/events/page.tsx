@@ -28,7 +28,7 @@ export default async function EventsPage() {
     const items = await loadEvents();
     return (
         <>
-            <AdminHead title="Events" sub={`All events, newest first. ${items.length} shown (last 200).`} />
+            <AdminHead title="Events" sub={`${items.length} shown · last 200`} />
             <div className="admin-table-wrap">
                 <table className="admin-table">
                     <thead>

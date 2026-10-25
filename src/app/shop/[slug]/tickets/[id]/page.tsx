@@ -195,7 +195,7 @@ export default async function TicketDetailPage({
             </Panel>
 
             <div className={sh.two}>
-                <Panel id="t-messages" title="Messages" sub="Customer chat and internal notes">
+                <Panel id="t-messages" title="Messages">
                     <Suspense fallback={<SkeletonText lines={4} />}>
                         <ChatSection slug={slug} ticketRowId={t.id} />
                     </Suspense>

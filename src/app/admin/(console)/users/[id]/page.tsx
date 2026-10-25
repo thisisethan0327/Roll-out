@@ -396,7 +396,7 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
                 <Stat label="Hosted" value={n(counts?.hosted)} />
             </div>
 
-            <SectionHead title="Account" sub="Auth and sign-in." />
+            <SectionHead title="Account" />
             <DefList
                 label="Account"
                 rows={[
@@ -431,7 +431,7 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
                 ]}
             />
 
-            <SectionHead title="Profile" sub="Public fields." />
+            <SectionHead title="Profile" />
             <DefList
                 label="Profile"
                 rows={[
@@ -573,7 +573,7 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
                 </table>
             </div>
 
-            <SectionHead title="RSVPs" sub={`${rsvps.length} shown, most recent first.`} />
+            <SectionHead title="RSVPs" sub={`${rsvps.length} shown`} />
             <div className="admin-table-wrap">
                 <table className="admin-table">
                     <thead>
@@ -636,7 +636,7 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
                 </table>
             </div>
 
-            <SectionHead title="Tickets" sub={`${tickets.length} shown, bought or held by this member.`} />
+            <SectionHead title="Tickets" sub={`${tickets.length} shown`} />
             <div className="admin-table-wrap">
                 <table className="admin-table">
                     <thead>
@@ -819,7 +819,7 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
                 <>
                     <SectionHead
                         title="Ticket refunds"
-                        sub={`${refundRows.length} rows in the ban refund ledger.${dryRunMode ? ' Dry run mode is on: nothing is sent to payments.' : ''}`}
+                        sub={`${refundRows.length} rows${dryRunMode ? ' · Dry run mode is on: nothing is sent to payments.' : ''}`}
                     />
                     {dryRunMode && (
                         <div className="admin-login-error">
@@ -920,14 +920,14 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
                 <>
                     <SectionHead
                         title="Admin activity"
-                        sub={`${audit.about.rows.length} shown: actions taken on this member by Rollout admins.`}
+                        sub={`${audit.about.rows.length} shown`}
                     />
                     <AdminAuditTable result={audit.about} />
                     {audit.by.rows.length > 0 && (
                         <>
                             <SectionHead
                                 title="Actions by this member as admin"
-                                sub={`${audit.by.rows.length} shown, most recent first.`}
+                                sub={`${audit.by.rows.length} shown`}
                             />
                             <AdminAuditTable result={audit.by} showActor={false} />
                         </>

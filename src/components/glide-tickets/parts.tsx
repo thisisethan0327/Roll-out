@@ -6,6 +6,7 @@
 import './tickets.css';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
+import type { HeadSub } from '@/components/glide/head';
 import { Check, ChevronLeft, CircleAlert, CircleX, Clock, Minus, Plus, ShoppingBag } from 'lucide-react';
 import { EmptyState as KitEmptyState, type EmptyStateProps } from '@/components/glide/EmptyState';
 
@@ -25,7 +26,7 @@ export function PageHead({
     title: ReactNode;
     /** Title is an id or code (Michroma, not uppercase display). */
     code?: boolean;
-    sub?: ReactNode;
+    sub?: HeadSub;
     meta?: ReactNode;
     back?: { href: string; label: string };
     actions?: ReactNode;

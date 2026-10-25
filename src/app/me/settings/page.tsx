@@ -36,7 +36,6 @@ export default async function SettingsPage() {
         <div className={s.scope}>
             <ConsoleHead
                 title="Settings"
-                sub="Your profile, shipping addresses, appearance and account."
                 actions={
                     <SecButton href={`/u/${handle}`}>
                         <UserRound size={17} strokeWidth={2} aria-hidden="true" />
@@ -66,7 +65,7 @@ export default async function SettingsPage() {
 
                 <div className={s.col}>
                     <Card as="section" aria-labelledby="profile" style={{ scrollMarginTop: 20 }}>
-                        <CardHead id="profile" title="Profile" sub="Shown on your public page and next to your posts." />
+                        <CardHead id="profile" title="Profile" />
                         <div className={s.cardBody}>
                             <div className={st.slots}>
                                 <ImageSlot kind="avatar" current={p?.avatar_url ?? null} label="Avatar" hint="Square, up to 5 MB — JPG, PNG or WebP. Resized to 512 px." />
@@ -77,7 +76,7 @@ export default async function SettingsPage() {
                     </Card>
 
                     <Card as="section" aria-labelledby="shipping" style={{ scrollMarginTop: 20 }}>
-                        <CardHead id="shipping" title="Shipping addresses" sub="Used when you shop on Rollout. Your default prefills checkout." />
+                        <CardHead id="shipping" title="Shipping addresses" />
                         <div className={s.cardBody}>
                             <AddressBook initial={addresses} connected={connected} />
                         </div>

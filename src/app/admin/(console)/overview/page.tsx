@@ -127,7 +127,7 @@ export default async function OverviewPage() {
 
     return (
         <>
-            <AdminHead title="Overview" sub="Platform snapshot with live counts." />
+            <AdminHead title="Overview" />
 
             {/* ── NEEDS ATTENTION — persistent action items + derived signals ── */}
             <SectionHead
@@ -137,7 +137,6 @@ export default async function OverviewPage() {
                         {attentionCount > 0 && <span className="admin-pill warn">{attentionCount}</span>}
                     </>
                 }
-                sub="Open action items. Resolve or dismiss them."
             />
 
             {s.pendingVerifications > 0 && (

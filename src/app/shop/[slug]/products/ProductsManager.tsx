@@ -144,7 +144,7 @@ export function ProductsManager({
             {canManage && (
                 showAdd ? (
                     <section className="g-card g-edge" aria-labelledby="pm-add-h">
-                        <CardHead id="pm-add-h" title="New product" sub="Adds a line to this shop’s inventory." />
+                        <CardHead id="pm-add-h" title="New product" />
                         <form
                             className={cs.cardBody}
                             style={{ paddingBottom: 32 }}

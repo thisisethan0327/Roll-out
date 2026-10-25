@@ -28,7 +28,7 @@ export default async function NewHostEventPage() {
 
     return (
         <div className={s.scope}>
-            <ConsoleHead title="Host an event" sub="Your community event, no shop attached." back={{ href: '/me/events', label: 'My events' }} />
+            <ConsoleHead title="Host an event" back={{ href: '/me/events', label: 'My events' }} />
             <div className={s.sideR}>
                 <NewHostEventForm />
                 <div className={`${s.col} ${s.sticky} ${s.hideNarrow}`}>

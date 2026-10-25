@@ -48,7 +48,7 @@ export default async function AppointmentsPage({ searchParams }: { searchParams:
                     Request sent to @{requestedHandle} — they&apos;ll confirm a time from their console.
                 </p>
             ) : null}
-            <ConsoleHead title="Appointments" sub="Your booking requests across every Rollout shop." />
+            <ConsoleHead title="Appointments" />
 
             {appts.length === 0 ? (
                 <Card>

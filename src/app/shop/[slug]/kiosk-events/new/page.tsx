@@ -28,7 +28,7 @@ export default async function NewKioskEventPage({
             <ConsoleHead
                 back={{ href: `/shop/${slug}/kiosk-events`, label: 'Kiosk events' }}
                 title="New kiosk event"
-                sub={`${shop.name} · saved as a draft; publish when it's ready`}
+                sub={shop.name}
             />
 
             <form className="admin-form" action={createBound} style={{ maxWidth: 720 }}>

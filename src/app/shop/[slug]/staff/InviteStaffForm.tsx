@@ -54,7 +54,7 @@ export function InviteStaffForm({
 
     return (
         <section className={cx('g-card', bz.narrow)} aria-labelledby="inv-h">
-            <CardHead id="inv-h" title="Add staff" sub="By email. Staff are added here; there is no self-signup." />
+            <CardHead id="inv-h" title="Add staff" />
             <form onSubmit={submit} className={cx(cs.cardBody, cs.form)} style={{ paddingBottom: 30 }}>
                 <div className={cs.grid2f}>
                 <Field label="Email" htmlFor="inv-email">

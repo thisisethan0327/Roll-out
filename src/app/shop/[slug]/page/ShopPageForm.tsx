@@ -57,7 +57,7 @@ export function ShopPageForm({
     return (
         <div className={bz.split}>
             <form onSubmit={submit} className={cs.col}>
-                <FormSection id="sp-id" title="Identity" sub="How the shop appears on its public page." edge>
+                <FormSection id="sp-id" title="Identity" edge>
                     <Field
                         label="Handle"
                         htmlFor="sp-handle"

@@ -55,7 +55,7 @@ export default async function PermissionsPage() {
 
     return (
         <>
-            <AdminHead title="Permissions" sub="Platform-wide role grants. Add them from the Users table." />
+            <AdminHead title="Permissions" />
             {failed && (
                 <div className="admin-login-error" role="alert">
                     <TriangleAlert size={18} strokeWidth={2} aria-hidden="true" />

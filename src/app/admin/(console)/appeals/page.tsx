@@ -122,7 +122,7 @@ export default async function AppealsPage({ searchParams }: { searchParams: Prom
     if (result.missing) {
         return (
             <>
-                <AdminHead title="Appeals" sub="Needs migration 093." />
+                <AdminHead title="Appeals" />
                 <div className="admin-empty">The appeals table arrives with migration 093.</div>
             </>
         );

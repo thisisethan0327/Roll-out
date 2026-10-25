@@ -40,7 +40,7 @@ export default async function PostsPage({
         <>
             <AdminHead
                 title="Posts"
-                sub={`${items.length} shown, newest first. ${showDeleted ? 'Including deleted posts.' : 'Live posts only.'}`}
+                sub={`${items.length} shown · ${showDeleted ? 'Including deleted' : 'Live only'}`}
                 actions={
                     <a href={`/admin/posts${showDeleted ? '' : '?deleted=1'}`} className="admin-action-btn muted">
                         {showDeleted ? <EyeOff {...ic} /> : <Eye {...ic} />}

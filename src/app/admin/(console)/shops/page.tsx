@@ -46,7 +46,7 @@ export default async function ShopsPage() {
     const shops = await listShops();
     return (
         <>
-            <AdminHead title="Shops" sub={`${shops.length} total. Manage page profiles and staff.`} />
+            <AdminHead title="Shops" sub={`${shops.length} total`} />
             <div className="admin-table-wrap">
                 <table className="admin-table">
                     <thead>

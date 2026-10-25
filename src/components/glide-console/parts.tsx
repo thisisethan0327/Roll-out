@@ -8,6 +8,7 @@
  */
 import Link from 'next/link';
 import type { ReactNode } from 'react';
+import type { HeadSub } from '@/components/glide/head';
 import { ChevronLeft, CircleCheck, CircleDashed, CircleX, Clock } from 'lucide-react';
 import { statusVariant } from '@/app/me/ui';
 import { EmptyState, type EmptyStateProps } from '@/components/glide/EmptyState';
@@ -27,7 +28,7 @@ export function ConsoleHead({
     actions,
 }: {
     title: ReactNode;
-    sub?: ReactNode;
+    sub?: HeadSub;
     back?: { href: string; label: string };
     actions?: ReactNode;
 }) {
@@ -49,7 +50,7 @@ export function ConsoleHead({
 }
 
 /** Card heading row: Chakra title, optional sub line and an action on the right. */
-export function CardHead({ id, title, sub, action }: { id?: string; title: ReactNode; sub?: ReactNode; action?: ReactNode }) {
+export function CardHead({ id, title, sub, action }: { id?: string; title: ReactNode; sub?: HeadSub; action?: ReactNode }) {
     return (
         <div className={s.cardH}>
             <div style={{ minWidth: 0 }}>
@@ -150,7 +151,7 @@ export function FormSection({
 }: {
     id: string;
     title: ReactNode;
-    sub?: ReactNode;
+    sub?: HeadSub;
     action?: ReactNode;
     children: ReactNode;
     edge?: boolean;

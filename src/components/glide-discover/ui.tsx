@@ -9,6 +9,7 @@
 import './discover.css';
 import Link from 'next/link';
 import type { ComponentProps, ReactNode } from 'react';
+import type { HeadSub } from '@/components/glide/head';
 import { ChevronRight, Clock, List, Lock, Map as MapIcon, Star, Users } from 'lucide-react';
 import { Chip, DateRoundel } from '@/components/glide/primitives';
 import { eventDateParts, eventTypeLabel, placeName } from '@/lib/glide-format';
@@ -278,7 +279,7 @@ export function ProductTile({ product: p }: { product: MedusaProduct }) {
 }
 
 /** A heading row inside a card: title, optional sub and a trailing link. */
-export function CardHead({ id, title, sub, action }: { id?: string; title: ReactNode; sub?: ReactNode; action?: ReactNode }) {
+export function CardHead({ id, title, sub, action }: { id?: string; title: ReactNode; sub?: HeadSub; action?: ReactNode }) {
     return (
         <div className="gd-card-hd">
             <div>

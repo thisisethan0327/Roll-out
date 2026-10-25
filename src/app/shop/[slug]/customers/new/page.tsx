@@ -29,7 +29,6 @@ export default async function NewCustomerPage({
             <ConsoleHead
                 back={{ href: `/shop/${slug}/customers`, label: 'All customers' }}
                 title="New customer"
-                sub="A contact, and their first vehicle if you have it"
             />
 
             {!canCreate ? (
@@ -64,7 +63,7 @@ export default async function NewCustomerPage({
                                 </Field>
                         </div>
                     </Panel>
-                    <Panel id="nc-vehicle" title="First vehicle" sub="Optional">
+                    <Panel id="nc-vehicle" title="First vehicle">
                         <div className={sh.grid2}>
                             <Field label="Year" htmlFor="nc-year">
                                 <input id="nc-year" name="year" type="text" placeholder="" className={sh.field} />

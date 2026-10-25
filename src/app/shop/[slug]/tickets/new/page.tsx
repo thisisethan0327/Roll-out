@@ -30,7 +30,7 @@ export default async function NewTicketPage({
             <ConsoleHead
                 back={{ href: `/shop/${slug}/tickets`, label: 'All tickets' }}
                 title="New ticket"
-                sub={`${shop.name} · manual entry for walk-ins and phone-ins`}
+                sub={shop.name}
             />
 
             {!canCreate && (

@@ -137,7 +137,7 @@ export default async function VerificationsPage() {
         <>
             <AdminHead
                 title="Verifications"
-                sub={`${all.length + eventsPending.length} open across shop listings, commerce KYC, hosts and events.`}
+                sub={`${all.length + eventsPending.length} open`}
             />
 
             <Section title="Shop listing" reqs={shop} />
@@ -156,7 +156,7 @@ export default async function VerificationsPage() {
                 )}
             </section>
             <section className={a.stack} aria-label="Verified events">
-                <SectionHead title="Verified events" sub={`${eventsVerified.length}. Revoke or enable the coin.`} />
+                <SectionHead title="Verified events" sub={`${eventsVerified.length} total`} />
                 {eventsVerified.length === 0 ? (
                     <div className="admin-empty">No verified events yet.</div>
                 ) : (

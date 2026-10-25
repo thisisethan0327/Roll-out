@@ -287,7 +287,7 @@ export default async function ShopCalendarPage({
                 </div>
             </section>
 
-            <Panel id="next-week" title="Upcoming next week" sub="The first 5 after this week ends" flush>
+            <Panel id="next-week" title="Upcoming next week" flush>
                 <div className={sh.tblWrap}>
                     <table className={sh.tbl}>
                         <thead>

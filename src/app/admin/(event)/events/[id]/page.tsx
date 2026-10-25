@@ -216,7 +216,7 @@ export default async function AdminEventDetailPage({ params }: { params: Promise
             <div style={{ display: 'contents' }}>
                 <div style={{ display: 'contents' }}>
                     {/* CONTEXT */}
-                    <SectionHead title="Context" sub="Host, shop, location and tiers." />
+                    <SectionHead title="Context" />
                     <DefList
                         label="Event context"
                         rows={[
@@ -310,7 +310,7 @@ export default async function AdminEventDetailPage({ params }: { params: Promise
                         ]}
                     />
                     {/* ATTENDEES */}
-                    <SectionHead id="attendees" title="Attendees (RSVPs)" sub={`${rsvps.length} shown, most recent first.`} />
+                    <SectionHead id="attendees" title="Attendees (RSVPs)" sub={`${rsvps.length} shown`} />
                     <RsvpTable
                         eventId={event.id}
                         rsvps={rsvps}
@@ -405,7 +405,7 @@ export default async function AdminEventDetailPage({ params }: { params: Promise
                     {/* ADMIN ACTIONS */}
                     {!event.cancelled_at && (
                         <>
-                            <SectionHead title="Admin actions" sub="Platform-level override." />
+                            <SectionHead title="Admin actions" />
                             <div className={a.actRow}>
                             <EventActions
                                 eventId={event.id}
@@ -421,7 +421,7 @@ export default async function AdminEventDetailPage({ params }: { params: Promise
                         <>
                             <SectionHead
                                 title="Admin activity"
-                                sub={`${audit.rows.length} shown: actions taken on this event as a Rollout admin.`}
+                                sub={`${audit.rows.length} shown`}
                             />
                             <AdminAuditTable result={audit} showSubject={false} />
                         </>
@@ -432,7 +432,7 @@ export default async function AdminEventDetailPage({ params }: { params: Promise
                         <div id="edit" className={a.stack} style={{ scrollMarginTop: 96 }}>
                             <SectionHead
                                 title="Edit event (as host)"
-                                sub="Member-hosted. Saves are made as platform admin. Invites are sent under the host’s name from /me/events and are not available here."
+                                sub="Saves as platform admin"
                             />
                             <HostEventEditForm
                                 event={event}

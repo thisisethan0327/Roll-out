@@ -102,7 +102,7 @@ export function HostInviteSection({
         <FormSection
             id="invitations"
             title="Invitations"
-            sub={`Invite people by email. Sent as ${hostName} via Rollout.`}
+            sub={`Sent as ${hostName}`}
         >
             <div className={r.inv}>
                 <div className={s.form}>

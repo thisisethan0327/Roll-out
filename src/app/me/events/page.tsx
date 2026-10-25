@@ -66,7 +66,6 @@ export default async function MyEventsPage() {
         <div className={s.scope}>
             <ConsoleHead
                 title="My events"
-                sub="Events you host on Rollout (no shop attached)."
                 actions={
                     <GlideButton href="/me/events/new" size="sm" icon={<Plus size={18} strokeWidth={2} />}>
                         Host an event

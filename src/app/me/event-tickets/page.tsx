@@ -32,7 +32,7 @@ export default async function EventTicketsPage() {
 
     return (
         <div className="glide glide-page gt-page--me">
-            <PageHead title="Event tickets" sub="Every event ticket tied to your account, bought or claimed from a buyer." />
+            <PageHead title="Event tickets" />
 
             {tickets.length === 0 ? (
                 <EmptyState

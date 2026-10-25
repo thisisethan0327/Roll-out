@@ -150,7 +150,7 @@ export function AccountForm({
 
     return (
         <form onSubmit={submit} className={cs.col}>
-            <FormSection id="acct-form" title="Profile" sub="Your handle, name and bio across the network." edge>
+            <FormSection id="acct-form" title="Profile" edge>
                 <div className={cs.field}>
                     <label className={cs.label} htmlFor="acct-handle">
                         Handle

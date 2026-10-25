@@ -44,7 +44,7 @@ export default async function AnnouncementsPage() {
     const ordered = [...list.filter((x) => x.scope === 'site'), ...sortAnnouncements(list.filter((x) => x.scope === 'event'))];
     return (
         <>
-            <AdminHead title="Announcements" sub="Site-wide and event notices. No deploy needed." />
+            <AdminHead title="Announcements" />
             {!ready ? (
                 <div className="admin-empty">The announcements table is not available yet. Apply migration 090.</div>
             ) : (

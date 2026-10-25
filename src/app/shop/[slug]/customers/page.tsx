@@ -209,7 +209,7 @@ export default async function ShopCustomersPage({
         <div className={sh.stack}>
             <ConsoleHead
                 title="Customers"
-                sub={`${shop.name} · one contact book for Rollout members and walk-in customers`}
+                sub={shop.name}
                 actions={
                     <GlideButton href={`/shop/${slug}/customers/new`} size="sm" icon={<UserPlus size={18} strokeWidth={2} />}>
                         New customer
