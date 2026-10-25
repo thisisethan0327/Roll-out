@@ -17,7 +17,7 @@ import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { getRolloutMemberClient } from '@/lib/consumer';
 import { eventHasPaidExposure } from '@/lib/event-refund';
 import { hostCheckInTicket, parseRefundQuoteLike } from '@/lib/event-tickets';
-import { refundAndCancelEventOrder } from '@/lib/medusa-admin';
+import { quoteEventOrderRefund, refundAndCancelEventOrder } from '@/lib/medusa-admin';
 import { refundSeatShareAsPlatform } from '@/lib/admin-ticket-refund';
 import { writeWithAreaLabel } from '@/lib/event-area-label';
 import { parseHostEventUpdate } from '@/lib/host-event-write';
@@ -357,6 +357,23 @@ async function loadRsvp(eventId: string, profileId: string): Promise<RsvpLoad> {
     if (error) return { ok: false, error: error.message };
     if (!data) return { ok: false, error: 'That RSVP no longer exists.' };
     return { ok: true, rsvp: data as any };
+}
+
+/**
+ * What a REFUND on this RSVP row would return: the order's captured payment
+ * minus what is already refunded. Read-only, shown in the confirm dialog so
+ * the RSVP refund is never blind (the ticket refund already worked this way).
+ */
+export async function adminRefundRsvpQuoteAction(
+    eventId: string,
+    profileId: string,
+): Promise<{ ok: true; amountCents: number } | { ok: false; error: string }> {
+    await requirePlatformAdmin();
+    const loaded = await loadRsvp(eventId, profileId);
+    if (!loaded.ok) return loaded;
+    const orderId = loaded.rsvp.payment_ref;
+    if (!orderId) return { ok: false, error: 'This spot is not paid: use REMOVE.' };
+    return quoteEventOrderRefund(orderId, { eventId, eventProfileId: profileId });
 }
 
 /** Refund the whole paid order behind an RSVP row (events without per-ticket rows). */

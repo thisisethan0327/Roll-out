@@ -716,7 +716,7 @@ function TicketGroup({
                         <td>{t.refund_cents ? money(t.refund_cents) : '—'}</td>
                         <td style={{ textAlign: 'right' }}>
                             {t.status === 'confirmed' && t.order_id ? (
-                                <TicketRefundButton eventId={eventId} ticketId={t.id} />
+                                <TicketRefundButton eventId={eventId} ticketId={t.id} buyerHandle={buyer?.handle ?? null} />
                             ) : (
                                 '—'
                             )}

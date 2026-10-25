@@ -1384,6 +1384,41 @@ async function cancelPlainOrder(orderId: string): Promise<ActionResult> {
 }
 
 /**
+ * Read-only: what refundAndCancelEventOrder() below would refund right now —
+ * the captured payment minus what is already refunded, in cents. Same order
+ * lookup and the same metadata safety checks, no writes. Shown in the admin
+ * confirm before the refund runs, so nobody refunds blind.
+ */
+export async function quoteEventOrderRefund(
+    orderId: string,
+    expect?: { eventId?: string | null; eventProfileId?: string | null },
+): Promise<{ ok: true; amountCents: number } | { ok: false; error: string }> {
+    if (!orderId) return { ok: false, error: 'No order id.' };
+    const o = await fetchOrderForEventRefund(orderId);
+    if (!o?.id) return { ok: false, error: 'Order not found.' };
+    const m = (o.metadata ?? {}) as Record<string, unknown>;
+    if (expect?.eventId && m.event_id !== expect.eventId) {
+        return { ok: false, error: 'This order does not match the event — refused as a safety check.' };
+    }
+    if (expect?.eventProfileId && m.event_profile_id !== expect.eventProfileId) {
+        return { ok: false, error: 'This order does not match the member — refused as a safety check.' };
+    }
+    let payment: any = null;
+    for (const pc of (o.payment_collections ?? []) as any[]) {
+        for (const p of (pc?.payments ?? []) as any[]) {
+            if (p?.captured_at && !p?.canceled_at) {
+                payment = p;
+                break;
+            }
+        }
+        if (payment) break;
+    }
+    if (!payment?.id) return { ok: true, amountCents: 0 };
+    const owed = Math.max(0, Number(payment.amount ?? 0) - paymentRefundedAmount(payment));
+    return { ok: true, amountCents: Math.round(owed * 100) };
+}
+
+/**
  * Idempotent refund-then-cancel of ONE event-package order.
  *
  * 1. Refund the full captured amount of its one captured payment (skipped if
