@@ -5,10 +5,13 @@
  * the status as a badge at the END of the row — UPCOMING in gold with a slow
  * pulse, PAST muted. Official events carry a star. Keyboard: Enter/Space/ArrowDown
  * open, arrows move, Enter picks, Escape closes; typing in the filter narrows.
+ * Escape goes through the shared overlay stack (src/lib/overlay), so inside a
+ * Sheet or dialog it closes the list first, not the overlay around it.
  */
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { EventOption } from './AnnouncementManager';
 import { ChevronDown, Star } from '@/components/icons';
+import { useOverlayLayer } from '@/lib/overlay/stack';
 
 export function EventPicker({ options, value, onChange }: { options: EventOption[]; value: string; onChange: (id: string) => void }) {
     const [open, setOpen] = useState(false);
@@ -16,6 +19,8 @@ export function EventPicker({ options, value, onChange }: { options: EventOption
     const [active, setActive] = useState(0);
     const root = useRef<HTMLDivElement>(null);
     const listId = useId();
+
+    useOverlayLayer(open, () => setOpen(false));
 
     const selected = options.find((o) => o.id === value) ?? null;
     const visible = useMemo(() => {
@@ -37,8 +42,7 @@ export function EventPicker({ options, value, onChange }: { options: EventOption
     const onKey = (e: React.KeyboardEvent) => {
         if (!open && (e.key === 'ArrowDown' || e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); setOpen(true); return; }
         if (!open) return;
-        if (e.key === 'Escape') { e.preventDefault(); setOpen(false); }
-        else if (e.key === 'ArrowDown') { e.preventDefault(); setActive((i) => Math.min(visible.length - 1, i + 1)); }
+        if (e.key === 'ArrowDown') { e.preventDefault(); setActive((i) => Math.min(visible.length - 1, i + 1)); }
         else if (e.key === 'ArrowUp') { e.preventDefault(); setActive((i) => Math.max(0, i - 1)); }
         else if (e.key === 'Enter') { e.preventDefault(); if (visible[active]) pick(visible[active]); }
     };

@@ -1,21 +1,21 @@
 'use client';
 /**
- * "Add service": the button and its dialog. Glide: the primary pill opens a
- * card dialog over the scrim. Same addService action and the same form fields
- * as before.
+ * "Add service": the button and its dialog, on the Glide kit Modal (overlay
+ * plan Phase 1). Same addService action and the same form fields as before.
  *
- * Closing follows the overlay rules (Documents/CLAUDE.md §12, overlay plan
- * Phase 0 #7): a scrim click never closes it; ×, Cancel and Escape ask
- * "Discard changes?" once anything has been typed; nothing closes it while
- * the save is in flight. The page behind does not scroll while it is open.
- * A failed save shows inside the dialog instead of an alert().
+ * Closing follows the overlay rules (Documents/CLAUDE.md §12): a scrim click
+ * never closes it; ×, Cancel and Escape ask "Discard changes?" once anything
+ * has been typed; nothing closes it while the save is in flight. Escape and
+ * the page scroll lock go through the shared overlay stack. A failed save
+ * shows inside the dialog instead of an alert(). Kept a Modal (6 fields), not
+ * a Drawer: overlay plan decision 4.
  */
-import { useEffect, useRef, useState, useTransition } from 'react';
-import { CircleAlert, Plus, X } from 'lucide-react';
+import { useState, useTransition } from 'react';
+import { CircleAlert, Plus } from 'lucide-react';
 import { addService } from './actions';
 import { GlideButton } from '@/components/glide/primitives';
-import { confirmDialog } from '@/components/glide/confirm';
-import { CardHead } from '@/components/glide-console/parts';
+import { Modal } from '@/components/glide/Modal';
+import { useRequestClose } from '@/lib/overlay/stack';
 import cs from '@/components/glide-console/console.module.css';
 import { ServiceFields } from '@/components/glide-shopbiz/ServiceFields';
 import { cx } from '@/components/glide-shopbiz/parts';
@@ -26,11 +26,6 @@ export function AddServiceForm({ shopId }: { shopId: number }) {
     const [dirty, setDirty] = useState(false);
     const [err, setErr] = useState<string | null>(null);
     const [pending, start] = useTransition();
-    const dialogRef = useRef<HTMLDivElement>(null);
-    // Read from the key handler, which is bound once per open.
-    const live = useRef({ dirty, pending });
-    live.current = { dirty, pending };
-    const asking = useRef(false);
 
     const close = () => {
         setOpen(false);
@@ -38,28 +33,9 @@ export function AddServiceForm({ shopId }: { shopId: number }) {
         setErr(null);
     };
 
-    /** ×, Cancel and Escape: blocked while saving, a discard check when dirty. */
-    const requestClose = async () => {
-        if (live.current.pending || asking.current) return;
-        if (live.current.dirty) {
-            asking.current = true;
-            try {
-                const ok = await confirmDialog({
-                    title: 'Discard changes?',
-                    message: 'The service you started is not saved. What you entered here will be lost.',
-                    confirmLabel: 'Discard',
-                    cancelLabel: 'Keep editing',
-                    danger: true,
-                });
-                if (!ok) return;
-            } finally {
-                asking.current = false;
-            }
-        }
-        close();
-    };
-    const closeRef = useRef(requestClose);
-    closeRef.current = requestClose;
+    const DISCARD = 'The service you started is not saved. What you entered here will be lost.';
+    // Cancel asks the same "Discard changes?" as ×, Escape and the Modal.
+    const requestClose = useRequestClose({ onClose: close, dirty, closable: !pending, discardMessage: DISCARD });
 
     const onSubmit = (formData: FormData) => {
         setErr(null);
@@ -73,61 +49,32 @@ export function AddServiceForm({ shopId }: { shopId: number }) {
         });
     };
 
-    // Focus the first field, lock the page scroll, and route Escape through
-    // requestClose. A confirm on top owns Escape itself (it stops the event).
-    useEffect(() => {
-        if (!open) return;
-        dialogRef.current?.querySelector<HTMLInputElement>('input[name="name"]')?.focus();
-        const prevOverflow = document.body.style.overflow;
-        document.body.style.overflow = 'hidden';
-        const onKey = (e: KeyboardEvent) => {
-            if (e.key !== 'Escape' || e.defaultPrevented) return;
-            e.preventDefault();
-            void closeRef.current();
-        };
-        window.addEventListener('keydown', onKey);
-        return () => {
-            window.removeEventListener('keydown', onKey);
-            document.body.style.overflow = prevOverflow;
-        };
-    }, [open]);
-
-    if (!open) {
-        return (
-            <GlideButton size="sm" onClick={() => setOpen(true)} icon={<Plus size={18} strokeWidth={2} />}>
+    return (
+        <>
+            <GlideButton size="sm" onClick={() => setOpen(true)} icon={<Plus size={18} strokeWidth={2} />} aria-haspopup="dialog">
                 Add service
             </GlideButton>
-        );
-    }
-
-    return (
-        // No onClick on the scrim: a form overlay never closes on a stray tap.
-        <div className={bz.dlgRoot}>
-            <div ref={dialogRef} className={bz.dlg} role="dialog" aria-modal="true" aria-labelledby="add-svc-h">
-                <CardHead
-                    id="add-svc-h"
-                    title="Add a service"
-                    action={
-                        <button
-                            type="button"
-                            className="g-cb g-cb--fill"
-                            aria-label="Close"
-                            onClick={() => void requestClose()}
-                            disabled={pending}
-                        >
-                            <X size={20} strokeWidth={2} aria-hidden="true" />
-                        </button>
-                    }
-                />
+            <Modal
+                open={open}
+                onClose={close}
+                title="Add a service"
+                titleId="add-svc-h"
+                size="lg"
+                dirty={dirty}
+                closable={!pending}
+                discardMessage={DISCARD}
+                initialFocus='input[name="name"]'
+            >
                 <form
+                    id="add-svc-form"
                     // onSubmit, not action=: React resets an action form after
                     // every submit, so a failed save used to wipe what was typed.
                     onSubmit={(e) => {
                         e.preventDefault();
-                        if (live.current.pending) return;
+                        if (pending) return;
                         onSubmit(new FormData(e.currentTarget));
                     }}
-                    className={cs.cardBody}
+                    className={cs.form}
                     onInput={() => setDirty(true)}
                     onChange={() => setDirty(true)}
                 >
@@ -139,12 +86,7 @@ export function AddServiceForm({ shopId }: { shopId: number }) {
                         </p>
                     ) : null}
                     <div className={cx(cs.actRow)} style={{ marginTop: 18, justifyContent: 'flex-end' }}>
-                        <button
-                            type="button"
-                            className={cx(bz.act, bz.actInk)}
-                            disabled={pending}
-                            onClick={() => void requestClose()}
-                        >
+                        <button type="button" className={cx(bz.act, bz.actInk)} disabled={pending} onClick={() => void requestClose()}>
                             Cancel
                         </button>
                         <GlideButton type="submit" size="sm" disabled={pending} aria-busy={pending}>
@@ -152,7 +94,7 @@ export function AddServiceForm({ shopId }: { shopId: number }) {
                         </GlideButton>
                     </div>
                 </form>
-            </div>
-        </div>
+            </Modal>
+        </>
     );
 }

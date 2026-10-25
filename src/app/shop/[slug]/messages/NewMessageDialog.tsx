@@ -47,10 +47,12 @@ export function NewMessageDialog({ shopId }: { shopId: number }) {
             </button>
             <Sheet
                 open={open}
-                onClose={() => !isPending && setOpen(false)}
+                onClose={() => setOpen(false)}
                 title="New message"
                 // Once a handle is typed, a scrim tap no longer throws it away.
                 closeOnBackdrop={!handle.trim()}
+                // Nothing closes it while the thread is being opened.
+                closable={!isPending}
             >
                 <div className={sh.sheetBody}>
                     <p>

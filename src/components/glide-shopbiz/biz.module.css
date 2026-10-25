@@ -948,28 +948,6 @@
   min-width: 0;
 }
 
-/* Modal sheet for "Add service": the kit Sheet pattern, but a plain fixed
-   dialog so the form keeps its own submit flow. */
-.dlgRoot {
-  position: fixed;
-  inset: 0;
-  z-index: 200;
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  padding: 40px 16px;
-  overflow: auto;
-  background: rgba(var(--scrim), 0.45);
-}
-.dlg {
-  width: min(720px, 100%);
-  padding: 8px 0 24px;
-  border-radius: 30px;
-  background: var(--card);
-  color: var(--ink);
-  box-shadow: 0 24px 60px -24px rgba(var(--shadow), 0.6), 0 0 0 1px var(--line);
-}
-
 @media (max-width: 760px) {
   .rev {
     padding: 18px 20px 20px;
@@ -1197,14 +1175,6 @@
   .page td.tdActs .acts {
     justify-content: flex-start;
   }
-}
-/* The Add service dialog mounts inside the page head's actions; keep the
-   head's paragraph style off its hints. */
-.page .dlg p {
-  margin: 0;
-  font-size: 13px;
-  line-height: 1.4;
-  max-width: none;
 }
 /* No divider above the money actions when they are the only step. */
 .money:first-child {

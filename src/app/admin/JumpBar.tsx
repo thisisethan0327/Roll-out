@@ -3,7 +3,8 @@
  * JUMP bar — the universal-search box in the console header (Console Phase C3).
  * Debounced live search against /api/admin/search with a grouped dropdown.
  * Keyboard: `/` focuses from anywhere, ↑/↓ move, Enter opens the highlighted
- * (or first) hit, Esc closes. Cross-app hits open in a new tab; rollout-native
+ * (or first) hit, Esc closes (through the shared overlay stack, so an open
+ * dropdown closes before anything under it). Cross-app hits open in a new tab; rollout-native
  * hits navigate in place. Every failure degrades to an empty dropdown.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -12,6 +13,7 @@ import type { JumpGroup, JumpHit } from '@/lib/jump-search';
 import { ArrowUpRight, ChevronRight } from '@/components/icons';
 import { LoaderCircle, Search } from 'lucide-react';
 import { sentence } from '@/components/glide-admin/parts';
+import { useOverlayLayer } from '@/lib/overlay/stack';
 
 const DEBOUNCE_MS = 220;
 
@@ -29,6 +31,14 @@ export function JumpBar({ glide = false }: { glide?: boolean } = {}) {
     const [loading, setLoading] = useState(false);
     const [active, setActive] = useState(0);
     const seq = useRef(0);
+
+    // While the dropdown shows, it is the top overlay layer: Escape closes it
+    // (and leaves the field) without reaching a Sheet or dialog underneath.
+    const showing = open && q.trim().length >= 2;
+    useOverlayLayer(showing, () => {
+        setOpen(false);
+        inputRef.current?.blur();
+    });
 
     // Flat list of hits in render order — for ↑/↓ + Enter.
     const flat: JumpHit[] = groups.flatMap((g) => g.hits);
@@ -111,8 +121,8 @@ export function JumpBar({ glide = false }: { glide?: boolean } = {}) {
     }, []);
 
     const onInputKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
-        if (e.key === 'Escape') {
-            setOpen(false);
+        // With the dropdown open, the overlay stack handles Escape (above).
+        if (e.key === 'Escape' && !showing) {
             inputRef.current?.blur();
             return;
         }
@@ -160,7 +170,7 @@ export function JumpBar({ glide = false }: { glide?: boolean } = {}) {
                 )}
             </div>
 
-            {open && q.trim().length >= 2 && (
+            {showing && (
                 <div className="jump-drop">
                     {flat.length === 0 && !loading ? (
                         <div className="jump-empty">{glide ? `No matches for “${q.trim()}”` : `NO MATCHES FOR “${q.trim()}”`}</div>
