@@ -17,13 +17,14 @@
  * and resolves to the trimmed text (or null when cancelled).
  *
  * <ConfirmHost/> is mounted once, in app/layout.tsx. One dialog at a time; a
- * second request while one is open cancels the first. While open it owns
- * Escape (window, capture phase, so a Sheet or form dialog underneath does not
- * close with the same keypress) and keeps Tab inside the dialog.
+ * second request while one is open cancels the first. While open it is the
+ * top layer of the overlay stack (src/lib/overlay), so Escape cancels it and
+ * not the Sheet or form dialog underneath, and it keeps Tab inside the dialog.
  */
 import { useEffect, useId, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { TriangleAlert } from 'lucide-react';
+import { lockScroll, pushLayer, unlockScroll } from '@/lib/overlay/core';
 
 export type ConfirmReason = {
     /** Label over the text field, e.g. "Reason (internal)". */
@@ -121,20 +122,15 @@ function ConfirmDialogView({ req }: { req: Request }) {
 
     useEffect(() => {
         const returnTo = document.activeElement as HTMLElement | null;
-        const prevOverflow = document.body.style.overflow;
-        document.body.style.overflow = 'hidden';
+        // The top layer of the shared overlay stack: Escape cancels this
+        // dialog only, never the Sheet or form under it, and the page scroll
+        // lock is counted with theirs (src/lib/overlay).
+        lockScroll();
+        const layer = pushLayer(() => req.settle(false));
         // Focus Cancel (the safe choice), or the reason field when there is one.
         (reason ? fieldRef.current : cancelRef.current)?.focus();
 
         const onKey = (e: KeyboardEvent) => {
-            if (e.key === 'Escape') {
-                // Capture phase on window runs before any other overlay's
-                // listener; stopping here keeps one Esc from closing two layers.
-                e.preventDefault();
-                e.stopImmediatePropagation();
-                req.settle(false);
-                return;
-            }
             if (e.key !== 'Tab' || !panelRef.current) return;
             const items = Array.from(panelRef.current.querySelectorAll<HTMLElement>(FOCUSABLE));
             if (items.length === 0) return;
@@ -154,7 +150,8 @@ function ConfirmDialogView({ req }: { req: Request }) {
         window.addEventListener('keydown', onKey, true);
         return () => {
             window.removeEventListener('keydown', onKey, true);
-            document.body.style.overflow = prevOverflow;
+            layer.remove();
+            unlockScroll();
             returnTo?.focus?.();
         };
     }, []);

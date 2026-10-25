@@ -8,6 +8,7 @@ import type { Metadata } from 'next';
 import { JetBrains_Mono, Inter, Noto_Sans_JP, Chakra_Petch, Michroma, Inter_Tight } from 'next/font/google';
 import { MarketingChrome } from '@/components/MarketingChrome';
 import { ConfirmHost } from '@/components/glide/confirm';
+import { ToastHost } from '@/components/glide/Toast';
 import { cookies } from 'next/headers';
 import {
     DARK_COOKIE,
@@ -122,6 +123,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 {/* confirmDialog() renders here (Glide AlertDialog; replaces
                     window.confirm / prompt across the app). */}
                 <ConfirmHost />
+                {/* toast() / undoToast() render here (src/lib/overlay/toast-store). */}
+                <ToastHost />
             </body>
         </html>
     );
