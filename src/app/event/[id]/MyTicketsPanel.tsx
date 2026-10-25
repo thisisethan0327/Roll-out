@@ -11,6 +11,10 @@
  *
  * Glide: a seat list in the ticket panel (seat roundel · name · size and
  * status · cancel). The cancel paths are unchanged.
+ *
+ * Seat 1's armed label says how many tickets go with it ("Confirm: cancel
+ * all 3 tickets"); that fact used to live only in a title tooltip, which a
+ * phone never shows (overlay plan Phase 0 #5).
  */
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
@@ -76,6 +80,7 @@ export function MyTicketsPanel({
                         ticket={t}
                         canManage={isBuyer && t.isBuyer}
                         refundOpen={refundOpen}
+                        liveCount={live}
                     />
                 ))}
             </div>
@@ -106,11 +111,14 @@ function TicketRow({
     ticket,
     canManage,
     refundOpen,
+    liveCount,
 }: {
     eventId: string;
     ticket: MyTicketRow;
     canManage: boolean;
     refundOpen: boolean;
+    /** Confirmed seats on the order: what seat 1's whole-order cancel takes with it. */
+    liveCount: number;
 }) {
     const router = useRouter();
     const [armed, setArmed] = useState(false);
@@ -176,7 +184,13 @@ function TicketRow({
                 armed ? (
                     <span className="gt-armed">
                         <button type="button" className="gt-mini" data-armed="true" onClick={confirm} disabled={pending}>
-                            {pending ? 'Refunding…' : ticket.seat === 1 ? 'Confirm: cancel whole order' : 'Confirm: cancel & refund'}
+                            {pending
+                                ? 'Refunding…'
+                                : ticket.seat === 1
+                                  ? liveCount > 1
+                                      ? `Confirm: cancel all ${liveCount} tickets`
+                                      : 'Confirm: cancel whole order'
+                                  : 'Confirm: cancel & refund'}
                         </button>
                         <button type="button" className="gt-mini gt-mini--line" onClick={() => setArmed(false)} disabled={pending}>
                             Keep
@@ -188,7 +202,6 @@ function TicketRow({
                         className="gt-mini gt-mini--line"
                         onClick={() => setArmed(true)}
                         disabled={pending}
-                        title={ticket.seat === 1 ? 'Cancelling seat 1 cancels the whole order' : undefined}
                     >
                         <Undo2 size={16} strokeWidth={2} aria-hidden="true" />
                         {ticket.seat === 1 ? 'Cancel whole order' : 'Cancel & refund'}
