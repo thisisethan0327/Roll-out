@@ -637,6 +637,87 @@ a.g-chip:hover { box-shadow: inset 0 0 0 1.5px var(--link); }
 @keyframes g-fade { from { opacity: 0; } to { opacity: 1; } }
 @keyframes g-rise { from { transform: translate(-50%, 24px); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
 
+/* ── AlertDialog (confirmDialog / ConfirmHost) ─────────────────────────────
+   Above every Sheet. A centred card on desktop, a bottom card on a phone.
+   Danger puts the red on the icon only (GLIDE.md: red is never text); the
+   confirm button is an ink pill, the safe Cancel takes the focus. */
+.g-dlg-root { position: fixed; inset: 0; z-index: 300; display: grid; place-items: center; padding: 16px; }
+.g-dlg-scrim {
+  position: absolute;
+  inset: 0;
+  background: rgba(var(--scrim), 0.5);
+  animation: g-fade 0.2s var(--g-ease);
+}
+.g-dlg {
+  position: relative;
+  width: min(460px, 100%);
+  max-height: calc(100dvh - 32px);
+  overflow: auto;
+  border-radius: 26px;
+  background: var(--card);
+  color: var(--ink);
+  padding: 22px 22px 18px;
+  box-shadow: 0 24px 48px -20px rgba(var(--shadow), 0.6), inset 0 0 0 1px var(--line-strong);
+  animation: g-dlg-in 0.25s var(--g-ease);
+}
+.g-dlg-h { display: flex; align-items: flex-start; gap: 12px; }
+.g-dlg-h h2 {
+  flex: 1;
+  margin: 0;
+  font-family: var(--ui);
+  font-weight: 700;
+  font-size: 19px;
+  line-height: 1.3;
+  color: var(--title);
+  overflow-wrap: anywhere;
+}
+.g-dlg-ic {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  margin-top: -6px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--surface-2);
+  color: var(--stripe-3);
+}
+.g-dlg-msg { margin: 10px 0 0; font-size: 15px; line-height: 1.45; color: var(--ink-2); white-space: pre-line; overflow-wrap: anywhere; }
+.g-dlg-msg p { margin: 0 0 8px; }
+.g-dlg-msg p:last-child { margin-bottom: 0; }
+.g-dlg-field { margin-top: 16px; }
+.g-dlg-acts { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 10px; margin-top: 22px; }
+.g-dlg-ok {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  padding: 0 22px;
+  border: 0;
+  border-radius: 24px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-family: var(--ui);
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.g-dlg-ok--danger { background: var(--ink); color: var(--surface); }
+.g-dlg-ok:disabled { background: var(--surface-2); color: var(--ink-2); cursor: not-allowed; }
+@keyframes g-dlg-in { from { transform: translateY(12px); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (max-width: 599px) {
+  .g-dlg-root { place-items: end stretch; padding: 0; }
+  .g-dlg {
+    width: 100%;
+    border-radius: 26px 26px 0 0;
+    padding-bottom: calc(18px + env(safe-area-inset-bottom));
+    max-height: calc(100dvh - 40px);
+  }
+  .g-dlg-acts { flex-direction: column-reverse; }
+  .g-dlg-acts > * { width: 100%; }
+}
+
 /* ── Notice (status / alert line) ──────────────────────────────────────── */
 .g-note {
   display: flex;
@@ -1467,5 +1548,7 @@ a.g-li:hover { box-shadow: 0 0 0 1.5px var(--link); }
   .g-btn-k,
   .g-seg button { transition: none; }
   .g-sheet,
-  .g-sheet-scrim { animation: none; }
+  .g-sheet-scrim,
+  .g-dlg,
+  .g-dlg-scrim { animation: none; }
 }

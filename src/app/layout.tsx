@@ -7,6 +7,7 @@ import { RouteScrollReset } from '@/components/motion/RouteScrollReset';
 import type { Metadata } from 'next';
 import { JetBrains_Mono, Inter, Noto_Sans_JP, Chakra_Petch, Michroma, Inter_Tight } from 'next/font/google';
 import { MarketingChrome } from '@/components/MarketingChrome';
+import { ConfirmHost } from '@/components/glide/confirm';
 import { cookies } from 'next/headers';
 import {
     DARK_COOKIE,
@@ -118,6 +119,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 <RouteScrollReset />
                 <RevealController />
                 <MarketingChrome tenantHost={onTenantHost}>{children}</MarketingChrome>
+                {/* confirmDialog() renders here (Glide AlertDialog; replaces
+                    window.confirm / prompt across the app). */}
+                <ConfirmHost />
             </body>
         </html>
     );
