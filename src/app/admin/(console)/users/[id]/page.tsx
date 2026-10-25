@@ -326,6 +326,7 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
                 adminProfileId={me.profileId}
                 isBanned={banned}
                 banReady={banReady}
+                upcomingPaidRsvps={upcomingRsvps.filter((r) => !!r.payment_ref).length}
             />
 
             {banned && (
@@ -830,6 +831,7 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
                         banId={latestBanId}
                         runnableCount={banned ? runnableForLatest : 0}
                         banned={banned}
+                        handle={p.handle}
                         staleBeforeIso={new Date(Date.now() - REFUNDING_STALE_MS).toISOString()}
                         rows={refundRows.map((r) => {
                             const ev = r.event_id ? eventById.get(r.event_id) : null;

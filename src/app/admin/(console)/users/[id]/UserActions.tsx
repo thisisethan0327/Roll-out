@@ -5,8 +5,13 @@
  * each of which re-checks requirePlatformAdmin() server-side (and banUser also
  * re-checks self / platform admin / shop page against the DB) -- the disabled
  * states here are convenience, not the gate.
+ *
+ * Phase 0 (overlay plan): granting or revoking god mode and a permanent ban
+ * with refunds ask through the Glide confirmDialog, naming the member; Unban
+ * is a two-click armed button (no timer: a tap elsewhere disarms). Results
+ * show inline, never in alert().
  */
-import { useState, useTransition } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import {
     setVerified,
@@ -19,6 +24,7 @@ import {
 } from '../actions';
 import { Ban, Check, Lock, ShieldOff } from 'lucide-react';
 import { adminStyles as a } from '@/components/glide-admin/parts';
+import { confirmDialog } from '@/components/glide/confirm';
 
 const ic = { size: 15, strokeWidth: 2, 'aria-hidden': true } as const;
 
@@ -47,6 +53,7 @@ export function UserActions({
     adminProfileId,
     isBanned,
     banReady,
+    upcomingPaidRsvps = 0,
 }: {
     profileId: string;
     handle: string;
@@ -59,6 +66,8 @@ export function UserActions({
     isBanned: boolean;
     /** Migration 091 is applied (banned_until column and user_bans table both exist). */
     banReady: boolean;
+    /** Upcoming paid RSVPs listed on this page (display only; the ban job re-reads them). */
+    upcomingPaidRsvps?: number;
 }) {
     const router = useRouter();
     const [pending, start] = useTransition();
@@ -75,6 +84,19 @@ export function UserActions({
     const [refundMode, setRefundMode] = useState<'auto' | 'withhold'>('auto');
     const [withholdReason, setWithholdReason] = useState('');
     const [banNotice, setBanNotice] = useState<string | null>(null);
+    const [actionError, setActionError] = useState<string | null>(null);
+    // Unban: two-click armed, no timer. Any other tap on the page disarms it.
+    const [unbanArmed, setUnbanArmed] = useState(false);
+    useEffect(() => {
+        if (!unbanArmed) return;
+        const disarm = () => setUnbanArmed(false);
+        // Added on the next tick so the arming click itself does not disarm.
+        const t = window.setTimeout(() => document.addEventListener('click', disarm), 0);
+        return () => {
+            window.clearTimeout(t);
+            document.removeEventListener('click', disarm);
+        };
+    }, [unbanArmed]);
 
     const banDisabledWhy = !banReady
         ? NEEDS_091
@@ -84,7 +106,7 @@ export function UserActions({
             ? "Platform admins can't be banned. Revoke god mode first."
             : '';
 
-    const submitBan = () => {
+    const submitBan = async () => {
         setBanError(null);
         if (!reason.trim()) return setBanError('A reason is required.');
         let until: string;
@@ -97,16 +119,19 @@ export function UserActions({
         if (permanent && refundMode === 'withhold' && !withholdReason.trim()) {
             return setBanError('A written reason is required to withhold refunds.');
         }
-        if (
-            permanent &&
-            refundMode === 'auto' &&
-            !confirm(
-                'Permanently ban @' +
-                    handle +
-                    '? Their upcoming paid tickets will be CANCELLED and REFUNDED to the original payment method, and the hosts told.',
-            )
-        ) {
-            return;
+        if (permanent && refundMode === 'auto') {
+            const ok = await confirmDialog({
+                title: `Ban @${handle} permanently and refund their upcoming paid tickets?`,
+                message:
+                    'Their upcoming paid tickets are cancelled and refunded to the original payment method, and the hosts are told.' +
+                    (upcomingPaidRsvps > 0
+                        ? ` Upcoming paid RSVPs on this page: ${upcomingPaidRsvps}.`
+                        : ' No upcoming paid RSVPs are listed on this page.') +
+                    ' Free RSVPs are released.',
+                confirmLabel: 'Ban',
+                danger: true,
+            });
+            if (!ok) return;
         }
         start(async () => {
             const res = await banUser(profileId, {
@@ -138,23 +163,49 @@ export function UserActions({
     };
 
     const submitUnban = () => {
-        if (!confirm('Lift the Rollout ban on @' + handle + '?')) return;
+        if (!unbanArmed) {
+            setUnbanArmed(true);
+            return;
+        }
+        setUnbanArmed(false);
+        setActionError(null);
         start(async () => {
             const res = await unbanUser(profileId);
-            if (!res.ok) return alert('Action failed: ' + res.error);
+            if (!res.ok) return setActionError('Unban failed: ' + res.error);
             router.refresh();
         });
     };
 
     const run = (fn: () => Promise<void>) => {
+        setActionError(null);
         start(async () => {
             try {
                 await fn();
                 router.refresh();
             } catch (e: any) {
-                alert('Action failed: ' + (e?.message ?? 'unknown'));
+                setActionError('Action failed: ' + (e?.message ?? 'unknown'));
             }
         });
+    };
+
+    const grantGod = async () => {
+        const ok = await confirmDialog({
+            title: `Make @${handle} a platform admin?`,
+            message: 'God mode opens every admin page and action on Rollout. This is logged.',
+            confirmLabel: 'Grant',
+            danger: true,
+        });
+        if (ok) run(() => grantPlatformAdmin(profileId, adminProfileId));
+    };
+
+    const revokeGod = async () => {
+        const ok = await confirmDialog({
+            title: `Revoke god mode from @${handle}?`,
+            message: 'They lose access to the admin pages. This is logged.',
+            confirmLabel: 'Revoke',
+            danger: true,
+        });
+        if (ok) run(() => revokePlatformAdmin(profileId));
     };
 
     return (
@@ -172,10 +223,7 @@ export function UserActions({
                         <button
                             className="admin-action-btn danger"
                             disabled={pending || isMe}
-                            onClick={() =>
-                                confirm('Revoke god mode from @' + handle + '?') &&
-                                run(() => revokePlatformAdmin(profileId))
-                            }
+                            onClick={revokeGod}
                             title={isMe ? "You can't revoke your own admin." : ''}
                         >
                             <ShieldOff {...ic} className={a.dangerIc} /> Revoke god mode
@@ -184,7 +232,7 @@ export function UserActions({
                         <button
                             className="admin-action-btn"
                             disabled={pending}
-                            onClick={() => run(() => grantPlatformAdmin(profileId, adminProfileId))}
+                            onClick={grantGod}
                         >
                             Grant god mode
                         </button>
@@ -210,12 +258,12 @@ export function UserActions({
                 {kind === 'user' &&
                     (isBanned ? (
                         <button
-                            className="admin-action-btn"
+                            className={`admin-action-btn${unbanArmed ? ' danger' : ''}`}
                             disabled={pending || !banReady}
                             onClick={submitUnban}
-                            title={!banReady ? NEEDS_091 : 'Lift the Rollout ban'}
+                            title={!banReady ? NEEDS_091 : undefined}
                         >
-                            Unban
+                            {unbanArmed ? `Tap again to unban @${handle}` : 'Unban'}
                         </button>
                     ) : (
                         <button
@@ -239,6 +287,11 @@ export function UserActions({
                 )}
             </div>
             {kind === 'user' && !banReady && <div className={a.small}>{NEEDS_091}</div>}
+            {actionError && (
+                <div className="admin-login-error" role="alert">
+                    {actionError}
+                </div>
+            )}
             {banNotice && (
                 <div className={a.note} role="status">
                     {banNotice}

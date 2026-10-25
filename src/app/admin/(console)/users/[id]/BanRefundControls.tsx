@@ -3,6 +3,11 @@
  * The ban refund ledger table with its controls. Authorization and every state
  * check are server-side in ./refund-actions.ts; the buttons shown here are
  * convenience.
+ *
+ * Every money action asks through the Glide confirmDialog with the amount and
+ * the member in the title (never window.confirm, which a browser can
+ * auto-dismiss), and a decline asks for its reason in the same dialog instead
+ * of prompt(). Results show inline above the table.
  */
 import Link from 'next/link';
 import { useState, useTransition } from 'react';
@@ -16,6 +21,7 @@ import {
 } from './refund-actions';
 import { Undo2 } from 'lucide-react';
 import { adminStyles as a, sentence } from '@/components/glide-admin/parts';
+import { confirmDialog } from '@/components/glide/confirm';
 
 const ic = { size: 15, strokeWidth: 2, 'aria-hidden': true } as const;
 
@@ -47,6 +53,10 @@ const PILL: Record<string, string> = {
     skipped: 'admin-pill',
 };
 
+function usd(cents: number): string {
+    return `$${(cents / 100).toFixed(2)}`;
+}
+
 function stamp(iso: string | null | undefined): string {
     return iso ? new Date(iso).toISOString().slice(0, 16).replace('T', ' ') : '—';
 }
@@ -57,12 +67,15 @@ export function BanRefundControls({
     runnableCount,
     banned,
     staleBeforeIso,
+    handle,
 }: {
     rows: LedgerRow[];
     banId: string | null;
     runnableCount: number;
     banned: boolean;
     staleBeforeIso: string;
+    /** The banned member: the refunds go back to their payment methods. */
+    handle: string;
 }) {
     const router = useRouter();
     const [pending, start] = useTransition();
@@ -84,9 +97,66 @@ export function BanRefundControls({
         });
     };
 
-    const decline = (row: LedgerRow) => {
-        const note = prompt('Why decline this refund? (internal, required)');
-        if (!note || !note.trim()) return;
+    // The rows "Run pending refunds" picks up: the latest ban's pending and
+    // skipped rows (runPendingBanRefunds → processBanRefunds), same filter as
+    // the page's runnableCount. Unknown amounts are counted, never guessed.
+    const runnable = rows.filter((r) => r.banId === banId && (r.status === 'pending' || r.status === 'skipped'));
+    const runnableKnown = runnable.filter((r) => r.amountCents != null);
+    const runnableTotal = runnableKnown.reduce((s, r) => s + (r.amountCents ?? 0), 0);
+    const runnableUnknown = runnable.length - runnableKnown.length;
+
+    const rowAmount = (r: LedgerRow) => (r.amountCents != null ? usd(r.amountCents) : null);
+    const rowWhat = (r: LedgerRow) =>
+        `${r.kind === 'order' ? 'Order' : 'Seat'}${r.eventTitle ? ` for ${r.eventTitle}` : ''}${r.orderId ? ` (order …${r.orderId.slice(-6)})` : ''}.`;
+
+    const runAll = async () => {
+        if (!banId) return;
+        const n = runnableCount;
+        const money =
+            runnableKnown.length > 0
+                ? ` — ${usd(runnableTotal)}${runnableUnknown > 0 ? ` plus ${runnableUnknown} without an amount on file` : ''}`
+                : '';
+        const ok = await confirmDialog({
+            title: `Run ${n} pending refund${n === 1 ? '' : 's'}${money}?`,
+            message: `Money goes back to @${handle}'s original payment methods. This is logged.`,
+            confirmLabel: 'Run refunds',
+            danger: true,
+        });
+        if (ok) run(() => runPendingBanRefunds(banId));
+    };
+
+    const refundRow = async (r: LedgerRow) => {
+        const amt = rowAmount(r);
+        const ok = await confirmDialog({
+            title: amt ? `Refund ${amt} to @${handle}?` : `Refund this ticket to @${handle}?`,
+            message: `${rowWhat(r)} The money goes back to the original payment method. This is logged.`,
+            confirmLabel: 'Refund',
+            danger: true,
+        });
+        if (ok) run(() => runBanRefundRow(r.id));
+    };
+
+    const releaseRow = async (r: LedgerRow) => {
+        const amt = rowAmount(r);
+        const ok = await confirmDialog({
+            title: amt ? `Release withheld refund of ${amt} to @${handle}?` : `Release this withheld refund to @${handle}?`,
+            message: `${rowWhat(r)} The money is sent back now, to the original payment method. This is logged.`,
+            confirmLabel: 'Release',
+            danger: true,
+        });
+        if (ok) run(() => releaseBanRefundRow(r.id));
+    };
+
+    const decline = async (row: LedgerRow) => {
+        const amt = rowAmount(row);
+        const note = await confirmDialog({
+            title: amt ? `Decline the ${amt} refund to @${handle}?` : `Decline this refund to @${handle}?`,
+            message: `${rowWhat(row)} No money is sent.`,
+            reason: { label: 'Why decline (internal)', required: true, maxLength: 1000 },
+            confirmLabel: 'Decline',
+            danger: true,
+        });
+        if (!note) return;
         run(() => declineBanRefundRow(row.id, note));
     };
 
@@ -97,11 +167,7 @@ export function BanRefundControls({
                     <button
                         className="admin-action-btn danger"
                         disabled={pending}
-                        onClick={() => {
-                            if (confirm(`Run ${runnableCount} pending refund(s) now? Money is returned to the original payment method.`)) {
-                                run(() => runPendingBanRefunds(banId));
-                            }
-                        }}
+                        onClick={runAll}
                     >
                         <Undo2 {...ic} className={a.dangerIc} />
                         {pending ? 'Running…' : `Run pending refunds (${runnableCount})`}
@@ -176,10 +242,7 @@ export function BanRefundControls({
                                                 <button
                                                     className="admin-action-btn danger"
                                                     disabled={pending}
-                                                    onClick={() =>
-                                                        confirm('Refund this ticket now to the original payment method?') &&
-                                                        run(() => runBanRefundRow(r.id))
-                                                    }
+                                                    onClick={() => refundRow(r)}
                                                 >
                                                     <Undo2 {...ic} className={a.dangerIc} /> Refund
                                                 </button>
@@ -188,10 +251,7 @@ export function BanRefundControls({
                                                 <button
                                                     className="admin-action-btn danger"
                                                     disabled={pending}
-                                                    onClick={() =>
-                                                        confirm('Release this withheld refund and send the money back now?') &&
-                                                        run(() => releaseBanRefundRow(r.id))
-                                                    }
+                                                    onClick={() => releaseRow(r)}
                                                 >
                                                     <Undo2 {...ic} className={a.dangerIc} /> Release
                                                 </button>

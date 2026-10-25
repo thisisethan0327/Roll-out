@@ -10,6 +10,7 @@ import {
 } from './actions';
 import { Check, ShieldOff } from 'lucide-react';
 import { adminStyles as a } from '@/components/glide-admin/parts';
+import { confirmDialog } from '@/components/glide/confirm';
 
 const ic = { size: 15, strokeWidth: 2, 'aria-hidden': true } as const;
 
@@ -47,6 +48,26 @@ export function UserRow({
                 alert('Action failed: ' + (e?.message ?? 'unknown'));
             }
         });
+    };
+
+    // Platform admin is security-relevant: both directions ask, naming the member.
+    const grantGod = async () => {
+        const ok = await confirmDialog({
+            title: `Make @${user.handle} a platform admin?`,
+            message: 'God mode opens every admin page and action on Rollout. This is logged.',
+            confirmLabel: 'Grant',
+            danger: true,
+        });
+        if (ok) handleAction(() => grantPlatformAdmin(user.id, adminProfileId));
+    };
+    const revokeGod = async () => {
+        const ok = await confirmDialog({
+            title: `Revoke god mode from @${user.handle}?`,
+            message: 'They lose access to the admin pages. This is logged.',
+            confirmLabel: 'Revoke',
+            danger: true,
+        });
+        if (ok) handleAction(() => revokePlatformAdmin(user.id));
     };
 
     return (
@@ -93,10 +114,7 @@ export function UserRow({
                             <button
                                 className="admin-action-btn danger"
                                 disabled={pending || isMe}
-                                onClick={() =>
-                                    confirm('Revoke god mode from @' + user.handle + '?') &&
-                                    handleAction(() => revokePlatformAdmin(user.id))
-                                }
+                                onClick={revokeGod}
                                 title={isMe ? "You can't revoke your own admin." : ''}
                             >
                                 <ShieldOff {...ic} className={a.dangerIc} /> Revoke god mode
@@ -105,7 +123,7 @@ export function UserRow({
                             <button
                                 className="admin-action-btn"
                                 disabled={pending}
-                                onClick={() => handleAction(() => grantPlatformAdmin(user.id, adminProfileId))}
+                                onClick={grantGod}
                             >
                                 Grant god mode
                             </button>
