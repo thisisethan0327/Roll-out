@@ -101,7 +101,7 @@ These are named the way R5's CSS names them. Match the shapes, radii and states.
   - `.g-field` (`Field`): label (`.g-field-l`), control, then a hint (`.g-field-h`) or error (`.g-field-e`).
 - **Disabled:** a disabled primary (`.g-btn`) or secondary (`.g-sec`) pill is a flat `surface-2` pill with `ink-2` text and a quiet knob, at full opacity. No faded accent: that reads as loading.
 - **Roundels:** a date roundel (Michroma day number, month or day label above) with tricolore rings when selected.
-- **Sheets:** bottom sheets with a grab handle, 30 px top radius, a scrim at `rgba(var(--scrim),.45)`, and close by ×, scrim or Escape.
+- **Sheets:** bottom sheets with a grab handle, 30 px top radius, a scrim at `rgba(var(--scrim),.45)`, and close by ×, scrim, swipe-down or Escape. A sheet holding typed input stops closing on the scrim (see Overlays).
 - **Maps:** tokenised map palette, with the tricolore route (edge, light blue, navy, red bands) and crew dots. MapLibre zoom buttons are 44 px in any Glide scope (`.g-mapctl` opts in anything else).
 - **Isometric Garage and Shop:**
   - Day and night diorama images with percentage-positioned 44 px hotspots that pulse.
@@ -114,6 +114,39 @@ These are named the way R5's CSS names them. Match the shapes, radii and states.
 - **Rows:** `Row` with `href` keeps its hairline; only the last row in a list drops it.
 - **Card:** `as` takes `div`, `section`, `aside`, `article`, `li`, `form`, `header`, `footer`, `nav`, `fieldset`, `ul`, `ol` or `label`; `href` makes the whole card a link.
 - **SlideToAct:** the knob springs back when `onComplete` returns `false` or a Promise that rejects or resolves `false` (it shows busy while the Promise runs), or when `resetOn` changes. Remounting with a new `key` still works.
+
+## Overlays: the lightest one that does the job
+
+Owner rule, 2026-10-24 (Documents/CLAUDE.md §12; applies to every app). Disruption goes up this list; pick the first row that does the job.
+
+| Job | Use (Glide kit) |
+|---|---|
+| Explain a control | `InfoTip` (`glide/InfoTip.tsx`), never a paragraph |
+| "Saved", "Sent", anything that needs no decision | `toast.success()` (`glide/Toast.tsx`), goes away by itself |
+| A change that can be put back (unpublish, remove a line, soft-delete) | `undoToast()`, not a confirm |
+| Field validation | inline at the field (`Field error`, `.g-field-e`), never a toast |
+| Something unresolved that matters | one banner at the top, never a pile |
+| Row-level "sure?" (remove a line, delete a photo, unban) | two-tap armed button (`useArmed`, `src/lib/overlay/useArmed.ts`), not a centred dialog |
+| Irreversible, money, or sends something to a customer | `confirmDialog()` (`glide/confirm.tsx`): the title names the object, the button is a verb, focus lands on Cancel; `reason` replaces `prompt()` |
+| Short decision or a form with ≤ 5 fields | `Modal` (`glide/Modal.tsx`), a bottom card under 600 px |
+| Action list / picker on a phone | `Sheet` (`glide/Sheet.tsx`) |
+| Long form (many fields, scrolling, steps) | `Drawer` (`glide/Drawer.tsx`): right panel on desktop, full screen under 760 px, with a local draft (`useFormDraft` + `DraftResumeBar`) |
+| Photos / video | `Lightbox` (`glide/Lightbox.tsx`) |
+| Multi-page flow | a page |
+
+Rules that always hold:
+
+- A form overlay never closes on a backdrop click (`closeOnBackdrop` is opt-in on Modal and Drawer; pass `false` on a Sheet once it holds typed input). Escape and × ask "Discard changes?" only when `dirty`. Nothing closes while `closable` is false (a save or money call in flight).
+- Every long form keeps a local draft (`rollout:draft:<key>` in localStorage) and offers Resume.
+- Escape reaches only the topmost overlay, and the body scroll lock is counted (`src/lib/overlay`: `useOverlayLayer`, `useScrollLock`, `useRequestClose`). A popover or picker that closes on Escape registers a layer too (`EventPicker`, the admin `JumpBar`, `InfoTip`, an armed button). Never add your own `keydown` Escape listener or touch `body.style.overflow`.
+- Armed buttons stay armed until the second tap. No timer. A tap anywhere else, Escape or leaving the page disarms.
+- Never `window.confirm` / `alert` / `prompt`.
+- Toasts: errors stay until dismissed, successes auto-dismiss, at most 3 on screen, identical ones collapse. Nothing someone must act on later is a toast. A state that persists ("Payment authorized") stays an inline Notice.
+- First-run prompts queue with `claimPrompt` / `releasePrompt`, one at a time.
+- One shared implementation per piece: no hand-rolled modal, confirm, sheet or lightbox.
+- Await `confirmDialog()` before starting a transition, never inside one.
+
+Ported from emwraps-tickets origin/master 7df9702 (overlay plan, Documents/ui-audits/rollout-web/overlay-redesign-plan.md).
 
 ## Motion
 
