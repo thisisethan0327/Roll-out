@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState, useTransition } from 'react';
+import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { loadStripe, type Stripe, type ExpressCheckoutPaymentMethodsOption } from '@stripe/stripe-js';
 import { Elements, CardElement, ExpressCheckoutElement, useStripe, useElements } from '@stripe/react-stripe-js';
@@ -15,8 +15,16 @@ import { formatMoney } from '@/lib/medusa-types';
 import type { Cart, ShippingOption, AddressInput } from '@/lib/medusa-types';
 import { ArrowRight, Check, Lock, LoaderCircle, Package, Pencil, Store, UserRound } from 'lucide-react';
 import { ErrorLine } from '@/components/glide-tickets/parts';
+import { confirmDialog } from '@/components/glide/confirm';
 
 type ShippingGroup = { key: string; title: string; note?: string; options: ShippingOption[] };
+
+/**
+ * Where an error is shown: next to the thing it is about (overlay plan Phase
+ * 0 #6), not in one line under step 3. An address error used to render below
+ * the payment block, far from the field.
+ */
+type ErrAt = 'address' | 'shipping' | 'card' | 'agreement' | 'payment';
 
 /**
  * Colours for the Stripe card field.
@@ -205,9 +213,53 @@ function CheckoutInner({
 
     const [cart, setCart] = useState<Cart>(initialCart);
     const [step, setStep] = useState<Step>('address');
-    const [error, setError] = useState<string | null>(null);
+    const [error, setError] = useState<{ at: ErrAt; text: string } | null>(null);
+    const fail = (at: ErrAt, text: string) => setError({ at, text });
     const [pending, startTransition] = useTransition();
     const [placing, setPlacing] = useState(false);
+
+    /**
+     * Leave guard while the order is being placed (card confirm through cart
+     * completion runs in this tab): a reload or tab close gets the browser's
+     * own prompt, and an in-app link asks first. Leaving mid-way could leave
+     * the card authorized with no order.
+     */
+    const leavingRef = useRef(false);
+    useEffect(() => {
+        if (!placing) return;
+        const onBeforeUnload = (e: BeforeUnloadEvent) => {
+            if (leavingRef.current) return;
+            e.preventDefault();
+            e.returnValue = '';
+        };
+        const onClick = async (e: MouseEvent) => {
+            if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+            const a = (e.target as Element | null)?.closest?.('a[href]') as HTMLAnchorElement | null;
+            if (!a || (a.target && a.target !== '_self') || a.hasAttribute('download')) return;
+            const url = new URL(a.href, window.location.href);
+            // Other sites: the beforeunload prompt covers them.
+            if (url.origin !== window.location.origin) return;
+            e.preventDefault();
+            e.stopPropagation();
+            const ok = await confirmDialog({
+                title: 'Leave checkout while your order is being placed?',
+                message: 'Your payment is still going through. Leaving now can stop the order from finishing.',
+                confirmLabel: 'Leave',
+                cancelLabel: 'Stay',
+                danger: true,
+            });
+            if (ok) {
+                leavingRef.current = true;
+                window.location.assign(url.href);
+            }
+        };
+        window.addEventListener('beforeunload', onBeforeUnload);
+        document.addEventListener('click', onClick, true);
+        return () => {
+            window.removeEventListener('beforeunload', onBeforeUnload);
+            document.removeEventListener('click', onClick, true);
+        };
+    }, [placing]);
 
     // Prefill from the cart's saved address so a reload of /store/checkout
     // does not drop the shopper into a blank form (rerun 2026-09-06).
@@ -253,7 +305,7 @@ function CheckoutInner({
         setError(null);
         startTransition(async () => {
             const res = await actions.setCheckoutContact(form.email, form);
-            if (!res.ok) return setError(res.error);
+            if (!res.ok) return fail('address', res.error);
             if (res.data) setCart(res.data);
             const opts = await actions.listShippingOptions();
             setShippingOptions(opts);
@@ -272,7 +324,7 @@ function CheckoutInner({
     const submitShipping = () => {
         const ids = shippingGroups.map((g) => selectedShipping[g.key]);
         if (!ids.length || ids.some((id) => !id)) {
-            return setError(shippingGroups.length > 1 ? 'Select a shipping method for each shipment.' : 'Select a shipping method.');
+            return fail('shipping', shippingGroups.length > 1 ? 'Select a shipping method for each shipment.' : 'Select a shipping method.');
         }
         setError(null);
         startTransition(async () => {
@@ -281,7 +333,7 @@ function CheckoutInner({
             let last: Cart | undefined;
             for (const id of ids) {
                 const res = await actions.setShippingMethod(id);
-                if (!res.ok) return setError(res.error);
+                if (!res.ok) return fail('shipping', res.error);
                 if (res.data) last = res.data;
             }
             if (last) setCart(last);
@@ -294,16 +346,16 @@ function CheckoutInner({
     const placeOrder = async () => {
         if (placing) return; // guard against double-submit on payment
         setError(null);
-        if (!stripe || !elements) return setError('Payment is still loading. One sec…');
+        if (!stripe || !elements) return fail('payment', 'Payment is still loading. One sec…');
         const card = elements.getElement(CardElement);
-        if (!card) return setError('Enter your card details.');
+        if (!card) return fail('card', 'Enter your card details.');
 
         setPlacing(true);
         try {
             const initRes = await actions.initStripePaymentSession();
             if (!initRes.ok || !initRes.data) {
                 setPlacing(false);
-                return setError(initRes.ok ? 'Could not start payment.' : initRes.error);
+                return fail('payment', initRes.ok ? 'Could not start payment.' : initRes.error);
             }
 
             const { error: stripeErr, paymentIntent } = await stripe.confirmCardPayment(
@@ -344,13 +396,13 @@ function CheckoutInner({
 
             if (!ok && !authViaError) {
                 setPlacing(false);
-                return setError(stripeErr?.message || 'Card was not authorized.');
+                return fail('card', stripeErr?.message || 'Card was not authorized.');
             }
 
             await finishOrder();
         } catch (err: any) {
             setPlacing(false);
-            setError(err?.message ?? 'Something went wrong placing your order.');
+            fail('payment', err?.message ?? 'Something went wrong placing your order.');
         }
     };
 
@@ -367,11 +419,18 @@ function CheckoutInner({
             }
             if (!complete.ok || !complete.data) {
                 setPlacing(false);
-                return setError(complete.ok ? 'Could not place order.' : complete.error);
+                return fail('payment', complete.ok ? 'Could not place order.' : complete.error);
             }
             router.push(`${successPathPrefix}${complete.data.orderId}`);
         }
     };
+
+    const errorAt = (at: ErrAt) => (error?.at === at ? <ErrorLine>{error.text}</ErrorLine> : null);
+    const errorShown =
+        !!error &&
+        ((error.at === 'address' && step === 'address') ||
+            (error.at === 'shipping' && step === 'shipping') ||
+            (step === 'payment' && (error.at === 'card' || error.at === 'payment' || error.at === 'agreement')));
 
     const shippingSummary =
         shippingGroups
@@ -395,7 +454,7 @@ function CheckoutInner({
                     </p>
                 ) : null}
                 {/* STEP 1 — contact + address */}
-                <StepBlock n={1} title="Contact & shipping" active={step === 'address'} done={step !== 'address'} onEdit={() => { setShippingSet(false); setStep('address'); }}>
+                <StepBlock n={1} title="Contact & shipping" active={step === 'address'} done={step !== 'address'} onEdit={() => { setShippingSet(false); setError(null); setStep('address'); }}>
                     {step === 'address' ? (
                         <form onSubmit={submitAddress} className="gt-step-body">
                             <div className="gt-fields">
@@ -417,6 +476,7 @@ function CheckoutInner({
                                     <Field label="Phone (optional)" value={form.phone ?? ''} onChange={set('phone')} type="tel" autoComplete="tel" />
                                 </Row2>
                             </div>
+                            {errorAt('address')}
                             <button type="submit" className="g-btn g-btn--block" disabled={pending} aria-busy={pending || undefined}>
                                 <span>{pending ? 'Saving…' : 'Continue to shipping'}</span>
                                 <span className="g-btn-k" aria-hidden="true">
@@ -432,7 +492,7 @@ function CheckoutInner({
                 </StepBlock>
 
                 {/* STEP 2 — shipping */}
-                <StepBlock n={2} title="Shipping method" active={step === 'shipping'} done={step === 'payment'} onEdit={step === 'payment' ? () => { setShippingSet(false); setStep('shipping'); } : undefined}>
+                <StepBlock n={2} title="Shipping method" active={step === 'shipping'} done={step === 'payment'} onEdit={step === 'payment' ? () => { setShippingSet(false); setError(null); setStep('shipping'); } : undefined}>
                     {step === 'shipping' ? (
                         <div className="gt-step-body">
                             {shippingOptions.length === 0 ? (
@@ -476,6 +536,7 @@ function CheckoutInner({
                                     ))}
                                 </>
                             )}
+                            {errorAt('shipping')}
                             <button type="button" className="g-btn g-btn--block" disabled={pending || !allShippingChosen} onClick={submitShipping} aria-busy={pending || undefined}>
                                 <span>{pending ? 'Saving…' : 'Continue to payment'}</span>
                                 <span className="g-btn-k" aria-hidden="true">
@@ -502,7 +563,7 @@ function CheckoutInner({
                                 canPay={() => {
                                     if (placing) return false;
                                     if (!agreed) {
-                                        setError('Tick the box to agree to the refund & cancellation policy first.');
+                                        fail('agreement', 'Tick the box to agree to the refund & cancellation policy first.');
                                         return false;
                                     }
                                     setError(null);
@@ -512,14 +573,14 @@ function CheckoutInner({
                                 onStart={() => setPlacing(true)}
                                 onFail={(msg) => {
                                     setPlacing(false);
-                                    setError(msg);
+                                    fail('payment', msg);
                                 }}
                                 onAuthorized={async () => {
                                     try {
                                         await finishOrder();
                                     } catch (err: any) {
                                         setPlacing(false);
-                                        setError(err?.message ?? 'Something went wrong placing your order.');
+                                        fail('payment', err?.message ?? 'Something went wrong placing your order.');
                                     }
                                 }}
                             />
@@ -552,6 +613,7 @@ function CheckoutInner({
                                     )}
                                 </div>
                             </div>
+                            {errorAt('card')}
                             {(process.env.NEXT_PUBLIC_STRIPE_KEY ?? "").startsWith("pk_test_") ? (
                                 <p className="gt-fine">Test mode: use 4242 4242 4242 4242, any future date and CVC.</p>
                             ) : null}
@@ -569,6 +631,7 @@ function CheckoutInner({
                                     <span>{agreement.label}</span>
                                 </label>
                             ) : null}
+                            {errorAt('agreement')}
                             <button
                                 type="button"
                                 className="g-btn g-btn--block"
@@ -582,6 +645,7 @@ function CheckoutInner({
                                     {placing ? <LoaderCircle size={20} strokeWidth={2} className="g-spin" /> : <Lock size={18} strokeWidth={2} />}
                                 </span>
                             </button>
+                            {errorAt('payment')}
                             <p className="gt-lockline">
                                 <Lock size={15} strokeWidth={1.75} aria-hidden="true" />
                                 Payments by Stripe. Your card goes to Stripe, not to Rollout.
@@ -592,7 +656,8 @@ function CheckoutInner({
                     )}
                 </StepBlock>
 
-                {error ? <ErrorLine>{error}</ErrorLine> : null}
+                {/* Fallback: an error whose step is not open (should not happen). */}
+                {error && !errorShown ? <ErrorLine>{error.text}</ErrorLine> : null}
             </div>
 
             {/* RIGHT: order summary */}
