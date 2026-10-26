@@ -34,7 +34,7 @@ type Slot = 'business_license' | 'reseller_certificate' | 'other';
 const SLOTS: { key: Slot; label: string; required: boolean; hint: string }[] = [
     { key: 'business_license', label: 'Business license', required: true, hint: 'State/city business license (PDF or image).' },
     { key: 'reseller_certificate', label: 'Reseller certificate', required: true, hint: 'Reseller permit / sales-tax certificate.' },
-    { key: 'other', label: 'Additional document (optional)', required: false, hint: 'Anything else that supports your application.' },
+    { key: 'other', label: 'Additional document', required: false, hint: 'Anything else that supports your application.' },
 ];
 
 export function SellForm({ shopId, slug }: { shopId: number; slug: string }) {

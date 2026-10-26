@@ -34,7 +34,7 @@ export function AppealForm({ defaultEmail }: { defaultEmail: string | null }) {
                 <span className="g-w">{text.trim().length}</span>/<span className="g-w">{APPEAL_MAX}</span> · at least {APPEAL_MIN} characters
             </span>
             <label className="ga-label" htmlFor="appeal-contact">
-                Contact email <small>· optional</small>
+                Contact email
             </label>
             <div className="ga-fld">
                 <Mail size={20} strokeWidth={1.75} aria-hidden="true" />

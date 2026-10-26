@@ -200,7 +200,7 @@ export function CustomerPicker({
             </div>
             <input
                 className="admin-form-input"
-                placeholder="Company (optional)"
+                placeholder="Company"
                 value={value.company}
                 disabled={disabled}
                 onChange={(e) => onChange({ ...value, company: e.target.value })}

@@ -73,7 +73,7 @@ export function CustomerEditForm({
                 <input name="first_name" defaultValue={customer.first_name ?? ''} placeholder="First name" className="admin-form-input" style={{ flex: 1, minWidth: 120 }} />
                 <input name="last_name" defaultValue={customer.last_name ?? ''} placeholder="Last name" className="admin-form-input" style={{ flex: 1, minWidth: 120 }} />
             </div>
-            <input name="name" defaultValue={customer.name ?? ''} placeholder="Display name (optional)" className="admin-form-input" />
+            <input name="name" defaultValue={customer.name ?? ''} placeholder="Display name" className="admin-form-input" />
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 <input name="email" defaultValue={customer.email ?? ''} placeholder="Email" className="admin-form-input" style={{ flex: 1, minWidth: 160 }} />
                 <input name="phone" defaultValue={customer.phone ?? ''} placeholder="Phone" className="admin-form-input" style={{ width: 150 }} />

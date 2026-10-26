@@ -1028,8 +1028,8 @@ export default async function HandlePage({
                             <p>Tell {displayName} what you need and when suits you. They confirm a time from their console.</p>
                             <ul className="g-rows">
                                 <Row icon={<Wrench size={20} strokeWidth={1.75} aria-hidden="true" />} label="Pick a service" sub="Wrap, PPF, tint, ceramic, parts or something else" />
-                                <Row icon={<CalendarDays size={20} strokeWidth={1.75} aria-hidden="true" />} label="Suggest a day and time" sub="Optional. The shop confirms the slot" />
-                                <Row icon={<Car size={20} strokeWidth={1.75} aria-hidden="true" />} label="Add a car and notes" sub="Optional, from your garage" />
+                                <Row icon={<CalendarDays size={20} strokeWidth={1.75} aria-hidden="true" />} label="Suggest a day and time" sub="The shop confirms the slot" />
+                                <Row icon={<Car size={20} strokeWidth={1.75} aria-hidden="true" />} label="Add a car and notes" sub="From your garage" />
                             </ul>
                             <div className="gd-book-act">
                                 <GlideButton href={bookHref} block>

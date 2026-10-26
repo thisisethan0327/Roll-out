@@ -171,14 +171,14 @@ export function HostInviteSection({
 
                     <div className={s.field}>
                         <label className={s.label} htmlFor="inv-name">
-                            Greeting name <span style={{ fontWeight: 500 }}>(optional)</span>
+                            Greeting name
                         </label>
                         <input id="inv-name" className={s.input} value={invitedName} onChange={(e) => setInvitedName(e.target.value)} placeholder="e.g. Kazuki (applied to all)" />
                     </div>
 
                     <div className={s.field}>
                         <label className={s.label} htmlFor="inv-note">
-                            Personal note <span style={{ fontWeight: 500 }}>(optional)</span>
+                            Personal note
                         </label>
                         <textarea id="inv-note" className={s.input} value={note} onChange={(e) => setNote(e.target.value)} rows={3} placeholder="A line from you — shown in the invite." />
                     </div>

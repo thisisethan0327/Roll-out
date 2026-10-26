@@ -78,7 +78,7 @@ export default async function NewEventPage({
                     minLength={2}
                 />
 
-                <label className="admin-form-label">Location detail (optional)</label>
+                <label className="admin-form-label">Location detail</label>
                 <input
                     name="location_detail"
                     className="admin-form-input"
@@ -97,7 +97,7 @@ export default async function NewEventPage({
 
                 <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 12 }}>
                     <div>
-                        <label className="admin-form-label">Lat (optional)</label>
+                        <label className="admin-form-label">Lat</label>
                         <input
                             type="number"
                             step="any"
@@ -108,7 +108,7 @@ export default async function NewEventPage({
                         />
                     </div>
                     <div>
-                        <label className="admin-form-label">Lng (optional)</label>
+                        <label className="admin-form-label">Lng</label>
                         <input
                             type="number"
                             step="any"
@@ -124,7 +124,7 @@ export default async function NewEventPage({
                 <label className="admin-form-label">Start at</label>
                 <EventStartAtField />
 
-                <label className="admin-form-label">Capacity (optional)</label>
+                <label className="admin-form-label">Capacity</label>
                 <input
                     type="number"
                     min={1}

@@ -171,7 +171,7 @@ export function BookForm({
 
             <div className="gd-lab">
                 <b id="bk-day">Preferred day</b>
-                <small>Optional · the shop confirms</small>
+                <small>The shop confirms</small>
             </div>
             <div className="gd-days" role="group" aria-labelledby="bk-day">
                 {dayButton(
@@ -233,7 +233,6 @@ export function BookForm({
                 <fieldset className="gd-fs">
                     <div className="gd-lab">
                         <legend>Vehicle</legend>
-                        <small>Optional</small>
                     </div>
                     <div className="gd-veh">
                         <label className="gd-opt">
@@ -253,7 +252,7 @@ export function BookForm({
             ) : null}
 
             <div className="gd-fieldwrap">
-                <label htmlFor="bk-notes">Notes · optional</label>
+                <label htmlFor="bk-notes">Notes</label>
                 <textarea
                     id="bk-notes"
                     name="notes"

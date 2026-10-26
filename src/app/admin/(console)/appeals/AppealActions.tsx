@@ -85,8 +85,8 @@ export function AppealActions({
             )}
             <textarea
                 className="admin-form-input"
-                placeholder="Internal note (optional, admins only)"
-                aria-label="Internal note (optional, admins only)"
+                placeholder="Internal note"
+                aria-label="Internal note"
                 rows={2}
                 maxLength={1000}
                 value={note}
@@ -95,8 +95,8 @@ export function AppealActions({
             />
             <textarea
                 className="admin-form-input"
-                placeholder="Note to the member (optional, shown on /suspended and emailed)"
-                aria-label="Note to the member (optional, shown on /suspended and emailed)"
+                placeholder="Note to the member, shown on /suspended and emailed"
+                aria-label="Note to the member, shown on /suspended and emailed"
                 rows={2}
                 maxLength={600}
                 value={publicNote}

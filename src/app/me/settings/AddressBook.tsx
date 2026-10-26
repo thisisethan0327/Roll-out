@@ -124,7 +124,7 @@ export function AddressBook({ initial, connected }: { initial: CustomerAddress[]
                         <input type="text" placeholder="Last name" autoComplete="family-name" required {...f('lastName', 'Last name')} />
                     </div>
                     <input type="text" placeholder="Street address" autoComplete="address-line1" required {...f('address1', 'Street address')} />
-                    <input type="text" placeholder="Apt, suite, unit (optional)" autoComplete="address-line2" {...f('address2', 'Apt, suite, unit')} />
+                    <input type="text" placeholder="Apt, suite, unit" autoComplete="address-line2" {...f('address2', 'Apt, suite, unit')} />
                     <div className={s.grid3f}>
                         <input type="text" placeholder="City" autoComplete="address-level2" required {...f('city', 'City')} />
                         <select required {...f('province', 'State')}>
@@ -142,7 +142,7 @@ export function AddressBook({ initial, connected }: { initial: CustomerAddress[]
                             <option value="us">United States</option>
                             <option value="ca">Canada</option>
                         </select>
-                        <input type="tel" placeholder="Phone (optional)" autoComplete="tel" {...f('phone', 'Phone')} />
+                        <input type="tel" placeholder="Phone" autoComplete="tel" {...f('phone', 'Phone')} />
                     </div>
                     <label className={s.check}>
                         <input type="checkbox" checked={draft.isDefault} onChange={(e) => setDraft((d) => (d ? { ...d, isDefault: e.target.checked } : d))} />

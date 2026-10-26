@@ -255,7 +255,7 @@ export function TierRowsEditor({
 
                             <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: 12, alignItems: 'end' }}>
                                 <div>
-                                    <label className="admin-form-label">Medusa product ID (optional)</label>
+                                    <label className="admin-form-label">Medusa product ID</label>
                                     <input
                                         className="admin-form-input"
                                         value={row.medusaProductId}

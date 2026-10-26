@@ -54,7 +54,7 @@ export function HostPanel({ hostStatus, nominated }: { hostStatus: HostStatus; n
                         <form action={formAction} className={s.form}>
                             <div className={s.field}>
                                 <label className={s.label} htmlFor="host-why">
-                                    What do you want to host? <span style={{ fontWeight: 500 }}>(optional)</span>
+                                    What do you want to host?
                                 </label>
                                 <textarea
                                     id="host-why"

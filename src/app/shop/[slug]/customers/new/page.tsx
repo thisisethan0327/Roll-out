@@ -56,10 +56,10 @@ export default async function NewCustomerPage({
                                 <input id="nc-phone" name="phone" type="text" inputMode="tel" placeholder="" className={sh.field} />
                             </Field>
                             <Field label="Company" htmlFor="nc-company" className={sh.full}>
-                                <input id="nc-company" name="company" type="text" placeholder="Optional" className={sh.field} />
+                                <input id="nc-company" name="company" type="text" className={sh.field} />
                             </Field>
                                 <Field label="Notes" htmlFor="nc-notes" className={sh.full}>
-                                <textarea id="nc-notes" name="notes" placeholder="Optional" rows={3} className={sh.field} />
+                                <textarea id="nc-notes" name="notes" rows={3} className={sh.field} />
                                 </Field>
                         </div>
                     </Panel>

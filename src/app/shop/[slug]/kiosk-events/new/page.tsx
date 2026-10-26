@@ -103,7 +103,7 @@ export default async function NewKioskEventPage({
                 />
 
                 <SectionHeading>Link</SectionHeading>
-                <label className="admin-form-label">Link URL (QR target, optional)</label>
+                <label className="admin-form-label">QR link</label>
                 <input
                     name="link_url"
                     className="admin-form-input"

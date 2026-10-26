@@ -214,13 +214,13 @@ export function OnboardingForm({
             </p>
 
             <label className="ga-label" htmlFor="onb-bio">
-                Bio <small>· optional</small>
+                Bio
             </label>
             <textarea
                 id="onb-bio"
                 value={bio}
                 onChange={(e) => setBio(e.target.value)}
-                placeholder="Your builds, your lane… (optional)"
+                placeholder="Your builds, your lane…"
                 className="ga-in"
                 maxLength={280}
                 rows={3}
@@ -228,7 +228,7 @@ export function OnboardingForm({
 
             <div className="ga-section">
                 <h2>
-                    Shipping address <small className="ga-opt">optional</small>
+                    Shipping address
                 </h2>
                 <p>Used when you shop on Rollout. You can skip this and add it at checkout.</p>
                 <div className="ga-stack" style={{ marginTop: 16 }}>
@@ -237,7 +237,7 @@ export function OnboardingForm({
                         <input type="text" placeholder="Last name" autoComplete="family-name" {...field('lastName', 'Last name')} />
                     </div>
                     <input type="text" placeholder="Street address" autoComplete="address-line1" {...field('address1', 'Street address')} />
-                    <input type="text" placeholder="Apt, suite, unit (optional)" autoComplete="address-line2" {...field('address2', 'Apt, suite, unit')} />
+                    <input type="text" placeholder="Apt, suite, unit" autoComplete="address-line2" {...field('address2', 'Apt, suite, unit')} />
                     <div className="ga-grid ga-grid-3">
                         <input type="text" placeholder="City" autoComplete="address-level2" {...field('city', 'City')} />
                         <span className="ga-sel">
@@ -261,7 +261,7 @@ export function OnboardingForm({
                             </select>
                             <ChevronDown size={18} strokeWidth={2} aria-hidden="true" />
                         </span>
-                        <input type="tel" placeholder="Phone (optional)" autoComplete="tel" {...field('phone', 'Phone')} />
+                        <input type="tel" placeholder="Phone" autoComplete="tel" {...field('phone', 'Phone')} />
                     </div>
                 </div>
             </div>

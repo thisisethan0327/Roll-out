@@ -114,8 +114,8 @@ export function EventVerificationRow({ req }: { req: EventVReq }) {
             ) : null}
             <input
                 className="admin-form-input"
-                placeholder="Decision note (optional)"
-                aria-label="Decision note (optional)"
+                placeholder="Decision note"
+                aria-label="Decision note"
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
             />

@@ -173,7 +173,7 @@ export function KioskEventEditForm({
             />
 
             <SectionHeading>Link</SectionHeading>
-            <label className="admin-form-label">Link URL (QR target)</label>
+            <label className="admin-form-label">QR link</label>
             <input
                 name="link_url"
                 className="admin-form-input"

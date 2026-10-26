@@ -67,8 +67,8 @@ export function ReportActions({
         <div className={a.stack} style={{ gap: 10 }}>
             <input
                 className="admin-form-input"
-                placeholder="Note (optional)"
-                aria-label="Moderation note (optional)"
+                placeholder="Note"
+                aria-label="Moderation note"
                 maxLength={500}
                 value={note}
                 onChange={(e) => setNote(e.target.value)}

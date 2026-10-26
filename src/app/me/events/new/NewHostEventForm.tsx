@@ -78,7 +78,7 @@ export function NewHostEventForm() {
                 </div>
                 <div className={s.field}>
                     <label className={s.label} htmlFor="ne-locd">
-                        Location detail <span style={{ fontWeight: 500 }}>(optional)</span>
+                        Location detail
                     </label>
                     <input id="ne-locd" name="location_detail" className={s.input} placeholder="North lot by the coffee stand" disabled={pending} />
                 </div>
@@ -91,13 +91,13 @@ export function NewHostEventForm() {
                 <div className={s.grid2f}>
                     <div className={s.field}>
                         <label className={s.label} htmlFor="ne-lat">
-                            Latitude <span style={{ fontWeight: 500 }}>(optional)</span>
+                            Latitude
                         </label>
                         <input id="ne-lat" type="number" step="any" name="lat" className={s.input} placeholder="47.6062" disabled={pending} />
                     </div>
                     <div className={s.field}>
                         <label className={s.label} htmlFor="ne-lng">
-                            Longitude <span style={{ fontWeight: 500 }}>(optional)</span>
+                            Longitude
                         </label>
                         <input id="ne-lng" type="number" step="any" name="lng" className={s.input} placeholder="-122.3321" disabled={pending} />
                     </div>
@@ -136,7 +136,7 @@ export function NewHostEventForm() {
                     </label>
                     <div className={s.field}>
                         <label className={s.label} htmlFor="ne-cap">
-                            Capacity <span style={{ fontWeight: 500 }}>(optional)</span>
+                            Capacity
                         </label>
                         <input id="ne-cap" type="number" min={1} name="capacity" className={s.input} placeholder="30" disabled={pending} />
                     </div>

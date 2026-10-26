@@ -359,7 +359,7 @@ export function RoutePlanEditor({
                                     />
                                     <input
                                         className={s.input}
-                                        placeholder="Note (optional)"
+                                        placeholder="Note"
                                         aria-label={`Stop ${i + 1} note`}
                                         value={st.note}
                                         onChange={(e) => updateStop(i, { note: e.target.value })}
@@ -453,7 +453,7 @@ export function RoutePlanEditor({
                             />
                             <input
                                 className={s.input}
-                                placeholder="Note (optional)"
+                                placeholder="Note"
                                 aria-label="New stop note"
                                 value={newStop.note}
                                 onChange={(e) => setNewStop({ ...newStop, note: e.target.value })}
@@ -646,7 +646,7 @@ export function RoutePlanEditor({
                                 />
                                 <input
                                     className="admin-form-input"
-                                    placeholder="Note (optional)"
+                                    placeholder="Note"
                                     value={s.note}
                                     onChange={(e) => updateStop(i, { note: e.target.value })}
                                     disabled={busy}
@@ -756,7 +756,7 @@ export function RoutePlanEditor({
                         />
                         <input
                             className="admin-form-input"
-                            placeholder="Note (optional)"
+                            placeholder="Note"
                             value={newStop.note}
                             onChange={(e) => setNewStop({ ...newStop, note: e.target.value })}
                             disabled={busy}

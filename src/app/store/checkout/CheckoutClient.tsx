@@ -466,14 +466,14 @@ function CheckoutInner({
                                     <Field label="Last name" value={form.lastName} onChange={set('lastName')} autoComplete="family-name" required />
                                 </Row2>
                                 <Field label="Address" value={form.address1} onChange={set('address1')} autoComplete="address-line1" required />
-                                <Field label="Apt / suite (optional)" value={form.address2 ?? ''} onChange={set('address2')} autoComplete="address-line2" />
+                                <Field label="Apt / suite" value={form.address2 ?? ''} onChange={set('address2')} autoComplete="address-line2" />
                                 <Row2>
                                     <Field label="City" value={form.city} onChange={set('city')} autoComplete="address-level2" required />
                                     <Field label="State" value={form.province} onChange={set('province')} autoComplete="address-level1" required />
                                 </Row2>
                                 <Row2>
                                     <Field label="ZIP" value={form.postalCode} onChange={set('postalCode')} autoComplete="postal-code" required />
-                                    <Field label="Phone (optional)" value={form.phone ?? ''} onChange={set('phone')} type="tel" autoComplete="tel" />
+                                    <Field label="Phone" value={form.phone ?? ''} onChange={set('phone')} type="tel" autoComplete="tel" />
                                 </Row2>
                             </div>
                             {errorAt('address')}

@@ -398,7 +398,7 @@ export function UserActions({
                         </div>
                     )}
                     <label className={a.field}>
-                        <span className="admin-form-label">Note shown to the member (optional, max 300)</span>
+                        <span className="admin-form-label">Note shown to the member</span>
                         <input
                             className="admin-search-input"
                             maxLength={300}

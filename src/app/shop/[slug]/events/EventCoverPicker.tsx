@@ -139,7 +139,7 @@ export function EventCoverPicker({
             ) : null}
 
             <label className="admin-form-label" style={{ marginTop: 8 }}>
-                Custom cover URL (optional)
+                Custom cover URL
             </label>
             <input
                 type="url"

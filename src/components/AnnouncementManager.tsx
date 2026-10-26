@@ -8,6 +8,7 @@
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { EventPicker } from './EventPicker';
+import { InfoTip } from './glide/InfoTip';
 import {
     announcementState,
     type Announcement,
@@ -201,7 +202,7 @@ export function AnnouncementManager({
                             onChange={(e) => set('title', e.target.value)} placeholder="_NAC Run postponed to Oct 17 (ferry strike)" />
                     </div>
                     <div style={{ display: 'grid', gap: 6 }}>
-                        <label className="admin-form-label" htmlFor={ids('body')}>DETAILS (OPTIONAL, PLAIN TEXT, {draft.body.length}/2000)</label>
+                        <label className="admin-form-label" htmlFor={ids('body')}>DETAILS ({draft.body.length}/2000)</label>
                         <textarea id={ids('body')} className="admin-form-input" rows={4} maxLength={2000} value={draft.body}
                             onChange={(e) => set('body', e.target.value)} />
                     </div>
@@ -216,7 +217,7 @@ export function AnnouncementManager({
                     </div>
                     <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
                         <div style={{ display: 'grid', gap: 6 }}>
-                            <label className="admin-form-label" htmlFor={ids('link')}>BUTTON LINK (OPTIONAL)</label>
+                            <label className="admin-form-label" htmlFor={ids('link')}>BUTTON LINK</label>
                             <input id={ids('link')} className="admin-form-input" value={draft.linkUrl} inputMode="url"
                                 onChange={(e) => set('linkUrl', e.target.value)} placeholder="/meets or https://…" />
                         </div>
@@ -228,12 +229,12 @@ export function AnnouncementManager({
                     </div>
                     <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
                         <div style={{ display: 'grid', gap: 6 }}>
-                            <label className="admin-form-label" htmlFor={ids('start')}>SHOW FROM (BLANK = NOW)</label>
+                            <label className="admin-form-label" htmlFor={ids('start')}>SHOW FROM <InfoTip text="Leave blank to show it now." label="About Show from" /></label>
                             <input id={ids('start')} type="datetime-local" className="admin-form-input" value={draft.startsAt}
                                 onChange={(e) => set('startsAt', e.target.value)} />
                         </div>
                         <div style={{ display: 'grid', gap: 6 }}>
-                            <label className="admin-form-label" htmlFor={ids('end')}>SHOW UNTIL (BLANK = UNTIL UNPUBLISHED)</label>
+                            <label className="admin-form-label" htmlFor={ids('end')}>SHOW UNTIL <InfoTip text="Leave blank to show it until it's unpublished." label="About Show until" /></label>
                             <input id={ids('end')} type="datetime-local" className="admin-form-input" value={draft.endsAt}
                                 onChange={(e) => set('endsAt', e.target.value)} />
                         </div>

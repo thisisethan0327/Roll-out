@@ -197,7 +197,7 @@ export function AccountForm({
 
                 <div className={cs.field}>
                     <label className={cs.label} htmlFor="acct-bio">
-                        Bio (optional)
+                        Bio
                     </label>
                     <textarea
                         id="acct-bio"
