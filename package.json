@@ -6,7 +6,8 @@
     "dev": "next dev -p 3001",
     "build": "next build",
     "start": "next start -p 3001",
-    "lint": "next lint"
+    "lint": "next lint",
+    "check:dialogs": "node scripts/check-native-dialogs.mjs"
   },
   "dependencies": {
     "@stripe/react-stripe-js": "^3.10.0",

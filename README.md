@@ -68,7 +68,7 @@ Rules that always hold:
 - Every long form keeps a local draft (`rollout:draft:<key>` in localStorage) and offers Resume.
 - Escape reaches only the topmost overlay, and the body scroll lock is counted (`src/lib/overlay`: `useOverlayLayer`, `useScrollLock`, `useRequestClose`). A popover or picker that closes on Escape registers a layer too (`EventPicker`, the admin `JumpBar`, `InfoTip`, an armed button). Never add your own `keydown` Escape listener or touch `body.style.overflow`.
 - Armed buttons stay armed until the second tap. No timer. A tap anywhere else, Escape or leaving the page disarms.
-- Never `window.confirm` / `alert` / `prompt`.
+- Never `window.confirm` / `alert` / `prompt`. `npm run check:dialogs` fails on any call in `src/` (there is no ESLint setup yet).
 - Toasts: errors stay until dismissed, successes auto-dismiss, at most 3 on screen, identical ones collapse. Nothing someone must act on later is a toast. A state that persists ("Payment authorized") stays an inline Notice.
 - First-run prompts queue with `claimPrompt` / `releasePrompt`, one at a time.
 - One shared implementation per piece: no hand-rolled modal, confirm, sheet or lightbox.
