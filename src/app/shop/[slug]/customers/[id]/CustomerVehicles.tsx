@@ -7,6 +7,7 @@ import { useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { addVehicle, updateVehicle, deleteVehicle } from '../actions';
 import { X } from '@/components/icons';
+import { toast } from '@/components/glide/Toast';
 
 const MANAGER_ROLES = new Set(['owner', 'admin', 'manager']);
 
@@ -68,7 +69,7 @@ export function CustomerVehicles({
                 setShowAdd(false);
                 router.refresh();
             } catch (e: any) {
-                alert('Add vehicle failed: ' + (e?.message ?? 'unknown'));
+                toast.error('Add vehicle failed: ' + (e?.message ?? 'unknown'));
             }
         });
     };
@@ -81,7 +82,7 @@ export function CustomerVehicles({
                 setEditId(null);
                 router.refresh();
             } catch (e: any) {
-                alert('Update vehicle failed: ' + (e?.message ?? 'unknown'));
+                toast.error('Update vehicle failed: ' + (e?.message ?? 'unknown'));
             }
         });
     };
@@ -98,7 +99,7 @@ export function CustomerVehicles({
                 await deleteVehicle(slug, vehicleId, customerId);
                 router.refresh();
             } catch (e: any) {
-                alert('Delete failed: ' + (e?.message ?? 'unknown'));
+                toast.error('Delete failed: ' + (e?.message ?? 'unknown'));
             }
         });
     };

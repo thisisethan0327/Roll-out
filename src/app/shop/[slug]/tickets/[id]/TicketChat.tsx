@@ -17,6 +17,7 @@ import { cx, shopStyles as sh } from '@/components/glide-shop/parts';
 import { getSupabaseBrowser } from '@/lib/supabase/browser';
 import { compressImageFile, KIOSK_IMAGE_ACCEPT } from '@/lib/kiosk-image';
 import { TICKET_BUCKET, TICKET_CACHE_CONTROL } from '@/lib/ticket-media-constants';
+import { toast } from '@/components/glide/Toast';
 
 type Message = {
     id: string;
@@ -72,7 +73,7 @@ export function TicketChat({
                 setText('');
                 router.refresh();
             } catch (e: any) {
-                alert('Send failed: ' + (e?.message ?? 'unknown'));
+                toast.error('Send failed: ' + (e?.message ?? 'unknown'));
             }
         });
     };

@@ -8,6 +8,7 @@ import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { setStatus, setServiceDay, setPriority, appendNote } from '../actions';
 import { setTicketSchedule } from '../form-actions';
+import { toast } from '@/components/glide/Toast';
 
 // Must match the public.tickets `tickets_status_check` DB constraint.
 const STATUS_OPTIONS = [
@@ -56,7 +57,7 @@ export function StatusSelect({
                     try {
                         await setStatus(slug, ticketRowId, next);
                     } catch (err: any) {
-                        alert('Status update failed: ' + (err?.message ?? 'unknown'));
+                        toast.error('Status update failed: ' + (err?.message ?? 'unknown'));
                         setValue(initial ?? 'pending');
                     }
                 });
@@ -99,7 +100,7 @@ export function PrioritySelect({
                     try {
                         await setPriority(slug, ticketRowId, next);
                     } catch (err: any) {
-                        alert('Priority update failed: ' + (err?.message ?? 'unknown'));
+                        toast.error('Priority update failed: ' + (err?.message ?? 'unknown'));
                         setValue((initial ?? 'normal').toLowerCase());
                     }
                 });
@@ -139,7 +140,7 @@ export function ServiceDayInput({
                     try {
                         await setServiceDay(slug, ticketRowId, next);
                     } catch (err: any) {
-                        alert('Service day update failed: ' + (err?.message ?? 'unknown'));
+                        toast.error('Service day update failed: ' + (err?.message ?? 'unknown'));
                         setValue(initial ?? '');
                     }
                 });
@@ -172,7 +173,7 @@ export function ScheduleEditor({
                 await setTicketSchedule(slug, ticketRowId, sd || null, ed || null);
                 router.refresh();
             } catch (err: any) {
-                alert('Reschedule failed: ' + (err?.message ?? 'unknown'));
+                toast.error('Reschedule failed: ' + (err?.message ?? 'unknown'));
                 setServiceDayVal(initialServiceDay ?? '');
                 setEndDate(initialEndDate ?? '');
             }
@@ -232,7 +233,7 @@ export function AppendNoteForm({
                         await appendNote(slug, ticketRowId, text);
                         setText('');
                     } catch (err: any) {
-                        alert('Append failed: ' + (err?.message ?? 'unknown'));
+                        toast.error('Append failed: ' + (err?.message ?? 'unknown'));
                     }
                 });
             }}

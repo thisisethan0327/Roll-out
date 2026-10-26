@@ -3,6 +3,7 @@ import { useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { cancelEvent, uncancelEvent } from './actions';
 import { confirmDialog } from '@/components/glide/confirm';
+import { toast } from '@/components/glide/Toast';
 
 const MANAGER_ROLES = new Set(['owner', 'admin', 'manager']);
 
@@ -31,7 +32,7 @@ export function EventActions({
             try {
                 await fn();
             } catch (e: any) {
-                alert('Action failed: ' + (e?.message ?? 'unknown'));
+                toast.error('Action failed: ' + (e?.message ?? 'unknown'));
             }
         });
     };

@@ -16,6 +16,7 @@ import {
 import { ArrowRight, Check, X } from 'lucide-react';
 import { shopStyles as sh } from '@/components/glide-shop/parts';
 import { confirmDialog } from '@/components/glide/confirm';
+import { toast } from '@/components/glide/Toast';
 
 const ROW: React.CSSProperties = { display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' };
 const IC = { size: 16, strokeWidth: 2, 'aria-hidden': true } as const;
@@ -39,7 +40,7 @@ export function AppointmentActions({
             try {
                 await fn();
             } catch (e: any) {
-                alert('Action failed: ' + (e?.message ?? 'unknown'));
+                toast.error('Action failed: ' + (e?.message ?? 'unknown'));
             }
         });
     };

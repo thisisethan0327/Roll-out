@@ -6,6 +6,7 @@
 import { useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { respondCoHost } from './[id]/invite-actions';
+import { toast } from '@/components/glide/Toast';
 
 export function CoHostInboxActions({
     eventId,
@@ -25,7 +26,7 @@ export function CoHostInboxActions({
                 await respondCoHost(eventId, shopId, accept);
                 router.refresh();
             } catch (e: any) {
-                alert('Failed: ' + (e?.message ?? 'unknown'));
+                toast.error('Failed: ' + (e?.message ?? 'unknown'));
             }
         });
     };

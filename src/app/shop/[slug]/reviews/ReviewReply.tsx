@@ -6,6 +6,7 @@ import { GlideButton } from '@/components/glide/primitives';
 import cs from '@/components/glide-console/console.module.css';
 import { cx } from '@/components/glide-shopbiz/parts';
 import bz from '@/components/glide-shopbiz/biz.module.css';
+import { toast } from '@/components/glide/Toast';
 
 export type ReviewReplyData = {
     id: string;
@@ -23,7 +24,7 @@ export function ReviewReply({ id, shopId, ownerReply }: ReviewReplyData) {
                 await replyToReview(id, shopId, formData);
                 setEditing(false);
             } catch (e: any) {
-                alert('Reply failed: ' + (e?.message ?? 'unknown'));
+                toast.error('Reply failed: ' + (e?.message ?? 'unknown'));
             }
         });
     };

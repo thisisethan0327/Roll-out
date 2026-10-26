@@ -7,6 +7,7 @@ import cs from '@/components/glide-console/console.module.css';
 import { ServiceFields } from '@/components/glide-shopbiz/ServiceFields';
 import { cx } from '@/components/glide-shopbiz/parts';
 import bz from '@/components/glide-shopbiz/biz.module.css';
+import { toast } from '@/components/glide/Toast';
 
 export type ServiceRowData = {
     id: string;
@@ -53,7 +54,7 @@ export function ServiceRow({ service, canDelete }: { service: ServiceRowData; ca
                 await updateService(service.id, service.shop_id, formData);
                 setEditing(false);
             } catch (e: any) {
-                alert('Update failed: ' + (e?.message ?? 'unknown'));
+                toast.error('Update failed: ' + (e?.message ?? 'unknown'));
             }
         });
     };
@@ -63,7 +64,7 @@ export function ServiceRow({ service, canDelete }: { service: ServiceRowData; ca
             try {
                 await toggleServiceActive(service.id, service.shop_id);
             } catch (e: any) {
-                alert('Toggle failed: ' + (e?.message ?? 'unknown'));
+                toast.error('Toggle failed: ' + (e?.message ?? 'unknown'));
             }
         });
     };
@@ -78,7 +79,7 @@ export function ServiceRow({ service, canDelete }: { service: ServiceRowData; ca
             try {
                 await deleteService(service.id, service.shop_id);
             } catch (e: any) {
-                alert('Delete failed: ' + (e?.message ?? 'unknown'));
+                toast.error('Delete failed: ' + (e?.message ?? 'unknown'));
                 setArmedDelete(false);
             }
         });

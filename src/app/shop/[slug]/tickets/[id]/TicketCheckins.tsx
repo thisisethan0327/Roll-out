@@ -18,6 +18,7 @@ import {
     deleteCheckin,
 } from './detail-actions';
 import { X } from '@/components/icons';
+import { toast } from '@/components/glide/Toast';
 
 const MANAGER_ROLES = new Set(['owner', 'admin', 'manager']);
 
@@ -89,7 +90,7 @@ export function TicketCheckins({
                 setShowForm(false);
                 router.refresh();
             } catch (e: any) {
-                alert('Create check-in failed: ' + (e?.message ?? 'unknown'));
+                toast.error('Create check-in failed: ' + (e?.message ?? 'unknown'));
             }
         });
     };
@@ -115,7 +116,7 @@ export function TicketCheckins({
                 }
                 router.refresh();
             } catch (e: any) {
-                alert('Photo upload failed: ' + (e?.message ?? 'unknown'));
+                toast.error('Photo upload failed: ' + (e?.message ?? 'unknown'));
             } finally {
                 setBusy(null);
                 const el = photoInputs.current[checkinId];
@@ -136,7 +137,7 @@ export function TicketCheckins({
                 await deleteCheckin(slug, ticketRowId, checkinId);
                 router.refresh();
             } catch (e: any) {
-                alert('Delete failed: ' + (e?.message ?? 'unknown'));
+                toast.error('Delete failed: ' + (e?.message ?? 'unknown'));
             }
         });
     };

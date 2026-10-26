@@ -10,6 +10,7 @@ import { useRouter } from 'next/navigation';
 import { updateTicketServices } from './detail-actions';
 import { ServiceLinesEditor } from '../ServiceLinesEditor';
 import { parseServices, visibleLines, serviceDisplayName, type ServiceLine } from '@/lib/ticket-services';
+import { toast } from '@/components/glide/Toast';
 
 const MANAGER_ROLES = new Set(['owner', 'admin', 'manager']);
 
@@ -42,7 +43,7 @@ export function TicketServicesEditor({
                 setDirty(false);
                 router.refresh();
             } catch (e: any) {
-                alert('Save services failed: ' + (e?.message ?? 'unknown'));
+                toast.error('Save services failed: ' + (e?.message ?? 'unknown'));
             }
         });
     };

@@ -2,6 +2,7 @@
 import { useTransition } from 'react';
 import { dismissShopActionItem } from './actions';
 import { shopStyles as sh } from '@/components/glide-shop/parts';
+import { toast } from '@/components/glide/Toast';
 
 /**
  * Client dismiss control for a shop_owner action item. Slug travels with the id
@@ -19,7 +20,7 @@ export function DismissButton({ slug, id }: { slug: string; id: string }) {
                     try {
                         await dismissShopActionItem(slug, id);
                     } catch (e: any) {
-                        alert('Dismiss failed: ' + (e?.message ?? 'unknown'));
+                        toast.error('Dismiss failed: ' + (e?.message ?? 'unknown'));
                     }
                 })
             }

@@ -9,6 +9,7 @@ import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { VehiclePicker, type VehicleValue } from '../VehiclePicker';
 import { relinkTicketVehicle } from '../form-actions';
+import { toast } from '@/components/glide/Toast';
 
 const MANAGER_ROLES = new Set(['owner', 'admin', 'manager']);
 
@@ -68,7 +69,7 @@ export function TicketVehicleEditor({
                 setEditing(false);
                 router.refresh();
             } catch (e: any) {
-                alert('Link vehicle failed: ' + (e?.message ?? 'unknown'));
+                toast.error('Link vehicle failed: ' + (e?.message ?? 'unknown'));
             }
         });
     };

@@ -27,6 +27,7 @@ import { InfoTip } from '@/components/glide/InfoTip';
 import { AREA_LABEL_TIP } from '@/lib/event-area-label';
 import { FormSection } from '@/components/glide-console/parts';
 import s from '@/components/glide-console/console.module.css';
+import { toast } from '@/components/glide/Toast';
 
 const VISIBILITY: { value: string; label: string }[] = [
     { value: 'public', label: 'PUBLIC' },
@@ -108,7 +109,7 @@ export function HostEventEditForm({
                 await actions.cancel(event.id, true);
                 router.refresh();
             } catch (e: any) {
-                alert('Cancel failed: ' + (e?.message ?? 'unknown'));
+                toast.error('Cancel failed: ' + (e?.message ?? 'unknown'));
             }
         });
     };
@@ -119,7 +120,7 @@ export function HostEventEditForm({
                 await actions.cancel(event.id, false);
                 router.refresh();
             } catch (e: any) {
-                alert('Uncancel failed: ' + (e?.message ?? 'unknown'));
+                toast.error('Uncancel failed: ' + (e?.message ?? 'unknown'));
             }
         });
     };

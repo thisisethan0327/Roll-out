@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { updateCustomer } from '../actions';
+import { toast } from '@/components/glide/Toast';
 
 const MANAGER_ROLES = new Set(['owner', 'admin', 'manager']);
 
@@ -39,7 +40,7 @@ export function CustomerEditForm({
                 setOpen(false);
                 router.refresh();
             } catch (e: any) {
-                alert('Save failed: ' + (e?.message ?? 'unknown'));
+                toast.error('Save failed: ' + (e?.message ?? 'unknown'));
             }
         });
     };

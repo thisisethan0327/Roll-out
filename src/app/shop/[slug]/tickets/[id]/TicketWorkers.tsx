@@ -8,6 +8,7 @@
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { setTicketWorkers } from './detail-actions';
+import { toast } from '@/components/glide/Toast';
 
 const MANAGER_ROLES = new Set(['owner', 'admin', 'manager']);
 
@@ -49,7 +50,7 @@ export function TicketWorkers({
                 setDirty(false);
                 router.refresh();
             } catch (e: any) {
-                alert('Save assignment failed: ' + (e?.message ?? 'unknown'));
+                toast.error('Save assignment failed: ' + (e?.message ?? 'unknown'));
             }
         });
     };

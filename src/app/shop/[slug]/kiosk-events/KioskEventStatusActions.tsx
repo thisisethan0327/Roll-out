@@ -2,6 +2,7 @@
 import { useEffect, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { setKioskEventStatus, deleteKioskEvent } from './actions';
+import { toast } from '@/components/glide/Toast';
 
 const MANAGER_ROLES = new Set(['owner', 'admin', 'manager']);
 const OWNER_ROLES = new Set(['owner', 'admin']);
@@ -41,7 +42,7 @@ export function KioskEventStatusActions({
                 await fn();
                 router.refresh();
             } catch (e: any) {
-                alert('Action failed: ' + (e?.message ?? 'unknown'));
+                toast.error('Action failed: ' + (e?.message ?? 'unknown'));
             }
         });
     };

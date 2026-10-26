@@ -20,6 +20,7 @@ import {
     reorderGalleryImages,
 } from '../actions';
 import { ChevronLeft, ChevronRight, X } from '@/components/icons';
+import { toast } from '@/components/glide/Toast';
 
 const MANAGER_ROLES = new Set(['owner', 'admin', 'manager']);
 const BUCKET = 'kiosk-media';
@@ -83,7 +84,7 @@ export function KioskEventImages({
                 setLocalHero(url);
                 router.refresh();
             } catch (e: any) {
-                alert('Hero upload failed: ' + (e?.message ?? 'unknown'));
+                toast.error('Hero upload failed: ' + (e?.message ?? 'unknown'));
             } finally {
                 setBusyMsg(null);
                 if (heroInputRef.current) heroInputRef.current.value = '';
@@ -109,7 +110,7 @@ export function KioskEventImages({
                 }
                 router.refresh();
             } catch (e: any) {
-                alert('Gallery upload failed: ' + (e?.message ?? 'unknown'));
+                toast.error('Gallery upload failed: ' + (e?.message ?? 'unknown'));
                 router.refresh();
             } finally {
                 setBusyMsg(null);
@@ -129,7 +130,7 @@ export function KioskEventImages({
                 await reorderGalleryImages(eventId, shopId, next);
                 router.refresh();
             } catch (e: any) {
-                alert('Reorder failed: ' + (e?.message ?? 'unknown'));
+                toast.error('Reorder failed: ' + (e?.message ?? 'unknown'));
                 setLocalGallery(localGallery);
             }
         });
@@ -148,7 +149,7 @@ export function KioskEventImages({
                 await removeGalleryImage(eventId, shopId, url);
                 router.refresh();
             } catch (e: any) {
-                alert('Remove failed: ' + (e?.message ?? 'unknown'));
+                toast.error('Remove failed: ' + (e?.message ?? 'unknown'));
                 setLocalGallery(prev);
             }
         });

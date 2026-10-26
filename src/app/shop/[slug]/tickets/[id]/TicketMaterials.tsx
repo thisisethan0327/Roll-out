@@ -14,6 +14,7 @@ import { useRouter } from 'next/navigation';
 import { addTicketMaterial, removeTicketMaterial } from './detail-actions';
 import { loadMaterialPickerOptions, type MaterialPickerProduct } from '../form-actions';
 import { X } from '@/components/icons';
+import { toast } from '@/components/glide/Toast';
 
 const MANAGER_ROLES = new Set(['owner', 'admin', 'manager']);
 
@@ -106,7 +107,7 @@ export function TicketMaterials({
                 await removeTicketMaterial(slug, ticketRowId, id);
                 router.refresh();
             } catch (e: any) {
-                alert('Remove failed: ' + (e?.message ?? 'unknown'));
+                toast.error('Remove failed: ' + (e?.message ?? 'unknown'));
             }
         });
     };

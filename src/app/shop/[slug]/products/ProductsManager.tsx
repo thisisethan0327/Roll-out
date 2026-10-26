@@ -9,6 +9,7 @@ import { CardHead, Field } from '@/components/glide-console/parts';
 import cs from '@/components/glide-console/console.module.css';
 import { CardEmpty, cx } from '@/components/glide-shopbiz/parts';
 import bz from '@/components/glide-shopbiz/biz.module.css';
+import { toast } from '@/components/glide/Toast';
 
 type Product = {
     id: string;
@@ -109,7 +110,7 @@ export function ProductsManager({
                 setShowAdd(false);
                 router.refresh();
             } catch (e: any) {
-                alert('Create failed: ' + (e?.message ?? 'unknown'));
+                toast.error('Create failed: ' + (e?.message ?? 'unknown'));
             }
         });
     };
@@ -121,7 +122,7 @@ export function ProductsManager({
                 setEditId(null);
                 router.refresh();
             } catch (e: any) {
-                alert('Update failed: ' + (e?.message ?? 'unknown'));
+                toast.error('Update failed: ' + (e?.message ?? 'unknown'));
             }
         });
     };
@@ -131,7 +132,7 @@ export function ProductsManager({
                 await toggleProductActive(slug, id);
                 router.refresh();
             } catch (e: any) {
-                alert('Toggle failed: ' + (e?.message ?? 'unknown'));
+                toast.error('Toggle failed: ' + (e?.message ?? 'unknown'));
             }
         });
     };

@@ -10,6 +10,7 @@ import { shopStyles as sh } from '@/components/glide-shop/parts';
 import { useRouter } from 'next/navigation';
 import { CustomerPicker, type CustomerValue } from '../CustomerPicker';
 import { relinkTicketCustomer } from '../form-actions';
+import { toast } from '@/components/glide/Toast';
 
 const MANAGER_ROLES = new Set(['owner', 'admin', 'manager']);
 
@@ -50,7 +51,7 @@ export function TicketCustomerEditor({
                 setEditing(false);
                 router.refresh();
             } catch (e: any) {
-                alert('Link customer failed: ' + (e?.message ?? 'unknown'));
+                toast.error('Link customer failed: ' + (e?.message ?? 'unknown'));
             }
         });
     };

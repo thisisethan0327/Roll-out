@@ -10,6 +10,7 @@ import { InfoTip } from '@/components/glide/InfoTip';
 import { AREA_LABEL_TIP } from '@/lib/event-area-label';
 import { Check } from '@/components/icons';
 import { confirmDialog } from '@/components/glide/confirm';
+import { toast } from '@/components/glide/Toast';
 
 const VISIBILITY: { value: string; label: string }[] = [
     { value: 'public', label: 'Public' },
@@ -63,7 +64,7 @@ export function EventEditForm({
                 setTimeout(() => setSavedFlash(false), 1500);
                 router.refresh();
             } catch (e: any) {
-                alert('Save failed: ' + (e?.message ?? 'unknown'));
+                toast.error('Save failed: ' + (e?.message ?? 'unknown'));
             }
         });
     };
@@ -83,7 +84,7 @@ export function EventEditForm({
                 await cancelEvent(event.id, shopId);
                 router.refresh();
             } catch (e: any) {
-                alert('Cancel failed: ' + (e?.message ?? 'unknown'));
+                toast.error('Cancel failed: ' + (e?.message ?? 'unknown'));
             }
         });
     };
@@ -94,7 +95,7 @@ export function EventEditForm({
                 await uncancelEvent(event.id, shopId);
                 router.refresh();
             } catch (e: any) {
-                alert('Uncancel failed: ' + (e?.message ?? 'unknown'));
+                toast.error('Uncancel failed: ' + (e?.message ?? 'unknown'));
             }
         });
     };
@@ -113,7 +114,7 @@ export function EventEditForm({
                 await deleteEvent(event.id, shopId);
                 // deleteEvent redirects, so no refresh needed.
             } catch (e: any) {
-                alert('Delete failed: ' + (e?.message ?? 'unknown'));
+                toast.error('Delete failed: ' + (e?.message ?? 'unknown'));
             }
         });
     };
