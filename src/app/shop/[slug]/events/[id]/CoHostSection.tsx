@@ -16,6 +16,7 @@ import {
     removeCoHost,
     type CoHostCandidate,
 } from './invite-actions';
+import { useArmed } from '@/lib/overlay/useArmed';
 
 export type CoHostRow = { shopId: number; name: string; slug: string; status: string };
 
@@ -46,6 +47,7 @@ export function CoHostSection({
     const [candidates, setCandidates] = useState<CoHostCandidate[]>([]);
     const [searching, setSearching] = useState(false);
     const [err, setErr] = useState<string | null>(null);
+    const [armed, arm] = useArmed<number>();
 
     const runSearch = (q: string) => {
         setQuery(q);
@@ -75,17 +77,19 @@ export function CoHostSection({
         });
     };
 
-    const doRemove = (shopId: number) => {
-        if (!confirm('Remove this co-host from the event?')) return;
-        start(async () => {
-            try {
-                await removeCoHost(eventId, hostShopId, shopId);
-                router.refresh();
-            } catch (e: any) {
-                setErr(e?.message ?? 'remove failed');
-            }
+    // Two-click armed (no timer): first tap arms the row, the second removes.
+    const doRemove = (shopId: number) =>
+        arm(shopId, () => {
+            setErr(null);
+            start(async () => {
+                try {
+                    await removeCoHost(eventId, hostShopId, shopId);
+                    router.refresh();
+                } catch (e: any) {
+                    setErr(e?.message ?? 'remove failed');
+                }
+            });
         });
-    };
 
     const doRespond = (accept: boolean) => {
         start(async () => {
@@ -254,8 +258,9 @@ export function CoHostSection({
                                                 className="admin-action-btn danger"
                                                 disabled={pending}
                                                 onClick={() => doRemove(c.shopId)}
+                                                aria-pressed={armed === c.shopId}
                                             >
-                                                Remove
+                                                {armed === c.shopId ? `Tap again to remove ${c.name}` : 'Remove'}
                                             </button>
                                         </td>
                                     )}

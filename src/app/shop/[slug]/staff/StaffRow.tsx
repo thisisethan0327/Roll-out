@@ -1,10 +1,18 @@
 'use client';
+/**
+ * One staff row. Remove is a two-click armed button (no timer). Nominate
+ * host asks through confirmDialog because the nominee is emailed, then
+ * confirms with a toast. Failures are error toasts.
+ */
 import { useTransition } from 'react';
 import { removeStaff, setStaffRole, nominateHostAction } from './actions';
 import { Check, Clock, Flag, UserMinus } from 'lucide-react';
 import cs from '@/components/glide-console/console.module.css';
 import { cx } from '@/components/glide-shopbiz/parts';
 import bz from '@/components/glide-shopbiz/biz.module.css';
+import { confirmDialog } from '@/components/glide/confirm';
+import { toast } from '@/components/glide/Toast';
+import { useArmed } from '@/lib/overlay/useArmed';
 
 const ROLES = ['owner', 'admin', 'manager', 'installer', 'staff'] as const;
 
@@ -18,7 +26,9 @@ export function StaffRow({
     slug: string;
 }) {
     const [pending, start] = useTransition();
+    const [armed, arm] = useArmed();
     const p = m.profiles;
+    const who = `@${p?.handle ?? 'user'}`;
 
     const onChangeRole = (e: React.ChangeEvent<HTMLSelectElement>) => {
         const role = e.target.value as (typeof ROLES)[number];
@@ -26,30 +36,36 @@ export function StaffRow({
             try {
                 await setStaffRole(m.profile_id, shopId, slug, role);
             } catch (err: any) {
-                alert('Failed: ' + (err?.message ?? 'unknown'));
+                toast.error(`Role change for ${who} failed: ` + (err?.message ?? 'unknown'));
             }
         });
     };
 
-    const onRemove = () => {
-        if (!confirm(`Remove @${p?.handle ?? 'user'} from this shop?`)) return;
-        start(async () => {
-            try {
-                await removeStaff(m.profile_id, shopId, slug);
-            } catch (err: any) {
-                alert('Failed: ' + (err?.message ?? 'unknown'));
-            }
-        });
-    };
+    const onRemove = () =>
+        arm('remove', () =>
+            start(async () => {
+                try {
+                    await removeStaff(m.profile_id, shopId, slug);
+                } catch (err: any) {
+                    toast.error(`Removing ${who} failed: ` + (err?.message ?? 'unknown'));
+                }
+            }),
+        );
 
     const hostStatus: string = p?.host_status ?? 'none';
     const canNominate = (p?.kind ?? 'user') === 'user' && hostStatus === 'none';
 
-    const onNominate = () => {
-        if (!confirm(`Nominate @${p?.handle ?? 'user'} as a host? A Rollout admin reviews it.`)) return;
+    const onNominate = async () => {
+        const ok = await confirmDialog({
+            title: `Nominate ${who} as a host?`,
+            message: `${who} is emailed. A Rollout admin reviews it.`,
+            confirmLabel: 'Nominate',
+        });
+        if (!ok) return;
         start(async () => {
             const res = await nominateHostAction(m.profile_id, shopId, slug);
-            if (!res.ok) alert('Failed: ' + (res.error ?? 'unknown'));
+            if (!res.ok) toast.error(`Nominating ${who} failed: ` + (res.error ?? 'unknown'));
+            else toast.success(`${who} nominated as a host`);
         });
     };
 
@@ -111,14 +127,20 @@ export function StaffRow({
                             Host pending
                         </span>
                     ) : canNominate ? (
-                        <button type="button" className={bz.act} disabled={pending} onClick={onNominate} title="Nominate as an individual host">
+                        <button type="button" className={bz.act} disabled={pending} onClick={onNominate}>
                             <Flag {...ic} />
                             Nominate host
                         </button>
                     ) : null}
-                    <button type="button" className={cx(bz.act, bz.actInk, bz.actDanger)} disabled={pending} onClick={onRemove}>
+                    <button
+                        type="button"
+                        className={cx(bz.act, bz.actInk, bz.actDanger)}
+                        disabled={pending}
+                        onClick={onRemove}
+                        aria-pressed={armed === 'remove'}
+                    >
                         <UserMinus {...ic} />
-                        Remove
+                        {armed === 'remove' ? `Tap again to remove ${who}` : 'Remove'}
                     </button>
                 </div>
             </td>
