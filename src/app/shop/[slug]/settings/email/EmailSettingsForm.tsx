@@ -7,6 +7,7 @@ import { InfoTip } from '@/components/glide/InfoTip';
 import { CardHead, Field, FormSection } from '@/components/glide-console/parts';
 import cs from '@/components/glide-console/console.module.css';
 import { Notice, cx } from '@/components/glide-shopbiz/parts';
+import { toast } from '@/components/glide/Toast';
 import bz from '@/components/glide-shopbiz/biz.module.css';
 
 export function EmailSettingsForm({
@@ -22,7 +23,6 @@ export function EmailSettingsForm({
 }) {
     const [pending, start] = useTransition();
     const [err, setErr] = useState<string | null>(null);
-    const [ok, setOk] = useState(false);
 
     const [fromName, setFromName] = useState(row?.from_name ?? '');
     const [supportEmail, setSupportEmail] = useState(row?.support_email ?? '');
@@ -32,7 +32,6 @@ export function EmailSettingsForm({
     const submit = (e: React.FormEvent) => {
         e.preventDefault();
         setErr(null);
-        setOk(false);
         const fd = new FormData();
         fd.set('from_name', fromName);
         fd.set('support_email', supportEmail);
@@ -41,7 +40,7 @@ export function EmailSettingsForm({
         start(async () => {
             try {
                 await updateShopEmail(shopId, slug, fd);
-                setOk(true);
+                toast.success('Saved');
             } catch (e: any) {
                 setErr(e?.message ?? 'Failed to save');
             }
@@ -102,11 +101,6 @@ export function EmailSettingsForm({
                 {err && (
                     <Notice tone="bad" live>
                         {err}
-                    </Notice>
-                )}
-                {ok && (
-                    <Notice tone="ok" live>
-                        Saved.
                     </Notice>
                 )}
                 <div>

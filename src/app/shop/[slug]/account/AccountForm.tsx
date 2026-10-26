@@ -3,7 +3,7 @@
  * MY ACCOUNT edit form (client). Live handle availability (debounced server
  * check, shared with onboarding rules), display name, and optional bio. Submits
  * via saveAccountAction, which — unlike onboarding — returns a result instead of
- * redirecting, so we show an inline "saved" state and refresh the route (which
+ * redirecting, so we show a "Saved" toast and refresh the route (which
  * re-renders the sidebar's SIGNED IN AS block with the new handle/name).
  */
 import { useEffect, useRef, useState, useTransition } from 'react';
@@ -14,6 +14,7 @@ import { GlideButton } from '@/components/glide/primitives';
 import { FormSection } from '@/components/glide-console/parts';
 import cs from '@/components/glide-console/console.module.css';
 import { Notice, cx } from '@/components/glide-shopbiz/parts';
+import { toast } from '@/components/glide/Toast';
 import bz from '@/components/glide-shopbiz/biz.module.css';
 
 type HandleState =
@@ -44,7 +45,6 @@ export function AccountForm({
     const [bio, setBio] = useState(initialBio);
     const [handleState, setHandleState] = useState<HandleState>({ kind: 'current' });
     const [formErr, setFormErr] = useState<string | null>(null);
-    const [saved, setSaved] = useState(false);
     const [pending, startTransition] = useTransition();
     const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const seqRef = useRef(0);
@@ -86,7 +86,6 @@ export function AccountForm({
     const submit = (e: React.FormEvent) => {
         e.preventDefault();
         setFormErr(null);
-        setSaved(false);
         if (handleState.kind === 'bad') {
             setFormErr(handleState.reason);
             return;
@@ -101,7 +100,7 @@ export function AccountForm({
                 setFormErr(res.error);
                 return;
             }
-            setSaved(true);
+            toast.success('Saved');
             setHandleState({ kind: 'current' });
             // Re-render the layout so the sidebar reflects the new handle/name.
             router.refresh();
@@ -163,7 +162,6 @@ export function AccountForm({
                             value={handle}
                             onChange={(e) => {
                                 setHandle(e.target.value);
-                                setSaved(false);
                             }}
                             placeholder="your_handle"
                             className={inp}
@@ -190,7 +188,6 @@ export function AccountForm({
                         value={displayName}
                         onChange={(e) => {
                             setDisplayName(e.target.value);
-                            setSaved(false);
                         }}
                         placeholder="What people call you"
                         className={inp}
@@ -207,7 +204,6 @@ export function AccountForm({
                         value={bio}
                         onChange={(e) => {
                             setBio(e.target.value);
-                            setSaved(false);
                         }}
                         placeholder="Your builds, your lane…"
                         className={inp}
@@ -220,11 +216,6 @@ export function AccountForm({
             {formErr && (
                 <Notice tone="bad" live>
                     {formErr}
-                </Notice>
-            )}
-            {saved && !formErr && (
-                <Notice tone="ok" live>
-                    Saved.
                 </Notice>
             )}
 

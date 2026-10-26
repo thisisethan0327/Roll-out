@@ -7,6 +7,7 @@ import { InfoTip } from '@/components/glide/InfoTip';
 import { Field, FormSection } from '@/components/glide-console/parts';
 import cs from '@/components/glide-console/console.module.css';
 import { Notice, cx } from '@/components/glide-shopbiz/parts';
+import { toast } from '@/components/glide/Toast';
 import bz from '@/components/glide-shopbiz/biz.module.css';
 
 export function GeneralSettingsForm({
@@ -20,7 +21,6 @@ export function GeneralSettingsForm({
 }) {
     const [pending, start] = useTransition();
     const [err, setErr] = useState<string | null>(null);
-    const [ok, setOk] = useState(false);
 
     const [name, setName] = useState(row?.name ?? '');
     const [region, setRegion] = useState(row?.region ?? '');
@@ -39,7 +39,6 @@ export function GeneralSettingsForm({
     const submit = (e: React.FormEvent) => {
         e.preventDefault();
         setErr(null);
-        setOk(false);
         const fd = new FormData();
         fd.set('name', name);
         fd.set('region', region);
@@ -53,7 +52,7 @@ export function GeneralSettingsForm({
         start(async () => {
             try {
                 await updateShopGeneral(shopId, slug, fd);
-                setOk(true);
+                toast.success('Saved');
             } catch (e: any) {
                 setErr(e?.message ?? 'Failed to save');
             }
@@ -135,11 +134,6 @@ export function GeneralSettingsForm({
             {err && (
                 <Notice tone="bad" live>
                     {err}
-                </Notice>
-            )}
-            {ok && (
-                <Notice tone="ok" live>
-                    Saved.
                 </Notice>
             )}
 

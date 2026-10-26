@@ -12,6 +12,7 @@ import { LogIn, UserPlus } from 'lucide-react';
 import { CardHead, Field } from '@/components/glide-console/parts';
 import cs from '@/components/glide-console/console.module.css';
 import { Notice, cx } from '@/components/glide-shopbiz/parts';
+import { toast } from '@/components/glide/Toast';
 import bz from '@/components/glide-shopbiz/biz.module.css';
 
 const ROLES = ['owner', 'admin', 'manager', 'installer', 'staff'] as const;
@@ -27,12 +28,10 @@ export function InviteStaffForm({
     const [role, setRole] = useState<(typeof ROLES)[number]>('installer');
     const [pending, start] = useTransition();
     const [err, setErr] = useState<string | null>(null);
-    const [ok, setOk] = useState<string | null>(null);
 
     const submit = (e: React.FormEvent) => {
         e.preventDefault();
         setErr(null);
-        setOk(null);
         const target = email.trim().toLowerCase();
         if (!target) return;
         start(async () => {
@@ -43,10 +42,10 @@ export function InviteStaffForm({
             }
             setEmail('');
             const who = res.created ? 'New member created' : 'Existing member added';
-            setOk(
-                `${who} · ${res.email} as ${res.role.toUpperCase()}` +
-                    (res.emailed ? ' · invite emailed' : ' · email not sent (they can still sign in)'),
-            );
+            const line = `${who} · ${res.email} as ${res.role.charAt(0).toUpperCase() + res.role.slice(1)}`;
+            // Not emailed is something to act on, so that one stays until dismissed.
+            if (res.emailed) toast.success(line, { description: 'Invite emailed' });
+            else toast.warning(line, { description: 'Email not sent. They can still sign in.' });
         });
     };
 
@@ -83,11 +82,6 @@ export function InviteStaffForm({
                 {err && (
                     <Notice tone="bad" live>
                         {err}
-                    </Notice>
-                )}
-                {ok && (
-                    <Notice tone="ok" live>
-                        {ok}
                     </Notice>
                 )}
                 <div>

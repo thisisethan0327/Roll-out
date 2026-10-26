@@ -27,6 +27,7 @@ import { CardHead } from '@/components/glide-console/parts';
 import cs from '@/components/glide-console/console.module.css';
 import { Notice, cx } from '@/components/glide-shopbiz/parts';
 import { confirmDialog } from '@/components/glide/confirm';
+import { toast } from '@/components/glide/Toast';
 import bz from '@/components/glide-shopbiz/biz.module.css';
 import {
     shipOrderAction,
@@ -161,7 +162,10 @@ export function OrderActions({
             try {
                 const res = await fn();
                 if (res.ok) {
-                    setMsg({ kind: res.error ? 'err' : 'ok', text: res.error || okText });
+                    // A one-off result is a toast; a warning that came back with
+                    // ok (res.error) stays on the page beside the actions.
+                    if (res.error) setMsg({ kind: 'err', text: res.error });
+                    else toast.success(okText);
                     router.refresh();
                 } else {
                     setMsg({ kind: 'err', text: res.error || 'Action failed.' });

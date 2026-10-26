@@ -7,6 +7,7 @@ import { InfoTip } from '@/components/glide/InfoTip';
 import { Field, FormSection } from '@/components/glide-console/parts';
 import cs from '@/components/glide-console/console.module.css';
 import { Notice, cx } from '@/components/glide-shopbiz/parts';
+import { toast } from '@/components/glide/Toast';
 import bz from '@/components/glide-shopbiz/biz.module.css';
 
 export function ShopPageForm({
@@ -20,7 +21,6 @@ export function ShopPageForm({
 }) {
     const [pending, start] = useTransition();
     const [err, setErr] = useState<string | null>(null);
-    const [ok, setOk] = useState(false);
 
     const [handle, setHandle] = useState(profile?.handle ?? '');
     const [displayName, setDisplayName] = useState(profile?.display_name ?? '');
@@ -33,7 +33,6 @@ export function ShopPageForm({
     const submit = (e: React.FormEvent) => {
         e.preventDefault();
         setErr(null);
-        setOk(false);
         const fd = new FormData();
         fd.set('handle', handle);
         fd.set('display_name', displayName);
@@ -45,7 +44,7 @@ export function ShopPageForm({
         start(async () => {
             try {
                 await updateShopPage(shopId, slug, fd);
-                setOk(true);
+                toast.success('Saved');
             } catch (e: any) {
                 setErr(e?.message ?? 'Failed to save');
             }
@@ -125,11 +124,6 @@ export function ShopPageForm({
                 {err && (
                     <Notice tone="bad" live>
                         {err}
-                    </Notice>
-                )}
-                {ok && (
-                    <Notice tone="ok" live>
-                        Saved.
                     </Notice>
                 )}
                 <div>
