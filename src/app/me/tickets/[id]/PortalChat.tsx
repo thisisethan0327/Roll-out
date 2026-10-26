@@ -155,6 +155,7 @@ export function PortalChat({
                     disabled={pending || !text.trim()}
                     onClick={send}
                     aria-label={pending ? 'Sending' : 'Send'}
+                    title="Send (Ctrl or Cmd + Enter)"
                     aria-busy={pending || undefined}
                 >
                     {pending ? (
@@ -164,7 +165,6 @@ export function PortalChat({
                     )}
                 </button>
             </div>
-            <p className="gt-hint">Ctrl or Cmd + Enter sends.</p>
         </div>
     );
 }

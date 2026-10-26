@@ -171,14 +171,14 @@ export function TicketChat({
                 pending={pending || uploading}
                 error={photoError}
                 label={visibility === 'internal' ? 'Internal note' : 'Message to the customer'}
-                placeholder={visibility === 'internal' ? 'Internal note (staff only)…' : 'Message the customer…'}
+                placeholder={visibility === 'internal' ? 'Internal note…' : 'Message the customer…'}
                 sendLabel={visibility === 'internal' ? 'Add note' : 'Send'}
                 hint={
                     uploading
                         ? 'Sending photo…'
                         : visibility === 'internal'
-                          ? 'Staff only · Ctrl or Cmd + Enter to add'
-                          : 'The customer sees this · Ctrl or Cmd + Enter to send'
+                          ? 'Staff only'
+                          : 'The customer sees this'
                 }
                 extra={
                     <button

@@ -51,7 +51,7 @@ export function ShopThreadComposer({
             error={error}
             label="Message"
             placeholder="Message the customer…"
-            hint="Replies as you · Ctrl or Cmd + Enter to send"
+            hint="Replies as you"
             textareaRef={textareaRef}
         />
     );

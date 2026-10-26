@@ -219,7 +219,7 @@ export function ShopSidebar({
         </div>
     ) : (
         <div className={s.foot}>
-            <Link href={`/shop/${slug}/account`} className={s.who} title="View or edit your account">
+            <Link href={`/shop/${slug}/account`} className={s.who}>
                 <span className={s.av} aria-hidden="true">
                     {initials(callerHandle)}
                 </span>

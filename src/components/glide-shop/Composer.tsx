@@ -1,7 +1,9 @@
 'use client';
 /**
  * Glide message composer (board G6, chat): a rounded field with a round send
- * button, a hint line under it and an error line above it. Presentational:
+ * button, a hint line under it and an error line above it. The hint says who
+ * sees the message; the Ctrl/Cmd + Enter shortcut lives in the Send button's
+ * tooltip, so callers never repeat it. Presentational:
  * the caller owns the text, the send action and the pending state, so every
  * composer keeps its own server action exactly as before.
  */
@@ -83,6 +85,7 @@ export function Composer({
                         onClick={onSubmit}
                         disabled={pending || empty}
                         aria-label={pending ? 'Sending' : sendLabel}
+                        title={`${sendLabel} (Ctrl or Cmd + Enter)`}
                     >
                         <Send size={19} strokeWidth={2} aria-hidden="true" />
                     </button>

@@ -155,7 +155,7 @@ export function SellForm({ shopId, slug }: { shopId: number; slug: string }) {
 
             <FormSection id="sell-pay" title="Payouts" sub="Stripe Connect">
                 <p className={cs.small} style={{ fontSize: 14.5 }}>
-                    Payouts setup — coming soon. You’ll connect your bank through Stripe’s hosted onboarding once the payouts platform is live. Until then, approved sellers settle through Rollout’s interim process.
+                    <span className="g-chip">Coming soon</span> Until payouts are live, approved sellers settle through Rollout.
                 </p>
             </FormSection>
 

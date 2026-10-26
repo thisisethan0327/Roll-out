@@ -1,7 +1,7 @@
 'use client';
 import { useState, useTransition } from 'react';
 import { updateShopEmail } from './actions';
-import { Eye, Globe, Mail } from 'lucide-react';
+import { Eye, Mail } from 'lucide-react';
 import { GlideButton } from '@/components/glide/primitives';
 import { InfoTip } from '@/components/glide/InfoTip';
 import { CardHead, Field, FormSection } from '@/components/glide-console/parts';
@@ -109,9 +109,6 @@ export function EmailSettingsForm({
                     </GlideButton>
                 </div>
 
-                <Notice icon={<Globe size={20} strokeWidth={2} aria-hidden="true" />}>
-                    Custom-domain shop emails (sending from your own @yourbrand.com) are a future feature.
-                </Notice>
 
                 <section className="g-card" aria-labelledby="em-tpl-h">
                     <CardHead id="em-tpl-h" title="Templates previewed" />

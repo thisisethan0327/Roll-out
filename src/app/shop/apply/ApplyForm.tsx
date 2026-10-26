@@ -82,7 +82,7 @@ export function ApplyForm({ withCommerce }: { withCommerce: boolean }) {
 
                     <div className="ga-grid ga-grid-3">
                         <Field id="ap-city" label="City">
-                            <input id="ap-city" className="ga-in" name="city" placeholder="Your City" autoComplete="address-level2" />
+                            <input id="ap-city" className="ga-in" name="city" placeholder="Seattle" autoComplete="address-level2" />
                         </Field>
                         <Field id="ap-state" label="State">
                             <input id="ap-state" className="ga-in" name="state_region" placeholder="CA" autoComplete="address-level1" />
@@ -138,8 +138,7 @@ export function ApplyForm({ withCommerce }: { withCommerce: boolean }) {
                         <p className="ga-msg is-quiet" style={{ marginTop: 14 }}>
                             <Info size={18} strokeWidth={2} aria-hidden="true" />
                             <span>
-                                Payouts setup (Stripe) — <b>coming soon</b>. You can be approved to sell on interim settlement before payouts
-                                are connected.
+                                You can be approved to sell before Stripe payouts are connected.
                             </span>
                         </p>
                     </div>

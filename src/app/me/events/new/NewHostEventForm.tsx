@@ -65,7 +65,7 @@ export function NewHostEventForm() {
                     <label className={s.label} htmlFor="ne-desc">
                         Description
                     </label>
-                    <textarea id="ne-desc" name="description" className={s.input} rows={4} maxLength={400} placeholder="What's the vibe? Who should come? (max 400 chars)" disabled={pending} />
+                    <textarea id="ne-desc" name="description" className={s.input} rows={4} maxLength={400} placeholder="What's the vibe? Who should come?" disabled={pending} />
                 </div>
             </FormSection>
 

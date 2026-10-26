@@ -13,7 +13,7 @@ import {
 } from '@/lib/medusa-cart';
 import { formatMoney } from '@/lib/medusa-types';
 import type { Cart, ShippingOption, AddressInput } from '@/lib/medusa-types';
-import { ArrowRight, Check, Lock, LoaderCircle, Package, Pencil, Store, UserRound } from 'lucide-react';
+import { ArrowRight, Check, Lock, LoaderCircle, Package, Pencil, Store } from 'lucide-react';
 import { ErrorLine } from '@/components/glide-tickets/parts';
 import { confirmDialog } from '@/components/glide/confirm';
 
@@ -445,14 +445,6 @@ function CheckoutInner({
         <div className="gt-cols">
             {/* LEFT: steps */}
             <div className="gt-steps">
-                {signedInEmail ? (
-                    <p className="gt-signed">
-                        <UserRound size={18} strokeWidth={1.75} aria-hidden="true" />
-                        <span>
-                            Signed in as <b>{signedInEmail}</b>
-                        </span>
-                    </p>
-                ) : null}
                 {/* STEP 1 — contact + address */}
                 <StepBlock n={1} title="Contact & shipping" active={step === 'address'} done={step !== 'address'} onEdit={() => { setShippingSet(false); setError(null); setStep('address'); }}>
                     {step === 'address' ? (
@@ -499,11 +491,6 @@ function CheckoutInner({
                                 <ErrorLine>No shipping options available for this address.</ErrorLine>
                             ) : (
                                 <>
-                                    {shippingGroups.length > 1 && (
-                                        <p className="gt-fine">
-                                            Your order ships as {shippingGroups.length} shipments. Pick a method for each.
-                                        </p>
-                                    )}
                                     {shippingGroups.map((g) => (
                                         <fieldset key={g.key} className="gt-shipgrp" style={{ border: 0, margin: 0, padding: 0, minWidth: 0 }}>
                                             <legend style={{ padding: 0 }}>
@@ -546,9 +533,7 @@ function CheckoutInner({
                         </div>
                     ) : step === 'payment' ? (
                         <p className="gt-step-sum">{shippingSummary}</p>
-                    ) : (
-                        <p className="gt-step-sum">Enter your address first.</p>
-                    )}
+                    ) : null}
                 </StepBlock>
 
                 {/* STEP 3 — payment */}
@@ -651,9 +636,7 @@ function CheckoutInner({
                                 Payments by Stripe. Your card goes to Stripe, not to Rollout.
                             </p>
                         </div>
-                    ) : (
-                        <p className="gt-step-sum">Complete the steps above.</p>
-                    )}
+                    ) : null}
                 </StepBlock>
 
                 {/* Fallback: an error whose step is not open (should not happen). */}

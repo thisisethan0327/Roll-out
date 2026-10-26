@@ -51,7 +51,7 @@ export function MessageComposer({
             error={error}
             label="Message"
             placeholder="Message the customer…"
-            hint="Posts as the shop · Ctrl or Cmd + Enter to send"
+            hint="Posts as the shop"
             textareaRef={textareaRef}
         />
     );

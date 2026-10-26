@@ -57,7 +57,6 @@ export default async function NewKioskEventPage({
                     name="description"
                     className="admin-form-input"
                     rows={5}
-                    placeholder="Full event description shown on the kiosk events page."
                 />
 
                 <SectionHeading>Dates</SectionHeading>
