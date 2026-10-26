@@ -3,16 +3,24 @@ import { useTransition } from 'react';
 import { forceDeletePost } from '../moderation-actions';
 import { Trash2 } from 'lucide-react';
 import { adminStyles as a } from '@/components/glide-admin/parts';
+import { confirmDialog } from '@/components/glide/confirm';
+import { toast } from '@/components/glide/Toast';
 
-export function PostActions({ postId }: { postId: string }) {
+export function PostActions({ postId, authorHandle }: { postId: string; authorHandle?: string | null }) {
     const [pending, start] = useTransition();
-    const onDelete = () => {
-        if (!confirm('Force-delete this post? Hidden from feed immediately.')) return;
+    const onDelete = async () => {
+        const ok = await confirmDialog({
+            title: authorHandle ? `Delete @${authorHandle}'s post?` : 'Delete this post?',
+            message: "It's hidden from the feed immediately.",
+            confirmLabel: 'Delete',
+            danger: true,
+        });
+        if (!ok) return;
         start(async () => {
             try {
                 await forceDeletePost(postId);
             } catch (e: any) {
-                alert('Failed: ' + (e?.message ?? 'unknown'));
+                toast.error('Delete failed: ' + (e?.message ?? 'unknown'));
             }
         });
     };

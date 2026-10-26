@@ -3,12 +3,16 @@ import { useTransition } from 'react';
 import { removeMembership, setMembershipRole } from '../actions';
 import { UserMinus } from 'lucide-react';
 import { adminStyles as a, sentence } from '@/components/glide-admin/parts';
+import { toast } from '@/components/glide/Toast';
+import { useArmed } from '@/lib/overlay/useArmed';
 
 const ROLES = ['owner', 'admin', 'manager', 'installer', 'staff'] as const;
 
 export function MembershipRow({ m, shopId }: { m: any; shopId: number }) {
     const [pending, start] = useTransition();
+    const [armed, arm] = useArmed();
     const p = m.profiles;
+    const who = `@${p?.handle ?? 'user'}`;
 
     const onChangeRole = (e: React.ChangeEvent<HTMLSelectElement>) => {
         const role = e.target.value as (typeof ROLES)[number];
@@ -16,21 +20,21 @@ export function MembershipRow({ m, shopId }: { m: any; shopId: number }) {
             try {
                 await setMembershipRole(m.profile_id, shopId, role);
             } catch (err: any) {
-                alert('Failed: ' + (err?.message ?? 'unknown'));
+                toast.error(`Role change for ${who} failed: ` + (err?.message ?? 'unknown'));
             }
         });
     };
 
-    const onRemove = () => {
-        if (!confirm(`Remove @${p?.handle ?? 'user'} from this shop?`)) return;
-        start(async () => {
-            try {
-                await removeMembership(m.profile_id, shopId);
-            } catch (err: any) {
-                alert('Failed: ' + (err?.message ?? 'unknown'));
-            }
-        });
-    };
+    const onRemove = () =>
+        arm('remove', () =>
+            start(async () => {
+                try {
+                    await removeMembership(m.profile_id, shopId);
+                } catch (err: any) {
+                    toast.error(`Removing ${who} failed: ` + (err?.message ?? 'unknown'));
+                }
+            }),
+        );
 
     return (
         <tr>
@@ -62,8 +66,10 @@ export function MembershipRow({ m, shopId }: { m: any; shopId: number }) {
                     className="admin-action-btn danger"
                     disabled={pending}
                     onClick={onRemove}
+                    aria-pressed={armed === 'remove'}
                 >
-                    <UserMinus size={15} strokeWidth={2} aria-hidden="true" className={a.dangerIc} /> Remove
+                    <UserMinus size={15} strokeWidth={2} aria-hidden="true" className={a.dangerIc} />{' '}
+                    {armed === 'remove' ? `Tap again to remove ${who}` : 'Remove'}
                 </button>
             </td>
         </tr>

@@ -6,6 +6,7 @@ import { CancelAndRefundAllButton } from '@/components/CancelAndRefundAllButton'
 import { CalendarX } from 'lucide-react';
 import { adminStyles as a } from '@/components/glide-admin/parts';
 import { confirmDialog } from '@/components/glide/confirm';
+import { toast } from '@/components/glide/Toast';
 
 export function EventActions({
     eventId,
@@ -32,7 +33,7 @@ export function EventActions({
                 await forceCancelEvent(eventId);
                 router.refresh();
             } catch (e: any) {
-                alert('Failed: ' + (e?.message ?? 'unknown'));
+                toast.error('Cancel failed: ' + (e?.message ?? 'unknown'));
             }
         });
     };

@@ -1,6 +1,7 @@
 'use client';
 import { useTransition } from 'react';
 import { dismissActionItem } from './actions';
+import { toast } from '@/components/glide/Toast';
 
 export function DismissButton({ id }: { id: string }) {
     const [pending, start] = useTransition();
@@ -13,7 +14,7 @@ export function DismissButton({ id }: { id: string }) {
                     try {
                         await dismissActionItem(id);
                     } catch (e: any) {
-                        alert('Dismiss failed: ' + (e?.message ?? 'unknown'));
+                        toast.error('Dismiss failed: ' + (e?.message ?? 'unknown'));
                     }
                 })
             }

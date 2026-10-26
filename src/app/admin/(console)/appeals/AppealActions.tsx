@@ -3,19 +3,25 @@ import { useState, useTransition } from 'react';
 import { decideAppeal, takeAppeal } from './actions';
 import { Gavel, ShieldCheck } from 'lucide-react';
 import { adminStyles as a } from '@/components/glide-admin/parts';
+import { confirmDialog } from '@/components/glide/confirm';
 
 /**
  * TAKE (submitted -> in review) and DECIDE (uphold / overturn) controls for one
  * appeal. Authorization is server-side in actions.ts; the disabled states here
  * are convenience. The issuing admin is warned up front, and when the server
  * refuses the issuing admin the explicit "decide anyway (logged)" box appears.
+ * Deciding asks through confirmDialog, naming the member: the member is
+ * emailed and the decision is final.
  */
 export function AppealActions({
     appealId,
     status,
     issuedByMe,
+    memberHandle,
 }: {
     appealId: string;
+    /** The banned member's handle, for the confirm title. */
+    memberHandle?: string | null;
     status: 'submitted' | 'in_review' | 'upheld' | 'overturned';
     /** The viewing admin issued this ban. */
     issuedByMe: boolean;
@@ -37,13 +43,22 @@ export function AppealActions({
         });
     };
 
-    const decide = (decision: 'upheld' | 'overturned') => {
+    const decide = async (decision: 'upheld' | 'overturned') => {
         setErr(null);
         if (needsOverride && !override) {
             return setErr('You issued this ban. Tick the box to decide it anyway (this is logged), or leave it to another admin.');
         }
-        const verb = decision === 'overturned' ? 'OVERTURN (lifts the ban now)' : 'UPHOLD (the ban stays)';
-        if (!confirm(`${verb}? The member is emailed the outcome. One appeal per ban: this is final.`)) return;
+        const who = memberHandle ? `@${memberHandle}` : 'The member';
+        const overturn = decision === 'overturned';
+        const ok = await confirmDialog({
+            title: overturn
+                ? `Overturn the ban on ${memberHandle ? who : 'this member'}?`
+                : `Uphold the ban on ${memberHandle ? who : 'this member'}?`,
+            message: `${overturn ? 'The ban lifts now.' : 'The ban stays.'} ${who} is emailed the outcome. One appeal per ban: this is final.`,
+            confirmLabel: overturn ? 'Overturn' : 'Uphold',
+            danger: !overturn,
+        });
+        if (!ok) return;
         start(async () => {
             const res = await decideAppeal({
                 appealId,

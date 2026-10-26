@@ -11,6 +11,7 @@ import {
 import { Check, ShieldOff } from 'lucide-react';
 import { adminStyles as a } from '@/components/glide-admin/parts';
 import { confirmDialog } from '@/components/glide/confirm';
+import { toast } from '@/components/glide/Toast';
 
 const ic = { size: 15, strokeWidth: 2, 'aria-hidden': true } as const;
 
@@ -45,7 +46,7 @@ export function UserRow({
             try {
                 await fn();
             } catch (e: any) {
-                alert('Action failed: ' + (e?.message ?? 'unknown'));
+                toast.error(`Action on @${user.handle} failed: ` + (e?.message ?? 'unknown'));
             }
         });
     };

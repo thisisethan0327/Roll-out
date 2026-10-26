@@ -119,7 +119,7 @@ export default async function PostsPage({
                                         {p.deleted_at && <span className="admin-pill warn">Deleted</span>}
                                     </td>
                                     <td style={{ textAlign: 'right' }}>
-                                        {!p.deleted_at && <PostActions postId={p.id} />}
+                                        {!p.deleted_at && <PostActions postId={p.id} authorHandle={p.author?.handle ?? null} />}
                                     </td>
                                 </tr>
                             ))

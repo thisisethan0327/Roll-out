@@ -257,6 +257,7 @@ export default async function AppealsPage({ searchParams }: { searchParams: Prom
                                     appealId={a.id}
                                     status={a.status}
                                     issuedByMe={!!ban?.actor_profile_id && ban.actor_profile_id === me.profileId}
+                                    memberHandle={member?.handle ?? null}
                                 />
                             </article>
                         );

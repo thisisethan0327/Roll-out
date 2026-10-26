@@ -338,6 +338,7 @@ export default async function ReportsPage({
                                     status={r.status as ReportStatus}
                                     targetType={r.target_type}
                                     targetLive={pv.live}
+                                    authorHandle={pv.author?.handle ?? null}
                                 />
                             </article>
                         );

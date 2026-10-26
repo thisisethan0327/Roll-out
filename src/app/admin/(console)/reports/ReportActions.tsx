@@ -3,18 +3,22 @@ import { useState, useTransition } from 'react';
 import { actionReportWithTakedown, setReportStatus, type ReportStatus } from './actions';
 import { Trash2 } from 'lucide-react';
 import { adminStyles as a } from '@/components/glide-admin/parts';
+import { confirmDialog } from '@/components/glide/confirm';
 
 export function ReportActions({
     reportId,
     status,
     targetType,
     targetLive,
+    authorHandle,
 }: {
     reportId: string;
     status: ReportStatus;
     targetType: string;
     /** false when the target is already deleted/missing: nothing left to take down. */
     targetLive: boolean;
+    /** Author of the reported post / comment, for the confirm title. */
+    authorHandle?: string | null;
 }) {
     const [pending, start] = useTransition();
     const [note, setNote] = useState('');
@@ -37,8 +41,14 @@ export function ReportActions({
 
     const setTo = (s: ReportStatus) => run(() => setReportStatus({ reportId, status: s, note }));
 
-    const removeAndAction = () => {
-        if (!confirm(`Remove this ${targetType} and mark the report ACTIONED? It is hidden immediately.`)) return;
+    const removeAndAction = async () => {
+        const ok = await confirmDialog({
+            title: authorHandle ? `Remove @${authorHandle}'s ${targetType}?` : `Remove this ${targetType}?`,
+            message: "It's hidden immediately and the report is marked actioned.",
+            confirmLabel: 'Remove',
+            danger: true,
+        });
+        if (!ok) return;
         run(() => actionReportWithTakedown({ reportId, note }));
     };
 

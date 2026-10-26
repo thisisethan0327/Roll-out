@@ -3,6 +3,7 @@ import { useTransition } from 'react';
 import { setShopVerified } from './actions';
 import { Check, ChevronRight } from 'lucide-react';
 import { adminStyles as a } from '@/components/glide-admin/parts';
+import { toast } from '@/components/glide/Toast';
 
 const ic = { size: 15, strokeWidth: 2, 'aria-hidden': true } as const;
 
@@ -13,15 +14,12 @@ export function ShopRow({ shop }: { shop: any }) {
     // action item raised at approval time.
     const notOnMap = shop.show_on_map === true && shop.lat == null;
     const handleVerify = () => {
-        if (!shop.page?.id) {
-            alert('This shop has no shop_page profile. Create one first.');
-            return;
-        }
+        if (!shop.page?.id) return;
         start(async () => {
             try {
                 await setShopVerified(shop.page.id, !verified);
             } catch (e: any) {
-                alert('Action failed: ' + (e?.message ?? 'unknown'));
+                toast.error(`${verified ? 'Unverify' : 'Verify'} ${shop.slug} failed: ` + (e?.message ?? 'unknown'));
             }
         });
     };
@@ -62,13 +60,15 @@ export function ShopRow({ shop }: { shop: any }) {
             </td>
             <td style={{ textAlign: 'right' }}>
                 <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
-                    <button
-                        className={`admin-action-btn ${verified ? 'muted' : ''}`}
-                        disabled={pending || !shop.page}
-                        onClick={handleVerify}
-                    >
-                        {verified ? 'Unverify' : <><Check {...ic} /> Verify</>}
-                    </button>
+                    {shop.page ? (
+                        <button
+                            className={`admin-action-btn ${verified ? 'muted' : ''}`}
+                            disabled={pending}
+                            onClick={handleVerify}
+                        >
+                            {verified ? 'Unverify' : <><Check {...ic} /> Verify</>}
+                        </button>
+                    ) : null}
                     <a href={`/admin/shops/${shop.id}`} className="admin-action-btn">
                         Open <ChevronRight {...ic} />
                     </a>
