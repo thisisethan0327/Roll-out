@@ -1,5 +1,5 @@
 'use client';
-import { useState, useTransition } from 'react';
+import { useState, useTransition, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { updateKioskEvent } from '../actions';
 import { TagListEditor } from '../TagListEditor';
@@ -27,6 +27,8 @@ export function KioskEventEditForm({
     const [pending, start] = useTransition();
     const [savedFlash, setSavedFlash] = useState(false);
     const [title, setTitle] = useState<string>(event.title ?? '');
+    const [endErr, setEndErr] = useState<string | null>(null);
+    const [saveErr, setSaveErr] = useState<string | null>(null);
 
     const canManage = MANAGER_ROLES.has(callerRole);
     const split = splitTitle(title);
@@ -40,13 +42,21 @@ export function KioskEventEditForm({
               .filter(Boolean)
         : [];
 
-    const onSubmit = async (formData: FormData) => {
+    // onSubmit, not a form action: React resets an action form after every
+    // submit, so a refused end date or a failed save would wipe the edits.
+    const onSubmit = (e: FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        const form = e.currentTarget;
+        const formData = new FormData(form);
         const starts = String(formData.get('starts_at') ?? '');
         const ends = String(formData.get('ends_at') ?? '');
+        setSaveErr(null);
         if (starts && ends && ends < starts) {
-            alert('End date must be on or after the start date.');
+            setEndErr('End date must be on or after the start date.');
+            (form.elements.namedItem('ends_at') as HTMLInputElement | null)?.focus();
             return;
         }
+        setEndErr(null);
         start(async () => {
             try {
                 await updateKioskEvent(event.id, shopId, formData);
@@ -54,13 +64,13 @@ export function KioskEventEditForm({
                 setTimeout(() => setSavedFlash(false), 1500);
                 router.refresh();
             } catch (e: any) {
-                alert('Save failed: ' + (e?.message ?? 'unknown'));
+                setSaveErr('Save failed: ' + (e?.message ?? 'unknown'));
             }
         });
     };
 
     return (
-        <form className="admin-form" action={onSubmit}>
+        <form className="admin-form" onSubmit={onSubmit}>
             <SectionHeading>Details</SectionHeading>
             <label className="admin-form-label">Title *</label>
             <input
@@ -116,7 +126,15 @@ export function KioskEventEditForm({
                         required
                         defaultValue={event.ends_at ?? ''}
                         disabled={!canManage || pending}
+                        aria-invalid={endErr ? true : undefined}
+                        aria-describedby={endErr ? 'ke-ends-err' : undefined}
+                        onChange={() => setEndErr(null)}
                     />
+                    {endErr && (
+                        <div id="ke-ends-err" className="admin-login-error" role="alert" style={{ marginTop: 6 }}>
+                            {endErr}
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -169,6 +187,11 @@ export function KioskEventEditForm({
                     <button type="submit" className="admin-form-btn" disabled={pending}>
                         {savedFlash ? <>Saved <Check /></> : 'Save changes'}
                     </button>
+                </div>
+            )}
+            {saveErr && (
+                <div className="admin-login-error" role="alert" style={{ marginTop: 8 }}>
+                    {saveErr}
                 </div>
             )}
         </form>

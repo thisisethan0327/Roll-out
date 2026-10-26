@@ -49,6 +49,8 @@ export function TicketMaterials({
     const [unit, setUnit] = useState('');
     const [area, setArea] = useState('');
     const [armedDelete, setArmedDelete] = useState<string | null>(null);
+    const [pickErr, setPickErr] = useState<string | null>(null);
+    const [addErr, setAddErr] = useState<string | null>(null);
     const canManage = MANAGER_ROLES.has(callerRole);
 
     const openPanel = () => {
@@ -67,10 +69,12 @@ export function TicketMaterials({
     const selectedProduct = (products ?? []).find((p) => p.id === productId);
 
     const add = () => {
+        setAddErr(null);
         if (!serialId) {
-            alert('Pick a serial/stock unit first.');
+            setPickErr(productId ? 'Pick a stock unit.' : 'Pick a product and a stock unit.');
             return;
         }
+        setPickErr(null);
         start(async () => {
             try {
                 await addTicketMaterial(slug, ticketRowId, serialId, {
@@ -85,7 +89,7 @@ export function TicketMaterials({
                 setArea('');
                 router.refresh();
             } catch (e: any) {
-                alert('Add material failed: ' + (e?.message ?? 'unknown'));
+                setAddErr('Add material failed: ' + (e?.message ?? 'unknown'));
             }
         });
     };
@@ -188,7 +192,10 @@ export function TicketMaterials({
                                 onChange={(e) => {
                                     setProductId(e.target.value);
                                     setSerialId('');
+                                    setPickErr(null);
                                 }}
+                                aria-label="Product"
+                                aria-invalid={pickErr && !productId ? true : undefined}
                             >
                                 <option value="">Select product…</option>
                                 {(products ?? []).map((p) => (
@@ -201,7 +208,13 @@ export function TicketMaterials({
                                 <select
                                     className="admin-form-input"
                                     value={serialId}
-                                    onChange={(e) => setSerialId(e.target.value)}
+                                    onChange={(e) => {
+                                        setSerialId(e.target.value);
+                                        setPickErr(null);
+                                    }}
+                                    aria-label="Stock unit"
+                                    aria-invalid={pickErr ? true : undefined}
+                                    aria-describedby={pickErr ? 'tm-pick-err' : undefined}
                                 >
                                     <option value="">Select stock unit…</option>
                                     {selectedProduct.serials.map((s) => (
@@ -211,6 +224,11 @@ export function TicketMaterials({
                                         </option>
                                     ))}
                                 </select>
+                            )}
+                            {pickErr && (
+                                <div id="tm-pick-err" className="admin-login-error" role="alert">
+                                    {pickErr}
+                                </div>
                             )}
                             <div style={{ display: 'flex', gap: 8 }}>
                                 <input
@@ -241,7 +259,7 @@ export function TicketMaterials({
                                 <button
                                     type="button"
                                     className="admin-action-btn"
-                                    disabled={pending || !serialId}
+                                    disabled={pending}
                                     onClick={add}
                                 >
                                     {pending ? 'Adding…' : '+ Add material'}
@@ -254,6 +272,11 @@ export function TicketMaterials({
                                     Cancel
                                 </button>
                             </div>
+                            {addErr && (
+                                <div className="admin-login-error" role="alert">
+                                    {addErr}
+                                </div>
+                            )}
                         </>
                     )}
                 </div>
